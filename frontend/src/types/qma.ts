@@ -1,6 +1,6 @@
 export type Tier = "preview" | "full";
 export type BuyerType = "human" | "agent";
-export type PaymentStatus = "pending" | "partial_paid" | "paid" | "expired" | "disputed";
+export type PaymentStatus = "pending" | "partial_paid" | "paid" | "expired" | "disputed" | "refunded";
 export type PaymentStepState = "waiting" | "active" | "completed" | "failed";
 export type PaymentStepKey = "wallet" | "gateway" | "settlement" | "genlayer" | "report";
 export type AgentSessionStage =
@@ -18,8 +18,10 @@ export type AccessStatus =
   | "paid"
   | "expired"
   | "disputed"
+  | "refunded"
   | "settlement_confirmed"
   | "access_issued_pending_batch";
+
 
 export interface Provider {
   provider_id: string;

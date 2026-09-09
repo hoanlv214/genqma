@@ -1559,14 +1559,19 @@ def run_paid_provider_report(*, provider_id, query, invoice_id, token, required_
         full_report["provider_name"] = provider.provider_name
         full_report["provider_owner_wallet"] = provider.owner_wallet
         full_report["invoice"] = invoice_report_meta(invoice_id, invoice)
+        if invoice.get("genlayer"):
+            full_report["genlayer"] = invoice.get("genlayer")
         if required_tier == "preview":
             report = build_preview_report(full_report, invoice)
             report["provider_id"] = provider.provider_id
             report["provider_name"] = provider.provider_name
+            if invoice.get("genlayer"):
+                report["genlayer"] = invoice.get("genlayer")
         else:
             full_report["tier"] = "full"
             full_report["paid_at"] = invoice.get("paid_at")
             report = full_report
+
 
     invoice["used_at"] = time.time()
     _save_invoice(invoice)
