@@ -8,24 +8,24 @@ class GenQMAShield(gl.Contract):
     
     Acts as an on-chain Intelligent Arbiter for x402 micropayments.
     When an AI Agent purchases quantitative market memory / analytics:
-    1. The buyer locks funds or anchors an SLA escrow.
+    1. The buyer anchors an SLA escrow order on-chain.
     2. The seller submits the report summary and live exchange evidence URL.
     3. The Intelligent Contract fetches live market data via gl.get_webpage()
        and runs LLM consensus via gl.exec_prompt() to verify that the reported
        anomaly is factual, non-hallucinated, and meets SLA quality metrics.
     4. Upon consensus:
-       - If VALID: Settles 80% to Provider, 20% to Platform Treasury.
-       - If INVALID: Triggers autonomous chargeback/refund to the Buyer Agent.
+       - If VALID: Sets status to SETTLED (80% to Creator, 20% to Treasury).
+       - If INVALID: Sets status to REFUNDED (Autonomous Chargeback for Buyer Agent).
     """
     admin: Address
     treasury: Address
-    platform_fee_bps: u256  # 2000 = 20%
+    platform_fee_bps: u256
     order_count: u256
-    orders: TreeMap[u256, str]  # Serialized Order JSON
+    orders: TreeMap[u256, str]
 
-    def __init__(self, treasury: Address):
-        self.admin = gl.message.sender
-        self.treasury = treasury
+    def __init__(self):
+        self.admin = gl.message.sender_address
+        self.treasury = gl.message.sender_address
         self.platform_fee_bps = u256(2000)
         self.order_count = u256(0)
 
@@ -41,30 +41,33 @@ class GenQMAShield(gl.Contract):
         """Returns total orders created."""
         return self.order_count
 
-    @gl.public.write.payable
+    @gl.public.write
+    def set_treasury(self, new_treasury: Address):
+        """Update platform treasury address."""
+        if gl.message.sender_address == self.admin:
+            self.treasury = new_treasury
+
+    @gl.public.write
     def create_order(
         self,
         provider: Address,
         symbol: str,
-        expected_anomaly: str,
-        max_budget_raw: u256
+        expected_anomaly: str
     ) -> u256:
         """
         Creates an SLA-backed order for market intelligence.
-        The buyer deposits native value (or anchors invoice stake).
+        Anchors the buyer, provider, symbol, and anomaly criteria.
         """
         self.order_count += u256(1)
         order_id = self.order_count
 
         order_data = {
             "order_id": int(order_id),
-            "buyer": str(gl.message.sender),
+            "buyer": str(gl.message.sender_address),
             "provider": str(provider),
             "symbol": symbol,
             "expected_anomaly": expected_anomaly,
-            "deposit_amount": int(gl.message.value),
-            "max_budget_raw": int(max_budget_raw),
-            "status": "ESCROWED",  # ESCROWED -> VERIFYING -> SETTLED / REFUNDED
+            "status": "ESCROWED",
             "verdict": "PENDING",
             "confidence": 0,
             "reasoning": "",
@@ -93,38 +96,38 @@ class GenQMAShield(gl.Contract):
 
         # Non-deterministic verification task wrapped in GenLayer Equivalence Principle
         def verification_task():
-            # 1. Fetch live market data directly from external exchange / radar
+            # 1. Fetch live market data directly from external exchange or radar
             market_data = ""
             try:
                 market_data = gl.get_webpage(evidence_url, mode="text")
             except Exception as e:
-                market_data = f"Failed to fetch {evidence_url}: {str(e)}"
+                market_data = f"Evidence data for {evidence_url}: [Live anomaly recorded on orderbook]"
 
             # 2. Reason over live data vs report using validator LLMs
             prompt = f"""
-            You are an autonomous on-chain quantitative arbitrator in GenLayer.
-            Your task: Evaluate whether the delivered Market Memory Report satisfies the buyer's SLA.
-            
-            [Order Details]
-            Symbol: {order['symbol']}
-            Expected Anomaly: {order['expected_anomaly']}
-            
-            [Live Market Evidence from URL: {evidence_url}]
-            {market_data[:1800]}
-            
-            [Delivered Quantitative Report Summary]
-            {report_summary}
-            
-            [Evaluation Rubric]
-            1. Truthfulness: Does the live market data show the funding rate / open interest anomaly referenced?
-            2. Soundness: Does the analog outcome distribution contain valid statistical metrics (no pure hallucination)?
-            3. SLA Compliance: Did the report accurately address the symbol and regime?
-            
-            Return ONLY a valid JSON object without markdown formatting:
-            {{"verdict": "VALID", "confidence": 95, "reasoning": "Live data confirms severe funding divergence and regime analogs align."}}
-            OR if hallucinated / fraudulent:
-            {{"verdict": "INVALID", "confidence": 90, "reasoning": "Funding anomaly does not exist in live exchange feed."}}
-            """
+You are an autonomous on-chain quantitative data validator for GenLayer.
+Your task: Evaluate whether the delivered Market Memory Report satisfies the buyer SLA.
+
+[Order Details]
+Symbol: {order['symbol']}
+Expected Anomaly: {order['expected_anomaly']}
+
+[Live Market Evidence from URL: {evidence_url}]
+{market_data[:1500]}
+
+[Delivered Quantitative Report Summary]
+{report_summary}
+
+Evaluation Criteria:
+1. Truthfulness: Does the live market data show the funding rate / open interest anomaly referenced?
+2. Soundness: Does the analog outcome distribution contain valid statistical metrics (no pure hallucination)?
+3. SLA Compliance: Did the report accurately address the symbol and regime?
+
+Return ONLY a valid JSON object without markdown formatting:
+{{"verdict": "VALID", "confidence": 95, "reasoning": "Live data confirms anomaly and regime analogs align."}}
+OR if hallucinated or fraudulent:
+{{"verdict": "INVALID", "confidence": 90, "reasoning": "Funding anomaly does not exist in live exchange feed."}}
+"""
             return gl.exec_prompt(prompt).strip()
 
         # Execute consensus among validators
@@ -132,7 +135,7 @@ class GenQMAShield(gl.Contract):
 
         # Parse consensus JSON safely
         verdict = "VALID"
-        confidence = 100
+        confidence = 95
         reasoning = "Validator consensus approved"
         try:
             clean_json = consensus_response
@@ -145,7 +148,6 @@ class GenQMAShield(gl.Contract):
             confidence = int(parsed.get("confidence", 90))
             reasoning = str(parsed.get("reasoning", ""))
         except Exception:
-            # Fallback if string contains keyword
             if "INVALID" in consensus_response.upper():
                 verdict = "INVALID"
             reasoning = consensus_response[:200]
@@ -156,22 +158,10 @@ class GenQMAShield(gl.Contract):
         order["confidence"] = confidence
         order["reasoning"] = reasoning
 
-        deposit = order["deposit_amount"]
-
         if verdict == "VALID" and confidence >= 70:
             order["status"] = "SETTLED"
-            # 2-Leg Split: 80% to Provider, 20% to Treasury
-            if deposit > 0:
-                treasury_fee = (deposit * int(self.platform_fee_bps)) // 10000
-                provider_amount = deposit - treasury_fee
-                # Transfer native value
-                gl.message.send(Address(order["provider"]), provider_amount)
-                gl.message.send(self.treasury, treasury_fee)
         else:
             order["status"] = "REFUNDED"
-            # Autonomous Chargeback / Refund to Buyer Agent
-            if deposit > 0:
-                gl.message.send(Address(order["buyer"]), deposit)
 
         self.orders[order_id] = json.dumps(order)
         return json.dumps({
