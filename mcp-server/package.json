@@ -1,0 +1,23 @@
+{
+  "name": "@qma/mcp-server",
+  "version": "0.1.0",
+  "description": "QMA Market Memory MCP bridge — exposes QMA scan/budget/purchase tools to local MCP hosts (Claude Code, Cursor) over stdio, proxied to the hosted QMA MCP server.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "qma-mcp": "./bin/qma-mcp.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0"
+  }
+}

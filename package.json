@@ -1,0 +1,29 @@
+{
+  "name": "qma",
+  "version": "2.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "agent:dry": "node agents/bin/agent_buyer.js --dry-run",
+    "agent:llm:dry": "node agents/bin/agent_buyer.js --llm --dry-run",
+    "agent:llm:live": "node agents/bin/agent_buyer.js --llm --live --no-auto-deposit",
+    "agent": "node agents/bin/qma.js",
+    "agent:build": "tsc -p agents/tsconfig.json",
+    "agent:preview": "node agents/bin/agent_buyer.js --live --tier preview",
+    "agent:full": "node agents/bin/agent_buyer.js --live --tier full",
+    "agent:swarm": "node scripts/qma_agent_swarm.mjs",
+    "sg:smoke": "powershell -ExecutionPolicy Bypass -File scripts/ast_grep_smoke.ps1",
+    "sg:routes": "sg scan -r .ast-grep/rules/python-fastapi-app-route.yml backend main.py tests",
+    "sg:invoice": "sg scan -r .ast-grep/rules/python-save-invoice-call.yml backend main.py tests",
+    "sg:ledger": "sg scan -r .ast-grep/rules/python-save-payment-ledger-call.yml backend main.py tests",
+    "sg:payment-gates": "sg scan -r .ast-grep/rules/python-payment-required-exception.yml backend main.py tests",
+    "sg:state": "sg scan -r .ast-grep/rules/python-state-invoices-direct-write.yml backend main.py tests",
+    "sg:http": "sg scan -r .ast-grep/rules/python-requests-post-call.yml backend/app/api backend/app/main.py"
+  },
+  "dependencies": {
+    "viem": "^2.48.11"
+  },
+  "devDependencies": {
+    "@ast-grep/cli": "^0.44.1"
+  }
+}

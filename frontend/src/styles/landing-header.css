@@ -1,0 +1,58 @@
+.landing-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: transparent;
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.landing-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.landing-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: var(--t2, #8d95b0);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.landing-nav-link:hover {
+  color: var(--t1, #ffffff);
+}
+
+.landing-nav-link.nav-cta {
+  background: var(--accent, #7C6FFF);
+  color: #000;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.landing-nav-link.nav-cta:hover {
+  opacity: 0.9;
+  color: #000;
+}
+
+@media (max-width: 768px) {
+  .landing-nav {
+    padding: 12px 16px;
+  }
+  
+  .landing-nav-links {
+    gap: 12px;
+  }
+}

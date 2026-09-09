@@ -1,0 +1,6 @@
+id: python-requests-post-call
+language: Python
+severity: info
+message: "requests.post call. Keep external HTTP IO in service/client modules, not endpoint or app wiring code."
+rule:
+  pattern: requests.post($$$ARGS)

@@ -1,0 +1,101 @@
+import { useEffect, useState } from "react";
+import { getLiveAnomalies, getAgentRecommendations } from "../../services/providers";
+import { Loader } from "../ui/Loader";
+import "../../styles/SignalSidebar.css";
+
+interface SignalSidebarProps {
+  visible: boolean;
+  activeQuery: Record<string, any>;
+  normalizeSignal: (value: Record<string, any>) => Record<string, any>;
+  entitlementBadgeForSignal: (signal: Record<string, any>, providerId?: string) => { meta?: string; className: string; text: string };
+  recommendationTier: (item: any) => string;
+  onSelectSignal: (item: any) => void;
+  onSelectRecommendation: (item: any) => void;
+}
+
+export function SignalSidebar({ visible, activeQuery, normalizeSignal, entitlementBadgeForSignal, recommendationTier, onSelectSignal, onSelectRecommendation }: SignalSidebarProps) {
+  const [anomalies, setAnomalies] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [refreshTone, setRefreshTone] = useState<"" | "refreshing" | "error">("");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const loadAnomalies = async (silent = false) => {
+    setRefreshTone("refreshing");
+    if (!silent) setLoading(true);
+    setError("");
+    try {
+      const data = await getLiveAnomalies("funding_memory");
+      setAnomalies(data.anomalies || []);
+      const raw = Number(data.last_updated);
+      const updated = Number.isFinite(raw) ? new Date(raw > 10_000_000_000 ? raw : raw * 1000) : new Date(data.last_updated);
+      setLastUpdated(Number.isNaN(updated.getTime()) ? null : updated);
+      setRefreshTone("");
+    } catch (err: any) {
+      setError(err?.message || "Exchange scan error");
+      setRefreshTone("error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadRecommendations = async () => {
+      try {
+        setRecommendationsLoading(true);
+        const data: any = await getAgentRecommendations();
+        if (!cancelled) setRecommendations(data.recommendations || []);
+      } catch (err) {
+        console.warn("Failed to load recommendations", err);
+      } finally {
+        if (!cancelled) setRecommendationsLoading(false);
+      }
+    };
+    const refreshAll = async (silent = false) => {
+      await loadAnomalies(silent);
+      if (!cancelled) await loadRecommendations();
+    };
+    refreshAll();
+    const timer = window.setInterval(() => refreshAll(true), 30000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, []);
+
+  const refreshLabel = lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}` : refreshTone === "refreshing" ? "Refreshing" : refreshTone === "error" ? "Refresh error" : "Auto 30s";
+
+  const handleManualRefresh = () => {
+    loadAnomalies();
+    getAgentRecommendations()
+      .then((d: any) => setRecommendations(d.recommendations || []))
+      .catch(() => null);
+  };
+
+  return <aside className={`live-feed-sidebar ${visible ? "mobile-visible" : ""}`}>
+    <div className="sidebar-header"><span className="sidebar-title">Live Signals</span><button className="refresh-btn" onClick={handleManualRefresh}>↻ Refresh</button></div>
+    <div className="agent-picks-panel sidebar-panel">
+      <div className="sidebar-header agent-picks-header"><span className="sidebar-title">Ranked Opportunities</span><span className="agent-mode-pill">Human review</span></div>
+      <div className="agent-picks-list">{recommendationsLoading ? <Loader label="Ranking live signals..." compact size="sm" /> : recommendations.length === 0 ? <div className="agent-empty">No opportunities ranked yet.</div> : recommendations.map((item, index) => {
+        const providerId = item.provider_id || "funding_memory";
+        const signal = normalizeSignal(item.query || { symbol: item.symbol });
+        const entitlement = entitlementBadgeForSignal(signal, providerId);
+        return <div className="agent-pick-card" key={index} onClick={() => onSelectRecommendation(item)}>
+          <div className="card-header"><span className="card-symbol">{item.symbol}</span><span className="card-score">Score: {item.score}</span></div>
+          {item.reason && <p className="pick-reason pick-reason-muted">{item.reason}</p>}
+          <div className="card-meta-row mt-6"><span>{entitlement.meta || `Tier: ${recommendationTier(item)}`}</span><span className={`signal-badge ${entitlement.className}`}>{entitlement.className === "unpaid" ? `Tier: ${recommendationTier(item)}` : entitlement.text}</span></div>
+        </div>;
+      })}</div>
+    </div>
+    <div className="sidebar-header anomalies-header"><span className="sidebar-title">All Live Signals</span><span className={`anomalies-count-pill${refreshTone ? ` is-${refreshTone}` : ""}`} title={lastUpdated?.toLocaleString()}>{refreshLabel}</span></div>
+    <div className="anomalies-list">{loading ? <Loader label="Scanning MEXC..." variant="progress" /> : error ? <div className="error-centered anomalies-error">{error}</div> : anomalies.length === 0 ? <div className="agent-empty">No anomalies found.</div> : anomalies.map((item, index) => {
+      const signal = normalizeSignal({ symbol: item.symbol, fundingRate: item.fundingRate, marketCap: item.marketCap, FDV: item.fromATH ? item.marketCap / (1 + item.fromATH / 100) : item.marketCap, circRatio: item.circRatio, fromATH: item.fromATH, volume24h: item.volume24h, amount: item.amount || item.openInterest, openInterest: item.openInterest || item.amount, openInterestChange24h: item.openInterestChange24h, longShortRatio: item.longShortRatio, price: item.price });
+      const entitlement = entitlementBadgeForSignal(signal);
+      return <div className={`anomaly-card ${activeQuery?.symbol === item.symbol ? "active" : ""}`} key={index} onClick={() => onSelectSignal(item)}>
+        <div className="card-header"><span className="card-symbol">{item.symbol}</span><span className="card-funding">{(item.fundingRate * 100).toFixed(3)}%</span></div>
+        <div className="card-stats"><div>Mkt Cap: <span className="card-stat-val">${(item.marketCap / 1000000).toFixed(1)}M</span></div><div>Circ Ratio: <span className="card-stat-val">{item.circRatio.toFixed(2)}</span></div><div>24h Vol: <span className="card-stat-val">${(item.volume24h / 1000000).toFixed(1)}M</span></div><div>ATH Dist: <span className="card-stat-val">{item.fromATH.toFixed(2)}%</span></div></div>
+        <div className="card-meta-row"><span>{entitlement.meta}</span><span className={`signal-badge ${entitlement.className}`}>{entitlement.text}</span></div>
+      </div>;
+    })}</div>
+  </aside>;
+}

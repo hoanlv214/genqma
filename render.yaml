@@ -1,0 +1,92 @@
+services:
+  - type: web
+    name: qma-api
+    env: python
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: QMA_HISTORICAL_DB_PATH
+        value: data/sample_funding_historical_analysis.csv
+      - key: QMA_BACKTEST_OUTCOME_PATH
+        value: data/sample_trading_analysis.csv
+      - key: QMA_ARC_GATEWAY_URL
+        value: https://qma-arc-gateway-4elg.onrender.com
+      # Must be the same value on qma-arc-gateway.
+      - key: QMA_ARC_GATEWAY_INTERNAL_SECRET
+        sync: false
+      - key: QMA_ARC_SELLER_ADDRESS
+        sync: false
+      - key: QMA_FUNDING_MEMORY_OWNER_WALLET
+        sync: false
+      - key: QMA_OI_MEMORY_OWNER_WALLET
+        sync: false
+      - key: QMA_ADMIN_WALLET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_SCHEMA
+        value: public
+      - key: QMA_ACCESS_TOKEN_SECRET
+        generateValue: true
+      # Must be the same value on qma-arc-gateway.
+      - key: QMA_SPLIT_LEG_URL_SECRET
+        sync: false
+      # Must be the same value on qma-arc-gateway.
+      - key: QMA_SPLIT_RECEIPT_SECRET
+        sync: false
+      - key: QMA_ADMIN_TOKEN
+        sync: false
+
+  - type: web
+    name: qma-arc-gateway
+    env: node
+    plan: free
+    region: singapore
+    branch: main
+    rootDir: arc_gateway
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: QMA_BACKEND_INTERNAL_URL
+        value: https://qma-api-7o9v.onrender.com
+      # Must exactly match qma-api.
+      - key: QMA_ARC_GATEWAY_INTERNAL_SECRET
+        sync: false
+      # Must exactly match qma-api.
+      - key: QMA_SPLIT_LEG_URL_SECRET
+        sync: false
+      # Must exactly match qma-api.
+      - key: QMA_SPLIT_RECEIPT_SECRET
+        sync: false
+      - key: QMA_ARC_SELLER_ADDRESS
+        sync: false
+
+  - type: web
+    name: qma-agent-worker
+    env: node
+    plan: free
+    region: singapore
+    branch: main
+    rootDir: agents
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:worker
+    envVars:
+      - key: API_BASE_URL
+        value: https://qma-api-7o9v.onrender.com
+      - key: QMA_ARC_GATEWAY_URL
+        value: https://qma-arc-gateway-4elg.onrender.com
+      # One Node process runs this many autonomous sessions concurrently.
+      - key: QMA_WORKER_MAX_CONCURRENT_SESSIONS
+        value: "10"
+      # Must exactly match qma-api and qma-arc-gateway.
+      - key: QMA_ARC_GATEWAY_INTERNAL_SECRET
+        sync: false
+      - key: AGENT_PRIVATE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

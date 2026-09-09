@@ -1,0 +1,18 @@
+<svg width="400" height="100" viewBox="0 0 400 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="qma-ring" x1="0" y1="0" x2="743" y2="700" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6745FA"/>
+      <stop offset="1" stop-color="#30FCEB"/>
+    </linearGradient>
+    <linearGradient id="qma-slash" x1="328.264" y1="400" x2="742.189" y2="700" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6745FA"/>
+      <stop offset="1" stop-color="#30FCEB"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(10, 10) scale(0.114)">
+    <path d="M350 0C543.3 0 700 156.7 700 350C700 402.299 688.528 451.918 667.965 496.479L593.563 406.607C597.774 388.418 600 369.469 600 350C600 211.929 488.071 100 350 100C211.929 100 100 211.929 100 350C100 488.071 211.929 600 350 600C367.397 600 384.378 598.222 400.773 594.84L470.27 678.787C432.765 692.51 392.257 700 350 700C156.7 700 0 543.3 0 350C0 156.7 156.7 0 350 0Z" fill="url(#qma-ring)"/>
+    <path d="M493.834 400H328.264L576.619 700H742.189L493.834 400Z" fill="url(#qma-slash)"/>
+  </g>
+  <text x="110" y="62" font-family="'Sora', 'Inter', sans-serif" font-weight="800" font-size="48" fill="#ffffff" letter-spacing="2">QMA</text>
+  <text x="112" y="80" font-family="'Sora', 'Inter', sans-serif" font-weight="500" font-size="11" fill="#6745FA" letter-spacing="3.2">QUANT MEMORY AGENT</text>
+</svg>

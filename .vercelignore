@@ -1,0 +1,38 @@
+# Vercel builds frontend/ and deploys frontend/dist only.
+# Render owns the FastAPI backend and Arc Gateway sidecar.
+
+main.py
+qma_engine.py
+providers.py
+requirements.txt
+render.yaml
+README.md
+storage.py
+
+paid_intelligence_kit/
+arc_gateway/
+data/
+docs/
+examples/
+private_data/
+scripts/
+backend/
+tests/
+
+# Legacy static pages are retained as reference, not deployed by Vercel.
+/index.html
+/app.html
+/user.html
+/marketplace.html
+/docs.html
+
+# Vite reads shared assets from root public/ during the build.
+
+.env
+.env.*
+*.log
+*.pyc
+__pycache__/
+*/__pycache__/
+payment_ledger.json
+paid_reports.json

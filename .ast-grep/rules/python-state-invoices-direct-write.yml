@@ -1,0 +1,6 @@
+id: python-state-invoices-direct-write
+language: Python
+severity: warning
+message: "Direct write to state.invoices_db. Prefer repository/service helpers so invoice state changes stay auditable."
+rule:
+  pattern: state.invoices_db[$KEY] = $VALUE

@@ -1,0 +1,9 @@
+id: python-save-invoice-call
+language: Python
+severity: info
+message: "save_invoice call. Audit lock/idempotency/state-machine coverage when changing payment flow."
+rule:
+  any:
+    - pattern: save_invoice($INVOICE)
+    - pattern: _save_invoice($INVOICE)
+    - pattern: deps.save_invoice($INVOICE)

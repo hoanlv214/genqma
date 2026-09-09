@@ -1,0 +1,9 @@
+id: python-save-payment-ledger-call
+language: Python
+severity: info
+message: "save_payment_ledger call. Check event idempotency and invoice fallback behavior."
+rule:
+  any:
+    - pattern: save_payment_ledger($EVENTS)
+    - pattern: _save_payment_ledger($EVENTS)
+    - pattern: deps.save_payment_ledger($EVENTS)

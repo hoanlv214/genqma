@@ -1,0 +1,22 @@
+id: python-fastapi-app-route
+language: Python
+severity: warning
+message: "Direct FastAPI app route found. Prefer endpoint modules with APIRouter during the backend refactor."
+rule:
+  any:
+    - pattern: |
+        @app.get($$$ARGS)
+        def $FUNC($$$PARAMS):
+            $$$BODY
+    - pattern: |
+        @app.post($$$ARGS)
+        def $FUNC($$$PARAMS):
+            $$$BODY
+    - pattern: |
+        @app.put($$$ARGS)
+        def $FUNC($$$PARAMS):
+            $$$BODY
+    - pattern: |
+        @app.delete($$$ARGS)
+        def $FUNC($$$PARAMS):
+            $$$BODY

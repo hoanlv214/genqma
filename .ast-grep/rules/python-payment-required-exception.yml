@@ -1,0 +1,6 @@
+id: python-payment-required-exception
+language: Python
+severity: info
+message: "HTTP 402 payment gate. Keep response detail shape stable for frontend resume/unlock flows."
+rule:
+  pattern: HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, $$$ARGS)

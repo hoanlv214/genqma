@@ -1,0 +1,449 @@
+/* ==========================================================================
+   SignalSidebar Stylesheet
+   ========================================================================== */
+
+.live-feed-sidebar {
+    width: 300px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--bdr);
+    background: rgba(8, 10, 18, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.sidebar-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--bdr);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(10, 13, 24, 0.6);
+    gap: 8px;
+}
+
+.sidebar-title {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 0.7rem;
+    color: var(--t2);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    min-width: 0;
+}
+
+.refresh-btn {
+    background: none;
+    border: 1px solid var(--bdr);
+    color: var(--t3);
+    padding: 3px 8px;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.3px;
+    transition: all 0.15s;
+}
+
+.refresh-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ===== ANOMALY CARDS ===== */
+.anomaly-card {
+    background: var(--bg-2);
+    border: 1px solid var(--bdr);
+    border-left: 2px solid var(--bdr);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.anomaly-card:hover {
+    border-color: var(--bdr-md);
+    border-left-color: var(--accent);
+    background: rgba(124, 111, 255, 0.03);
+}
+
+.anomaly-card.active {
+    border-color: rgba(124, 111, 255, 0.2);
+    border-left-color: var(--accent);
+    background: var(--accent-dim);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.card-symbol {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--t1);
+    letter-spacing: 0.5px;
+}
+
+.card-funding {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--red);
+    background: var(--red-dim);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.card-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    font-size: var(--text-xs);
+    color: var(--t3);
+    font-family: var(--mono);
+}
+
+.card-stat-label {
+    color: var(--t3);
+}
+
+.card-stat-val {
+    color: var(--t2);
+}
+
+/* --- High contrast premium styled anomaly card rules --- */
+.anomaly-card {
+    background: #0f1324;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 3px solid rgba(124, 111, 255, 0.4);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.anomaly-card:hover {
+    background: #161c36;
+    border-color: rgba(124, 111, 255, 0.5);
+    border-left-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.anomaly-card.active {
+    background: #18223d;
+    border-color: rgba(34, 211, 160, 0.5);
+    border-left-color: var(--green);
+    box-shadow: 0 6px 20px rgba(34, 211, 160, 0.1);
+}
+
+.card-symbol {
+    color: #fff;
+}
+
+.card-funding {
+    color: #f4475b;
+    background: rgba(244, 71, 91, 0.14);
+    border: 1px solid rgba(244, 71, 91, 0.3);
+    font-weight: 700;
+}
+
+.card-stats {
+    color: var(--t2);
+}
+
+.card-stat-val {
+    color: #fff;
+}
+
+/* --- Layout & Responsiveness --- */
+@media (min-width: 901px) {
+    .live-feed-sidebar {
+        position: fixed;
+        top: 52px;
+        left: 0;
+        bottom: 0;
+        width: 300px;
+        height: calc(100vh - 52px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #06080f;
+        border-right: 1px solid rgba(255, 255, 255, 0.12);
+        flex-shrink: 0;
+        z-index: 100;
+    }
+
+    .main-panel {
+        margin-left: 300px;
+        width: calc(100% - 300px);
+    }
+}
+
+.live-feed-sidebar {
+    background: rgba(6, 8, 14, 0.4);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.agent-picks-panel {
+    height: 385px;
+    max-height: 385px;
+    min-height: 385px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(10, 13, 24, 0.6);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 12px 10px;
+}
+
+.agent-picks-list {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    max-height: 330px;
+    padding-right: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.agent-pick-card {
+    background: rgba(124, 111, 255, 0.08);
+    border: 1px solid rgba(124, 111, 255, 0.2);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.agent-pick-card:hover {
+    background: rgba(124, 111, 255, 0.14);
+    border-color: rgba(124, 111, 255, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(124, 111, 255, 0.15);
+}
+
+.agent-pick-symbol {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: #fff;
+}
+
+.agent-pick-score {
+    color: var(--green);
+    font-weight: 700;
+}
+
+.agent-pick-reasons {
+    color: var(--t2);
+    font-size: 0.72rem;
+    line-height: 1.4;
+    margin-top: 6px;
+}
+
+/* Custom styled scrollbars for list components inside sidebar */
+.agent-picks-list::-webkit-scrollbar,
+.anomalies-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.agent-picks-list::-webkit-scrollbar-track,
+.anomalies-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.agent-picks-list::-webkit-scrollbar-thumb,
+.anomalies-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+}
+
+.agent-picks-list::-webkit-scrollbar-thumb:hover,
+.anomalies-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(124, 111, 255, 0.45);
+}
+
+/* Make anomalies-list scroll area take all remaining height and behave correctly */
+.anomalies-list {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.agent-mode-pill {
+    background: rgba(124, 111, 255, 0.15);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+.agent-empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--t3);
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+.pick-reason {
+    font-size: 0.75rem;
+    margin: 6px 0;
+    line-height: 1.4;
+}
+
+.pick-reason-muted {
+    color: var(--t2);
+}
+
+.card-score {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.card-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.7rem;
+    color: var(--t3);
+}
+
+.signal-badge {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.anomalies-header {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(10, 13, 24, 0.7);
+    padding: 10px 14px;
+}
+
+.anomalies-count-pill {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: var(--green);
+    background: rgba(34, 211, 160, 0.12);
+    border: 1px solid rgba(34, 211, 160, 0.25);
+    border-radius: var(--radius-xs);
+    padding: 2px 6px;
+    text-transform: uppercase;
+}
+
+.anomalies-count-pill.is-refreshing {
+    color: var(--accent);
+    background: rgba(124, 111, 255, 0.12);
+    border-color: rgba(124, 111, 255, 0.25);
+}
+
+.anomalies-count-pill.is-error {
+    color: var(--red);
+    background: rgba(244, 71, 91, 0.12);
+    border-color: rgba(244, 71, 91, 0.25);
+}
+
+.agent-picks-panel .agent-pick-card {
+    display: block;
+    min-height: 74px;
+    overflow: hidden;
+    padding: 12px 13px;
+}
+
+.agent-picks-panel .card-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 7px;
+}
+
+.agent-picks-panel .card-symbol,
+.agent-picks-panel .card-score {
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.agent-picks-panel .card-symbol {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.agent-picks-panel .card-score {
+    color: var(--t1);
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.agent-picks-panel .pick-reason {
+    display: -webkit-box;
+    margin: 0 0 8px !important;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.agent-picks-panel .signal-badge {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- Additional Responsive Layout Rules --- */
+@media (max-width: 1100px) {
+    .live-feed-sidebar {
+        width: 280px;
+    }
+}
+
+@media (max-width: 900px) {
+    .live-feed-sidebar {
+        width: 100%;
+        max-height: none;
+        border-right: 0;
+        border-bottom: 1px solid var(--bdr);
+        overflow: visible;
+    }
+
+    .agent-picks-list {
+        max-height: 140px;
+    }
+
+    .anomalies-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-height: 260px;
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .live-feed-sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .live-feed-sidebar:not(.mobile-visible) {
+        display: none;
+    }
+}
