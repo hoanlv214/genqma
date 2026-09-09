@@ -103,10 +103,12 @@ The GenQMAShield contract on GenLayer executes strict equivalence consensus (gl.
 
 ---
 
-## 08. Cross-Chain Architecture & Future Roadmap
+## 08. Cross-Chain Architecture & Technical Debt Roadmap
 * **Current Production Implementation (Cross-Chain Arbiter):**
   - **Payment Settlement:** Arc Network (Circle Gateway x402 USDC micropayments).
   - **SLA & Dispute Resolution:** GenLayer Intelligent Contract (`0x0C2485e1918D3a41762E124a06c0Be33171508BD`).
   - **Mechanic:** Single-signature user authorization with autonomous 80/20 release or 100% chargeback upon 5/5 validator LLM consensus.
-* **Technical Debt & Phase 2 Roadmap (Native GenLayer Rail):**
+* **Technical Debt & Phase 4 Roadmap (Native GenLayer Rail):**
   - Direct native `$GEN` token deposits on GenLayer Studionet / Bradbury Mainnet using `@gl.public.write.payable` and `_Payee.emit_transfer(...)` for native smart contract escrow alongside cross-chain x402 USDC.
+  - Full architectural analysis and upgrade contract blueprint: [docs/architecture/tech-debt-genlayer-native-gen.md](docs/architecture/tech-debt-genlayer-native-gen.md).
+

@@ -200,7 +200,7 @@ qma agent run --live --budget 0.05 --executor circle-agent-wallet --wallet <your
 - [x] **Phase 1: Core Nanopayment Engine** — Circle Gateway x402 on Arc, gasless Agent Wallets.
 - [x] **Phase 2: GenLayer Shield Cross-Chain Arbiter (Current Live)** — Intelligent Contract on GenLayer (`0x0C2485e1918D3a41762E124a06c0Be33171508BD`) acting as on-chain SLA & Dispute Arbiter. Verifies live exchange orderbooks (Zero-Oracle web scraping) with 5/5 LLM validator consensus; triggers autonomous release (80% creator / 20% platform) or autonomous chargeback (100% refund).
 - [x] **Phase 3: Model Context Protocol (MCP)** — RFC 8414 / RFC 9728 OAuth 2.1 PKCE integration for Claude and ChatGPT.
-- [ ] **Phase 4: Native GenLayer Payment Rail (`$GEN`)** — Direct smart contract payable methods (`@gl.public.write.payable` and `_Payee.emit_transfer`) on GenLayer Studionet/Bradbury, enabling native `$GEN` token escrow balances directly in contract storage alongside cross-chain x402.
+- [ ] **Phase 4: Native GenLayer Payment Rail (`$GEN`)** — Direct smart contract payable methods (`@gl.public.write.payable` and `_Payee.emit_transfer`) on GenLayer Studionet/Bradbury, enabling native `$GEN` token escrow balances directly in contract storage alongside cross-chain x402. (See [Architecture Decision & Tech Debt: Native $GEN Migration](docs/architecture/tech-debt-genlayer-native-gen.md)).
 - [ ] **Phase 5: Multi-Domain Provider Expansion** — Onboard non-financial data providers (academic research, weather risk, smart contract audit signals).
 - [ ] **Phase 6: Agent Circuit Breaker SDK** — Python/TypeScript middleware for trading bots (`ccxt`, `Hummingbot`) to check market memory before executing high-leverage orders.
 

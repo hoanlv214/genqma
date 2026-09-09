@@ -19,6 +19,11 @@ class GenQMAShield(gl.Contract):
     4. Upon consensus:
        - If VALID: Sets status to SETTLED (80% to Creator, 20% to Treasury).
        - If INVALID: Sets status to REFUNDED (Autonomous Chargeback for Buyer Agent).
+       
+    Architecture & Tech Debt Roadmap:
+    - Current Live (Phase 2): Cross-chain SLA & Dispute Arbiter for Arc Network Circle x402 USDC micropayments.
+    - Phase 4 Upgrade: Direct native $GEN token escrow via @gl.public.write.payable and _Payee.emit_transfer.
+      See docs/architecture/tech-debt-genlayer-native-gen.md
     """
     admin: Address
     treasury: Address
