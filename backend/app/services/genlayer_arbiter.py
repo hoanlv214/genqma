@@ -15,7 +15,7 @@ logger = logging.getLogger("QMA-GenLayer")
 
 GENLAYER_CONTRACT_ADDRESS = os.getenv(
     "GENLAYER_CONTRACT_ADDRESS",
-    "0x46b15134a02b723546f48ac175ACc3496E14Ba52"  # Deployed GenQMAShield address
+    "0x0C2485e1918D3a41762E124a06c0Be33171508BD"  # Live deployed GenQMAShield address
 )
 GENLAYER_STUDIO_URL = os.getenv(
     "GENLAYER_STUDIO_URL",
