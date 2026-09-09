@@ -91,8 +91,9 @@ The GenQMAShield contract on GenLayer executes strict equivalence consensus (gl.
 ```
 
 ### Contract Deployment Link
-* **Studio URL:** `https://studio.genlayer.com` (File: `contracts/GenQMAShield.py`)
-* **Contract Address:** `0x7bB28898b8b9f4410a719cE60c4Fe8648170B185` (Sample deployed on Bradbury testnet)
+* **Studio URL:** `https://studio.genlayer.com` (File: `GenQMAShield.py`)
+* **Contract Address:** `0x46b15134a02b723546f48ac175ACc3496E14Ba52`
+* **Deployer Address:** `0x3fcC95f6FDf79D201D56e38186f046D7A7BCB81e`
 
 ---
 
