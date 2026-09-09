@@ -102,7 +102,7 @@ CREATOR_CLAIM_INTENT_TTL_SECONDS = int(os.getenv("QMA_CREATOR_CLAIM_INTENT_TTL_S
 # ---------------------------------------------------------------------------
 import paid_intelligence_kit as paid_kit  # noqa: E402 — needed for DEFAULT_SETTLEMENT_RAIL
 
-DEFAULT_SETTLEMENT_MODE = os.getenv("QMA_DEFAULT_SETTLEMENT_MODE", "x402_direct_split").strip().lower()
+DEFAULT_SETTLEMENT_MODE = os.getenv("QMA_DEFAULT_SETTLEMENT_MODE", "seller_wallet").strip().lower()
 SPLIT_INVOICE_TTL_SECONDS = int(os.getenv("QMA_SPLIT_INVOICE_TTL_SECONDS", "1800"))
 SETTLEMENT_RAIL = os.getenv("QMA_SETTLEMENT_RAIL", paid_kit.DEFAULT_SETTLEMENT_RAIL)
 SETTLEMENT_CURRENCY = "USDC"

@@ -1141,6 +1141,33 @@ def verify_split_payment(invoice_id, invoice, proof):
         invoice["gateway_status"] = aggregate_split_gateway_status(invoice)
         invoice["amount_raw"] = (invoice.get("split") or {}).get("total_amount_raw")
         invoice["verification_mode"] = "circle-gateway-x402-direct-split"
+        # Trigger GenLayer Intelligent SLA Escrow Adjudication
+        try:
+            from backend.app.services import genlayer_arbiter
+            raw_sym = str(invoice.get("symbol") or (invoice.get("query") or {}).get("symbol") or "ETH-USDT")
+            clean_sym = raw_sym.replace("-", "_").replace("/", "_").upper()
+            evidence_url = f"https://contract.mexc.com/api/v1/contract/funding_rate/{clean_sym}"
+            gl_order = genlayer_arbiter.create_order(
+                buyer=payer or "0xBuyerAgentWallet",
+                provider=invoice.get("owner_wallet") or "0xProviderCreatorWallet",
+                symbol=raw_sym,
+                expected_anomaly="Severe funding divergence with open interest spike",
+                deposit_usdc=float(invoice.get("amount") or 0.005)
+            )
+            gl_receipt = genlayer_arbiter.adjudicate_sla(
+                order_id=gl_order["order_id"],
+                report_summary=f"Quant market memory report for {raw_sym} with historical analogs.",
+                evidence_url=evidence_url,
+                provider_address=invoice.get("owner_wallet")
+            )
+            invoice["genlayer"] = gl_receipt
+            logger.info(
+                f"QMA-GenLayer: Intelligent Contract {gl_receipt['contract_address']} evaluated order {gl_order['order_id']} "
+                f"for invoice {invoice_id} -> Verdict: {gl_receipt['verdict']} (Confidence: {gl_receipt['confidence']}%) "
+                f"Consensus: {gl_receipt.get('consensus_type')}"
+            )
+        except Exception as gl_err:
+            logger.warning(f"QMA-GenLayer error: {gl_err}")
         _save_invoice(invoice)
     reload_persistent_state(include_reports=False)
     sync_split_payment_events(invoice)
@@ -1200,6 +1227,33 @@ def verify_payment(invoice_id, proof=None):
         invoice["gateway_status"] = settlement.get("status")
         invoice["amount_raw"] = settlement.get("amount")
         invoice["verification_mode"] = "circle-gateway-arc-testnet"
+        # Trigger GenLayer Intelligent SLA Escrow Adjudication
+        try:
+            from backend.app.services import genlayer_arbiter
+            raw_sym = str(invoice.get("symbol") or (invoice.get("query") or {}).get("symbol") or "ETH-USDT")
+            clean_sym = raw_sym.replace("-", "_").replace("/", "_").upper()
+            evidence_url = f"https://contract.mexc.com/api/v1/contract/funding_rate/{clean_sym}"
+            gl_order = genlayer_arbiter.create_order(
+                buyer=invoice.get("payer_address") or "0xBuyerAgentWallet",
+                provider=invoice.get("owner_wallet") or "0xProviderCreatorWallet",
+                symbol=raw_sym,
+                expected_anomaly="Severe funding divergence with open interest spike",
+                deposit_usdc=float(invoice.get("amount") or 0.005)
+            )
+            gl_receipt = genlayer_arbiter.adjudicate_sla(
+                order_id=gl_order["order_id"],
+                report_summary=f"Quant market memory report for {raw_sym} with historical analogs.",
+                evidence_url=evidence_url,
+                provider_address=invoice.get("owner_wallet")
+            )
+            invoice["genlayer"] = gl_receipt
+            logger.info(
+                f"QMA-GenLayer: Intelligent Contract {gl_receipt['contract_address']} evaluated order {gl_order['order_id']} "
+                f"for invoice {invoice_id} -> Verdict: {gl_receipt['verdict']} (Confidence: {gl_receipt['confidence']}%) "
+                f"Consensus: {gl_receipt.get('consensus_type')}"
+            )
+        except Exception as gl_err:
+            logger.warning(f"QMA-GenLayer error: {gl_err}")
         _save_invoice(invoice)
     reload_persistent_state(include_reports=False)
     if not any(event.get("settlement_id") == proof.settlement_id for event in state.payment_events):

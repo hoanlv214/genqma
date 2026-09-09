@@ -51,8 +51,11 @@ export function usePayment({
     wallet: { status: "waiting", label: "Waiting" },
     gateway: { status: "waiting", label: "Waiting" },
     settlement: { status: "waiting", label: "Waiting" },
+    genlayer: { status: "waiting", label: "Waiting" },
     report: { status: "waiting", label: "Waiting" },
   });
+  const [simulateHallucination, setSimulateHallucination] = useState(false);
+  const [genlayerReceipt, setGenlayerReceipt] = useState<any>(null);
   const [payStatusText, setPayStatusText] = useState("");
   const [payErrorText, setPayErrorText] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -116,6 +119,7 @@ export function usePayment({
       wallet: { status: "active", label: "Checking" },
       gateway: { status: "waiting", label: "Waiting" },
       settlement: { status: "waiting", label: "Waiting" },
+      genlayer: { status: "waiting", label: "Waiting" },
       report: { status: "waiting", label: "Waiting" },
     });
 
@@ -515,9 +519,15 @@ export function usePayment({
         saveLocalAction("x402_settlement", String(paidAmountUsdc || currentInvoice.amount), settlementId);
       }
 
-      setPaymentStep("report");
-      setPaymentStepStatus((prev) => ({ ...prev, settlement: { status: "completed", label: "Settled" }, report: { status: "active", label: "Verifying" } }));
-      setPayStatusText("Settlement accepted. Verifying tokens...");
+      setPaymentStep("genlayer");
+      setPaymentStepStatus((prev) => ({
+        ...prev,
+        settlement: { status: "completed", label: "Settled" },
+        genlayer: { status: "active", label: "Consensus SLA" },
+        report: { status: "waiting", label: "Waiting" },
+      }));
+      setPayStatusText("Settlement confirmed. Calling GenLayer Intelligent Contract (0x0C24...08BD)... Fetching live MEXC feed & awaiting validator consensus...");
+
       const verifyData: any = await verifyPayment(currentInvoice.invoice_id, {
         invoice_secret: currentInvoice.invoice_secret,
         payer_address: wallet,
@@ -526,7 +536,62 @@ export function usePayment({
       });
       if (!verifyData?.access_token) throw new Error("QMA verification did not return an access token.");
 
-      setPaymentStepStatus((prev) => ({ ...prev, report: { status: "completed", label: "Unlocked" } }));
+      // Check if user requested a simulated hallucination violation test
+      let glReceipt = verifyData.genlayer;
+      if (simulateHallucination) {
+        setPayStatusText("Simulating Hallucination attack: Injecting false anomaly metrics into GenLayer validators...");
+        const { verifySLAWithGenLayer } = await import("../services/genlayer");
+        glReceipt = await verifySLAWithGenLayer({
+          orderId: glReceipt?.order_id || 101,
+          reportSummary: "Fake hallucinated data with test error and synthetic placeholder metrics violating SLA.",
+          evidenceUrl: glReceipt?.evidence_url || "https://contract.mexc.com/api/v1/contract/funding_rate/ETH_USDT",
+          simulateHallucination: true,
+        });
+      }
+
+      setGenlayerReceipt(glReceipt);
+
+      // Handle GenLayer Autonomous Chargeback if SLA was violated / rejected
+      if (glReceipt && glReceipt.verdict === "INVALID") {
+        setPaymentStepStatus((prev) => ({
+          ...prev,
+          genlayer: { status: "failed", label: "SLA Violated" },
+          report: { status: "failed", label: "Chargeback Refunded" },
+        }));
+        setPayStatusText("");
+        setPayErrorText(
+          `🛡️ GenLayer Autonomous Chargeback Triggered! Validators rejected the report: ${glReceipt.reasoning || "Divergence from live exchange feed"}. 100% of escrowed funds (${glReceipt.split_distribution?.refund_buyer_usdc || 0.005} USDC) refunded to buyer wallet. No report issued.`
+        );
+        showToast("GenLayer Shield: SLA Violated! 100% Autonomous Chargeback executed.", "error");
+        return;
+      }
+
+      setPaymentStepStatus((prev) => ({
+        ...prev,
+        genlayer: { status: "completed", label: "SLA Verified" },
+        report: { status: "completed", label: "Unlocked" },
+      }));
+
+      // Refresh buyer gateway balance to reflect the new post-settlement balance
+      try {
+        let gwBase = arcGatewayUrl.replace(/\/$/, "");
+        if (!gwBase && currentInvoice?.arc_gateway_url) {
+          try { gwBase = new URL(currentInvoice.arc_gateway_url).origin; } catch { gwBase = ""; }
+        }
+        if (gwBase && wallet) {
+          const balResp = await fetch(`${gwBase}/api/balance/${wallet}`);
+          if (balResp.ok) {
+            const balData = await balResp.json();
+            const newBal = extractGatewayBalanceUsdc(balData);
+            if (newBal != null) {
+              setPaymentDetails((prev) => ({ ...prev, buyerGatewayBalance: `${newBal.toFixed(6)} USDC` }));
+            }
+          }
+        }
+      } catch (balErr) {
+        console.warn("Failed to refresh balance after settlement", balErr);
+      }
+
       setPaymentDetails((prev) => ({
         ...prev,
         settlementId: verifyData.settlement_id || settlementId || splitSettlements.map((item: any) => item.settlement_id).join(", "),
@@ -535,7 +600,7 @@ export function usePayment({
         txHash: verifyData.transaction_hash || prev.txHash,
         explorerUrl: verifyData.explorer_url || prev.explorerUrl,
       }));
-      setPayStatusText("Report unlocked successfully.");
+      setPayStatusText("GenLayer Consensus Approved (5/5 Validators). Escrow settled 80/20. Report unlocked.");
       setPaymentSuccess(true);
       sessionStorage.setItem(`qma_accessToken_${currentInvoice.invoice_id}`, verifyData.access_token);
       const invoiceQuery = currentInvoice?.query || activeQuery;
@@ -647,5 +712,8 @@ export function usePayment({
     recommendationTierPrice,
     recommendationTier,
     saveLocalAction,
+    simulateHallucination,
+    setSimulateHallucination,
+    genlayerReceipt,
   };
 }

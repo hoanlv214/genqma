@@ -271,6 +271,7 @@ def invoice_payment_state_response(
         "transaction_hash": invoice.get("transaction_hash"),
         "explorer_url": invoice.get("explorer_url"),
         "verification_mode": invoice.get("verification_mode"),
+        "genlayer": invoice.get("genlayer"),
         "access_token": access_token,
         "access_token_expires_in": ACCESS_TOKEN_TTL_SECONDS if access_token else None,
         "require_completed_settlement": REQUIRE_COMPLETED_SETTLEMENT,

@@ -2,7 +2,7 @@ export type Tier = "preview" | "full";
 export type BuyerType = "human" | "agent";
 export type PaymentStatus = "pending" | "partial_paid" | "paid" | "expired" | "disputed";
 export type PaymentStepState = "waiting" | "active" | "completed" | "failed";
-export type PaymentStepKey = "wallet" | "gateway" | "settlement" | "report";
+export type PaymentStepKey = "wallet" | "gateway" | "settlement" | "genlayer" | "report";
 export type AgentSessionStage =
   | "idle"
   | "scanning"
