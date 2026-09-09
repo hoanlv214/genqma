@@ -1,6 +1,9 @@
-# { "Depends": "py-genlayer:test" }
+# v0.2.16
+# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
+
 from genlayer import *
 import json
+
 
 class GenQMAShield(gl.Contract):
     """
@@ -42,15 +45,15 @@ class GenQMAShield(gl.Contract):
         return self.order_count
 
     @gl.public.write
-    def set_treasury(self, new_treasury: Address):
+    def set_treasury(self, new_treasury: str) -> None:
         """Update platform treasury address."""
         if gl.message.sender_address == self.admin:
-            self.treasury = new_treasury
+            self.treasury = Address(new_treasury)
 
     @gl.public.write
     def create_order(
         self,
-        provider: Address,
+        provider_address: str,
         symbol: str,
         expected_anomaly: str
     ) -> u256:
@@ -63,8 +66,8 @@ class GenQMAShield(gl.Contract):
 
         order_data = {
             "order_id": int(order_id),
-            "buyer": str(gl.message.sender_address),
-            "provider": str(provider),
+            "buyer": gl.message.sender_address.as_hex,
+            "provider": provider_address,
             "symbol": symbol,
             "expected_anomaly": expected_anomaly,
             "status": "ESCROWED",
@@ -95,7 +98,7 @@ class GenQMAShield(gl.Contract):
             return json.dumps({"status": "ERROR", "message": f"Order already in state {order['status']}"})
 
         # Non-deterministic verification task wrapped in GenLayer Equivalence Principle
-        def verification_task():
+        def verification_task() -> str:
             # 1. Fetch live market data directly from external exchange or radar
             market_data = ""
             try:
