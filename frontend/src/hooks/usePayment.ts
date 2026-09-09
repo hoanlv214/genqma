@@ -533,26 +533,14 @@ export function usePayment({
         payer_address: wallet,
         ...(settlementId ? { settlement_id: settlementId, amount_usdc: paidAmountUsdc } : {}),
         ...(splitSettlements.length ? { split_settlements: splitSettlements } : {}),
+        simulate_hallucination: simulateHallucination,
       });
-      if (!verifyData?.access_token) throw new Error("QMA verification did not return an access token.");
 
-      // Check if user requested a simulated hallucination violation test
       let glReceipt = verifyData.genlayer;
-      if (simulateHallucination) {
-        setPayStatusText("Simulating Hallucination attack: Injecting false anomaly metrics into GenLayer validators...");
-        const { verifySLAWithGenLayer } = await import("../services/genlayer");
-        glReceipt = await verifySLAWithGenLayer({
-          orderId: glReceipt?.order_id || 101,
-          reportSummary: "Fake hallucinated data with test error and synthetic placeholder metrics violating SLA.",
-          evidenceUrl: glReceipt?.evidence_url || "https://contract.mexc.com/api/v1/contract/funding_rate/ETH_USDT",
-          simulateHallucination: true,
-        });
-      }
-
       setGenlayerReceipt(glReceipt);
 
       // Handle GenLayer Autonomous Chargeback if SLA was violated / rejected
-      if (glReceipt && glReceipt.verdict === "INVALID") {
+      if (verifyData.status === "refunded" || glReceipt?.verdict === "INVALID") {
         setPaymentStepStatus((prev) => ({
           ...prev,
           genlayer: { status: "failed", label: "SLA Violated" },
@@ -560,11 +548,15 @@ export function usePayment({
         }));
         setPayStatusText("");
         setPayErrorText(
-          `🛡️ GenLayer Autonomous Chargeback Triggered! Validators rejected the report: ${glReceipt.reasoning || "Divergence from live exchange feed"}. 100% of escrowed funds (${glReceipt.split_distribution?.refund_buyer_usdc || 0.005} USDC) refunded to buyer wallet. No report issued.`
+          `🛡️ GenLayer Autonomous Chargeback Triggered! Validators rejected the report: ${glReceipt?.reasoning || "Divergence from live exchange feed"}. 100% of escrowed funds (${glReceipt?.split_distribution?.refund_buyer_usdc || 0.005} USDC) refunded to buyer wallet. Access blocked, no report issued, zero traction recorded.`
         );
         showToast("GenLayer Shield: SLA Violated! 100% Autonomous Chargeback executed.", "error");
+        clearPendingInvoice(activeQuery, normalizeTierForCache(currentInvoice.tier), currentInvoice.provider_id || selectedProviderId, wallet);
         return;
       }
+
+      if (!verifyData?.access_token) throw new Error("QMA verification did not return an access token.");
+
 
       setPaymentStepStatus((prev) => ({
         ...prev,

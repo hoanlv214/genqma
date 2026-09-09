@@ -1133,8 +1133,7 @@ def verify_split_payment(invoice_id, invoice, proof):
             invoice["status"] = "partial_paid"
             _save_invoice(invoice)
             raise HTTPException(status_code=402, detail="Invoice is partially paid. Complete all split legs before unlock.")
-        invoice["status"] = "paid"
-        invoice["paid_at"] = time.time()
+        invoice["status"] = "settlement_verified"
         invoice["payer_address"] = payer
         invoice["settlement_id"] = f"split:{invoice_id}"
         invoice["split_settlement_ids"] = [leg.get("settlement_id") for leg in required_legs]
@@ -1142,6 +1141,7 @@ def verify_split_payment(invoice_id, invoice, proof):
         invoice["amount_raw"] = (invoice.get("split") or {}).get("total_amount_raw")
         invoice["verification_mode"] = "circle-gateway-x402-direct-split"
         # Trigger GenLayer Intelligent SLA Escrow Adjudication
+        simulate_hallucination = bool(getattr(proof, "simulate_hallucination", False))
         try:
             from backend.app.services import genlayer_arbiter
             raw_sym = str(invoice.get("symbol") or (invoice.get("query") or {}).get("symbol") or "ETH-USDT")
@@ -1158,7 +1158,8 @@ def verify_split_payment(invoice_id, invoice, proof):
                 order_id=gl_order["order_id"],
                 report_summary=f"Quant market memory report for {raw_sym} with historical analogs.",
                 evidence_url=evidence_url,
-                provider_address=invoice.get("owner_wallet")
+                provider_address=invoice.get("owner_wallet"),
+                simulate_hallucination=simulate_hallucination
             )
             invoice["genlayer"] = gl_receipt
             logger.info(
@@ -1168,6 +1169,24 @@ def verify_split_payment(invoice_id, invoice, proof):
             )
         except Exception as gl_err:
             logger.warning(f"QMA-GenLayer error: {gl_err}")
+            gl_receipt = {"verdict": "VALID", "status": "SETTLED"}
+
+        if gl_receipt.get("verdict") == "INVALID":
+            invoice["status"] = "refunded"
+            invoice["access_status"] = "disputed"
+            invoice["refunded_at"] = time.time()
+            logger.warning(
+                f"QMA-GenLayer: SLA VIOLATED for split invoice {invoice_id}. Verdict: INVALID. "
+                f"Autonomous Chargeback triggered! Zero traction recorded. Reason: {gl_receipt.get('reasoning')}"
+            )
+            _save_invoice(invoice)
+            return invoice_payment_state_response(
+                invoice_id, invoice, include_access_token=False, include_seller_balance=False,
+                fetch_gateway_balance_fn=fetch_gateway_balance,
+            )
+
+        invoice["status"] = "paid"
+        invoice["paid_at"] = time.time()
         _save_invoice(invoice)
     reload_persistent_state(include_reports=False)
     sync_split_payment_events(invoice)
@@ -1218,8 +1237,7 @@ def verify_payment(invoice_id, proof=None):
         settlement = fetch_circle_settlement(proof.settlement_id)
         validate_arc_payment(invoice, settlement, payer_address=proof.payer_address)
         batch = find_arc_batch_tx(settlement)
-        invoice["status"] = "paid"
-        invoice["paid_at"] = time.time()
+        invoice["status"] = "settlement_verified"
         invoice["settlement_id"] = proof.settlement_id
         invoice["transaction_hash"] = batch.get("batch_tx")
         invoice["explorer_url"] = batch.get("explorer_url")
@@ -1228,6 +1246,7 @@ def verify_payment(invoice_id, proof=None):
         invoice["amount_raw"] = settlement.get("amount")
         invoice["verification_mode"] = "circle-gateway-arc-testnet"
         # Trigger GenLayer Intelligent SLA Escrow Adjudication
+        simulate_hallucination = bool(getattr(proof, "simulate_hallucination", False))
         try:
             from backend.app.services import genlayer_arbiter
             raw_sym = str(invoice.get("symbol") or (invoice.get("query") or {}).get("symbol") or "ETH-USDT")
@@ -1244,7 +1263,8 @@ def verify_payment(invoice_id, proof=None):
                 order_id=gl_order["order_id"],
                 report_summary=f"Quant market memory report for {raw_sym} with historical analogs.",
                 evidence_url=evidence_url,
-                provider_address=invoice.get("owner_wallet")
+                provider_address=invoice.get("owner_wallet"),
+                simulate_hallucination=simulate_hallucination
             )
             invoice["genlayer"] = gl_receipt
             logger.info(
@@ -1254,6 +1274,24 @@ def verify_payment(invoice_id, proof=None):
             )
         except Exception as gl_err:
             logger.warning(f"QMA-GenLayer error: {gl_err}")
+            gl_receipt = {"verdict": "VALID", "status": "SETTLED"}
+
+        if gl_receipt.get("verdict") == "INVALID":
+            invoice["status"] = "refunded"
+            invoice["access_status"] = "disputed"
+            invoice["refunded_at"] = time.time()
+            logger.warning(
+                f"QMA-GenLayer: SLA VIOLATED for invoice {invoice_id}. Verdict: INVALID. "
+                f"Autonomous Chargeback triggered! Zero traction recorded. Reason: {gl_receipt.get('reasoning')}"
+            )
+            _save_invoice(invoice)
+            return invoice_payment_state_response(
+                invoice_id, invoice, include_access_token=False, include_seller_balance=False,
+                fetch_gateway_balance_fn=fetch_gateway_balance,
+            )
+
+        invoice["status"] = "paid"
+        invoice["paid_at"] = time.time()
         _save_invoice(invoice)
     reload_persistent_state(include_reports=False)
     if not any(event.get("settlement_id") == proof.settlement_id for event in state.payment_events):

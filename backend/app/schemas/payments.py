@@ -58,6 +58,11 @@ class PaymentVerifyRequest(BaseModel):
             ]
         ],
     )
+    simulate_hallucination: Optional[bool] = Field(
+        default=False,
+        description="Flag to simulate a provider SLA breach / hallucination attack for GenLayer adjudication"
+    )
+
 
 
 class WithdrawRequest(BaseModel):

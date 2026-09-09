@@ -142,8 +142,13 @@ def invoice_has_failed_settlement(invoice: dict) -> bool:
 
 
 def invoice_access_status(invoice: dict) -> str:
-    if invoice_has_failed_settlement(invoice):
+    if (
+        invoice_has_failed_settlement(invoice)
+        or invoice.get("status") in ("disputed", "refunded")
+        or (invoice.get("genlayer") or {}).get("verdict") == "INVALID"
+    ):
         return "disputed"
+
     status_value = refresh_split_invoice_status(invoice) if invoice_split_mode(invoice) == "x402_direct_split" else str(invoice.get("status") or "pending")
     if status_value == "expired":
         return "expired"

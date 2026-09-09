@@ -184,6 +184,7 @@ export interface PaymentVerifyRequest {
   payer_address?: string;
   amount_usdc?: number;
   split_settlements?: SplitSettlementProof[];
+  simulate_hallucination?: boolean;
 }
 
 export interface PaymentVerifyResponse {
@@ -195,7 +196,9 @@ export interface PaymentVerifyResponse {
   seller_wallet?: string;
   transaction_hash?: string;
   explorer_url?: string;
+  genlayer?: any;
 }
+
 
 export interface PaidReport {
   query_symbol?: string;

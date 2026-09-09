@@ -94,7 +94,8 @@ def adjudicate_sla(
     order_id: int,
     report_summary: str,
     evidence_url: str,
-    provider_address: Optional[str] = None
+    provider_address: Optional[str] = None,
+    simulate_hallucination: bool = False
 ) -> Dict[str, Any]:
     """
     Executes on-chain adjudication matching contracts/GenQMAShield.py.
@@ -125,15 +126,16 @@ def adjudicate_sla(
         "Delivered outcome distribution matches historical analogs without hallucination."
     )
 
-    # Check for hallucination red flags
+    # Check for hallucination red flags or simulated SLA attack
     lower_report = report_summary.lower()
-    if "fake" in lower_report or "placeholder" in lower_report or "test error" in lower_report or "hallucination" in lower_report:
+    if simulate_hallucination or "fake" in lower_report or "placeholder" in lower_report or "test error" in lower_report or "hallucination" in lower_report:
         is_valid = False
-        confidence = 94
+        confidence = 95
         reasoning = (
             "Validators rejected report: Live exchange data from MEXC diverges from claimed anomaly. "
             "Detected hallucinated metrics violating SLA standards. 100% Autonomous Chargeback executed to buyer."
         )
+
 
     order["evidence_url"] = evidence_url
     order["verdict"] = "VALID" if is_valid else "INVALID"
@@ -144,10 +146,11 @@ def adjudicate_sla(
     order["validator_count"] = 5
     order["consensus_type"] = "Strict Equivalence (5/5 validators agree: Claude Sonnet 3.5, Kimi, Llama 3)"
     order["split_distribution"] = {
-        "creator_usdc": round(order["deposit_usdc"] * 0.8, 4),
-        "platform_usdc": round(order["deposit_usdc"] * 0.2, 4),
+        "creator_usdc": round(order["deposit_usdc"] * 0.8, 4) if is_valid else 0.0,
+        "platform_usdc": round(order["deposit_usdc"] * 0.2, 4) if is_valid else 0.0,
         "refund_buyer_usdc": order["deposit_usdc"] if not is_valid else 0.0
     }
+
 
     return order
 
