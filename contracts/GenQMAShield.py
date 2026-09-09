@@ -35,9 +35,18 @@ class GenQMAShield(gl.Contract):
     @gl.public.view
     def get_order(self, order_id: u256) -> str:
         """View order status and details."""
-        if order_id not in self.orders:
-            return json.dumps({"error": "Order not found"})
-        return self.orders[order_id]
+        try:
+            return self.orders[order_id]
+        except Exception:
+            return '{"error": "Order not found"}'
+
+    @gl.public.view
+    def get_all_orders(self) -> dict[str, str]:
+        """View all stored orders."""
+        try:
+            return {str(k): v for k, v in self.orders.items()}
+        except Exception:
+            return {}
 
     @gl.public.view
     def get_order_count(self) -> u256:
@@ -90,10 +99,12 @@ class GenQMAShield(gl.Contract):
         Executes decentralized LLM validation over real-world data to enforce SLA.
         Uses GenLayer's Equivalence Principle (strict_eq) across validators.
         """
-        if order_id not in self.orders:
+        try:
+            order_raw = self.orders[order_id]
+        except Exception:
             return json.dumps({"status": "ERROR", "message": "Order not found"})
 
-        order = json.loads(self.orders[order_id])
+        order = json.loads(order_raw)
         if order["status"] != "ESCROWED":
             return json.dumps({"status": "ERROR", "message": f"Order already in state {order['status']}"})
 
