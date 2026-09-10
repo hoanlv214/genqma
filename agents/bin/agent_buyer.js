@@ -720,7 +720,7 @@ async function main() {
   console.log(`\nAgent wallet: ${account.address}`);
   await ensureGatewayBalance(invoice, account);
   const splitLegs = invoiceSplitLegs(invoice);
-  const settlements = await executeInvoicePayment(invoice, account, Number(pick.agent_price));
+  const settlements = await executeInvoicePayment(invoice, account, Number(invoice.amount));
   const verifyData = splitLegs.length
     ? await verifySplitPayment(invoice, settlements, account)
     : await verifyPayment(invoice, settlements[0], account);

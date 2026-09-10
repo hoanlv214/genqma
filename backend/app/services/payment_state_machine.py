@@ -31,8 +31,8 @@ def invoice_split_mode(invoice: dict) -> str:
 
 
 def refresh_split_invoice_status(invoice: dict) -> str:
-    if invoice.get("status") == "disputed":
-        return "disputed"
+    if invoice.get("status") in ("disputed", "refunded") or (invoice.get("genlayer") or {}).get("verdict") == "INVALID":
+        return "refunded" if invoice.get("status") == "refunded" or (invoice.get("genlayer") or {}).get("verdict") == "INVALID" else "disputed"
     if invoice_split_mode(invoice) != "x402_direct_split":
         return invoice.get("status", "pending")
     legs = invoice_required_split_legs(invoice)
@@ -42,7 +42,10 @@ def refresh_split_invoice_status(invoice: dict) -> str:
     ]
     settled_count = len(paid_legs)
     if settled_count == len(legs) and legs:
-        invoice["status"] = "paid"
+        if invoice.get("status") in ("disputed", "refunded") or (invoice.get("genlayer") or {}).get("verdict") == "INVALID":
+            invoice["status"] = "refunded"
+        else:
+            invoice["status"] = "paid"
         invoice_id = invoice.get("invoice_id")
         if invoice_id and not invoice.get("settlement_id"):
             invoice["settlement_id"] = f"split:{invoice_id}"

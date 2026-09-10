@@ -1029,8 +1029,13 @@ def get_payment_invoice_status(invoice_id, invoice_secret, refresh=True):
 def verify_split_payment(invoice_id, invoice, proof):
     import hmac as _hmac
     from fastapi import HTTPException
+    if invoice.get("status") == "refunded" or (invoice.get("genlayer") or {}).get("verdict") == "INVALID":
+        return invoice_payment_state_response(
+            invoice_id, invoice, include_access_token=False, include_seller_balance=False,
+            fetch_gateway_balance_fn=fetch_gateway_balance,
+        )
     refresh_split_invoice_status(invoice)
-    if invoice.get("status") == "paid":
+    if invoice.get("status") == "paid" and invoice.get("genlayer") and not getattr(proof, "simulate_hallucination", False):
         if refresh_split_leg_batch_txs(invoice):
             sync_split_payment_events(invoice)
             _save_payment_ledger(state.payment_events)
@@ -1204,7 +1209,12 @@ def verify_payment(invoice_id, proof=None):
     hydrate_payment_schema(invoice)
     if not _hmac.compare_digest(str(proof.invoice_secret), str(invoice.get("invoice_secret"))):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invoice secret mismatch.")
-    if invoice.get("status") == "paid":
+    if invoice.get("status") == "refunded" or (invoice.get("genlayer") or {}).get("verdict") == "INVALID":
+        return invoice_payment_state_response(
+            invoice_id, invoice, include_access_token=False, include_seller_balance=False,
+            fetch_gateway_balance_fn=fetch_gateway_balance,
+        )
+    if invoice.get("status") == "paid" and invoice.get("genlayer") and not getattr(proof, "simulate_hallucination", False):
         if invoice_split_mode(invoice) == "x402_direct_split":
             if refresh_split_leg_batch_txs(invoice):
                 sync_split_payment_events(invoice)

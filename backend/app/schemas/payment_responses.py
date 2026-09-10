@@ -94,6 +94,7 @@ class InvoicePaymentStateResponse(ResponseModel):
     transaction_hash: Optional[str] = None
     explorer_url: Optional[str] = None
     verification_mode: Optional[str] = None
+    genlayer: Optional[Dict[str, Any]] = None
     access_token: Optional[str] = None
     access_token_expires_in: Optional[int] = None
     require_completed_settlement: bool

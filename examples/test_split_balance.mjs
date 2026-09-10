@@ -253,41 +253,60 @@ async function main() {
   console.log(`Mode       : ${invoice.settlement_mode}`);
 
   // ── PAY SPLIT LEGS ─────────────────────────────────────────────────────────
-  const isDirectSplit = invoice.settlement_mode === "x402_direct_split";
-  const legs = invoice.split?.legs || [];
+  const isDirectSplit = invoice.settlement_mode === "x402_direct_split"
+    || invoice.split?.mode === "x402_direct_split"
+    || invoice.settlement?.mode === "x402_direct_split";
+  const legs = invoice.split?.legs || invoice.split_legs || [];
 
   let lastSettlement = null;
   let lastPayTo = null;
+  const splitSettlements = [];
 
   if (isDirectSplit && legs.length > 0) {
     console.log(`\n── PAYING ${legs.length} SPLIT LEG(S) ─────────────────────────`);
     for (const leg of legs) {
+      const legUrl = leg.arc_gateway_url || leg.resource;
       console.log(`\nLeg: ${leg.role} | payTo: ${leg.pay_to} | ${leg.amount_usdc} USDC`);
-      console.log(`  URL: ${leg.arc_gateway_url}`);
-      const result = await payLeg(leg.arc_gateway_url, account);
-      console.log(`  ✅ Settled: ${result.settlement_id || result.settlementId}`);
-      lastSettlement = result.settlement_id || result.settlementId;
+      console.log(`  URL: ${legUrl}`);
+      const result = await payLeg(legUrl, account);
+      const settlementId = result.settlement_id || result.settlementId;
+      console.log(`  Settled: ${settlementId}`);
+      lastSettlement = settlementId;
       lastPayTo = leg.pay_to;
+      splitSettlements.push({
+        leg_id: leg.leg_id || leg.role,
+        settlement_id: settlementId,
+        pay_to: leg.pay_to,
+        amount_raw: leg.amount_raw || result.amount_raw,
+        sidecar_receipt: result.sidecar_receipt || result.receipt,
+        payer_address: result.payer || account.address,
+        gateway_status: result.gateway_status || result.status,
+      });
     }
   } else {
     // Fallback: legacy single-leg payment
     console.log(`\n── PAYING SINGLE LEGACY LEG ────────────────────`);
     console.log(`URL: ${invoice.arc_gateway_url}`);
     const result = await payLeg(invoice.arc_gateway_url, account);
-    console.log(`✅ Settled: ${result.settlement_id || result.settlementId}`);
+    console.log(`Settled: ${result.settlement_id || result.settlementId}`);
     lastSettlement = result.settlement_id || result.settlementId;
   }
 
   // ── VERIFY ────────────────────────────────────────────────────────────────
   console.log("\n── VERIFYING INVOICE ───────────────────────────");
+  const verifyPayload = {
+    invoice_secret: invoice.invoice_secret,
+    payer_address: account.address,
+    amount_usdc: Number(invoice.amount),
+  };
+  if (splitSettlements.length > 0) {
+    verifyPayload.split_settlements = splitSettlements;
+  } else {
+    verifyPayload.settlement_id = lastSettlement;
+  }
   const verifyData = await qmaPost(
     `/api/v1/payment/verify?invoice_id=${encodeURIComponent(invoice.invoice_id)}`,
-    {
-      settlement_id: lastSettlement,
-      invoice_secret: invoice.invoice_secret,
-      payer_address: account.address,
-      amount_usdc: Number(invoice.amount),
-    }
+    verifyPayload
   );
   console.log(`Status: ${verifyData.status} | tx: ${verifyData.transaction_hash || "batch pending"}`);
 
