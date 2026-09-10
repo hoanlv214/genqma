@@ -139,10 +139,10 @@ export function useAgentBuyer({
 
   const entitlementSymbol = (entry: any) => String(
     entry?.symbol
-      || entry?.query?.symbol
-      || entry?.report?.query_symbol
-      || entry?.report?.query?.symbol
-      || "",
+    || entry?.query?.symbol
+    || entry?.report?.query_symbol
+    || entry?.report?.query?.symbol
+    || "",
   ).trim().toUpperCase();
 
   const findWalletEntitlement = (entitlements: any[], symbol: string, tier: "preview" | "full") => {
@@ -355,7 +355,7 @@ export function useAgentBuyer({
           const glReason = (verifyData as any).genlayer?.reasoning || "Divergence from live exchange feed";
           setAgentTrace((prev) => [
             ...prev,
-            { text: "shield:  🛡️ GenLayer SLA Breached -> 100% Autonomous Chargeback executed", tone: "t-error" },
+            { text: "shield:  GenLayer SLA Breached -> 100% Autonomous Chargeback executed", tone: "t-error" },
             { text: `reason:  ${glReason.slice(0, 80)}...`, tone: "t-dim" },
           ]);
           setAgentSessionStage("error");
@@ -365,7 +365,7 @@ export function useAgentBuyer({
         if ((verifyData as any).genlayer) {
           setAgentTrace((prev) => [
             ...prev,
-            { text: `shield:  🛡️ GenLayer SLA Verified (5/5 validators, ${(verifyData as any).genlayer.confidence}%)`, tone: "t-val" },
+            { text: `shield:  GenLayer SLA Verified (5/5 validators, ${(verifyData as any).genlayer.confidence}%)`, tone: "t-val" },
           ]);
         }
         setAgentTrace((prev) => [...prev, { text: "result:  JSON report unlocked ok", tone: "t-accent" }]);
@@ -708,7 +708,7 @@ export function useAgentBuyer({
         const glReason = (verifyData as any).genlayer?.reasoning || "Divergence from live exchange feed";
         setAgentTrace((prev) => [
           ...prev,
-          { text: "shield:  🛡️ GenLayer SLA Breached -> 100% Autonomous Chargeback executed", tone: "t-error" },
+          { text: "shield:  GenLayer SLA Breached -> 100% Autonomous Chargeback executed", tone: "t-error" },
           { text: `reason:  ${glReason.slice(0, 80)}...`, tone: "t-dim" },
         ]);
         setAgentSessionStage("error");
@@ -718,7 +718,7 @@ export function useAgentBuyer({
       if ((verifyData as any).genlayer) {
         setAgentTrace((prev) => [
           ...prev,
-          { text: `shield:  🛡️ GenLayer SLA Verified (5/5 validators, ${(verifyData as any).genlayer.confidence}%)`, tone: "t-val" },
+          { text: `shield:  GenLayer SLA Verified (5/5 validators, ${(verifyData as any).genlayer.confidence}%)`, tone: "t-val" },
         ]);
       }
       setAgentTrace((prev) => [

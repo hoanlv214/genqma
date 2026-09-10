@@ -58,10 +58,10 @@ export function PaywallPanel(props: PaywallPanelProps) {
     status === "active"
       ? "is-active"
       : status === "completed"
-      ? "is-completed"
-      : status === "failed"
-      ? "is-failed"
-      : "is-pending";
+        ? "is-completed"
+        : status === "failed"
+          ? "is-failed"
+          : "is-pending";
 
   const symbol = (currentInvoice?.symbol || activeQuery.symbol || "ETH-USDT").replace("-", "_").toUpperCase();
   const mexcEvidenceUrl = `https://contract.mexc.com/api/v1/contract/funding_rate/${symbol}`;
@@ -98,7 +98,7 @@ export function PaywallPanel(props: PaywallPanelProps) {
                   <div className="invoice-row">
                     <span className="invoice-label">Arbiter Protection</span>
                     <span className="invoice-val" style={{ color: "#818cf8", fontWeight: 600 }}>
-                      🛡️ GenLayer Shield (0x0C24...08BD)
+                      GenLayer Shield (0x0C24...08BD)
                     </span>
                   </div>
                   <div className="invoice-row">
@@ -165,7 +165,7 @@ export function PaywallPanel(props: PaywallPanelProps) {
                       <div className="pf-step-icon" />
                       <div className="pf-body">
                         <div className="pf-step-top">
-                          <div className="pf-label">4. 🛡️ GenLayer Intelligent SLA Arbiter</div>
+                          <div className="pf-label">4. GenLayer Intelligent SLA Arbiter</div>
                           <span className={`pf-badge ${paymentClass(paymentStepStatus.genlayer?.status || "waiting")}`}>
                             {paymentStepStatus.genlayer?.label || "Waiting"}
                           </span>
@@ -174,10 +174,10 @@ export function PaywallPanel(props: PaywallPanelProps) {
                           {paymentStepStatus.genlayer?.status === "active"
                             ? "Fetching live MEXC orderbook & running multi-LLM consensus (Claude Sonnet 3.5, Kimi, Llama)..."
                             : paymentStepStatus.genlayer?.status === "completed"
-                            ? "Strict Equivalence consensus: VALID (96% confidence) · 80/20 Escrow Settled!"
-                            : paymentStepStatus.genlayer?.status === "failed"
-                            ? "SLA Violated: Autonomous Chargeback executed (100% refunded)"
-                            : "Contract 0x0C24...08BD verifies exchange feed before releasing funds."}
+                              ? "Strict Equivalence consensus: VALID (96% confidence) · 80/20 Escrow Settled!"
+                              : paymentStepStatus.genlayer?.status === "failed"
+                                ? "SLA Violated: Autonomous Chargeback executed (100% refunded)"
+                                : "Contract 0x0C24...08BD verifies exchange feed before releasing funds."}
                         </div>
                       </div>
                     </div>
@@ -203,7 +203,7 @@ export function PaywallPanel(props: PaywallPanelProps) {
                 <div style={{ marginTop: "14px", padding: "12px", background: "rgba(79, 70, 229, 0.08)", borderRadius: "8px", border: "1px solid rgba(79, 70, 229, 0.3)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                     <span style={{ fontSize: "12px", fontWeight: 600, color: "#818cf8", display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span>🛡️</span> GenLayer SLA Guardian (0x0C24...08BD)
+                      GenLayer SLA Guardian (0x0C24...08BD)
                     </span>
                     <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "#cbd5e1", cursor: "pointer" }}>
                       <input

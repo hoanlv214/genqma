@@ -396,17 +396,17 @@ export function usePayment({
     setPaymentStep("settlement");
     setPaymentStepStatus((prev) => ({ ...prev, settlement: { status: "active", label: "Signing" } }));
 
-      try {
-        const splitLegs = Array.isArray(currentInvoice.split_legs) ? currentInvoice.split_legs : [];
-        const hasPriorSplitProgress = splitLegs.some((leg: any) => leg.status === "paid" || leg.status === "processing" || leg.settlement_id);
-        if (hasPriorSplitProgress) {
-          const reconciled = await refreshPendingInvoice(activeQuery, normalizeTierForCache(currentInvoice.tier), currentInvoice.provider_id || selectedProviderId, wallet);
-          const processingLeg = (reconciled?.split_legs || []).find((leg: any) => leg.status === "processing");
-          if (processingLeg) {
-            throw new Error(`The ${processingLeg.role || processingLeg.leg_id} settlement is still being reconciled. Check invoice status before retrying.`);
-          }
+    try {
+      const splitLegs = Array.isArray(currentInvoice.split_legs) ? currentInvoice.split_legs : [];
+      const hasPriorSplitProgress = splitLegs.some((leg: any) => leg.status === "paid" || leg.status === "processing" || leg.settlement_id);
+      if (hasPriorSplitProgress) {
+        const reconciled = await refreshPendingInvoice(activeQuery, normalizeTierForCache(currentInvoice.tier), currentInvoice.provider_id || selectedProviderId, wallet);
+        const processingLeg = (reconciled?.split_legs || []).find((leg: any) => leg.status === "processing");
+        if (processingLeg) {
+          throw new Error(`The ${processingLeg.role || processingLeg.leg_id} settlement is still being reconciled. Check invoice status before retrying.`);
         }
-        const selfRecipientLeg = splitLegs.find((leg: any) => sameAddress(wallet, leg.pay_to));
+      }
+      const selfRecipientLeg = splitLegs.find((leg: any) => sameAddress(wallet, leg.pay_to));
       if (selfRecipientLeg) {
         throw new Error(`Connected wallet is the ${selfRecipientLeg.role || selfRecipientLeg.leg_id} split recipient (${selfRecipientLeg.pay_to}). Use a separate buyer wallet from the provider or treasury wallet.`);
       }
@@ -548,7 +548,7 @@ export function usePayment({
         }));
         setPayStatusText("");
         setPayErrorText(
-          `🛡️ GenLayer Autonomous Chargeback Triggered! Validators rejected the report: ${glReceipt?.reasoning || "Divergence from live exchange feed"}. 100% of escrowed funds (${glReceipt?.split_distribution?.refund_buyer_usdc || 0.005} USDC) refunded to buyer wallet. Access blocked, no report issued, zero traction recorded.`
+          `GenLayer Autonomous Chargeback Triggered! Validators rejected the report: ${glReceipt?.reasoning || "Divergence from live exchange feed"}. 100% of escrowed funds (${glReceipt?.split_distribution?.refund_buyer_usdc || 0.005} USDC) refunded to buyer wallet. Access blocked, no report issued, zero traction recorded.`
         );
         showToast("GenLayer Shield: SLA Violated! 100% Autonomous Chargeback executed.", "error");
         clearPendingInvoice(activeQuery, normalizeTierForCache(currentInvoice.tier), currentInvoice.provider_id || selectedProviderId, wallet);

@@ -2,111 +2,145 @@
 
 QMA standardizes on modern, high-performance tooling for package management, dependency resolution, and runtime execution:
 
-* **Frontend (`frontend/`)**: Powered by **`bun`** (Fast TypeScript/JavaScript package manager & bundler).
+* **Monorepo & Frontend / Node Services**: Powered by **`bun`** (Fast TypeScript/JavaScript package manager, bundler & workspaces).
 * **Backend (`backend/`)**: Powered by **`uv`** (Blazing-fast Rust-based Python package manager).
 
 ---
 
-## 1. Frontend with `bun` (React 18 + Vite)
+## 1. 1-Click Environment Setup & Service Runner
 
-[Bun](https://bun.sh) replaces `npm`/`yarn`/`pnpm` with instant module resolution and zero-overhead builds.
+Anyone cloning the repository can set up and run the entire environment in seconds with 1-click scripts:
 
-### Installation
+### Setup Environment (Scans system, installs missing tools & syncs all packages)
+```powershell
+# On Windows PowerShell:
+.\setup.ps1
 
-```bash
-# macOS & Linux
-curl -fsSL https://bun.sh/install | bash
-
-# Windows (PowerShell)
-powershell -c "irm bun.sh/install.ps1 | iex"
+# On Linux / macOS (Bash):
+chmod +x ./setup.sh && ./setup.sh
 ```
 
-### Common Commands
+These scripts automatically:
+1. Scan the environment (OS, Git, Python runtimes).
+2. Auto-install `uv` and `bun` if missing on the machine.
+3. Create `.venv` and install all Python dependencies via `uv pip install -r requirements.txt`.
+4. Install all monorepo workspaces (`frontend`, `arc_gateway`, `agents`) via `bun install`.
+5. Copy `.env.example` to `.env` if not already present.
+6. Generate a comprehensive readiness checklist.
 
-Navigate to `frontend/`:
+### Start All Services (Concurrent runner for Backend + Gateway + Frontend)
+```powershell
+# On Windows PowerShell:
+.\start.ps1
+# (To stop all running services on Windows: .\stop.ps1)
 
-```bash
-cd frontend
-
-# Install all dependencies with bun
-bun install
-
-# Start local development server (Vite + HMR)
-bun run dev
-
-# Build production bundle
-bun run build
-
-# Preview production build
-bun run preview
+# On Linux / macOS (Bash):
+chmod +x ./start.sh && ./start.sh
+# (Press Ctrl+C to stop all services simultaneously)
 ```
 
-### Why Bun for QMA Frontend?
-1. **10-25x Faster Installs**: Parallelized cache and zero-copy symlinks.
-2. **Deterministic `bun.lockb`**: Eliminates dependency drift across developer machines and CI.
-3. **Native TypeScript Support**: Seamlessly executes scripts without transpile overhead.
+> For production deployment without web interfaces, see the [CLI Deployment Guide](infrastructure/CLI_DEPLOYMENT.md).
 
 ---
 
-## 2. Backend with `uv` (FastAPI + Python 3.12+)
+## 2. Monorepo Workspaces with `bun`
 
-[`uv`](https://docs.astral.sh/uv/) replaces `pip`, `virtualenv`, and `poetry` with a single, ultra-fast Rust binary.
-
-### Installation
-
-```bash
-# macOS & Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Windows (PowerShell)
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+Root `package.json` configures Bun workspaces:
+```json
+"workspaces": [
+  "frontend",
+  "arc_gateway",
+  "agents"
+]
 ```
 
-### Common Commands
-
-From the project root:
+### Common Commands from Root
 
 ```bash
-# Create and activate a fast virtual environment
-uv venv
-# On Windows PowerShell:
-.venv\Scripts\activate
-# On Linux / macOS:
-source .venv/bin/activate
+# Install ALL dependencies across frontend, arc_gateway, agents in 1 shot:
+bun install
 
-# Install all dependencies from requirements.txt
+# Run Frontend dev server:
+bun run dev:frontend
+
+# Build Frontend production bundle:
+bun run build:frontend
+
+# Run Arc Gateway server:
+bun run dev:gateway
+
+# Build all packages:
+bun run build:all
+```
+
+### Why Bun for QMA?
+1. **15-25x Faster Installs**: Parallelized cache, zero-copy symlinks, deterministic `bun.lockb`.
+2. **Monorepo Native**: Single `bun install` at the root links all sub-projects.
+3. **Native TypeScript**: Executes TypeScript files (`server.ts`, scripts) directly without `tsx` or transpile overhead.
+4. **Instant Dev Startup**: Vite starts up in ~200ms with Bun.
+
+---
+
+## 3. Backend with `uv` (FastAPI + Python 3.12+)
+
+[`uv`](https://docs.astral.sh/uv/) replaces `pip`, `virtualenv`, and `poetry` with a single ultra-fast Rust binary.
+
+### Common Commands from Root
+
+```bash
+# 1. Create virtual environment (.venv) in ~50ms:
+uv venv
+
+# 2. Install all dependencies from requirements.txt or pyproject.toml:
 uv pip install -r requirements.txt
 
-# Run the FastAPI server directly with uv
-uv run uvicorn backend.app.main:app --reload --port 8000
+# 3. Run FastAPI dev server directly with uv (auto-detects virtual environment):
+uv run uvicorn main:app --reload --port 8000
 
-# Run the test suite
+# 4. Run test suite:
 uv run pytest tests/ -q
-```
 
-### Lockfile & Dependency Management
-
-```bash
-# Compile and lock dependencies
+# 5. Lock dependencies reproducibly:
+uv lock
+# Or compile requirements.lock:
 uv pip compile requirements.txt -o requirements.lock
-
-# Sync exact locked dependencies
-uv pip sync requirements.lock
 ```
 
 ### Why `uv` for QMA Backend?
-1. **10-100x Faster than Pip**: Instant sub-second environment installation and cold-starts.
-2. **Global Disk-Space Deduplication**: Shares identical wheel caches across projects.
-3. **Drop-in Standards Compliance**: Works natively with `pyproject.toml` and standard `requirements.txt`.
+1. **10-100x Faster than Pip**: Parallelized downloads and pre-compiled wheel caching.
+2. **Automatic Virtualenv Detection**: `uv run` finds `.venv` automatically without requiring manual `activate`.
+3. **PEP 621 Standard**: Natively reads `pyproject.toml` and `uv.lock`.
 
 ---
 
-## 3. Quick Reference Matrix
+## 4. Production Cloud Deployments
+
+### Vercel (`vercel.json`)
+Frontend deployment on Vercel is configured to use Bun:
+```json
+{
+  "framework": "vite",
+  "installCommand": "cd frontend && bun install",
+  "buildCommand": "cd frontend && bun run build"
+}
+```
+
+### Render (`render.yaml`)
+Backend build on Render uses `uv` to speed up deployment builds from 90s to 5s:
+```yaml
+buildCommand: pip install uv && uv pip install --system -r requirements.txt
+startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+---
+
+## 5. Quick Reference Matrix
 
 | Task | Traditional Tool | Modern QMA Standard | Speed Improvement |
 |---|---|---|---|
-| Frontend Installs | `npm install` | `bun install` | ~15x faster |
-| Frontend Dev Server | `npm run dev` | `bun run dev` | ~2x faster startup |
-| Backend Environment | `python -m venv` | `uv venv` | ~80x faster |
+| Monorepo Install (All 3 projects) | 3x `npm install` | `bun install` (at root) | ~20x faster |
+| Frontend Dev Server | `npm run dev` | `bun run dev:frontend` | ~2x faster |
+| Backend Virtualenv | `python -m venv` | `uv venv` | ~80x faster (~50ms) |
 | Backend Package Install | `pip install -r req.txt` | `uv pip install -r requirements.txt` | ~30x faster |
 | Running Backend Tests | `pytest` | `uv run pytest` | Instant invocation |
+| Render Cloud Build | `pip install -r req.txt` | `uv pip install --system -r req.txt` | ~15x faster |

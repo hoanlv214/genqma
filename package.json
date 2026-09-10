@@ -4,6 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev:frontend": "bun --filter frontend dev",
+    "build:frontend": "bun --filter frontend build",
+    "dev:gateway": "bun --filter qma-arc-gateway start",
+    "dev:worker": "bun --filter qma-cli start:worker",
+    "build:all": "bun --filter \"*\" build",
+    "deploy:fe": "bun x vercel --prod",
+    "deploy:db": "bun x supabase db execute -f scripts/schema.sql",
     "agent:dry": "node agents/bin/agent_buyer.js --dry-run",
     "agent:llm:dry": "node agents/bin/agent_buyer.js --llm --dry-run",
     "agent:llm:live": "node agents/bin/agent_buyer.js --llm --live --no-auto-deposit",
@@ -20,6 +27,11 @@
     "sg:state": "sg scan -r .ast-grep/rules/python-state-invoices-direct-write.yml backend main.py tests",
     "sg:http": "sg scan -r .ast-grep/rules/python-requests-post-call.yml backend/app/api backend/app/main.py"
   },
+  "workspaces": [
+    "frontend",
+    "arc_gateway",
+    "agents"
+  ],
   "dependencies": {
     "viem": "^2.48.11"
   },

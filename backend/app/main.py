@@ -1826,7 +1826,7 @@ app.include_router(create_oauth_router(SimpleNamespace(
     mcp_api_base_url=MCP_API_BASE_URL,
 )))
 
-app.include_router(create_genlayer_router())
+app.include_router(create_genlayer_router(), include_in_schema=False)
 
 
 async def mcp_call_api(method: str, path: str, *, json=None, headers=None):

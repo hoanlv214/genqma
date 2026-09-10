@@ -37,7 +37,6 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
             border: '1px solid rgba(79, 70, 229, 0.3)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '20px' }}>🛡️</span>
               <div>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>Verified by GenLayer Intelligent Contract</span>
@@ -62,7 +61,7 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
 
           {/* UIRegistry routing logic would go here in Phase 2. For now, hardcode the Funding Provider */}
           <FundingReportRenderer report={unlockedReport} activeQuery={activeQuery} />
-          
+
           {/* Platform Envelope - Universal for all providers */}
           {unlockedReport.invoice && (
             <div className="report-container">

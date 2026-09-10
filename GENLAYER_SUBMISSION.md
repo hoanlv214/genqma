@@ -1,4 +1,4 @@
-# GenLayer Agent Tank Submission Pack 🛡️🧠
+# GenLayer Agent Tank Submission Pack
 
 > **Project Name:** GenQMA Shield  
 > **Track:** Agentic Commerce Infrastructure  

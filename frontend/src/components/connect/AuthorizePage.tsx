@@ -92,7 +92,7 @@ export function AuthorizePage() {
             void loadConnections(active);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [loadConnections]);
 
@@ -130,7 +130,7 @@ export function AuthorizePage() {
     try {
       const provider = getInjectedWallet();
       if (!provider) throw new Error("No wallet extension found. Install Rabby, OKX Wallet, or MetaMask first.");
-      
+
       let active = account;
       if (!active) {
         const accounts = await provider.request<string[]>({ method: "eth_requestAccounts" });
@@ -330,8 +330,8 @@ export function AuthorizePage() {
             <div className="connect-panel-header">
               <div className="connect-panel-title">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
                 <span>Authorized AI Clients & Spending Policy</span>
               </div>
@@ -406,7 +406,6 @@ export function AuthorizePage() {
             fontSize: 12,
             color: "#94a3b8"
           }}>
-            <div style={{ fontSize: 24 }}>🛡️</div>
             <div>
               <strong style={{ color: "#f1f5f9" }}>Cryptographic & Financial Guarantees:</strong> AI agents only spend within your authorized caps directly from your isolated Agent Wallet on Arc. Zero platform custody of private keys. You can revoke permissions or withdraw remaining USDC at any second.
             </div>
@@ -461,8 +460,8 @@ export function AuthorizePage() {
           <div className="oauth-client-badge">
             <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(39, 117, 202, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#60a5fa" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
             </div>
             <div>
