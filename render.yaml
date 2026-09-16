@@ -13,7 +13,7 @@ services:
       - key: QMA_BACKTEST_OUTCOME_PATH
         value: data/sample_trading_analysis.csv
       - key: QMA_ARC_GATEWAY_URL
-        value: https://qma-arc-gateway-4elg.onrender.com
+        value: https://qma-arc-gateway.onrender.com
       # Must be the same value on qma-arc-gateway.
       - key: QMA_ARC_GATEWAY_INTERNAL_SECRET
         sync: false
@@ -64,7 +64,7 @@ services:
     startCommand: npm start
     envVars:
       - key: QMA_BACKEND_INTERNAL_URL
-        value: https://qma-api-7o9v.onrender.com
+        value: https://qma-api.onrender.com
       # Must exactly match qma-api.
       - key: QMA_ARC_GATEWAY_INTERNAL_SECRET
         sync: false
@@ -102,9 +102,9 @@ services:
     startCommand: npm run start:worker
     envVars:
       - key: API_BASE_URL
-        value: https://qma-api-7o9v.onrender.com
+        value: https://qma-api.onrender.com
       - key: QMA_ARC_GATEWAY_URL
-        value: https://qma-arc-gateway-4elg.onrender.com
+        value: https://qma-arc-gateway.onrender.com
       # One Node process runs this many autonomous sessions concurrently.
       - key: QMA_WORKER_MAX_CONCURRENT_SESSIONS
         value: "10"
