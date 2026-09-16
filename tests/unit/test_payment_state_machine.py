@@ -2,6 +2,7 @@ import copy
 import os
 import time
 import unittest
+from contextlib import ExitStack
 from unittest.mock import patch
 
 from fastapi import HTTPException
@@ -12,6 +13,7 @@ os.environ["SUPABASE_SERVICE_ROLE_KEY"] = ""
 os.environ["QMA_SUPABASE_SERVICE_ROLE_KEY"] = ""
 
 import main
+from backend.app import main as backend_main
 
 
 PAYER = "0x1111111111111111111111111111111111111111"
@@ -90,11 +92,24 @@ class PaymentStateMachineTests(unittest.TestCase):
         main.payment_events = self._old_events
 
     def no_storage_patches(self, invoice):
+        def valid_genlayer_verdict(_invoice_id, current_invoice):
+            receipt = {
+                "status": "VERIFIED",
+                "verdict": "VALID",
+                "confidence": 90,
+                "reasoning": "Deterministic unit-test boundary result.",
+            }
+            current_invoice["status"] = "paid"
+            current_invoice["genlayer"] = receipt
+            return receipt
+
         return [
-            patch.object(main, "save_invoice", lambda *_args, **_kwargs: None),
-            patch.object(main, "save_payment_ledger", lambda *_args, **_kwargs: None),
-            patch.object(main, "reload_persistent_state", lambda *_args, **_kwargs: None),
-            patch.object(main, "load_invoices", lambda: {invoice["invoice_id"]: invoice}),
+            patch.object(backend_main, "_save_invoice", lambda *_args, **_kwargs: None),
+            patch.object(backend_main, "_save_payment_ledger", lambda *_args, **_kwargs: None),
+            patch.object(backend_main, "reload_persistent_state", lambda *_args, **_kwargs: None),
+            patch.object(backend_main, "_load_invoices", lambda: {invoice["invoice_id"]: invoice}),
+            patch.object(backend_main.storage_backend, "is_settlement_id_claimed", lambda *_args, **_kwargs: False),
+            patch.object(backend_main, "verify_invoice_report_with_genlayer", valid_genlayer_verdict),
         ]
 
     def test_status_endpoint_reports_partial_paid_and_missing_leg(self):
@@ -170,7 +185,9 @@ class PaymentStateMachineTests(unittest.TestCase):
             patch.object(main, "find_arc_batch_tx", lambda _settlement: {"batch_tx": None, "explorer_url": None}),
             patch.object(main, "refresh_split_leg_batch_txs", lambda _invoice: False),
         ])
-        with patchers[0], patchers[1], patchers[2], patchers[3], patchers[4], patchers[5], patchers[6]:
+        with ExitStack() as stack:
+            for patcher in patchers:
+                stack.enter_context(patcher)
             first = main.verify_split_payment(invoice["invoice_id"], invoice, proof)
             second = main.verify_split_payment(invoice["invoice_id"], invoice, proof)
 
@@ -213,7 +230,9 @@ class PaymentStateMachineTests(unittest.TestCase):
         patchers.extend([
             patch.object(main, "refresh_split_leg_batch_txs", lambda _invoice: False),
         ])
-        with patchers[0], patchers[1], patchers[2], patchers[3], patchers[4]:
+        with ExitStack() as stack:
+            for patcher in patchers:
+                stack.enter_context(patcher)
             state = main.verify_payment(invoice["invoice_id"], proof)
 
         self.assertEqual(state["status"], "paid")
@@ -265,6 +284,27 @@ class PaymentStateMachineTests(unittest.TestCase):
         self.assertGreater(final_provider["creator_claimable_usdc"], 0.0)
         self.assertEqual(final_provider["creator_pending_batch_usdc"], 0.0)
 
+    def test_automatic_verdict_payout_is_never_exposed_as_manual_claimable(self):
+        summary = main.summarize_payment_events([{
+            "invoice_id": "inv_auto_payout",
+            "provider_id": "funding_memory",
+            "tier": "full",
+            "buyer_type": "agent",
+            "payer_address": PAYER,
+            "amount_usdc": "1.0",
+            "gateway_status": "completed",
+            "paid_at": time.time(),
+            "arc_settlement": {
+                "action": "creator_payout",
+                "status": "mint_submitted",
+            },
+        }])
+
+        provider = summary["revenue_by_provider"][0]
+        self.assertEqual(provider["withdrawal_mode"], "automatic_genlayer_settlement")
+        self.assertEqual(provider["creator_claimable_usdc"], 0.0)
+        self.assertGreater(provider["creator_auto_pending_usdc"], 0.0)
+
     def test_disputed_invoice_does_not_issue_access_token(self):
         invoice = make_split_invoice("inv_disputed")
         invoice["status"] = "paid"
@@ -296,6 +336,39 @@ class PaymentStateMachineTests(unittest.TestCase):
                     provider_id="funding_memory",
                 )
         self.assertEqual(raised.exception.status_code, 402)
+
+    def test_paid_invoice_without_valid_genlayer_verdict_stays_locked(self):
+        invoice = make_split_invoice("inv_missing_verdict")
+        invoice.update({
+            "status": "paid",
+            "settlement_id": "settle_once",
+            "settlement": {"mode": "treasury_ledger", "currency": "USDC", "decimals": 6},
+            "verification_required": True,
+            "genlayer": {"status": "VERIFICATION_PENDING", "verdict": "PENDING"},
+            "gateway_status": "completed",
+            "transaction_hash": "0xarc",
+        })
+
+        state = main.invoice_payment_state_response(
+            invoice["invoice_id"],
+            invoice,
+            include_access_token=True,
+        )
+
+        self.assertEqual(state["access_status"], "verification_pending")
+        self.assertIsNone(state["access_token"])
+
+        main.invoices_db = {invoice["invoice_id"]: copy.deepcopy(invoice)}
+        with patch.object(main, "save_invoice", lambda *_args, **_kwargs: None):
+            with self.assertRaises(HTTPException) as raised:
+                main.authorize_paid_invoice(
+                    query={"symbol": "APDSTOCK"},
+                    invoice_id=invoice["invoice_id"],
+                    token=None,
+                    required_tier="full",
+                    provider_id="funding_memory",
+                )
+        self.assertEqual(raised.exception.status_code, 503)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,11 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.app.api.v1.endpoints.internal import create_internal_router
+from backend.app.services.arc_verdict_settlement import (
+    apply_arc_settlement_checkpoint,
+    arc_settlement_instruction,
+    public_arc_settlement,
+)
 
 
 def build_client(invoice, *, refresh_status="partial_paid", saved_invoices=None):
@@ -28,10 +33,85 @@ def build_client(invoice, *, refresh_status="partial_paid", saved_invoices=None)
         settlement_id_already_claimed=lambda s, exclude_invoice_id: s == "claimed_id",
         verify_split_receipt=lambda **kwargs: kwargs.get("receipt") == "valid_receipt",
         invoice_split_mode=lambda i: "test_mode",
+        apply_arc_settlement_checkpoint=apply_arc_settlement_checkpoint,
+        arc_settlement_instruction=arc_settlement_instruction,
+        public_arc_settlement=public_arc_settlement,
     )
     app = FastAPI()
     app.include_router(create_internal_router(deps))
     return TestClient(app)
+
+
+def make_verdict_invoice():
+    return {
+        "invoice_id": "inv_verdict_internal",
+        "status": "verification_rejected",
+        "settlement_id": "settlement-internal",
+        "gateway_status": "completed",
+        "amount_raw": "5000",
+        "platform_treasury_wallet": "0x1111111111111111111111111111111111111111",
+        "payer_address": "0x3333333333333333333333333333333333333333",
+        "accounting": {
+            "creator_wallet": "0x2222222222222222222222222222222222222222",
+            "creator_share_bps": 8000,
+        },
+        "genlayer": {"verdict": "INVALID"},
+    }
+
+
+def test_verdict_instruction_is_internal_and_bound_to_invoice_state():
+    invoice = make_verdict_invoice()
+    client = build_client(invoice)
+
+    assert client.get(
+        "/api/internal/invoices/inv_verdict_internal/verdict-settlement"
+    ).status_code == 403
+    response = client.get(
+        "/api/internal/invoices/inv_verdict_internal/verdict-settlement",
+        headers={"x-qma-internal-secret": "test-secret"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["action"] == "buyer_refund"
+    assert payload["recipient"] == invoice["payer_address"]
+    assert payload["transfer_amount_raw"] == "5000"
+
+
+def test_verdict_checkpoint_requires_complete_circle_transaction_before_refund():
+    invoice = make_verdict_invoice()
+    client = build_client(invoice)
+    instruction = client.get(
+        "/api/internal/invoices/inv_verdict_internal/verdict-settlement",
+        headers={"x-qma-internal-secret": "test-secret"},
+    ).json()
+
+    pending = client.post(
+        "/api/internal/invoices/inv_verdict_internal/verdict-settlement/checkpoint",
+        headers={"x-qma-internal-secret": "test-secret"},
+        json={
+            "operation_id": instruction["operation_id"],
+            "status": "confirmed",
+            "circle_transaction_id": "circle-1",
+            "circle_transaction_state": "PENDING",
+        },
+    )
+    assert pending.status_code == 409
+    assert invoice["status"] == "verification_rejected"
+
+    confirmed = client.post(
+        "/api/internal/invoices/inv_verdict_internal/verdict-settlement/checkpoint",
+        headers={"x-qma-internal-secret": "test-secret"},
+        json={
+            "operation_id": instruction["operation_id"],
+            "status": "confirmed",
+            "circle_transaction_id": "circle-1",
+            "circle_transaction_state": "COMPLETE",
+            "transaction_hash": "0xabc",
+        },
+    )
+    assert confirmed.status_code == 200
+    assert invoice["status"] == "refunded"
 
 
 def test_reserve_rejects_already_settled_leg_without_payload():

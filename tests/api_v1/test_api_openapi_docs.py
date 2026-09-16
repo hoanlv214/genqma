@@ -17,7 +17,7 @@ class OpenApiDocsTests(unittest.TestCase):
         cls.client = TestClient(app)
 
     def test_public_schema_has_product_workflow_metadata(self):
-        self.assertEqual(self.schema["info"]["title"], "QMA Intelligence & Payments API")
+        self.assertEqual(self.schema["info"]["title"], "GenQMA Intelligence & Payments API")
         self.assertIn("Recommended buyer flow", self.schema["info"]["description"])
         self.assertIn("Payments & settlement", {tag["name"] for tag in self.schema["tags"]})
         self.assertIn("Agent decisioning", {tag["name"] for tag in self.schema["tags"]})

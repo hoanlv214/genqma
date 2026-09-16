@@ -1,135 +1,51 @@
-# Technical Debt & Architecture Decision: Cross-Chain Arbiter vs. Native $GEN Settlement
+# Architecture Decision: GenLayer Verification and Arc USDC Settlement
 
-> **Status:** Active Decision (Phase 2 Live Architecture)  
-> **Target Upgrade:** Phase 4 (Native GenLayer $GEN Token Escrow)  
-> **Hackathon Track:** GenLayer Agent Tank — Agentic Commerce Infrastructure  
-> **Date:** September 2026  
+> **Status:** Active architecture
+> **Date:** September 2026
 
----
+## Decision
 
-## 1. Context & Design Rationale
+GenQMA uses two separate trust domains:
 
-During the development of **GenQMA Shield**, a key architectural choice was evaluated:
-* **Option A (Current Live):** Settle micropayments in USDC on **Arc Network (Circle Gateway x402)**, while using **GenLayer Intelligent Contracts** as the decentralized, cross-chain on-chain SLA & Dispute Arbiter.
-* **Option B (Future Native):** Settle all payments directly in native **`$GEN` tokens** within GenLayer contract storage using `@gl.public.write.payable` and `_Payee.emit_transfer`.
+- **Arc/Circle x402** receives the buyer's single USDC payment.
+- **GenLayer** verifies the exact report draft bound to the invoice and query hashes.
 
-### Why Option A Was Chosen for the Primary Track:
-1. **Alignment with GenLayer Hackathon Track Prompt:**
-   GenLayer's *Agentic Commerce Infrastructure* track explicitly requests:
-   > *"SLA and uptime enforcement. API escrow that releases against signed logs or decentralized monitoring."*  
-   > *"Stablecoin payments with chargeback. One dispute API across cards, x402 and any chain."*
-   
-   Using GenLayer as the cross-chain dispute arbiter across Arc x402 directly satisfies this mandate.
-2. **Stable Unit of Account for Quant Intelligence:**
-   Autonomous agents purchasing market memory require deterministic, sub-cent pricing ($0.001 preview / $0.005 full report). Pricing directly in volatile tokens would require continuous oracle re-pegging.
-3. **Circle Gateway Gasless User/Agent Experience:**
-   Arc Network uses native USDC for gas abstraction. Agents do not need to manage gas tokens (e.g. ETH or native testnet gas), reducing friction for autonomous execution.
-4. **Zero-Oracle Intelligent Adjudication on GenLayer:**
-   The GenLayer Intelligent Contract (`0x0C2485e1918D3a41762E124a06c0Be33171508BD`) carries out the heavy decentralized consensus work:
-   - Scrapes live exchange APIs (`gl.get_webpage`) without external oracles.
-   - Executes 5/5 validator LLM reasoning (`gl.exec_prompt`) under strict equivalence (`gl.eq_principle.strict_eq`).
-   - Determines the cryptographic verdict (`VALID` / `INVALID`) and triggers automated 80/20 release or 100% chargeback.
+`contracts/GenQMAShield.py` is a verifier. It does not custody Arc USDC and it must
+not report a creator payout or buyer refund merely because a GenLayer verdict was
+recorded.
 
----
+## Current fail-closed flow
 
-## 2. Technical Debt Recorded
+1. The buyer signs one x402 authorization and pays the invoice treasury address.
+2. The backend verifies the Arc settlement and generates one immutable report draft.
+3. The backend submits the invoice ID, query hash, full-report hash, a public claim
+   manifest, and evidence URL to GenLayer. Paid analog rows remain off-chain.
+4. The contract uses `gl.vm.run_nondet` to reach semantic validator consensus.
+5. `VALID` unlocks the exact stored report. `INVALID` keeps it locked.
+6. Missing configuration, RPC errors, timeouts, and indeterminate transactions remain
+   `verification_pending`; they never default to `VALID`.
 
-| Item | Current Implementation (Cross-Chain Arbiter) | Impact / Trade-off |
-|---|---|---|
-| **Settlement Rail** | Arc Network x402 USDC micropayment rails. | Settlement is executed via Circle Gateway sidecar receipts coordinated by backend/frontend. |
-| **Contract Balance** | GenLayer contract stores order metadata, SLA criteria, and validator consensus receipts, but does not hold native token custody. | Fund release or refund depends on the cross-chain coordination protocol rather than native contract internal balance transfers. |
-| **Token Support** | Pure USDC on Arc. | Users holding only `$GEN` on GenLayer cannot currently purchase reports directly without bridging or holding USDC. |
+The application does not currently claim that an `INVALID` verdict has refunded USDC.
+An Arc transaction receipt is required before a refund or creator payout may be shown
+as complete.
 
----
+## Outstanding settlement executor
 
-## 3. Phase 4 Roadmap: Native `$GEN` Token Implementation Blueprint
+To complete creator/platform distribution and buyer chargeback on the current USDC
+rail, GenQMA needs an idempotent Arc settlement executor that consumes finalized,
+hash-bound GenLayer verdicts:
 
-When GenLayer Bradbury Mainnet launches and native `$GEN` token liquidity expands, GenQMA Shield will support **Dual-Rail Settlement** (USDC x402 + Native `$GEN`).
+- `VALID`: transfer the configured creator/platform allocation from treasury or escrow.
+- `INVALID`: transfer the paid amount back to the verified payer wallet.
+- Persist the Arc transaction IDs and only then mark payout/refund as complete.
 
-### Contract Upgrade Blueprint (`GenQMAShieldV2.py`):
-Using the payable pattern demonstrated in projects like `DeathOfTheAuthor`:
+This executor belongs to the Arc payment boundary and must not be simulated in the
+GenLayer contract or by changing an invoice's JSON status.
 
-```python
-from genlayer import *
-import json
+## Alternative: native GEN escrow
 
-class GenQMAShieldV2(gl.Contract):
-    admin: Address
-    treasury: Address
-    platform_fee_bps: u256
-    order_count: u256
-    orders: TreeMap[u256, str]
-
-    def __init__(self):
-        self.admin = gl.message.sender_address
-        self.treasury = gl.message.sender_address
-        self.platform_fee_bps = u256(2000)  # 20%
-        self.order_count = u256(0)
-
-    @gl.public.write.payable
-    def create_order_native(self, expected_anomaly: str, creator_address: str) -> u256:
-        """
-        Buyer locks native $GEN tokens directly into the contract escrow balance.
-        """
-        order_id = self.order_count + u256(1)
-        self.order_count = order_id
-        deposit_amount = gl.message.value
-
-        order_data = {
-            "order_id": int(order_id),
-            "buyer": str(gl.message.sender_address),
-            "creator": creator_address,
-            "deposit_gen": str(deposit_amount),
-            "expected_anomaly": expected_anomaly,
-            "status": "ESCROWED",
-            "verdict": "PENDING"
-        }
-        self.orders[order_id] = json.dumps(order_data)
-        return order_id
-
-    @gl.public.write
-    def verify_and_settle_native(self, order_id: u256, report: str, evidence_url: str) -> str:
-        """
-        Executes multi-validator LLM consensus and transfers native $GEN:
-        - VALID: 80% to creator, 20% to treasury.
-        - INVALID: 100% refund to buyer.
-        """
-        order = json.loads(self.orders[order_id])
-        assert order["status"] == "ESCROWED", "Order not in escrow"
-
-        # 1. Non-deterministic web fetch & LLM consensus
-        def verification_task():
-            page_data = gl.nondet.get_webpage(evidence_url, mode="text")
-            prompt = f"Verify report integrity against exchange data: {page_data}"
-            return gl.nondet.exec_prompt(prompt)
-
-        consensus = gl.eq_principle.strict_eq(verification_task)
-        is_valid = "VALID" in consensus.upper()
-
-        total_deposit = u256(int(order["deposit_gen"]))
-
-        if is_valid:
-            # 80/20 split
-            platform_fee = (total_deposit * self.platform_fee_bps) // u256(10000)
-            creator_payout = total_deposit - platform_fee
-
-            # Native transfers on GenLayer
-            _Payee.emit_transfer(Address(order["creator"]), creator_payout)
-            _Payee.emit_transfer(self.treasury, platform_fee)
-            order["status"] = "SETTLED"
-        else:
-            # Autonomous Chargeback (100% refund)
-            _Payee.emit_transfer(Address(order["buyer"]), total_deposit)
-            order["status"] = "REFUNDED"
-
-        self.orders[order_id] = json.dumps(order)
-        return json.dumps({"order_id": int(order_id), "status": order["status"]})
-```
-
----
-
-## 4. Summary & Action Plan
-
-1. **Keep Arc as the live micropayment settlement rail** for the Hackathon submission to guarantee 100% reliable demo stability, stable pricing, and single-signature convenience.
-2. **Present GenLayer as the Autonomous SLA Arbiter**, fulfilling the core challenge of resolving API disputes and providing zero-oracle intelligence validation.
-3. **Reference this document in `GENLAYER_SUBMISSION.md` and `README.md`** as deliberate architectural sequencing.
+A future contract may accept native GEN with `@gl.public.write.payable` and perform
+native transfers in the GenLayer VM. That would be a separate payment product: it
+would not settle or refund the Arc USDC paid by the existing browser, Agent Wallet,
+or MCP flows. Adding native GEN escrow therefore does not complete the present USDC
+chargeback requirement.

@@ -8,6 +8,7 @@ import copy
 import os
 import time
 import unittest
+from contextlib import ExitStack
 from unittest.mock import patch
 
 os.environ["SUPABASE_URL"] = ""
@@ -116,11 +117,24 @@ class ApiHealthMarketProvidersTests(unittest.TestCase):
         app_module.state.payment_events = self.previous_events
 
     def persistence_patches(self):
+        def valid_genlayer_verdict(_invoice_id, invoice):
+            receipt = {
+                "status": "VERIFIED",
+                "verdict": "VALID",
+                "confidence": 90,
+                "reasoning": "Deterministic HTTP-test boundary result.",
+            }
+            invoice["status"] = "paid"
+            invoice["genlayer"] = receipt
+            return receipt
+
         return [
             patch.object(app_module, "_save_invoice", lambda *_args, **_kwargs: None),
             patch.object(app_module, "_save_payment_ledger", lambda *_args, **_kwargs: None),
             patch.object(app_module, "reload_persistent_state", lambda *_args, **_kwargs: None),
             patch.object(app_module, "_load_invoices", lambda: app_module.state.invoices_db),
+            patch.object(app_module.storage_backend, "is_settlement_id_claimed", lambda *_args, **_kwargs: False),
+            patch.object(app_module, "verify_invoice_report_with_genlayer", valid_genlayer_verdict),
         ]
 
     def seed_invoice(self, invoice=None):
@@ -257,7 +271,9 @@ class ApiHealthMarketProvidersTests(unittest.TestCase):
             patch.object(app_module, "find_arc_batch_tx", lambda _settlement: {"batch_tx": None, "explorer_url": None}),
             patch.object(app_module, "refresh_split_leg_batch_txs", lambda _invoice: False),
         ])
-        with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6]:
+        with ExitStack() as stack:
+            for patcher in patches:
+                stack.enter_context(patcher)
             response = self.client.post(
                 f"/api/v1/payment/verify?invoice_id={self.invoice['invoice_id']}",
                 json={
@@ -330,7 +346,9 @@ class ApiHealthMarketProvidersTests(unittest.TestCase):
             patch.object(app_module, "find_arc_batch_tx", side_effect=AssertionError("duplicate batch lookup")),
             patch.object(app_module, "refresh_split_leg_batch_txs", lambda _invoice: False),
         ])
-        with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6]:
+        with ExitStack() as stack:
+            for patcher in patches:
+                stack.enter_context(patcher)
             response = self.client.post(
                 f"/api/v1/payment/verify?invoice_id={self.invoice['invoice_id']}",
                 json={

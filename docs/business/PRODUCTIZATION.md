@@ -43,36 +43,32 @@ Buyer / Agent
     v
 Provider-bound invoice
     |
-    +--> settlement_mode = x402_direct_split     (vNext default)
-    +--> settlement_mode = treasury_ledger       (legacy/fallback)
-    +--> settlement_mode = split_contract        (future)
+    +--> settlement_mode = seller_wallet         (current: one buyer signature)
+    +--> settlement_mode = x402_direct_split     (legacy reconciliation only)
     |
-    v
-QMA entitlement + report unlock
+    v Arc settlement verified
+GenLayer verifies invoice/query/report hashes
     |
-    v
-Creator ledger
-    |
-    v
-Creator claim / payout proof
+    +--> VALID   --> exact report unlock
+    +--> INVALID --> report locked
+    +--> pending --> report locked and retryable without another payment
 ```
 
 ### Settlement Modes
 
+`seller_wallet`
+
+- Buyer signs one x402 authorization to the platform treasury.
+- The full report is hash-bound; GenLayer verifies a public claim manifest before
+  access, without publishing paid analog rows in transaction calldata.
+- Creator payout and buyer refund remain pending until an Arc executor records a
+  real transfer receipt.
+- This is the current default for new invoices.
+
 `x402_direct_split`
 
-- Buyer pays one x402 leg to the creator wallet and one x402 leg to the platform treasury.
-- Creator earnings land directly in the provider Gateway balance.
-- Report unlocks only after every required leg settles.
-- This is the vNext default.
-
-`treasury_ledger`
-
-- Buyer pays Platform Treasury through Circle Gateway/x402.
-- QMA records provider revenue share in the creator ledger.
-- Creator clicks Claim.
-- Payout executor transfers USDC and records claim tx.
-- This remains a legacy/fallback mode.
+- Existing invoices can still be reconciled.
+- New invoices are not created in this mode.
 
 `provider_gateway`
 
@@ -248,8 +244,8 @@ Keep the API product-facing and provider-neutral.
 ### Milestone 4: Settlement Evolution
 
 - Add `settlement_mode` to provider config.
-- Keep `x402_direct_split` as the active default; retain `treasury_ledger` as a
-  legacy/fallback mode until its remaining creator-claim use cases are retired.
+- Keep `seller_wallet` as the active one-signature default.
+- Build an idempotent Arc verdict executor for creator payout and buyer refund.
 - Prototype `provider_gateway` for one provider owner wallet.
 - Add contract design only after direct provider and ledger modes are stable.
 

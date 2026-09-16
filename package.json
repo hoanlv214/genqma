@@ -11,6 +11,7 @@
     "build:all": "bun --filter \"*\" build",
     "deploy:fe": "bun x vercel --prod",
     "deploy:db": "bun x supabase db execute -f scripts/schema.sql",
+    "deploy:genlayer": "node scripts/deploy_genqma_shield.mjs",
     "agent:dry": "node agents/bin/agent_buyer.js --dry-run",
     "agent:llm:dry": "node agents/bin/agent_buyer.js --llm --dry-run",
     "agent:llm:live": "node agents/bin/agent_buyer.js --llm --live --no-auto-deposit",

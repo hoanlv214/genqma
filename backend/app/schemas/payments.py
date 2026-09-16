@@ -38,6 +38,8 @@ class SplitSettlementProof(BaseModel):
 
 
 class PaymentVerifyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     settlement_id: Optional[str] = Field(default=None, min_length=8, examples=["settlement_01JQMA7Y8A"])
     invoice_secret: str = Field(..., min_length=16, examples=["inv_secret_7f4d9a8c2b1e"])
     payer_address: Optional[str] = Field(default=None, examples=["0x4dbc321e301c82b8f8e6a5193e47c6eca656d514"])
@@ -58,13 +60,6 @@ class PaymentVerifyRequest(BaseModel):
             ]
         ],
     )
-    simulate_hallucination: Optional[bool] = Field(
-        default=False,
-        description="Flag to simulate a provider SLA breach / hallucination attack for GenLayer adjudication"
-    )
-
-
-
 class WithdrawRequest(BaseModel):
     """Signed Gateway burn intent submitted for creator withdrawal."""
 

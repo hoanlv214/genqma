@@ -1,6 +1,6 @@
 import { shortAddress } from "../../services/wallet";
 import { Loader } from "../ui/Loader";
-import { GENLAYER_CONTRACT_ADDRESS, GENLAYER_STUDIO_URL } from "../../services/genlayer";
+import { GENLAYER_CONTRACT_ADDRESS, GENLAYER_EXPLORER_URL } from "../../services/genlayer";
 
 interface PaywallPanelProps {
   paywallOpen: boolean;
@@ -23,8 +23,6 @@ interface PaywallPanelProps {
   signAndSettleX402: () => void;
   handleDepositToGateway: () => void;
   activeQuery: Record<string, any>;
-  simulateHallucination?: boolean;
-  setSimulateHallucination?: (val: boolean) => void;
   genlayerReceipt?: any;
 }
 
@@ -49,8 +47,6 @@ export function PaywallPanel(props: PaywallPanelProps) {
     handleOpenUnlockedReport,
     signAndSettleX402,
     activeQuery,
-    simulateHallucination,
-    setSimulateHallucination,
     genlayerReceipt,
   } = props;
 
@@ -82,7 +78,7 @@ export function PaywallPanel(props: PaywallPanelProps) {
                 </div>
                 <div className="paywall-desc">
                   {paymentSuccess
-                    ? "GenLayer consensus finalized. 80/20 escrow settled. Your report is unlocked."
+                    ? "GenLayer finalized VALID for this report hash. Your report is unlocked."
                     : "QMA matches today's market setup with GenLayer Intelligent Contract SLA protection against hallucinated or fabricated data."}
                 </div>
 
@@ -98,7 +94,9 @@ export function PaywallPanel(props: PaywallPanelProps) {
                   <div className="invoice-row">
                     <span className="invoice-label">Arbiter Protection</span>
                     <span className="invoice-val" style={{ color: "#818cf8", fontWeight: 600 }}>
-                      GenLayer Shield (0x0C24...08BD)
+                      GenLayer Shield ({GENLAYER_CONTRACT_ADDRESS && GENLAYER_CONTRACT_ADDRESS.length >= 10
+                        ? `${GENLAYER_CONTRACT_ADDRESS.slice(0, 6)}...${GENLAYER_CONTRACT_ADDRESS.slice(-4)}`
+                        : "Fail-Closed Verifier"})
                     </span>
                   </div>
                   <div className="invoice-row">
@@ -130,7 +128,7 @@ export function PaywallPanel(props: PaywallPanelProps) {
                       <div className="pf-step-icon" />
                       <div className="pf-body">
                         <div className="pf-step-top">
-                          <div className="pf-label">2. Escrow Balance</div>
+                          <div className="pf-label">2. Gateway Balance</div>
                           <span className={`pf-badge ${paymentClass(paymentStepStatus.gateway?.status)}`}>
                             {paymentStepStatus.gateway?.label}
                           </span>
@@ -147,15 +145,15 @@ export function PaywallPanel(props: PaywallPanelProps) {
                       <div className="pf-step-icon" />
                       <div className="pf-body">
                         <div className="pf-step-top">
-                          <div className="pf-label">3. Micropayment Escrow</div>
+                          <div className="pf-label">3. x402 Settlement</div>
                           <span className={`pf-badge ${paymentClass(paymentStepStatus.settlement?.status)}`}>
                             {paymentStepStatus.settlement?.label}
                           </span>
                         </div>
                         <div className="pf-val">
                           {paymentDetails.settlementId
-                            ? `Escrowed Settlement: ${shortAddress(paymentDetails.settlementId)}`
-                            : "One-signature authorization into GenLayer Escrow."}
+                            ? `Settlement: ${shortAddress(paymentDetails.settlementId)}`
+                            : "One-signature USDC authorization to the invoice treasury."}
                         </div>
                       </div>
                     </div>
@@ -172,12 +170,12 @@ export function PaywallPanel(props: PaywallPanelProps) {
                         </div>
                         <div className="pf-val">
                           {paymentStepStatus.genlayer?.status === "active"
-                            ? "Fetching live MEXC orderbook & running multi-LLM consensus (Claude Sonnet 3.5, Kimi, Llama)..."
+                            ? "Fetching authoritative MEXC evidence and awaiting GenLayer validator consensus..."
                             : paymentStepStatus.genlayer?.status === "completed"
-                              ? "Strict Equivalence consensus: VALID (96% confidence) · 80/20 Escrow Settled!"
+                              ? "Finalized GenLayer verdict: VALID. The bound report hash may be unlocked."
                               : paymentStepStatus.genlayer?.status === "failed"
-                                ? "SLA Violated: Autonomous Chargeback executed (100% refunded)"
-                                : "Contract 0x0C24...08BD verifies exchange feed before releasing funds."}
+                                ? "SLA rejected. Report access remains blocked."
+                                : "The configured contract verifies the report hash before access is issued."}
                         </div>
                       </div>
                     </div>
@@ -196,41 +194,6 @@ export function PaywallPanel(props: PaywallPanelProps) {
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* GenLayer Testbench Toggle (Simulate Normal vs Chargeback) */}
-                <div style={{ marginTop: "14px", padding: "12px", background: "rgba(79, 70, 229, 0.08)", borderRadius: "8px", border: "1px solid rgba(79, 70, 229, 0.3)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#818cf8", display: "flex", alignItems: "center", gap: "6px" }}>
-                      GenLayer SLA Guardian (0x0C24...08BD)
-                    </span>
-                    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "#cbd5e1", cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(simulateHallucination)}
-                        onChange={(e) => setSimulateHallucination?.(e.target.checked)}
-                        style={{ accentColor: "#ef4444" }}
-                      />
-                      <span style={{ color: simulateHallucination ? "#f87171" : "#94a3b8", fontWeight: simulateHallucination ? 700 : 400 }}>
-                        Simulate Hallucination Attack (Test Chargeback)
-                      </span>
-                    </label>
-                  </div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8", lineHeight: 1.4 }}>
-                    {simulateHallucination ? (
-                      <span style={{ color: "#fca5a5" }}>
-                        ⚠️ Attack Mode: Injects fabricated metrics. GenLayer validators will detect SLA violation and execute 100% Autonomous Chargeback!
-                      </span>
-                    ) : (
-                      <span>
-                        ✓ Live Mode: GenLayer inspects live feed (
-                        <a href={mexcEvidenceUrl} target="_blank" rel="noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>
-                          MEXC API
-                        </a>
-                        ). Settles 80% to Creator, 20% to Treasury only upon 5/5 validator consensus.
-                      </span>
-                    )}
                   </div>
                 </div>
 
@@ -255,13 +218,22 @@ export function PaywallPanel(props: PaywallPanelProps) {
                   <div className="paywall-advanced-title">GenLayer & SLA Details</div>
                   <div className="paywall-detail-row">
                     <span className="paywall-detail-label">GenLayer Contract</span>
-                    <a className="paywall-detail-value tx-link" href={GENLAYER_STUDIO_URL} target="_blank" rel="noreferrer">
-                      {shortAddress(GENLAYER_CONTRACT_ADDRESS)}
-                    </a>
+                    {GENLAYER_CONTRACT_ADDRESS ? (
+                      <a
+                        className="paywall-detail-value tx-link"
+                        href={`${GENLAYER_EXPLORER_URL.replace(/\/$/, "")}/address/${GENLAYER_CONTRACT_ADDRESS}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {shortAddress(GENLAYER_CONTRACT_ADDRESS)}
+                      </a>
+                    ) : (
+                      <span className="paywall-detail-value">Configuration required</span>
+                    )}
                   </div>
                   <div className="paywall-detail-row">
                     <span className="paywall-detail-label">SLA Mechanism</span>
-                    <span className="paywall-detail-value">Strict Equivalence (5/5)</span>
+                    <span className="paywall-detail-value">run_nondet semantic validation</span>
                   </div>
                   <div className="paywall-detail-row">
                     <span className="paywall-detail-label">Live Evidence URL</span>
@@ -295,7 +267,7 @@ export function PaywallPanel(props: PaywallPanelProps) {
                       </div>
                       <div className="paywall-detail-row">
                         <span className="paywall-detail-label">Status</span>
-                        <span className="paywall-detail-value" style={{ color: genlayerReceipt.status === "SETTLED" ? "#4ade80" : "#f87171", fontWeight: 700 }}>
+                        <span className="paywall-detail-value" style={{ color: genlayerReceipt.status === "VERIFIED" ? "#4ade80" : "#f87171", fontWeight: 700 }}>
                           {genlayerReceipt.status}
                         </span>
                       </div>
@@ -330,7 +302,9 @@ export function PaywallPanel(props: PaywallPanelProps) {
               >
                 <span>
                   {paySubmitting || paymentStepStatus.genlayer?.status === "active" ? (
-                    <Loader label="GenLayer Consensus & Settlement..." compact variant="spinner" size="xs" className="button-loader" />
+                    <Loader label="GenLayer Verification..." compact variant="spinner" size="xs" className="button-loader" />
+                  ) : paymentStepStatus.settlement?.status === "completed" && paymentStepStatus.genlayer?.label === "Retry available" ? (
+                    "Retry GenLayer Verification"
                   ) : paymentStepStatus.settlement?.status === "active" ? (
                     "Sign Settlement"
                   ) : (

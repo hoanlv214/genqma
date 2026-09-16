@@ -18,7 +18,7 @@ import { useAgentWalletStore } from "../../state/agentWalletStore";
 interface AutonomousAgentModalProps {
   open: boolean;
   onClose: () => void;
-  wallet: string; // The user's wallet address (simulated deposit source)
+  wallet: string; // Wallet authorized to create and manage this agent session.
 }
 
 type AgentAction = {

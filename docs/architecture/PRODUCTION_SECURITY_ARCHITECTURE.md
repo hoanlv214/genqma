@@ -12,7 +12,7 @@ Unlike conventional Web2 architectures, QMA’s threat model directly involves i
 
 1. **Front-running & Parameter Tampering:** Purchasing an invoice bound to an inexpensive asset or low-cost query snapshot, then attempting to redeem that invoice/token to extract proprietary reports for expensive tokens or altered anomaly conditions.
 2. **Double-Spending & Replay Attacks:** Re-submitting an already processed Arc Gateway `settlement_id` or sidecar receipt to authenticate and unlock additional invoices.
-3. **Partial-Payment Exploitation (Split-Leg Asymmetry):** Paying only the platform commission leg while withholding payment from the Creator (or vice versa) and attempting to bypass gating logic.
+3. **Premature Access or Accounting:** Treating an accepted payment as sufficient to unlock a report, or claiming a payout/refund without its Arc receipt.
 4. **Client-Side Asynchronous Race Conditions:** Out-of-order UI state propagation (e.g., React asynchronous state transitions) causing invoices to be minted for stale symbols while the viewport displays a newer snapshot.
 5. **SSRF & Malicious Intelligence Providers:** Third-party provider webhooks attempting to scan internal cloud infrastructure (e.g., AWS/GCP/Render instance metadata at `169.254.169.254`) or returning memory bombs (>1 MB payloads) to crash host workers.
 6. **AI Agent Wallet Drainage:** Autonomous agents looping uncontrollably or malicious prompts coercing agents into depleting their allocated USDC budgets.
@@ -39,11 +39,12 @@ flowchart TD
         CORS --> INV_SEC[Invoice Secrecy: Constant-Time HMAC Digest]
     end
 
-    subgraph L3["Layer 3: Two-Toll Settlement Verification"]
+    subgraph L3["Layer 3: Payment and Report Verification"]
         INV_SEC --> EIP712[EIP-712 Structured Payment Authorization]
-        EIP712 --> TWOTOLL[Dual-Leg Split: Creator 80% / Platform 20%]
-        TWOTOLL --> IDEMP[Global Nonce & Settlement Deduplication]
-        IDEMP --> SM[Payment State Machine: Formal Transitions]
+        EIP712 --> SINGLE[Single USDC Payment to Treasury]
+        SINGLE --> IDEMP[Global Nonce & Settlement Deduplication]
+        IDEMP --> GL[GenLayer Hash-Bound Verdict]
+        GL --> SM[Payment State Machine: Formal Transitions]
     end
 
     subgraph L4["Layer 4: Access Control & Data Isolation"]
@@ -62,18 +63,13 @@ flowchart TD
 
 ## 3. Deep Technical Analysis of Implemented Controls
 
-### 3.1. Two-Toll Direct Split Verification & Anti-Double-Spend (`settlement_validation.py`)
+### 3.1. Single-Payment Verification & Anti-Double-Spend (`settlement_validation.py`)
 
-QMA operates a **Two-Toll Direct Split Settlement** model on Arc Testnet via Circle Gateway. Each purchase generates two distinct settlement legs:
-- **Creator Leg:** Typically 80% (8000 bps) directed to the Creator's revenue wallet.
-- **Platform Leg:** Typically 20% (2000 bps) directed to the Platform Treasury.
-
-#### A. Multi-Point Split Leg Validation
-During `POST /api/v1/payment/verify`, the backend processes `split_settlements`:
-1. **Leg Completeness:** Verifies that proofs are submitted for all mandatory legs defined in `invoice.split.legs`.
-2. **Recipient Pinning (`pay_to`):** Ensures `settlement.pay_to` strictly equals the pre-calculated revenue address for that leg.
-3. **Amount Verification (`amount_raw`):** Confirms that the settled atomic micro-USDC (6 decimals) meets or exceeds the required threshold.
-4. **Sidecar Receipt Verification (`sidecar_receipt`):** Validates the cryptographic receipt string issued by Arc Gateway.
+New GenQMA invoices require one Arc Testnet USDC payment to the invoice's treasury
+address. During `POST /api/v1/payment/verify`, the backend validates the exact
+recipient, atomic amount, accepted gateway status, sidecar receipt, payer consistency,
+and authoritative Circle settlement data before the report enters GenLayer
+verification.
 
 #### B. Idempotency & Global Deduplication
 To defeat replay attacks across different invoices:
@@ -85,9 +81,12 @@ To defeat replay attacks across different invoices:
           raise HTTPException(status_code=409, detail="Settlement ID already used for another invoice.")
   ```
 
-#### C. Resumable Split Legs (Fault-Tolerant Partial Payments)
-* **Problem:** In a multi-leg settlement, if leg 1 succeeds onchain but leg 2 fails due to network drop or user cancellation, a naive system either rejects the whole transaction (causing user fund loss) or opens the report (causing economic leakage).
-* **Solution:** Invoices transition into `partial_paid`. Leg 1 is persisted with its `sidecar_receipt`. When the user returns to retry, both client and backend detect the cached invoice and **only demand settlement for the remaining missing leg**, guaranteeing zero loss of funds and zero double-charging.
+#### C. Resumable GenLayer Verification
+Once the Arc settlement is accepted, its ID is persisted before the GenLayer write.
+If the RPC, finalization wait, or result read fails, the invoice remains
+`verification_pending`. Browser, agent, and MCP callers resume from that state with
+the same settlement ID and do not sign or pay again. No timeout or exception is
+converted to `VALID`.
 
 ---
 

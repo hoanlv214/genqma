@@ -2,11 +2,11 @@ import { randomBytes } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import circle from "@circle-fin/developer-controlled-wallets";
 import * as path from "node:path";
-import * as dotenv from "dotenv";
+import { loadEnvFile } from "./load-env.js";
 
 // Load .env from parent directory
 const envPath = path.resolve(process.cwd(), "..", ".env");
-dotenv.config({ path: envPath });
+loadEnvFile(envPath);
 
 const apiKey: string | undefined = process.env.CIRCLE_CONSOLE_API_KEY;
 if (!apiKey) {

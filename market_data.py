@@ -12,7 +12,7 @@ logger = logging.getLogger("QMA-MarketData")
 
 MEXC_HEADERS = {
     "Accept": "application/json, text/plain, */*",
-    "User-Agent": "QMA-Lepton-Agent/1.0 (+https://qma-three.vercel.app)",
+    "User-Agent": "GenLayer-QMA-Agent/1.0 (+https://genqma.vercel.app)",
 }
 
 

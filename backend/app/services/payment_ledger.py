@@ -50,6 +50,7 @@ def compact_payment_event(event: dict) -> dict:
         "explorer_url": event.get("explorer_url"),
         "paid_at": event.get("paid_at"),
         "query_hash": event.get("query_hash"),
+        "arc_settlement": event.get("arc_settlement"),
     }
 
 

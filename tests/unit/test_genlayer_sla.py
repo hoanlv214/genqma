@@ -1,182 +1,124 @@
+import hashlib
+import json
+
 import pytest
-from backend.app.services import genlayer_arbiter
+import genlayer_py
+from pydantic import ValidationError
+
 from backend.app.schemas.payments import PaymentVerifyRequest
+from backend.app.services import genlayer_arbiter
 from backend.app.services.payment_state_machine import invoice_access_status
 
 
-def test_genlayer_arbiter_valid_consensus():
-    """Verify authentic market report produces VALID consensus and 80/20 split."""
-    order = genlayer_arbiter.create_order(
-        buyer="0xBuyerWallet123",
-        provider="0xProviderWallet456",
+class FakeGenLayerClient:
+    def __init__(self, verdict="VALID"):
+        self.verdict = verdict
+        self.order = None
+        self.write_calls = []
+
+    def read_contract(self, **_kwargs):
+        return json.dumps(self.order) if self.order else ""
+
+    def write_contract(self, **kwargs):
+        self.write_calls.append(kwargs)
+        args = kwargs["args"]
+        self.order = {
+            "invoice_id": args[0],
+            "query_hash": args[5],
+            "report_hash": args[6],
+            "verdict": self.verdict,
+            "status": "VERIFIED" if self.verdict == "VALID" else "REJECTED",
+            "confidence": 91,
+            "reasoning": "Validator evidence matched." if self.verdict == "VALID" else "Evidence contradicted the report.",
+        }
+        return "0xreal_transaction"
+
+    def wait_for_transaction_receipt(self, **_kwargs):
+        return {"status_name": "FINALIZED", "tx_execution_result_name": "FINISHED_WITH_RETURN"}
+
+
+@pytest.mark.parametrize("verdict,status", [("VALID", "VERIFIED"), ("INVALID", "REJECTED")])
+def test_verify_report_returns_only_finalized_contract_state(monkeypatch, verdict, status):
+    client = FakeGenLayerClient(verdict)
+    monkeypatch.setattr(genlayer_arbiter, "GENLAYER_CONTRACT_ADDRESS", "0xcontract")
+    monkeypatch.setattr(genlayer_arbiter, "_create_client", lambda: (client, "account"))
+    monkeypatch.setattr(
+        genlayer_arbiter,
+        "_wait_for_finalized",
+        lambda current_client, tx_hash: current_client.wait_for_transaction_receipt(transaction_hash=tx_hash),
+    )
+
+    result = genlayer_arbiter.verify_report(
+        invoice_id="inv_123",
+        buyer="0xbuyer",
+        provider="0xprovider",
         symbol="ETH-USDT",
-        expected_anomaly="Funding divergence",
-        deposit_usdc=0.005
+        expected_anomaly="funding anomaly",
+        query_hash="query-hash",
+        report_hash="report-hash",
+        verification_manifest='{"weighted_win_rate":61.2}',
+        evidence_url="https://contract.mexc.com/evidence",
     )
-    receipt = genlayer_arbiter.adjudicate_sla(
-        order_id=order["order_id"],
-        report_summary="Authentic quantitative market memory report for ETH-USDT with historical analogs.",
-        evidence_url="https://contract.mexc.com/api/v1/contract/funding_rate/ETH_USDT",
-        simulate_hallucination=False
+
+    assert result["verdict"] == verdict
+    assert result["status"] == status
+    assert result["transaction_hash"] == "0xreal_transaction"
+    assert len(client.write_calls) == 1
+
+
+def test_verify_report_fails_closed_without_configuration(monkeypatch):
+    monkeypatch.setattr(genlayer_arbiter, "GENLAYER_CONTRACT_ADDRESS", "")
+    monkeypatch.setattr(genlayer_arbiter, "GENLAYER_PRIVATE_KEY", "")
+    with pytest.raises(genlayer_arbiter.GenLayerVerificationError, match="CONTRACT_ADDRESS"):
+        genlayer_arbiter.verify_report(
+            invoice_id="inv_123", buyer="", provider="", symbol="ETH-USDT",
+            expected_anomaly="anomaly", query_hash="q", report_hash="r",
+            verification_manifest="{}", evidence_url="https://example.com",
+        )
+
+
+def test_studio_next_client_uses_chain_61997(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(genlayer_arbiter, "GENLAYER_CONTRACT_ADDRESS", "0xcontract")
+    monkeypatch.setattr(genlayer_arbiter, "GENLAYER_PRIVATE_KEY", "0xprivate")
+    monkeypatch.setattr(genlayer_arbiter, "GENLAYER_NETWORK", "studio-next")
+    monkeypatch.setattr(
+        genlayer_arbiter,
+        "GENLAYER_RPC_ENDPOINT",
+        "https://studio-next.genlayer.com/api",
     )
-    assert receipt["verdict"] == "VALID"
-    assert receipt["status"] == "SETTLED"
-    assert receipt["confidence"] >= 90
-    assert receipt["split_distribution"]["creator_usdc"] == 0.004
-    assert receipt["split_distribution"]["platform_usdc"] == 0.001
-    assert receipt["split_distribution"]["refund_buyer_usdc"] == 0.0
+    monkeypatch.setattr(genlayer_py, "create_account", lambda _key: "account")
+
+    def capture_client(*, chain, account):
+        captured.update(chain=chain, account=account)
+        return "client"
+
+    monkeypatch.setattr(genlayer_py, "create_client", capture_client)
+
+    client, account = genlayer_arbiter._create_client()
+
+    assert (client, account) == ("client", "account")
+    assert captured["chain"].id == 61997
+    assert captured["chain"].name == "GenLayer Studio Next"
+    assert captured["chain"].rpc_urls["default"]["http"] == [
+        "https://studio-next.genlayer.com/api"
+    ]
 
 
-def test_genlayer_arbiter_simulated_hallucination_chargeback():
-    """Verify simulated hallucination triggers INVALID verdict and 100% refund."""
-    order = genlayer_arbiter.create_order(
-        buyer="0xBuyerWallet123",
-        provider="0xProviderWallet456",
-        symbol="BTC-USDT",
-        expected_anomaly="OI spike",
-        deposit_usdc=0.005
-    )
-    receipt = genlayer_arbiter.adjudicate_sla(
-        order_id=order["order_id"],
-        report_summary="Fake test placeholder data",
-        evidence_url="https://contract.mexc.com/api/v1/contract/funding_rate/BTC_USDT",
-        simulate_hallucination=True
-    )
-    assert receipt["verdict"] == "INVALID"
-    assert receipt["status"] == "REFUNDED"
-    assert receipt["split_distribution"]["refund_buyer_usdc"] == 0.005
-    assert receipt["split_distribution"]["creator_usdc"] == 0.0
-    assert receipt["split_distribution"]["platform_usdc"] == 0.0
+def test_payment_verify_schema_rejects_removed_simulation_flag():
+    with pytest.raises(ValidationError, match="simulate_hallucination"):
+        PaymentVerifyRequest(
+            invoice_secret="inv_secret_1234567890abcdef",
+            simulate_hallucination=True,
+        )
 
 
-def test_invoice_access_status_blocked_on_refund():
-    """Verify access status returns 'disputed' when invoice is refunded or GenLayer verdict is INVALID."""
-    refunded_invoice = {
-        "status": "refunded",
-        "genlayer": {"verdict": "INVALID"}
-    }
-    assert invoice_access_status(refunded_invoice) == "disputed"
+def test_invalid_verdict_is_not_reported_as_refunded():
+    invoice = {"status": "verification_rejected", "genlayer": {"verdict": "INVALID"}}
+    assert invoice_access_status(invoice) == "verification_rejected"
 
 
-def test_payment_verify_request_schema():
-    """Verify PaymentVerifyRequest accepts simulate_hallucination flag."""
-    req = PaymentVerifyRequest(
-        invoice_secret="inv_secret_1234567890abcdef",
-        simulate_hallucination=True
-    )
-    assert req.simulate_hallucination is True
-
-
-def test_verify_payment_blocks_traction_on_sla_breach(monkeypatch):
-    """Test that an invalid SLA verdict blocks access token and prevents adding to payment_events."""
-    from backend.app import main
-    from backend.app.core import state
-    from backend.app.schemas.payments import PaymentVerifyRequest
-    from unittest.mock import MagicMock
-
-    # Setup mock invoice
-    import time
-    test_inv_id = "inv_test_sla_breach_99"
-    test_secret = "inv_secret_test_sla_breach_123456"
-    test_invoice = {
-        "invoice_id": test_inv_id,
-        "invoice_secret": test_secret,
-        "status": "pending",
-        "amount": 0.005,
-        "amount_raw": "5000",
-        "symbol": "ETH-USDT",
-        "owner_wallet": "0xProviderCreator1",
-        "payer_address": "0xBuyerAgent1",
-        "buyer_wallet_address": "0xBuyerAgent1",
-        "split": None,
-        "expires_at": time.time() + 3600,
-    }
-
-    state.invoices_db[test_inv_id] = test_invoice
-
-    # Mock Arc settlement fetch & validation
-    monkeypatch.setattr(main, "fetch_circle_settlement", lambda sid: {
-        "status": "completed",
-        "amount": "5000",
-        "fromAddress": "0xBuyerAgent1",
-        "toAddress": "0xProviderCreator1"
-    })
-    monkeypatch.setattr(main, "validate_arc_payment", lambda inv, s, payer_address: None)
-    monkeypatch.setattr(main, "find_arc_batch_tx", lambda s: {"batch_tx": "0xtx123", "explorer_url": "https://testnet.arcscan.app/tx/0xtx123"})
-    monkeypatch.setattr(main, "_save_invoice", lambda inv: None)
-    monkeypatch.setattr(main, "_save_payment_ledger", lambda ledger: None)
-
-    initial_events_count = len(state.payment_events)
-
-    # 1. Verify with simulate_hallucination = True
-    proof_invalid = PaymentVerifyRequest(
-        settlement_id="settlement_test_invalid_123",
-        invoice_secret=test_secret,
-        payer_address="0xBuyerAgent1",
-        simulate_hallucination=True
-    )
-    resp = main.verify_payment(test_inv_id, proof_invalid)
-
-    # Must be refunded, access disputed, and access_token None
-    assert resp["status"] == "refunded"
-    assert resp["access_status"] == "disputed"
-    assert resp["access_token"] is None
-    assert resp["genlayer"]["verdict"] == "INVALID"
-    # Payment events (traction) must NOT have increased!
-    assert len(state.payment_events) == initial_events_count
-
-
-def test_verify_payment_records_traction_on_valid_report(monkeypatch):
-    """Test that a valid SLA consensus unlocks report, grants access token, and records traction."""
-    from backend.app import main
-    from backend.app.core import state
-    from backend.app.schemas.payments import PaymentVerifyRequest
-    import time
-
-    test_inv_id = "inv_test_sla_valid_88"
-    test_secret = "inv_secret_test_sla_valid_123456"
-    test_invoice = {
-        "invoice_id": test_inv_id,
-        "invoice_secret": test_secret,
-        "status": "pending",
-        "amount": 0.005,
-        "amount_raw": "5000",
-        "symbol": "ETH-USDT",
-        "owner_wallet": "0xProviderCreator1",
-        "payer_address": "0xBuyerAgent1",
-        "buyer_wallet_address": "0xBuyerAgent1",
-        "split": None,
-        "expires_at": time.time() + 3600,
-    }
-    state.invoices_db[test_inv_id] = test_invoice
-
-    # Mock Arc settlement fetch & validation
-    monkeypatch.setattr(main, "fetch_circle_settlement", lambda sid: {
-        "status": "completed",
-        "amount": "5000",
-        "fromAddress": "0xBuyerAgent1",
-        "toAddress": "0xProviderCreator1"
-    })
-    monkeypatch.setattr(main, "validate_arc_payment", lambda inv, s, payer_address: None)
-    monkeypatch.setattr(main, "find_arc_batch_tx", lambda s: {"batch_tx": "0xtx888", "explorer_url": "https://testnet.arcscan.app/tx/0xtx888"})
-    monkeypatch.setattr(main, "_save_invoice", lambda inv: None)
-    monkeypatch.setattr(main, "_save_payment_ledger", lambda ledger: None)
-
-    initial_events_count = len(state.payment_events)
-
-    proof_valid = PaymentVerifyRequest(
-        settlement_id="settlement_test_valid_888",
-        invoice_secret=test_secret,
-        payer_address="0xBuyerAgent1",
-        simulate_hallucination=False
-    )
-    resp = main.verify_payment(test_inv_id, proof_valid)
-
-    assert resp["status"] == "paid"
-    assert resp["access_status"] in ("settlement_confirmed", "access_issued_pending_batch")
-    assert resp["access_token"] is not None
-    assert resp["genlayer"]["verdict"] == "VALID"
-    # Payment events (traction) MUST have increased by exactly 1!
-    assert len(state.payment_events) == initial_events_count + 1
-
-
+def test_report_hash_is_canonical():
+    left = json.dumps({"b": 2, "a": 1}, sort_keys=True, separators=(",", ":"))
+    right = json.dumps({"a": 1, "b": 2}, sort_keys=True, separators=(",", ":"))
+    assert hashlib.sha256(left.encode()).hexdigest() == hashlib.sha256(right.encode()).hexdigest()

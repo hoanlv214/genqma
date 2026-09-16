@@ -103,11 +103,11 @@ The Access column must match the operation's `x-qma-access` value in
 | POST | `/api/v1/oauth/register` | `public` | Register an MCP client (RFC 7591 dynamic registration) |
 | POST | `/api/v1/oauth/revoke` | `wallet-owner` | Revoke an MCP connection |
 | POST | `/api/v1/oauth/token` | `public` | Exchange a single-use authorization code (PKCE) for an MCP access token |
-| POST | `/api/v1/payment/invoice` | `public` | Create a provider/query/tier-bound invoice |
-| GET | `/api/v1/payment/invoices/{invoice_id}/status` | `invoice-owner` | Read invoice payment status |
+| POST | `/api/v1/payment/invoice` | `public` | Create a provider/query/tier-bound single-payment invoice |
+| GET | `/api/v1/payment/invoices/{invoice_id}/status` | `invoice-owner` | Read payment, GenLayer verdict, and sanitized Arc payout/refund status |
 | POST | `/api/v1/payment/quote` | `public` | Quote a provider-bound report |
 | GET | `/api/v1/payment/settlement/{settlement_id}` | `public` | Inspect public settlement evidence |
-| POST | `/api/v1/payment/verify` | `public` | Verify invoice payment proof |
+| POST | `/api/v1/payment/verify` | `public` | Verify one Circle payment, require finalized GenLayer verdict, then schedule creator payout or buyer refund |
 | POST | `/api/v1/payment/withdraw` | `signed-payload` | Submit a signed creator/Gateway withdrawal |
 | GET | `/api/v1/platform/payers` | `public` | List payer traction breakdown |
 | GET | `/api/v1/platform/payments` | `public` | List recent settled payments |

@@ -8,5 +8,6 @@ pandas==2.3.3
 scipy==1.16.3
 scikit-learn==1.8.0
 eth-account==0.13.7
+genlayer-py==0.18.0
 mcp>=1.10,<2
 starlette>=0.40,<1

@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
-import { API_BASE_URL } from "../services/api";
+import { API_BASE_URL, ApiError } from "../services/api";
 import { ensureArcTestnet, getInjectedWallet, shortAddress } from "../services/wallet";
 import { payX402Resource, prepareX402Payment, submitX402Payment, X402PaymentError, type PreparedX402Payment } from "../services/x402";
 import { createInvoice, verifyPayment } from "../services/invoices";
@@ -54,7 +54,6 @@ export function usePayment({
     genlayer: { status: "waiting", label: "Waiting" },
     report: { status: "waiting", label: "Waiting" },
   });
-  const [simulateHallucination, setSimulateHallucination] = useState(false);
   const [genlayerReceipt, setGenlayerReceipt] = useState<any>(null);
   const [payStatusText, setPayStatusText] = useState("");
   const [payErrorText, setPayErrorText] = useState("");
@@ -199,7 +198,7 @@ export function usePayment({
           buyer_wallet_address: wallet,
         });
       } else {
-        showToast(`Resumed invoice ${shortAddress(invoiceData.invoice_id)}. Continue with remaining split leg.`, "info");
+        showToast(`Resumed invoice ${shortAddress(invoiceData.invoice_id)} from its recorded payment state.`, "info");
       }
       const fullInvoice = {
         ...invoiceData,
@@ -231,13 +230,24 @@ export function usePayment({
         return;
       }
 
-      setPaymentStepStatus((prev) => ({
-        ...prev,
-        gateway: { status: "completed", label: "Funded" },
-        settlement: { status: "active", label: "Sign Settlement" },
-      }));
-      setPaymentStep("settlement");
-      setPayStatusText("Gateway funds confirmed. Ready for settlement signature.");
+      if (invoiceData.status === "verification_pending" && invoiceData.settlement_id) {
+        setPaymentStepStatus((prev) => ({
+          ...prev,
+          gateway: { status: "completed", label: "Funded" },
+          settlement: { status: "completed", label: "Settled" },
+          genlayer: { status: "waiting", label: "Retry available" },
+        }));
+        setPaymentStep("genlayer");
+        setPayStatusText("Payment is already settled. Retry GenLayer verification without signing or paying again.");
+      } else {
+        setPaymentStepStatus((prev) => ({
+          ...prev,
+          gateway: { status: "completed", label: "Funded" },
+          settlement: { status: "active", label: "Sign Settlement" },
+        }));
+        setPaymentStep("settlement");
+        setPayStatusText("Gateway funds confirmed. Ready for settlement signature.");
+      }
     } catch (err: any) {
       setPayErrorText(err.message || "Failed to initialize payment.");
       setPaymentStepStatus((prev) => ({ ...prev, wallet: { status: "failed", label: "Failed" } }));
@@ -390,6 +400,7 @@ export function usePayment({
 
   const signAndSettleX402 = async () => {
     if (!currentInvoice || !wallet || paySubmitting) return;
+    let settlementId = String(currentInvoice.settlement_id || "");
     setPaySubmitting(true);
     setPayErrorText("");
     setPayStatusText("Requesting EIP-712 payment authorization signature...");
@@ -410,8 +421,9 @@ export function usePayment({
       if (selfRecipientLeg) {
         throw new Error(`Connected wallet is the ${selfRecipientLeg.role || selfRecipientLeg.leg_id} split recipient (${selfRecipientLeg.pay_to}). Use a separate buyer wallet from the provider or treasury wallet.`);
       }
-      if (!splitLegs.length && sameAddress(wallet, sellerAddress)) {
-        throw new Error(`Connected wallet is the seller wallet (${sellerAddress}). Use a separate buyer wallet for report purchases.`);
+      const invoiceRecipient = String(currentInvoice.wallet_address || sellerAddress || "");
+      if (!splitLegs.length && sameAddress(wallet, invoiceRecipient)) {
+        throw new Error(`Connected wallet is the seller wallet (${invoiceRecipient}). Use a separate buyer wallet for report purchases.`);
       }
 
       const splitSettlements: any[] = splitLegs
@@ -425,7 +437,6 @@ export function usePayment({
           payer_address: leg.payer_address,
           gateway_status: leg.gateway_status,
         }));
-      let settlementId = "";
       let paidAmountUsdc: number | undefined;
 
       if (splitLegs.length) {
@@ -512,11 +523,16 @@ export function usePayment({
           }
         }
       } else {
-        const paidData = await payX402Resource(currentInvoice.arc_gateway_url, wallet);
-        settlementId = paidData.settlement_id || paidData.settlementId;
-        paidAmountUsdc = Number(paidData.amount_usdc || currentInvoice.amount);
-        if (!settlementId) throw new Error("Arc Gateway did not return a settlement id.");
-        saveLocalAction("x402_settlement", String(paidAmountUsdc || currentInvoice.amount), settlementId);
+        if (currentInvoice.settlement_id) {
+          settlementId = currentInvoice.settlement_id;
+          paidAmountUsdc = Number(currentInvoice.amount);
+        } else {
+          const paidData = await payX402Resource(currentInvoice.arc_gateway_url, wallet);
+          settlementId = paidData.settlement_id || paidData.settlementId;
+          paidAmountUsdc = Number(paidData.amount_usdc || currentInvoice.amount);
+          if (!settlementId) throw new Error("Arc Gateway did not return a settlement id.");
+          saveLocalAction("x402_settlement", String(paidAmountUsdc || currentInvoice.amount), settlementId);
+        }
       }
 
       setPaymentStep("genlayer");
@@ -526,31 +542,35 @@ export function usePayment({
         genlayer: { status: "active", label: "Consensus SLA" },
         report: { status: "waiting", label: "Waiting" },
       }));
-      setPayStatusText("Settlement confirmed. Calling GenLayer Intelligent Contract (0x0C24...08BD)... Fetching live MEXC feed & awaiting validator consensus...");
+      setPayStatusText("Settlement confirmed. Verifying the bound report with the GenLayer Intelligent Contract...");
 
       const verifyData: any = await verifyPayment(currentInvoice.invoice_id, {
         invoice_secret: currentInvoice.invoice_secret,
         payer_address: wallet,
         ...(settlementId ? { settlement_id: settlementId, amount_usdc: paidAmountUsdc } : {}),
         ...(splitSettlements.length ? { split_settlements: splitSettlements } : {}),
-        simulate_hallucination: simulateHallucination,
       });
 
       let glReceipt = verifyData.genlayer;
       setGenlayerReceipt(glReceipt);
 
-      // Handle GenLayer Autonomous Chargeback if SLA was violated / rejected
-      if (verifyData.status === "refunded" || glReceipt?.verdict === "INVALID") {
+      // Rejection blocks access. Refund is a separate Arc payout state and
+      // must never be inferred from the GenLayer verdict alone.
+      if (verifyData.status === "verification_rejected" || glReceipt?.verdict === "INVALID") {
         setPaymentStepStatus((prev) => ({
           ...prev,
           genlayer: { status: "failed", label: "SLA Violated" },
-          report: { status: "failed", label: "Chargeback Refunded" },
+          report: { status: "failed", label: "Access Blocked" },
         }));
         setPayStatusText("");
         setPayErrorText(
-          `GenLayer Autonomous Chargeback Triggered! Validators rejected the report: ${glReceipt?.reasoning || "Divergence from live exchange feed"}. 100% of escrowed funds (${glReceipt?.split_distribution?.refund_buyer_usdc || 0.005} USDC) refunded to buyer wallet. Access blocked, no report issued, zero traction recorded.`
+          `GenLayer validators rejected this report: ${glReceipt?.reasoning || "The report did not match authoritative evidence"}. Access is blocked and no report was issued. ${
+            verifyData.status === "refunded" || verifyData.arc_settlement?.status === "confirmed"
+              ? "The full payment has been refunded to the settlement payer."
+              : "The full refund is being processed on Arc; completion will be shown only after Circle confirms it."
+          }`
         );
-        showToast("GenLayer Shield: SLA Violated! 100% Autonomous Chargeback executed.", "error");
+        showToast("GenLayer Shield rejected the report. Access remains blocked.", "error");
         clearPendingInvoice(activeQuery, normalizeTierForCache(currentInvoice.tier), currentInvoice.provider_id || selectedProviderId, wallet);
         return;
       }
@@ -592,7 +612,7 @@ export function usePayment({
         txHash: verifyData.transaction_hash || prev.txHash,
         explorerUrl: verifyData.explorer_url || prev.explorerUrl,
       }));
-      setPayStatusText("GenLayer Consensus Approved (5/5 Validators). Escrow settled 80/20. Report unlocked.");
+      setPayStatusText("GenLayer returned a finalized VALID verdict for this report hash. Report unlocked.");
       setPaymentSuccess(true);
       sessionStorage.setItem(`qma_accessToken_${currentInvoice.invoice_id}`, verifyData.access_token);
       const invoiceQuery = currentInvoice?.query || activeQuery;
@@ -606,6 +626,30 @@ export function usePayment({
       );
       clearPendingInvoice(invoiceQuery, normalizeTierForCache(currentInvoice.tier), invoiceProviderId, wallet);
     } catch (err: any) {
+      if (err instanceof ApiError && err.status === 503 && settlementId) {
+        const pendingInvoice = {
+          ...currentInvoice,
+          status: "verification_pending",
+          settlement_id: settlementId,
+        };
+        setCurrentInvoice(pendingInvoice);
+        rememberPendingInvoice(
+          pendingInvoice,
+          activeQuery,
+          normalizeTierForCache(pendingInvoice.tier),
+          pendingInvoice.provider_id || selectedProviderId,
+          wallet,
+        );
+        setPaymentStep("genlayer");
+        setPaymentStepStatus((prev) => ({
+          ...prev,
+          settlement: { status: "completed", label: "Settled" },
+          genlayer: { status: "waiting", label: "Retry available" },
+          report: { status: "waiting", label: "Locked" },
+        }));
+        setPayErrorText("Payment is settled, but GenLayer has not returned a finalized verdict. Retry verification; no new signature or payment is required.");
+        return;
+      }
       setPayErrorText(err.message || "Settlement signature cancelled or failed.");
       setPaymentStepStatus((prev) => ({ ...prev, settlement: { status: "failed", label: "Failed" } }));
     } finally {
@@ -704,8 +748,6 @@ export function usePayment({
     recommendationTierPrice,
     recommendationTier,
     saveLocalAction,
-    simulateHallucination,
-    setSimulateHallucination,
     genlayerReceipt,
   };
 }

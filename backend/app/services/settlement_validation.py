@@ -38,7 +38,8 @@ def validate_arc_payment(invoice: dict, settlement: dict, payer_address: Optiona
         raise HTTPException(status_code=402, detail=rejected_msg)
 
     seller = normalize_address(settlement.get("toAddress"))
-    if seller != normalize_address(PAYMENT_WALLET_ADDRESS):
+    expected_seller = normalize_address(invoice.get("wallet_address") or PAYMENT_WALLET_ADDRESS)
+    if seller != expected_seller:
         raise HTTPException(status_code=400, detail="Settlement seller address does not match QMA seller wallet.")
 
     paid_amount = raw_token_to_float(str(settlement.get("amount", "0")), settlement_meta.get("decimals", 6))

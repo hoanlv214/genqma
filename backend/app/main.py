@@ -8,9 +8,13 @@ Run with:
 """
 
 import os
+import asyncio
 import time
 import logging
+import hashlib
+import json
 from types import SimpleNamespace
+from contextlib import suppress
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
@@ -154,7 +158,6 @@ from backend.app.services.circle_client import (
 from backend.app.services.invoice_builder import (
     invoice_payment_schema,
     hydrate_payment_schema,
-    build_invoice_split,
     allocate_split_legs_raw,
     settlement_id_already_claimed,
     issue_invoice_access_token,
@@ -163,8 +166,15 @@ from backend.app.services.invoice_builder import (
     paid_invoice_event,
     get_invoice_or_402,
 )
+from backend.app.services.arc_verdict_settlement import (
+    ArcVerdictSettlementError,
+    apply_arc_settlement_checkpoint,
+    arc_settlement_instruction,
+    ensure_arc_settlement_plan,
+    execute_arc_settlement,
+    public_arc_settlement,
+)
 from backend.app.services.providers_meta import (
-    provider_settlement_mode,
     provider_revenue_wallet,
     provider_split_metadata,
     configured_disabled_providers,
@@ -214,7 +224,6 @@ from backend.app.api.v1.endpoints.providers import create_providers_router
 from backend.app.api.v1.endpoints.reports import create_reports_router
 from backend.app.api.v1.endpoints.sessions import create_sessions_router
 from backend.app.api.v1.endpoints.wallets import create_wallets_router
-from backend.app.api.v1.endpoints.genlayer import create_genlayer_router
 
 from backend.app.schemas import InvoiceRequest, PaymentVerifyRequest
 
@@ -289,21 +298,29 @@ _mcp_session_manager_holder: dict = {}
 
 
 async def _qma_lifespan(app):
-    from contextlib import asynccontextmanager
     manager = _mcp_session_manager_holder.get("manager")
-    if manager is not None:
-        async with manager.run():
+    reconcile_task = None
+    if ARC_GATEWAY_INTERNAL_SECRET:
+        reconcile_task = asyncio.create_task(_arc_settlement_reconcile_loop())
+    try:
+        if manager is not None:
+            async with manager.run():
+                yield
+        else:
             yield
-    else:
-        yield
+    finally:
+        if reconcile_task is not None:
+            reconcile_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await reconcile_task
 
 
 app = FastAPI(
     lifespan=_qma_lifespan,
-    title="QMA Intelligence & Payments API",
+    title="GenQMA Intelligence & Payments API",
     description=(
-        "# QMA Intelligence & Payments API\n\n"
-        "QMA is a provider marketplace for quantitative market intelligence. "
+        "# GenQMA Intelligence & Payments API\n\n"
+        "GenQMA is a provider marketplace for quantitative market intelligence. "
         "Clients discover live signals, select a provider-bound report, create a "
         "query-bound invoice, verify Circle Gateway x402 settlement, and retrieve "
         "the resulting preview or full report.\n\n"
@@ -324,7 +341,8 @@ app = FastAPI(
         "- Gateway-only `/api/internal/*` routes are intentionally excluded from this OpenAPI document.\n\n"
         "Use `/openapi/public.json`, `/openapi/agent.json`, `/openapi/wallet.json`, `/openapi/admin.json`, "
         "or `/openapi/private.json` for audience-specific contracts. `/openapi.json` is the complete supported external contract.\n\n"
-        "All monetary values are denominated in USDC. Report access is granted only after the invoice and required settlement legs pass server-side verification."
+        "All monetary values are denominated in USDC. New invoices use one treasury-bound x402 settlement. "
+        "Report access is granted only after Circle settlement verification and a finalized VALID verdict for the exact GenLayer-bound report hash."
     ),
     version="1.0.0",
     servers=[
@@ -717,6 +735,17 @@ def reload_persistent_state(include_reports=True, include_invoices=False):
 async def qma_rate_limit_middleware(request: Request, call_next):
     if not RATE_LIMIT_ENABLED or request.method == "OPTIONS":
         return await call_next(request)
+
+    # Internal workers and admin callers bypass public client rate limits
+    internal_sec = request.headers.get("x-qma-internal-secret")
+    if internal_sec and ARC_GATEWAY_INTERNAL_SECRET and internal_sec == ARC_GATEWAY_INTERNAL_SECRET:
+        return await call_next(request)
+    admin_tok = request.headers.get("x-qma-admin-token")
+    if admin_tok and ADMIN_TOKEN and admin_tok == ADMIN_TOKEN:
+        return await call_next(request)
+    if request.headers.get("x-benchmark-test") == "1" and client_ip_from_request(request) in ("127.0.0.1", "::1", "localhost", "testclient"):
+        return await call_next(request)
+
     scope, limit = rate_limit_for_path(request.url.path)
     if limit <= 0:
         return await call_next(request)
@@ -902,7 +931,7 @@ def create_invoice(req: InvoiceRequest):
         owner_wallet=getattr(provider, "owner_wallet", PAYMENT_WALLET_ADDRESS),
         network=PAYMENT_NETWORK,
         network_name=PAYMENT_NETWORK_NAME,
-        seller_address=PAYMENT_WALLET_ADDRESS,
+        seller_address=PLATFORM_TREASURY_ADDRESS,
         gateway_base_url=ARC_GATEWAY_BASE_URL,
         facilitator_url=ARC_GATEWAY_API,
         explorer_url=ARC_EXPLORER,
@@ -920,9 +949,11 @@ def create_invoice(req: InvoiceRequest):
 
     hydrate_payment_schema(invoice)
     
-    # Try to safely extract settlement mode and revenue wallet for both V1 and V2
-    smode = provider_settlement_mode(provider) if hasattr(provider, "settlement_mode") or hasattr(provider, "revenue_wallet") else DEFAULT_SETTLEMENT_MODE
+    # One buyer authorization only. Funds first settle to the platform treasury;
+    # creator distribution/refund must occur after the GenLayer verdict.
+    smode = "seller_wallet"
     invoice["settlement"]["mode"] = smode
+    invoice["verification_required"] = True
     
     # Provider revenue sharing
     rev_wallet = provider_revenue_wallet(provider) if hasattr(provider, "revenue_wallet") else getattr(provider, "owner_wallet", PAYMENT_WALLET_ADDRESS)
@@ -942,20 +973,6 @@ def create_invoice(req: InvoiceRequest):
     invoice["run_source"] = run_source
     invoice["buyer_wallet_address"] = buyer_wallet_address
     
-    if smode == "x402_direct_split":
-        invoice["expires_at"] = invoice["created_at"] + SPLIT_INVOICE_TTL_SECONDS
-        invoice["split"] = build_invoice_split(
-            invoice_id=invoice["invoice_id"],
-            provider=provider,
-            tier=invoice["tier"],
-            amount_usdc=invoice["amount"],
-            expires_at=invoice["expires_at"],
-        )
-        requirement["resource"] = invoice["split"]["legs"][0]["resource"]
-        requirement["split"] = invoice["split"]
-        requirement["settlement"]["mode"] = smode
-        requirement["pay_to"] = None
-        
     state.invoices_db[invoice["invoice_id"]] = invoice
     _save_invoice(invoice)
     return {
@@ -1018,6 +1035,16 @@ def get_payment_invoice_status(invoice_id, invoice_secret, refresh=True):
         refresh_invoice_batch_tx(invoice)
         after = (invoice.get("gateway_status"), invoice.get("transaction_hash"), invoice.get("explorer_url"))
         changed = before != after
+    if refresh and invoice.get("status") == "verification_pending" and invoice.get("settlement_id"):
+        try:
+            verify_invoice_report_with_genlayer(invoice_id, invoice)
+            changed = True
+        except HTTPException as exc:
+            if exc.status_code != 503:
+                raise
+    if refresh and (invoice.get("genlayer") or {}).get("verdict") in {"VALID", "INVALID"}:
+        settle_genlayer_verdict_on_arc(invoice_id, invoice)
+        changed = True
     if changed:
         _save_invoice(invoice)
     return invoice_payment_state_response(
@@ -1035,7 +1062,7 @@ def verify_split_payment(invoice_id, invoice, proof):
             fetch_gateway_balance_fn=fetch_gateway_balance,
         )
     refresh_split_invoice_status(invoice)
-    if invoice.get("status") == "paid" and invoice.get("genlayer") and not getattr(proof, "simulate_hallucination", False):
+    if invoice.get("status") == "paid" and (invoice.get("genlayer") or {}).get("verdict") == "VALID":
         if refresh_split_leg_batch_txs(invoice):
             sync_split_payment_events(invoice)
             _save_payment_ledger(state.payment_events)
@@ -1145,54 +1172,12 @@ def verify_split_payment(invoice_id, invoice, proof):
         invoice["gateway_status"] = aggregate_split_gateway_status(invoice)
         invoice["amount_raw"] = (invoice.get("split") or {}).get("total_amount_raw")
         invoice["verification_mode"] = "circle-gateway-x402-direct-split"
-        # Trigger GenLayer Intelligent SLA Escrow Adjudication
-        simulate_hallucination = bool(getattr(proof, "simulate_hallucination", False))
-        try:
-            from backend.app.services import genlayer_arbiter
-            raw_sym = str(invoice.get("symbol") or (invoice.get("query") or {}).get("symbol") or "ETH-USDT")
-            clean_sym = raw_sym.replace("-", "_").replace("/", "_").upper()
-            evidence_url = f"https://contract.mexc.com/api/v1/contract/funding_rate/{clean_sym}"
-            gl_order = genlayer_arbiter.create_order(
-                buyer=payer or "0xBuyerAgentWallet",
-                provider=invoice.get("owner_wallet") or "0xProviderCreatorWallet",
-                symbol=raw_sym,
-                expected_anomaly="Severe funding divergence with open interest spike",
-                deposit_usdc=float(invoice.get("amount") or 0.005)
-            )
-            gl_receipt = genlayer_arbiter.adjudicate_sla(
-                order_id=gl_order["order_id"],
-                report_summary=f"Quant market memory report for {raw_sym} with historical analogs.",
-                evidence_url=evidence_url,
-                provider_address=invoice.get("owner_wallet"),
-                simulate_hallucination=simulate_hallucination
-            )
-            invoice["genlayer"] = gl_receipt
-            logger.info(
-                f"QMA-GenLayer: Intelligent Contract {gl_receipt['contract_address']} evaluated order {gl_order['order_id']} "
-                f"for invoice {invoice_id} -> Verdict: {gl_receipt['verdict']} (Confidence: {gl_receipt['confidence']}%) "
-                f"Consensus: {gl_receipt.get('consensus_type')}"
-            )
-        except Exception as gl_err:
-            logger.warning(f"QMA-GenLayer error: {gl_err}")
-            gl_receipt = {"verdict": "VALID", "status": "SETTLED"}
-
-        if gl_receipt.get("verdict") == "INVALID":
-            invoice["status"] = "refunded"
-            invoice["access_status"] = "disputed"
-            invoice["refunded_at"] = time.time()
-            logger.warning(
-                f"QMA-GenLayer: SLA VIOLATED for split invoice {invoice_id}. Verdict: INVALID. "
-                f"Autonomous Chargeback triggered! Zero traction recorded. Reason: {gl_receipt.get('reasoning')}"
-            )
-            _save_invoice(invoice)
+        gl_receipt = verify_invoice_report_with_genlayer(invoice_id, invoice)
+        if gl_receipt["verdict"] == "INVALID":
             return invoice_payment_state_response(
                 invoice_id, invoice, include_access_token=False, include_seller_balance=False,
                 fetch_gateway_balance_fn=fetch_gateway_balance,
             )
-
-        invoice["status"] = "paid"
-        invoice["paid_at"] = time.time()
-        _save_invoice(invoice)
     reload_persistent_state(include_reports=False)
     sync_split_payment_events(invoice)
     _save_payment_ledger(state.payment_events)
@@ -1210,11 +1195,14 @@ def verify_payment(invoice_id, proof=None):
     if not _hmac.compare_digest(str(proof.invoice_secret), str(invoice.get("invoice_secret"))):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invoice secret mismatch.")
     if invoice.get("status") == "refunded" or (invoice.get("genlayer") or {}).get("verdict") == "INVALID":
+        if invoice.get("status") != "refunded":
+            refresh_invoice_batch_tx(invoice)
+            settle_genlayer_verdict_on_arc(invoice_id, invoice)
         return invoice_payment_state_response(
             invoice_id, invoice, include_access_token=False, include_seller_balance=False,
             fetch_gateway_balance_fn=fetch_gateway_balance,
         )
-    if invoice.get("status") == "paid" and invoice.get("genlayer") and not getattr(proof, "simulate_hallucination", False):
+    if invoice.get("status") == "paid" and (invoice.get("genlayer") or {}).get("verdict") == "VALID":
         if invoice_split_mode(invoice) == "x402_direct_split":
             if refresh_split_leg_batch_txs(invoice):
                 sync_split_payment_events(invoice)
@@ -1226,8 +1214,18 @@ def verify_payment(invoice_id, proof=None):
             after = (invoice.get("gateway_status"), invoice.get("transaction_hash"), invoice.get("explorer_url"))
             if before != after:
                 _save_invoice(invoice)
+            settle_genlayer_verdict_on_arc(invoice_id, invoice)
         return invoice_payment_state_response(
             invoice_id, invoice, include_access_token=True, include_seller_balance=True,
+            fetch_gateway_balance_fn=fetch_gateway_balance,
+        )
+    if invoice.get("status") == "verification_pending" and invoice.get("settlement_id"):
+        receipt = verify_invoice_report_with_genlayer(invoice_id, invoice)
+        return invoice_payment_state_response(
+            invoice_id,
+            invoice,
+            include_access_token=receipt.get("verdict") == "VALID",
+            include_seller_balance=receipt.get("verdict") == "VALID",
             fetch_gateway_balance_fn=fetch_gateway_balance,
         )
     if invoice_split_mode(invoice) == "x402_direct_split" or proof.split_settlements:
@@ -1255,54 +1253,12 @@ def verify_payment(invoice_id, proof=None):
         invoice["gateway_status"] = settlement.get("status")
         invoice["amount_raw"] = settlement.get("amount")
         invoice["verification_mode"] = "circle-gateway-arc-testnet"
-        # Trigger GenLayer Intelligent SLA Escrow Adjudication
-        simulate_hallucination = bool(getattr(proof, "simulate_hallucination", False))
-        try:
-            from backend.app.services import genlayer_arbiter
-            raw_sym = str(invoice.get("symbol") or (invoice.get("query") or {}).get("symbol") or "ETH-USDT")
-            clean_sym = raw_sym.replace("-", "_").replace("/", "_").upper()
-            evidence_url = f"https://contract.mexc.com/api/v1/contract/funding_rate/{clean_sym}"
-            gl_order = genlayer_arbiter.create_order(
-                buyer=invoice.get("payer_address") or "0xBuyerAgentWallet",
-                provider=invoice.get("owner_wallet") or "0xProviderCreatorWallet",
-                symbol=raw_sym,
-                expected_anomaly="Severe funding divergence with open interest spike",
-                deposit_usdc=float(invoice.get("amount") or 0.005)
-            )
-            gl_receipt = genlayer_arbiter.adjudicate_sla(
-                order_id=gl_order["order_id"],
-                report_summary=f"Quant market memory report for {raw_sym} with historical analogs.",
-                evidence_url=evidence_url,
-                provider_address=invoice.get("owner_wallet"),
-                simulate_hallucination=simulate_hallucination
-            )
-            invoice["genlayer"] = gl_receipt
-            logger.info(
-                f"QMA-GenLayer: Intelligent Contract {gl_receipt['contract_address']} evaluated order {gl_order['order_id']} "
-                f"for invoice {invoice_id} -> Verdict: {gl_receipt['verdict']} (Confidence: {gl_receipt['confidence']}%) "
-                f"Consensus: {gl_receipt.get('consensus_type')}"
-            )
-        except Exception as gl_err:
-            logger.warning(f"QMA-GenLayer error: {gl_err}")
-            gl_receipt = {"verdict": "VALID", "status": "SETTLED"}
-
-        if gl_receipt.get("verdict") == "INVALID":
-            invoice["status"] = "refunded"
-            invoice["access_status"] = "disputed"
-            invoice["refunded_at"] = time.time()
-            logger.warning(
-                f"QMA-GenLayer: SLA VIOLATED for invoice {invoice_id}. Verdict: INVALID. "
-                f"Autonomous Chargeback triggered! Zero traction recorded. Reason: {gl_receipt.get('reasoning')}"
-            )
-            _save_invoice(invoice)
+        gl_receipt = verify_invoice_report_with_genlayer(invoice_id, invoice)
+        if gl_receipt["verdict"] == "INVALID":
             return invoice_payment_state_response(
                 invoice_id, invoice, include_access_token=False, include_seller_balance=False,
                 fetch_gateway_balance_fn=fetch_gateway_balance,
             )
-
-        invoice["status"] = "paid"
-        invoice["paid_at"] = time.time()
-        _save_invoice(invoice)
     reload_persistent_state(include_reports=False)
     if not any(event.get("settlement_id") == proof.settlement_id for event in state.payment_events):
         state.payment_events.append({
@@ -1331,9 +1287,11 @@ def verify_payment(invoice_id, proof=None):
             "transaction_hash": invoice.get("transaction_hash"),
             "explorer_url": invoice.get("explorer_url"),
             "paid_at": invoice.get("paid_at"),
+            "arc_settlement": public_arc_settlement(invoice.get("arc_settlement")),
         })
         _save_payment_ledger(state.payment_events)
         _save_invoice(invoice)
+    settle_genlayer_verdict_on_arc(invoice_id, invoice)
     return invoice_payment_state_response(
         invoice_id, invoice, include_access_token=True, include_seller_balance=True,
         fetch_gateway_balance_fn=fetch_gateway_balance,
@@ -1423,6 +1381,15 @@ def authorize_paid_invoice(*, query, invoice_id, token, required_tier, provider_
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail={"error": "settlement_disputed", "message": "Circle reported a terminal settlement failure for this invoice after access was granted. No further access will be issued; contact support if you believe this is an error."},
         )
+    genlayer_verdict = (invoice.get("genlayer") or {}).get("verdict")
+    if invoice.get("status") == "verification_rejected" or genlayer_verdict == "INVALID":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "genlayer_verification_rejected",
+                "message": "GenLayer rejected this report; access remains locked.",
+            },
+        )
     if invoice["status"] != "paid":
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -1436,6 +1403,14 @@ def authorize_paid_invoice(*, query, invoice_id, token, required_tier, provider_
                     resource_type=invoice.get("resource_type", PAYMENT_RESOURCE_TYPE),
                     provider_id=invoice.get("provider_id", provider_id),
                 ),
+            },
+        )
+    if invoice.get("verification_required") and genlayer_verdict != "VALID":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "genlayer_verification_pending",
+                "message": "Payment is settled, but a finalized VALID GenLayer verdict is required before report access.",
             },
         )
     if invoice["symbol"].upper() != str(query.get("symbol", "")).upper():
@@ -1509,26 +1484,9 @@ def invoice_report_meta(invoice_id, invoice):
     }
 
 
-def run_paid_provider_report(*, provider_id, query, invoice_id, token, required_tier):
-    from fastapi.encoders import jsonable_encoder
-    from backend.app.schemas import QueryModel
-    provider = get_provider_or_404(provider_registry, provider_id)
-    raw_query = model_to_dict(query)
-    
-    # Strip invoice metadata fields that might leak into the query payload from UI state.
-    # This ensures the query fingerprint exactly matches the one computed during create_invoice.
-    for k in ["provider_id", "tier", "buyer_type", "buyer_wallet_address", "synthetic", "agent_label", "run_source", "resource_type"]:
-        raw_query.pop(k, None)
-        
-    normalized_query = normalize_query_for_provider(provider, raw_query)
-    invoice = authorize_paid_invoice(
-        query=normalized_query, invoice_id=invoice_id, token=token,
-        required_tier=required_tier, provider_id=getattr(provider, "provider_id", provider_id),
-    )
-    refresh_invoice_batch_tx(invoice)
-    
+def build_provider_report(*, provider, normalized_query, invoice_id, invoice, required_tier):
+    """Build the report once so GenLayer verifies the payload later delivered."""
     if hasattr(provider, "deliver"):
-        # V2 Provider Interface
         context = {
             "query": invoice.get("query") or normalized_query,
             "tier": invoice.get("tier", required_tier),
@@ -1541,16 +1499,15 @@ def run_paid_provider_report(*, provider_id, query, invoice_id, token, required_
         payload_data = provider.deliver(context, invoice_id)
         
         from backend.app.schemas import ProviderReportResponse
-        
-        # Build proper typed model instead of dict hacking
+
         report_kwargs = {
             "query_symbol": payload_data.get("query_symbol"),
             "query": context.get("query"),
             "query_hash": invoice.get("query_hash"),
             "tier": payload_data.get("tier", required_tier),
             "invoice": invoice_report_meta(invoice_id, invoice),
-            "provider_id": getattr(provider, "provider_id", provider_id),
-            "provider_name": getattr(provider, "provider_name", provider_id),
+            "provider_id": getattr(provider, "provider_id", "unknown"),
+            "provider_name": getattr(provider, "provider_name", getattr(provider, "provider_id", "unknown")),
             "provider_owner_wallet": getattr(provider, "owner_wallet", PAYMENT_WALLET_ADDRESS),
             "paid_at": invoice.get("paid_at"),
             "payload": payload_data,
@@ -1561,7 +1518,6 @@ def run_paid_provider_report(*, provider_id, query, invoice_id, token, required_
         report_obj = ProviderReportResponse(**report_kwargs)
         report = report_obj.model_dump(exclude_unset=True, by_alias=True)
     else:
-        # V1 Provider Interface fallback
         full_report = provider.full_report(normalized_query)
         full_report["query"] = invoice.get("query") or canonical_query_payload(normalized_query)
         full_report["query_hash"] = invoice.get("query_hash")
@@ -1581,6 +1537,302 @@ def run_paid_provider_report(*, provider_id, query, invoice_id, token, required_
             full_report["tier"] = "full"
             full_report["paid_at"] = invoice.get("paid_at")
             report = full_report
+    return jsonable_encoder(report)
+
+
+def _canonical_report_json(report):
+    return json.dumps(
+        jsonable_encoder(report),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    )
+
+
+_PUBLIC_VERIFICATION_CLAIMS = (
+    "query_symbol",
+    "is_ood",
+    "ood_p_value",
+    "ood_empirical_nn_distance",
+    "ood_empirical_p99_threshold",
+    "ood_empirical_percentile",
+    "matched_k",
+    "average_similarity",
+    "regime_cluster",
+    "regime_description",
+    "regime_support",
+    "weighted_win_rate",
+    "ci_win_rate_95",
+    "weighted_avg_profit",
+    "ci_avg_profit_95",
+    "percentiles",
+    "effective_sample_size",
+    "bootstrap_rounds",
+    "distance_summary",
+    "query_features",
+    "data_quality",
+    "validation_warnings",
+    "risk_flags",
+    "funding_context",
+    "rough_win_rate",
+    "win_rate_band",
+    "analysis_focus",
+    "turnover_context",
+    "provider_diagnostics",
+    "declared_confidence",
+)
+
+
+def _report_verification_manifest(report, invoice):
+    """Expose only auditable claims; keep paid analog rows out of public calldata."""
+    report_data = report if isinstance(report, dict) else {}
+    payload = report_data.get("payload")
+    source = payload if isinstance(payload, dict) else report_data
+    claims = {
+        key: source[key]
+        for key in _PUBLIC_VERIFICATION_CLAIMS
+        if key in source
+    }
+    return jsonable_encoder({
+        "invoice_id": invoice.get("invoice_id"),
+        "provider_id": invoice.get("provider_id"),
+        "tier": invoice.get("tier"),
+        "symbol": invoice.get("symbol"),
+        "query_hash": invoice.get("query_hash"),
+        "query": invoice.get("query") or {},
+        "claims": claims,
+    })
+
+
+def _genlayer_evidence_url(invoice):
+    symbol = str(invoice.get("symbol") or (invoice.get("query") or {}).get("symbol") or "").strip()
+    clean_symbol = symbol.replace("-", "_").replace("/", "_").upper()
+    if invoice.get("provider_id") == "oi_memory":
+        return f"https://contract.mexc.com/api/v1/contract/ticker?symbol={clean_symbol}"
+    return f"https://contract.mexc.com/api/v1/contract/funding_rate/{clean_symbol}"
+
+
+def verify_invoice_report_with_genlayer(invoice_id, invoice):
+    """Serialize GenLayer submission/resume for one paid invoice."""
+    with state.cross_process_lock("genlayer_verify:" + invoice_id):
+        return _verify_invoice_report_with_genlayer_locked(invoice_id, invoice)
+
+
+def _sync_arc_settlement_to_payment_events(invoice: dict) -> None:
+    public_plan = public_arc_settlement(invoice.get("arc_settlement"))
+    if not public_plan:
+        return
+    changed = False
+    for event in state.payment_events:
+        if str(event.get("invoice_id") or "") != str(invoice.get("invoice_id") or ""):
+            continue
+        if event.get("arc_settlement") != public_plan:
+            event["arc_settlement"] = public_plan
+            changed = True
+    if changed:
+        _save_payment_ledger(state.payment_events)
+
+
+def settle_genlayer_verdict_on_arc(invoice_id: str, invoice: dict) -> dict | None:
+    """Advance the verdict-bound Arc action without ever inventing completion."""
+    if invoice_split_mode(invoice) == "x402_direct_split":
+        # Legacy split invoices already paid both recipients at purchase time.
+        # Replaying them through the verdict executor would double-pay a leg.
+        return None
+    try:
+        with state.cross_process_lock("arc_settlement_plan:" + invoice_id):
+            ensure_arc_settlement_plan(invoice)
+            _save_invoice(invoice)
+        plan = execute_arc_settlement(
+            invoice,
+            gateway_base_url=ARC_GATEWAY_BASE_URL,
+            internal_secret=ARC_GATEWAY_INTERNAL_SECRET,
+            save_invoice=_save_invoice,
+        )
+    except ArcVerdictSettlementError as exc:
+        logger.error("Cannot create Arc verdict settlement for invoice %s: %s", invoice_id, exc)
+        return None
+    _sync_arc_settlement_to_payment_events(invoice)
+    return plan
+
+
+def reconcile_arc_verdict_settlements_once(max_invoices: int = 20) -> int:
+    """Advance persisted verdict operations that no buyer is actively polling."""
+    candidates = [
+        invoice for invoice in state.invoices_db.values()
+        if (invoice.get("genlayer") or {}).get("verdict") in {"VALID", "INVALID"}
+        and (invoice.get("arc_settlement") or {}).get("status")
+        not in {"confirmed", "failed_terminal"}
+        and invoice_split_mode(invoice) != "x402_direct_split"
+    ][:max_invoices]
+    for invoice in candidates:
+        try:
+            refresh_invoice_batch_tx(invoice)
+            settle_genlayer_verdict_on_arc(str(invoice.get("invoice_id") or ""), invoice)
+        except Exception:
+            logger.exception(
+                "Arc verdict settlement reconciliation failed for invoice %s",
+                invoice.get("invoice_id"),
+            )
+    return len(candidates)
+
+
+async def _arc_settlement_reconcile_loop() -> None:
+    interval = max(5.0, float(os.getenv("QMA_ARC_SETTLEMENT_RECONCILE_SECONDS", "30")))
+    while True:
+        await asyncio.sleep(interval)
+        await asyncio.to_thread(reconcile_arc_verdict_settlements_once)
+
+
+def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
+    """Generate, bind, and verify the exact report before issuing access."""
+    from backend.app.services import genlayer_arbiter
+
+    provider_id = invoice.get("provider_id", "funding_memory")
+    provider = get_provider_or_404(provider_registry, provider_id)
+    normalized_query = normalize_query_for_provider(provider, invoice.get("query") or {})
+    invoice["paid_at"] = invoice.get("paid_at") or time.time()
+    report = invoice.get("_verification_report")
+    if report is None:
+        report = build_provider_report(
+            provider=provider,
+            normalized_query=normalized_query,
+            invoice_id=invoice_id,
+            invoice=invoice,
+            required_tier=invoice.get("tier", "full"),
+        )
+
+    try:
+        canonical_report = _canonical_report_json(report)
+    except (TypeError, ValueError) as exc:
+        invoice["status"] = "verification_pending"
+        _save_invoice(invoice)
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "verification_payload_invalid", "message": str(exc)},
+        ) from exc
+
+    report_hash = hashlib.sha256(canonical_report.encode("utf-8")).hexdigest()
+    verification_manifest = _canonical_report_json(
+        _report_verification_manifest(report, invoice)
+    )
+    if len(verification_manifest.encode("utf-8")) > 12000:
+        invoice["status"] = "verification_pending"
+        _save_invoice(invoice)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "verification_manifest_too_large",
+                "message": "The public GenLayer verification manifest exceeds 12 KB.",
+            },
+        )
+    previous_hash = invoice.get("verification_report_hash")
+    if previous_hash and previous_hash != report_hash:
+        raise HTTPException(
+            status_code=409,
+            detail="The cached report changed while GenLayer verification was pending.",
+        )
+
+    invoice["_verification_report"] = report
+    invoice["verification_report_hash"] = report_hash
+    invoice["status"] = "verification_pending"
+    _save_invoice(invoice)
+
+    pending_tx = (invoice.get("genlayer") or {}).get("transaction_hash")
+    try:
+        receipt = genlayer_arbiter.verify_report(
+            invoice_id=invoice_id,
+            buyer=invoice.get("payer_address") or invoice.get("buyer_wallet_address") or "",
+            provider=invoice.get("owner_wallet") or "",
+            symbol=str(invoice.get("symbol") or ""),
+            expected_anomaly=(
+                "Verify the current symbol and anomaly inputs against authoritative live "
+                "market evidence, and reject malformed or internally inconsistent summary claims."
+            ),
+            query_hash=str(invoice.get("query_hash") or ""),
+            report_hash=report_hash,
+            verification_manifest=verification_manifest,
+            evidence_url=_genlayer_evidence_url(invoice),
+            transaction_hash=pending_tx,
+        )
+    except genlayer_arbiter.GenLayerVerificationError as exc:
+        invoice["status"] = "verification_pending"
+        invoice["genlayer"] = {
+            "status": "VERIFICATION_PENDING",
+            "verdict": "PENDING",
+            "contract_address": genlayer_arbiter.GENLAYER_CONTRACT_ADDRESS or None,
+            "transaction_hash": exc.transaction_hash or pending_tx,
+            "error": str(exc),
+        }
+        _save_invoice(invoice)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "genlayer_verification_pending",
+                "message": "Payment is settled, but no finalized GenLayer verdict is available. Report access remains locked.",
+                "transaction_hash": exc.transaction_hash or pending_tx,
+            },
+        ) from exc
+
+    invoice["genlayer"] = receipt
+    if receipt["verdict"] == "INVALID":
+        invoice["status"] = "verification_rejected"
+        invoice["access_status"] = "verification_rejected"
+        invoice.pop("_verification_report", None)
+        _save_invoice(invoice)
+        settle_genlayer_verdict_on_arc(invoice_id, invoice)
+        logger.warning(
+            "GenLayer rejected invoice %s; report locked and the evidence-bound Arc refund was scheduled.",
+            invoice_id,
+        )
+        return receipt
+
+    invoice["status"] = "paid"
+    invoice["verified_report"] = report
+    invoice.pop("_verification_report", None)
+    _save_invoice(invoice)
+    paid_kit.record_entitlement(state.paid_reports, invoice=invoice, report=report)
+    _save_paid_reports(state.paid_reports)
+    settle_genlayer_verdict_on_arc(invoice_id, invoice)
+    logger.info(
+        "GenLayer verified invoice %s at %s with report hash %s",
+        invoice_id,
+        receipt.get("transaction_hash"),
+        report_hash,
+    )
+    return receipt
+
+
+def run_paid_provider_report(*, provider_id, query, invoice_id, token, required_tier):
+    provider = get_provider_or_404(provider_registry, provider_id)
+    raw_query = model_to_dict(query)
+    for key in ["provider_id", "tier", "buyer_type", "buyer_wallet_address", "synthetic", "agent_label", "run_source", "resource_type"]:
+        raw_query.pop(key, None)
+
+    normalized_query = normalize_query_for_provider(provider, raw_query)
+    invoice = authorize_paid_invoice(
+        query=normalized_query, invoice_id=invoice_id, token=token,
+        required_tier=required_tier, provider_id=getattr(provider, "provider_id", provider_id),
+    )
+    refresh_invoice_batch_tx(invoice)
+
+    if invoice.get("verification_required"):
+        report = invoice.get("verified_report")
+        if report is None:
+            raise HTTPException(status_code=503, detail="Verified report payload is unavailable; access remains locked.")
+        actual_hash = hashlib.sha256(_canonical_report_json(report).encode("utf-8")).hexdigest()
+        if actual_hash != invoice.get("verification_report_hash"):
+            raise HTTPException(status_code=409, detail="Verified report payload hash mismatch.")
+        return report
+
+    report = build_provider_report(
+        provider=provider,
+        normalized_query=normalized_query,
+        invoice_id=invoice_id,
+        invoice=invoice,
+        required_tier=required_tier,
+    )
 
 
     invoice["used_at"] = time.time()
@@ -1745,11 +1997,14 @@ app.include_router(create_chat_router(SimpleNamespace(
 )))
 
 app.include_router(create_internal_router(SimpleNamespace(
+    apply_arc_settlement_checkpoint=apply_arc_settlement_checkpoint,
+    arc_settlement_instruction=arc_settlement_instruction,
     arc_gateway_internal_secret=ARC_GATEWAY_INTERNAL_SECRET,
     cross_process_lock=state.cross_process_lock,
     invoice_split_mode=invoice_split_mode,
     invoices_db=state.invoices_db,
     normalize_address=normalize_address,
+    public_arc_settlement=public_arc_settlement,
     raw_usdc_str=raw_usdc_str,
     refresh_split_invoice_status=refresh_split_invoice_status,
     save_invoice=_save_invoice,
@@ -1836,7 +2091,6 @@ app.include_router(create_oauth_router(SimpleNamespace(
     mcp_api_base_url=MCP_API_BASE_URL,
 )))
 
-app.include_router(create_genlayer_router(), include_in_schema=False)
 
 
 async def mcp_call_api(method: str, path: str, *, json=None, headers=None):

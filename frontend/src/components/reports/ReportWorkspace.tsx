@@ -1,4 +1,6 @@
 import { FundingReportRenderer } from "./FundingReportRenderer";
+import { OIReportRenderer } from "./OIReportRenderer";
+import { GENLAYER_CONTRACT_ADDRESS, GENLAYER_EXPLORER_URL } from "../../services/genlayer";
 
 interface ReportWorkspaceProps {
   activeQuery: any;
@@ -21,13 +23,20 @@ interface ReportWorkspaceProps {
 
 export function ReportWorkspace(props: ReportWorkspaceProps) {
   const { activeQuery, unlockedReport, reportCollapsed, reportDetailsOpen, setReportDetailsOpen, reportAnalogs, isPreviewReport, formatCompactMoney, formatDateTime, formatRawPercent, shortAddress, reportWinRateValue, reportWinRateCiLabel, reportAvgProfitLabel, reportAvgProfitCiLabel, reportPercentileRows } = props;
+  const genlayerReceipt = unlockedReport?.invoice?.genlayer;
+  const isGenLayerVerified = genlayerReceipt?.verdict === "VALID" && genlayerReceipt?.status === "VERIFIED";
+  const contractAddress = genlayerReceipt?.contract_address || GENLAYER_CONTRACT_ADDRESS;
+  const reportProviderId = unlockedReport?.provider_id || unlockedReport?.invoice?.provider_id;
+  const contractExplorerUrl = contractAddress
+    ? `${GENLAYER_EXPLORER_URL.replace(/\/$/, "")}/address/${contractAddress}`
+    : GENLAYER_EXPLORER_URL;
   return (
     <>
       {/* REPORT VIEW */}
       {unlockedReport && !reportCollapsed ? (
         <div className="report-workspace-content" id="report-view-element" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* GenLayer Intelligent Contract Shield Verification Badge */}
-          <div style={{
+          {/* Never show a verification badge for legacy/unverified cached reports. */}
+          {isGenLayerVerified ? <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -41,32 +50,35 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
                 <div style={{ fontSize: '13px', fontWeight: 600, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>Verified by GenLayer Intelligent Contract</span>
                   <span style={{ fontSize: '11px', background: 'rgba(16, 185, 129, 0.2)', color: '#4ade80', padding: '2px 8px', borderRadius: '999px', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
-                    SLA Passed (96% Confidence)
+                    VALID ({genlayerReceipt.confidence}% Confidence)
                   </span>
                 </div>
                 <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                  Strict Equivalence Consensus · 5/5 AI Validators · Zero-Oracle Live Feed Validation
+                  GenLayer run_nondet Consensus · Hash-Bound Report · Live Evidence Validation
                 </div>
               </div>
             </div>
             <a
-              href="https://studio.genlayer.com"
+              href={contractExplorerUrl}
               target="_blank"
               rel="noreferrer"
               style={{ fontSize: '12px', color: '#818cf8', textDecoration: 'underline', fontWeight: 500 }}
             >
-              Contract 0x0C24...08BD ↗
+              Contract {shortAddress(contractAddress)} ↗
             </a>
-          </div>
+          </div> : null}
 
-          {/* UIRegistry routing logic would go here in Phase 2. For now, hardcode the Funding Provider */}
-          <FundingReportRenderer report={unlockedReport} activeQuery={activeQuery} />
+          {reportProviderId === "oi_memory" ? (
+            <OIReportRenderer report={unlockedReport} activeQuery={activeQuery} />
+          ) : (
+            <FundingReportRenderer report={unlockedReport} activeQuery={activeQuery} />
+          )}
 
           {/* Platform Envelope - Universal for all providers */}
           {unlockedReport.invoice && (
             <div className="report-container">
               <div className="report-section section-span-all">
-                <div className="section-header">Platform Escrow Status</div>
+                <div className="section-header">Platform Payment Status</div>
                 <div className="risk-list">
                   {unlockedReport.invoice?.explorer_url && unlockedReport.invoice?.transaction_hash ? (
                     <div className="risk-item">

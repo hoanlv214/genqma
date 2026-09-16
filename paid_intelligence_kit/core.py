@@ -198,7 +198,8 @@ def payment_requirement(
         "facilitator": facilitator_url,
         "explorer": explorer_url,
         "expires_in_seconds": ttl_seconds,
-        "split_legs": [], # Placeholder for Two-Toll routing
+        # Kept in the public shape for compatibility with legacy invoices.
+        "split_legs": [],
     }
 
 

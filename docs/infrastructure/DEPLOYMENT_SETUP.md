@@ -165,7 +165,7 @@ SUPABASE_SERVICE_ROLE_KEY=<preview-service-role-key>
 SUPABASE_SCHEMA=public
 
 # Payment contract and lifecycle
-QMA_DEFAULT_SETTLEMENT_MODE=x402_direct_split
+QMA_DEFAULT_SETTLEMENT_MODE=seller_wallet
 QMA_SETTLEMENT_RAIL=circle_gateway_x402
 QMA_PAYMENT_RESOURCE_TYPE=qma_signal_report
 QMA_PAYMENT_NETWORK=eip155:5042002
@@ -177,6 +177,13 @@ QMA_PRICE_COMPLEXITY_UPLIFT_MAX=0.25
 QMA_INVOICE_TTL_SECONDS=900
 QMA_SPLIT_INVOICE_TTL_SECONDS=1800
 QMA_ACCESS_TOKEN_TTL_SECONDS=300
+QMA_ARC_SETTLEMENT_RECONCILE_SECONDS=30
+
+# GenLayer report verifier (API service only)
+GENLAYER_NETWORK=studio-next
+GENLAYER_RPC_ENDPOINT=https://studio-next.genlayer.com/api
+GENLAYER_CONTRACT_ADDRESS=<deployed-GenQMAShield-address>
+GENLAYER_PRIVATE_KEY=<contract-admin-relayer-private-key>
 
 # Arc/Circle public configuration
 QMA_CIRCLE_GATEWAY_API=https://gateway-api-testnet.circle.com
@@ -212,6 +219,14 @@ QMA_ARC_SELLER_ADDRESS=0xYourPlatformTreasuryWallet
 QMA_CIRCLE_GATEWAY_API=https://gateway-api-testnet.circle.com
 ARC_TESTNET_RPC=https://rpc.testnet.arc.network
 QMA_ARC_EXPLORER=https://testnet.arcscan.app
+CIRCLE_CONSOLE_API_KEY=<gateway-only-circle-api-key>
+CIRCLE_ENTITY_SECRET=<gateway-only-circle-entity-secret>
+TREASURY_WALLET_ID=<circle-wallet-id-whose-address-matches-QMA_ARC_SELLER_ADDRESS>
+QMA_GATEWAY_MAX_FEE_RAW=2010000
+
+# Required only for an SCA treasury. Register this EOA as a Gateway delegate first.
+# QMA_GATEWAY_DELEGATE_WALLET_ID=<circle-eoa-wallet-id>
+# QMA_GATEWAY_DELEGATE_ADDRESS=0xRegisteredGatewayDelegate
 
 # Only if overriding the Arc defaults
 GATEWAY_WALLET=0x0077777d7EBA4688BDeF3E311b846F25870A19B9
@@ -224,16 +239,15 @@ QMA_PRICE_FULL_USDC=0.005
 QMA_ARC_DEFAULT_DEPOSIT_USDC=1.00
 QMA_ARC_APPROVE_USDC=10.00
 
-# Only for enabled server-side payout/withdraw execution
+# Only for the legacy withdrawal relay (not verdict-bound payout/refund)
 QMA_WITHDRAW_RELAYER_ADDRESS=0xYourRelayerAddress
 QMA_WITHDRAW_RELAYER_PRIVATE_KEY=<gateway-only-relayer-private-key>
-# QMA_CREATOR_CLAIM_PAYOUT_PRIVATE_KEY=<gateway-only-claim-private-key>
 ```
 
 The gateway reads `GATEWAY_WALLET`; `QMA_ARC_GATEWAY_WALLET` is the backend
 configuration name and is not the gateway-side override. `PORT` is supplied by
-Render automatically. With explicit split and internal secrets configured, do
-not add `QMA_ACCESS_TOKEN_SECRET` to the gateway.
+Render automatically. With the verdict settlement executor and internal secret
+configured, do not add `QMA_ACCESS_TOKEN_SECRET` to the gateway.
 
 #### Vercel — React frontend
 
@@ -243,6 +257,9 @@ Set these non-secret variables in both Production and Preview environments:
 VITE_QMA_API_BASE_URL=https://qma-api-rebuild.onrender.com
 VITE_QMA_ENV=preview
 VITE_QMA_SYNTHETIC_RUN=false
+VITE_GENLAYER_CONTRACT_ADDRESS=<same-deployed-GenQMAShield-address>
+VITE_GENLAYER_STUDIO_URL=https://studio-next.genlayer.com
+VITE_GENLAYER_EXPLORER_URL=https://explorer-studio-dev.genlayer.com
 ```
 
 Vercel must not receive `QMA_ACCESS_TOKEN_SECRET`, any split/internal secret,

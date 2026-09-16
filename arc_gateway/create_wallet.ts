@@ -1,9 +1,9 @@
 import circle from "@circle-fin/developer-controlled-wallets";
 import * as path from "node:path";
-import * as dotenv from "dotenv";
+import { loadEnvFile } from "./load-env.js";
 
 const envPath = path.resolve(process.cwd(), "..", ".env");
-dotenv.config({ path: envPath });
+loadEnvFile(envPath);
 
 const apiKey = process.env.CIRCLE_CONSOLE_API_KEY;
 const entitySecret = process.env.CIRCLE_ENTITY_SECRET;

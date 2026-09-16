@@ -3,7 +3,7 @@ name = "qma"
 version = "2.0.1"
 description = "Quantitative Market Anomaly (QMA) - Autonomous Agent Marketplace & Intelligence Protocol"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi==0.124.4",
     "scalar-fastapi==1.8.2",
@@ -15,6 +15,7 @@ dependencies = [
     "scipy==1.16.3",
     "scikit-learn==1.8.0",
     "eth-account==0.13.7",
+    "genlayer-py==0.18.0",
     "mcp>=1.10,<2",
     "starlette>=0.40,<1",
 ]

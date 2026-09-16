@@ -64,6 +64,9 @@ def summarize_payment_events(events: list, provider_split_metadata_fn) -> dict:
             "creator_pending_batch_usdc": 0.0,
             "platform_fee_usdc": 0.0,
             "_platform_fee_final_usdc": 0.0,
+            "_creator_auto_reserved_usdc": 0.0,
+            "creator_auto_paid_usdc": 0.0,
+            "creator_auto_pending_usdc": 0.0,
             "platform_pending_batch_usdc": 0.0,
             "creator_claimable_usdc": 0.0,
             "withdrawal_mode": "creator_initiated_claim_planned",
@@ -85,10 +88,21 @@ def summarize_payment_events(events: list, provider_split_metadata_fn) -> dict:
             ps["_platform_fee_final_usdc"] += final_amount
             ps["withdrawal_mode"] = "direct_gateway_split"
         else:
-            ps["creator_earned_usdc"] += amount * ps["creator_share_bps"] / 10000
-            ps["_creator_earned_final_usdc"] += final_amount * ps["creator_share_bps"] / 10000
+            creator_amount = amount * ps["creator_share_bps"] / 10000
+            creator_final_amount = final_amount * ps["creator_share_bps"] / 10000
+            ps["creator_earned_usdc"] += creator_amount
+            ps["_creator_earned_final_usdc"] += creator_final_amount
             ps["platform_fee_usdc"] += amount * ps["platform_share_bps"] / 10000
             ps["_platform_fee_final_usdc"] += final_amount * ps["platform_share_bps"] / 10000
+            arc_settlement = event.get("arc_settlement") or {}
+            if arc_settlement.get("action") == "creator_payout":
+                ps["_creator_auto_reserved_usdc"] += creator_final_amount
+                if arc_settlement.get("status") == "confirmed":
+                    ps["creator_auto_paid_usdc"] += creator_amount
+                else:
+                    ps["creator_auto_pending_usdc"] += creator_amount
+                if ps["withdrawal_mode"] == "creator_initiated_claim_planned":
+                    ps["withdrawal_mode"] = "automatic_genlayer_settlement"
 
         from backend.app.services.creator_claims import creator_claim_amounts
         claim_amounts_data = creator_claim_amounts(provider_id, ps.get("owner_wallet"))
@@ -96,7 +110,9 @@ def summarize_payment_events(events: list, provider_split_metadata_fn) -> dict:
         ps["creator_claim_pending_usdc"] = claim_amounts_data["pending_usdc"]
         ps["creator_claimable_usdc"] = 0.0 if ps["withdrawal_mode"] == "direct_gateway_split" else max(
             0.0,
-            ps["_creator_earned_final_usdc"] - claim_amounts_data["reserved_usdc"],
+            ps["_creator_earned_final_usdc"]
+            - ps["_creator_auto_reserved_usdc"]
+            - claim_amounts_data["reserved_usdc"],
         )
         ps["creator_pending_batch_usdc"] = max(
             0.0,
@@ -147,7 +163,9 @@ def summarize_payment_events(events: list, provider_split_metadata_fn) -> dict:
         ps.pop("_invoice_ids", None)
         ps.pop("_creator_earned_final_usdc", None)
         ps.pop("_platform_fee_final_usdc", None)
+        ps.pop("_creator_auto_reserved_usdc", None)
         direct_split = ps.get("withdrawal_mode") == "direct_gateway_split"
+        automatic_settlement = ps.get("withdrawal_mode") == "automatic_genlayer_settlement"
         provider_breakdown.append({
             **ps,
             "revenue_usdc": round(ps["revenue_usdc"], 6),
@@ -158,9 +176,13 @@ def summarize_payment_events(events: list, provider_split_metadata_fn) -> dict:
             "creator_claimable_usdc": round(ps["creator_claimable_usdc"], 6),
             "creator_claimed_usdc": round(ps.get("creator_claimed_usdc", 0), 6),
             "creator_claim_pending_usdc": round(ps.get("creator_claim_pending_usdc", 0), 6),
+            "creator_auto_paid_usdc": round(ps.get("creator_auto_paid_usdc", 0), 6),
+            "creator_auto_pending_usdc": round(ps.get("creator_auto_pending_usdc", 0), 6),
             "split_note": (
                 "Direct Gateway split. Creator leg settles to provider Gateway balance."
                 if direct_split else
+                "Creator share is reserved for verdict-bound automatic Arc settlement; no manual claim is required."
+                if automatic_settlement else
                 "Ledger estimate only. Funds settle to platform treasury; creator claim execution is not live yet."
             ),
         })

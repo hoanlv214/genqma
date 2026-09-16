@@ -434,8 +434,6 @@ export function AppPage({
     recommendationTierPrice,
     recommendationTier,
     saveLocalAction,
-    simulateHallucination,
-    setSimulateHallucination,
     genlayerReceipt,
   } = usePayment({
     wallet,
@@ -906,8 +904,6 @@ export function AppPage({
               signAndSettleX402={signAndSettleX402}
               handleDepositToGateway={handleDepositToGateway}
               activeQuery={activeQuery}
-              simulateHallucination={simulateHallucination}
-              setSimulateHallucination={setSimulateHallucination}
               genlayerReceipt={genlayerReceipt}
             />
             <DepositModal

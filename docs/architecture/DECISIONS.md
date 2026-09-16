@@ -13,7 +13,26 @@ Reversibility:
 
 ---
 
-## D-05 - Settlement - `x402_direct_split` is the current rebuild default
+## D-06 - Settlement - one x402 payment followed by GenLayer verification
+
+Why:
+Two direct payment legs required two buyer signatures and could expose a report
+before its actual payload was verified. New GenQMA invoices now settle once to the
+platform treasury and bind the generated report to a finalized GenLayer verdict.
+
+Impact:
+`VALID` unlocks the exact report hash. `INVALID` and unavailable/indeterminate
+verification remain locked. Creator payout and buyer refund require a separate,
+idempotent Arc executor and an Arc transaction receipt; neither is inferred from
+the GenLayer state.
+
+Reversibility:
+Medium. Stored legacy split invoices remain readable and reconcilable, but new
+invoice creation is intentionally single-payment.
+
+---
+
+## D-05 - Settlement - `x402_direct_split` was the rebuild default (superseded by D-06)
 
 Why:
 The active rebuild configuration and payment flow create independent creator
@@ -22,10 +41,8 @@ provider revenue wallet while preserving the treasury-ledger path for legacy or
 fallback providers.
 
 Impact:
-New backend, frontend, agent, and deployment documentation must describe
-`x402_direct_split` as the current default. `treasury_ledger` remains a
-supported legacy/fallback mode and must not be described as the active default
-without an environment-specific check.
+This decision is retained for history. It no longer describes new invoice
+creation; legacy split invoices remain supported for reconciliation only.
 
 Reversibility:
 Medium. The invoice carries settlement mode, so a coordinated configuration

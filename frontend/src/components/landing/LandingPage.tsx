@@ -263,8 +263,8 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
           <h2>Curated Historical Memory for AI Agents</h2>
           <p className="landing-proof-desc">
             Raw anomaly signals answer "What is happening now?", but lack context. QMA provides machine-readable
-            historical memory packages as queryable APIs. Agents unlock evidence on-demand with instant micro-settlement,
-            giving creators a direct two-toll revenue split (80% Creator / 20% Platform).
+            historical memory packages as queryable APIs. Agents use one x402 authorization, and the exact report
+            remains locked until GenLayer returns a finalized VALID verdict for its bound hash.
           </p>
         </div>
         <div className="landing-proof-card animate-on-scroll delay-200">
@@ -273,7 +273,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
           <div className="landing-proof-item"><span className="landing-proof-label">Pricing</span><strong className="landing-proof-value">Pay per query ($0.001 preview / $0.005 full)</strong></div>
           <div className="landing-proof-item"><span className="landing-proof-label">Budget Safety</span><strong className="landing-proof-value">Strict session spending caps in USDC</strong></div>
           <div className="landing-proof-item"><span className="landing-proof-label">Access</span><strong className="landing-proof-value">Per-query cryptographic entitlement</strong></div>
-          <div className="landing-proof-item"><span className="landing-proof-label">Settlement</span><strong className="landing-proof-value">Two-toll direct split (80/20) on Arc Testnet</strong></div>
+          <div className="landing-proof-item"><span className="landing-proof-label">Payment</span><strong className="landing-proof-value">One x402 authorization on Arc Testnet</strong></div>
           <div className="landing-proof-item proof-tech"><span className="landing-proof-label">Tech</span><strong className="landing-proof-value">Arc Testnet USDC / Circle Gateway / x402-style API</strong></div>
         </div>
       </section>
@@ -361,7 +361,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
               {terminalStep >= 3 && (
                 <span className="terminal-line terminal-command fade-in-line">
                   <span className="t-success" style={{ color: "var(--accent)" }}>✓</span>
-                  <span>Two-toll payment settled (0.005 USDC, 80/20 split)</span>
+                  <span>Single x402 payment settled (0.005 USDC)</span>
                 </span>
               )}
               {terminalStep >= 4 && (
@@ -383,7 +383,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
         <div>
           <p className="landing-builders-desc">
             Package historical datasets into query-based intelligence APIs. QMA handles x402 settlement,
-            query snapshot fingerprinting, and direct 80/20 revenue splits to your wallet.
+            query/report hash binding, and creator earnings accounting after a valid report verdict.
           </p>
           <div className="landing-actions" style={{ marginTop: 24 }}>
             <button type="button" className="btn-green landing-primary text-btn" onClick={() => onNavigate("marketplace")}>Join Provider Beta</button>

@@ -9,7 +9,7 @@ from backend.app.schemas.payments import (
     SplitSettlementProof,
     WithdrawRequest,
 )
-from backend.app.schemas.internal import RecordInternalSplitLegRequest
+from backend.app.schemas.internal import ArcSettlementCheckpointRequest, RecordInternalSplitLegRequest
 from backend.app.schemas.providers import (
     CreatorApplicationRequest,
     CreatorClaimRequest,
@@ -98,6 +98,7 @@ __all__ = [
     "PayerBreakdownItem",
     "WithdrawRequest",
     "RecordInternalSplitLegRequest",
+    "ArcSettlementCheckpointRequest",
     "AdminPublicConfigResponse",
     "AgentDecisionResponse",
     "AgentRecommendationsResponse",

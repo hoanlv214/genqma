@@ -18,7 +18,7 @@ QMA must **not** prematurely pitch itself as a "multi-domain decentralized intel
 | Layer | Strategic Definition | Operational Scope Today |
 | :--- | :--- | :--- |
 | **Immediate Product** | **Market Memory for Crypto Agents** | Queryable analog engine retrieving historical funding/OI regime distributions per query. |
-| **Business Model** | **Curated Quantitative Intelligence Marketplace** | Two-toll revenue split (80% Creator / 20% Platform) for verified quantitative signals. |
+| **Business Model** | **Curated Quantitative Intelligence Marketplace** | One buyer payment followed by verdict-gated creator/platform accounting. |
 | **Long-Term Vision** | **Agent Commerce Runtime** | Chain-abstracted micropayment infrastructure for autonomous paid services. |
 
 ---
@@ -102,7 +102,7 @@ For autonomous AI agents, existing solutions fail:
 | **Core Economic Loop** | AI cites content $\rightarrow$ Creator gets paid | Agent detects anomaly $\rightarrow$ Buys historical context $\rightarrow$ Receives decision evidence |
 | **Hero Narrative** | Creator monetization for AI citations | Autonomous agent decision enablement |
 | **Marketplace Status** | Live creator network | Curated provider beta |
-| **Runtime Invariants** | Deterministic settlement receipts | Two-toll direct split (80/20) + query snapshot fingerprint |
+| **Runtime Invariants** | Deterministic settlement receipts | One x402 authorization + query/report hash-bound GenLayer verification |
 
 ---
 
@@ -114,7 +114,7 @@ timeline
     section P0: Trust & Truth
         Stable Deployment : 99.9% uptime on public APIs
         Commercial Claim Sync : Runtime ($0.001/$0.005) vs Docs vs Manifests
-        Revenue Split Sync : 80/20 default verified across contracts
+        Payout Executor : Arc receipts for creator payout and buyer refund
         Test Isolation : 100% test isolation without ambient Supabase dependencies
     section P1: Activation & UX
         Free Sample Report : Immediate JSON sample prior to wallet connect
@@ -130,16 +130,16 @@ timeline
 
 ### P0 — Trust & Commercial Truth (Immediate Gate)
 1. **Public API Reliability:** Eliminate 503 Service Unavailable errors on public Render endpoints.
-2. **Harmonize Pricing & Splits:**
+2. **Harmonize Pricing & Settlement:**
    - Runtime default: `$0.001` (Preview) / `$0.005` (Full).
-   - Revenue split: `80% Creator / 20% Platform Treasury` across all documentation, manifests, and contracts.
+   - Never claim creator payout or buyer refund until an Arc transaction receipt exists.
 3. **Dataset Transparency:** Clearly label sample historical CSVs as baseline demonstration models; avoid claiming "validated alpha" until the outcome tracking pipeline (`funding_provider.py:211`, `oi_provider.py:246`) is calibrated.
 4. **Test Suite Hygiene:** Isolate environment variables in `tests/` so tests pass deterministically without ambient Supabase connections.
 
 ### P1 — User Activation & Product Experience
 1. **Zero-Friction Sample Report:** Allow developers to view an interactive sample report without wallet connection.
 2. **Transparent Pipeline Visualization:** Render the exact deterministic chain:
-   $$\text{Anomaly Detected} \longrightarrow \text{Historical Analogs Matched} \longrightarrow \text{Agent Decision (BUY/SKIP)} \longrightarrow \text{Two-Toll Settlement} \longrightarrow \text{Report Unlocked}$$
+   $$\text{Anomaly Detected} \longrightarrow \text{Agent Decision (BUY/SKIP)} \longrightarrow \text{One x402 Payment} \longrightarrow \text{GenLayer Verdict} \longrightarrow \text{Report Unlocked or Rejected}$$
 3. **Telemetry Separation:** Maintain strict boundaries between:
    - First-party synthetic/engine volume.
    - External autonomous agent volume.

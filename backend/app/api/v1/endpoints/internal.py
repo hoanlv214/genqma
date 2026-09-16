@@ -9,7 +9,7 @@ from fastapi import APIRouter, Body, Depends, Header, HTTPException, Security
 
 from backend.app.core.security_schemes import qma_internal_secret_header
 from backend.app.core.openapi_responses import documented_error
-from backend.app.schemas import RecordInternalSplitLegRequest
+from backend.app.schemas import ArcSettlementCheckpointRequest, RecordInternalSplitLegRequest
 
 router = APIRouter(tags=["Internal gateway"])
 
@@ -23,6 +23,42 @@ def create_internal_router(deps: SimpleNamespace) -> APIRouter:
         if not hmac.compare_digest(str(x_qma_internal_secret or ""), deps.arc_gateway_internal_secret):
             raise HTTPException(status_code=403, detail="Internal gateway secret required.")
         return True
+
+    @migrated.get("/api/internal/invoices/{invoice_id}/verdict-settlement", include_in_schema=False)
+    def get_internal_verdict_settlement(
+        invoice_id: str,
+        _internal_auth: bool = Depends(require_internal_gateway_secret),
+    ):
+        with deps.cross_process_lock("arc_settlement:" + invoice_id):
+            invoice = deps.invoices_db.get(invoice_id)
+            if not invoice:
+                raise HTTPException(status_code=404, detail="Invoice not found.")
+            try:
+                instruction = deps.arc_settlement_instruction(invoice)
+            except ValueError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            deps.save_invoice(invoice)
+            return instruction
+
+    @migrated.post("/api/internal/invoices/{invoice_id}/verdict-settlement/checkpoint", include_in_schema=False)
+    def record_internal_verdict_settlement_checkpoint(
+        invoice_id: str,
+        payload: ArcSettlementCheckpointRequest,
+        _internal_auth: bool = Depends(require_internal_gateway_secret),
+    ):
+        with deps.cross_process_lock("arc_settlement:" + invoice_id):
+            invoice = deps.invoices_db.get(invoice_id)
+            if not invoice:
+                raise HTTPException(status_code=404, detail="Invoice not found.")
+            try:
+                plan = deps.apply_arc_settlement_checkpoint(
+                    invoice,
+                    payload.model_dump(exclude_none=True),
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            deps.save_invoice(invoice)
+            return deps.public_arc_settlement(plan)
 
     @migrated.get("/api/internal/invoices/{invoice_id}/split-leg/{leg_id}", include_in_schema=False)
     def get_internal_split_leg(

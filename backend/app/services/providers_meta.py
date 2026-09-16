@@ -225,6 +225,7 @@ def payment_events_for_provider(
                 "transaction_hash": invoice.get("transaction_hash"),
                 "explorer_url": invoice.get("explorer_url"),
                 "paid_at": invoice.get("paid_at"),
+                "arc_settlement": invoice.get("arc_settlement"),
             })
     unique = {}
     for event in events:
@@ -254,11 +255,33 @@ def build_provider_stats(
     creator_direct_final = sum(float(event.get("amount_usdc") or 0) for event in final_events if (event.get("split_leg") or {}).get("role") == "creator")
     platform_direct_final = sum(float(event.get("amount_usdc") or 0) for event in final_events if (event.get("split_leg") or {}).get("role") == "platform")
     direct_split = creator_direct > 0 or platform_direct > 0
+    auto_events = [
+        event for event in events
+        if (event.get("arc_settlement") or {}).get("action") == "creator_payout"
+    ]
+    auto_reserved = sum(
+        float(event.get("amount_usdc") or 0) * share_bps / 10000
+        for event in auto_events
+        if event in final_events
+    )
+    auto_paid = sum(
+        float(event.get("amount_usdc") or 0) * share_bps / 10000
+        for event in auto_events
+        if (event.get("arc_settlement") or {}).get("status") == "confirmed"
+    )
+    auto_pending = sum(
+        float(event.get("amount_usdc") or 0) * share_bps / 10000
+        for event in auto_events
+        if (event.get("arc_settlement") or {}).get("status") != "confirmed"
+    )
     report_count = len({event.get("invoice_id") or payment_event_key(event) for event in events})
     earned = creator_direct if direct_split else revenue * share_bps / 10000
     earned_final = creator_direct_final if direct_split else final_revenue * share_bps / 10000
     claim_amounts_data = creator_claim_amounts(provider_id, provider.owner_wallet)
-    claimable = 0.0 if direct_split else max(0.0, earned_final - claim_amounts_data["reserved_usdc"])
+    claimable = 0.0 if direct_split else max(
+        0.0,
+        earned_final - auto_reserved - claim_amounts_data["reserved_usdc"],
+    )
     revenue_wallet = provider_revenue_wallet(provider)
     creator_gateway_balance = fetch_gateway_balance_cached(revenue_wallet) if direct_split and revenue_wallet else None
     tier_counts = {"preview": 0, "full": 0, "legacy": 0}
@@ -296,8 +319,14 @@ def build_provider_stats(
         "creator_claimable_usdc": round(claimable, 6),
         "creator_claimed_usdc": claim_amounts_data["paid_usdc"],
         "creator_claim_pending_usdc": claim_amounts_data["pending_usdc"],
+        "creator_auto_paid_usdc": round(auto_paid, 6),
+        "creator_auto_pending_usdc": round(auto_pending, 6),
         "creator_gateway_balance": creator_gateway_balance,
-        "withdrawal_mode": "direct_gateway_split" if direct_split else "creator_initiated_claim_planned",
+        "withdrawal_mode": (
+            "direct_gateway_split" if direct_split else
+            "automatic_genlayer_settlement" if auto_events else
+            "creator_initiated_claim_planned"
+        ),
         "split_note": (
             "Direct Gateway split. Creator earnings settle directly to provider Gateway balance."
             if direct_split else

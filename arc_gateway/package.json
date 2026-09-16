@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "tsx server.ts",
-    "decode-batch": "tsx decode-batch.ts"
+    "decode-batch": "tsx decode-batch.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test verdict-settlement.test.ts"
   },
   "dependencies": {
     "@circle-fin/developer-controlled-wallets": "^10.8.0",

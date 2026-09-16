@@ -416,8 +416,8 @@ export function MarketplaceReview({
                 <strong className="marketplace-summary-value">Arc Testnet USDC</strong>
               </div>
               <div className="marketplace-summary-item">
-                <span className="marketplace-summary-label">Default split</span>
-                <strong className="marketplace-summary-value">80% creator / 20% platform</strong>
+                <span className="marketplace-summary-label">Default accounting</span>
+                <strong className="marketplace-summary-value">80% creator / 20% platform · payout receipt required</strong>
               </div>
               <div className="marketplace-summary-item">
                 <span className="marketplace-summary-label">Review mode</span>

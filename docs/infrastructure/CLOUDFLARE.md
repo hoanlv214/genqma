@@ -39,7 +39,7 @@ checking the public contract and environment variables.
 3. Add records:
 
 ```text
-CNAME qma      -> qma-three.vercel.app              Proxied
+CNAME qma      -> genqma.vercel.app              Proxied
 CNAME api      -> qma-api.onrender.com              Proxied
 CNAME gateway  -> qma-arc-gateway.onrender.com      Proxied
 ```

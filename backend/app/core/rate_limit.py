@@ -16,6 +16,8 @@ def client_ip_from_request(request: Request) -> str:
 
 
 def rate_limit_for_path(path: str) -> tuple[str, int]:
+    if path in ("/api/v1/health", "/health", "/healthz", "/metrics"):
+        return "health", 0
     if path.startswith("/api/v1/payment/verify"):
         return "payment_verify", int(os.getenv("QMA_RATE_LIMIT_PAYMENT_VERIFY_PER_MIN", "8"))
     if path.startswith("/api/v1/payment/invoice"):

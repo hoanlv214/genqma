@@ -20,3 +20,23 @@ class RecordInternalSplitLegRequest(BaseModel):
     gateway_status: Optional[str] = Field(default=None, examples=["completed"])
     transaction_hash: Optional[str] = Field(default=None, examples=["0x" + "cd" * 32])
     explorer_url: Optional[str] = Field(default=None, examples=["https://testnet.arcscan.app/tx/0x" + "cd" * 32])
+
+
+class ArcSettlementCheckpointRequest(BaseModel):
+    """Progress checkpoint emitted by the authenticated Arc sidecar."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    operation_id: str = Field(..., min_length=12, max_length=240)
+    status: str = Field(..., min_length=3, max_length=40)
+    action: Optional[str] = Field(default=None, max_length=40)
+    recipient: Optional[str] = Field(default=None, max_length=80)
+    transfer_amount_raw: Optional[str] = Field(default=None, max_length=80)
+    source_gateway_status: Optional[str] = Field(default=None, max_length=40)
+    attestation: Optional[str] = Field(default=None, max_length=500_000)
+    operator_signature: Optional[str] = Field(default=None, max_length=10_000)
+    circle_transaction_id: Optional[str] = Field(default=None, max_length=160)
+    circle_transaction_state: Optional[str] = Field(default=None, max_length=40)
+    transaction_hash: Optional[str] = Field(default=None, max_length=160)
+    explorer_url: Optional[str] = Field(default=None, max_length=300)
+    error: Optional[str] = Field(default=None, max_length=500)

@@ -256,12 +256,13 @@ The policy model is a valuable platform asset. Its current trust boundary is mix
 |---|---|---|
 | Quote generation | Implemented | Provider-bound, tier-aware, complexity-adjusted USDC quote |
 | Invoice creation | Implemented | Binds provider, normalized query hash, resource type, tier, amount, buyer provenance, TTL, nonce, and secret |
-| Direct revenue split | Implemented | Exact raw-unit creator/platform legs, default 80/20, independent x402 resources |
+| Single buyer payment | Implemented | New invoices require one x402 authorization to the platform treasury |
+| Creator/platform distribution | Pending settlement executor | No payout is considered complete without an Arc transaction receipt |
 | x402 challenge and settlement | Implemented | Arc Gateway returns challenges, verifies authorization, settles through Circle batching, and records authoritative receipt |
-| Split-leg reservation | Implemented | Internal lookup/reserve/release/record endpoints avoid concurrent duplicate processing |
+| Legacy split-leg compatibility | Retained | Existing split invoices can still be reconciled; new invoices do not create split legs |
 | Settlement verification | Implemented | Checks accepted status, exact amount, exact recipient, payer consistency, signed sidecar receipt, and authoritative Circle data |
 | Replay protection | Implemented | Settlement ID claim check plus per-leg/invoice idempotency |
-| Partial payment recovery | Implemented | Invoice exposes paid and missing legs; clients can resume only missing legs |
+| Verification retry | Implemented | A settled invoice can resume pending GenLayer verification without another signature or payment |
 | Ambiguous outcome reconciliation | Implemented | SDK queries invoice status and stops rather than retrying an uncertain payment |
 | Access token issuance | Implemented | HMAC token bound to invoice, provider, query, tier, and settlement |
 | Settlement reconciliation | Implemented | Refreshes Circle status/batch transactions and can mark later terminal failures disputed |
@@ -275,13 +276,11 @@ The policy model is a valuable platform asset. Its current trust boundary is mix
 ```text
 pending
   |
-  +-- one required split leg paid --> partial_paid
-  |
-  +-- all required legs accepted --> paid
-  |                                  |
-  |                                  +-- access_issued_pending_batch
-  |                                  +-- settlement_confirmed
-  |                                  +-- disputed (later terminal failure)
+  +-- x402 settlement accepted --> verification_pending
+                                     |
+                                     +-- GenLayer VALID --> paid + access token
+                                     +-- GenLayer INVALID --> verification_rejected (locked)
+                                     +-- RPC/timeout --> verification_pending (locked/retryable)
   |
   +-- TTL exceeded before completion --> expired
 ```

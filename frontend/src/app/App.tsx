@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { LandingPage } from "../components/landing/LandingPage";
 import { AppPage } from "../components/reports/AppPage";
-import { AppDemoPage } from "../components/demo/AppDemoPage";
 import { AuthorizePage } from "../components/connect/AuthorizePage";
 import { MarketplaceReview } from "../components/marketplace/MarketplaceReview";
 import { ProfileOrdersPage } from "../components/profile/ProfileOrdersPage";
@@ -31,14 +30,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    document.body.classList.remove("landing-body", "body", "marketplace-body", "profile-body", "traction-body", "notfound-body", "app-demo-body");
+    document.body.classList.remove("landing-body", "body", "marketplace-body", "profile-body", "traction-body", "notfound-body");
 
     if (route === "landing") {
       document.body.classList.add("landing-body");
     } else if (route === "app") {
       document.body.classList.add("body");
-    } else if (route === "app_demo") {
-      document.body.classList.add("app-demo-body");
     } else if (route === "marketplace") {
       document.body.classList.add("marketplace-body");
     } else if (route === "profile" || route === "connect") {
@@ -52,10 +49,9 @@ export function App() {
 
   return (
     <WalletProvider>
-      <AgentWalletProvider enabled={["app", "app_demo", "marketplace", "profile", "traction"].includes(route)}>
+      <AgentWalletProvider enabled={["app", "marketplace", "profile", "traction"].includes(route)}>
         {route === "landing" && <LandingPage onNavigate={navigate} />}
         {route === "app" && <AppPage onNavigate={navigate} />}
-        {route === "app_demo" && <AppDemoPage onNavigate={navigate} />}
         {route === "connect" && <AuthorizePage />}
         {route === "marketplace" && <MarketplaceReview onNavigate={navigate} />}
         {route === "profile" && <ProfileOrdersPage onNavigate={navigate} />}

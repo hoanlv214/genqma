@@ -213,7 +213,7 @@ export function AuthorizePage() {
       <div className="connect-page-root">
         {/* Navigation */}
         <nav className="connect-nav">
-          <a href="/app_demo" className="connect-nav-brand">
+          <a href="/app" className="connect-nav-brand">
             <div className="connect-logo-badge">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
@@ -228,8 +228,8 @@ export function AuthorizePage() {
           </a>
 
           <div style={{ display: "flex", gap: 10 }}>
-            <a href="/app_demo" className="connect-nav-btn">
-              ← Launch Console Demo
+            <a href="/app" className="connect-nav-btn">
+              ← Open GenQMA App
             </a>
             <a href="/app" className="connect-nav-btn">
               Classic App
@@ -576,7 +576,7 @@ export function AuthorizePage() {
           )}
 
           <div style={{ textAlign: "center", marginTop: 16 }}>
-            <a href="/app_demo" style={{ fontSize: 12, color: "#64748b", textDecoration: "none" }}>
+            <a href="/app" style={{ fontSize: 12, color: "#64748b", textDecoration: "none" }}>
               Cancel & Return to Console
             </a>
           </div>

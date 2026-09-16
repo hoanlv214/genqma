@@ -81,7 +81,7 @@ def create_payments_router(deps: SimpleNamespace) -> APIRouter:
         invoice_secret: Optional[str] = Query(default=None),
         refresh: bool = Query(default=True),
     ):
-        """Returns the authoritative resumable payment state for one invoice."""
+        """Returns the authoritative resumable payment, GenLayer verdict, and sanitized Arc payout/refund state for one invoice."""
         secret = invoice_secret_header or invoice_secret
         if not secret or len(secret) < 16:
             raise HTTPException(status_code=400, detail="invoice_secret header X-QMA-Invoice-Secret or query parameter is required (min length 16)")
@@ -91,9 +91,9 @@ def create_payments_router(deps: SimpleNamespace) -> APIRouter:
             refresh=refresh,
         )
 
-    @migrated.post("/api/v1/payment/verify", response_model=InvoicePaymentStateResponse, response_model_exclude_unset=True, tags=["Payments & settlement"], summary="Verify invoice payment", responses=documented_errors(400, 402, 403, 404, 409, 429, 500))
+    @migrated.post("/api/v1/payment/verify", response_model=InvoicePaymentStateResponse, response_model_exclude_unset=True, tags=["Payments & settlement"], summary="Verify payment and GenLayer-gate report access", responses=documented_errors(400, 402, 403, 404, 409, 429, 500, 503))
     def verify_payment(invoice_id: str = Query(...), proof: Optional[PaymentVerifyRequest] = None):
-        """Verifies a real Circle Gateway x402 settlement on Arc Testnet."""
+        """Verifies one Circle x402 settlement, then requires a finalized GenLayer verdict for the bound report hash. VALID unlocks the report and schedules the creator share; INVALID blocks access and schedules a full payer refund. A GenLayer outage returns 503 and never issues access."""
         return deps.verify_payment(invoice_id=invoice_id, proof=proof)
 
     @migrated.post("/api/v1/payment/withdraw", response_model=WithdrawResponse, response_model_exclude_unset=True, tags=["Creator operations"], summary="Submit a creator withdrawal", responses=documented_errors(400, 403, 429, 500, 502, 503))

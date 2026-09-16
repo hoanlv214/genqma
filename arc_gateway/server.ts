@@ -20,6 +20,11 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import circle from "@circle-fin/developer-controlled-wallets";
+import {
+  executeVerdictSettlement,
+  type SettlementCheckpoint,
+  type VerdictSettlementInstruction,
+} from "./verdict-settlement.js";
 
 type PaidRequest = express.Request & {
   payment?: {
@@ -74,9 +79,14 @@ const RELAYER_ADDRESS = process.env.QMA_WITHDRAW_RELAYER_ADDRESS;
 const TREASURY_WALLET_ID = process.env.TREASURY_WALLET_ID;
 const CIRCLE_CONSOLE_API_KEY = process.env.CIRCLE_CONSOLE_API_KEY;
 const CIRCLE_ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
+const GATEWAY_MAX_FEE_RAW = process.env.QMA_GATEWAY_MAX_FEE_RAW ?? "2010000";
+const GATEWAY_DELEGATE_WALLET_ID = process.env.QMA_GATEWAY_DELEGATE_WALLET_ID;
+const GATEWAY_DELEGATE_ADDRESS = process.env.QMA_GATEWAY_DELEGATE_ADDRESS;
 
 let circleClient: ReturnType<typeof circle.initiateDeveloperControlledWalletsClient> | null = null;
 let walletSetId: string | null = null;
+let treasuryWalletAddress: string | null = null;
+let treasuryAccountType: string | null = null;
 
 if (CIRCLE_CONSOLE_API_KEY && CIRCLE_ENTITY_SECRET) {
   circleClient = circle.initiateDeveloperControlledWalletsClient({
@@ -88,6 +98,8 @@ if (CIRCLE_CONSOLE_API_KEY && CIRCLE_ENTITY_SECRET) {
     circleClient.getWallet({ id: TREASURY_WALLET_ID })
       .then((resp: any) => {
         walletSetId = resp.data?.wallet?.walletSetId ?? null;
+        treasuryWalletAddress = resp.data?.wallet?.address ?? null;
+        treasuryAccountType = resp.data?.wallet?.accountType ?? null;
         console.log(`[Circle] Discovered Wallet Set ID: ${walletSetId}`);
       })
       .catch((err: any) => {
@@ -178,6 +190,13 @@ function requireInternalSecret(req: express.Request) {
   if (provided !== INTERNAL_SECRET) {
     throw new RelayHttpError("internal gateway secret required", 403);
   }
+}
+
+function requireStrictInternalSecret(req: express.Request) {
+  if (!INTERNAL_SECRET) {
+    throw new RelayHttpError("internal gateway secret is not configured", 503);
+  }
+  requireInternalSecret(req);
 }
 
 function hmacHex(secret: string, payload: string): string {
@@ -828,6 +847,94 @@ app.get("/api/creator/claim/status", (_req, res) => {
     usdcAddress: ARC_TESTNET_USDC,
     requiresInternalSecret: Boolean(INTERNAL_SECRET),
   });
+});
+
+app.post("/api/internal/verdict-settlements/:invoiceId/execute", async (req, res) => {
+  let instruction: VerdictSettlementInstruction | null = null;
+  try {
+    requireStrictInternalSecret(req);
+    if (!circleClient || !TREASURY_WALLET_ID) {
+      throw new RelayHttpError("Circle treasury wallet executor is not configured", 503);
+    }
+    if (!treasuryWalletAddress || !treasuryAccountType) {
+      const walletResponse = await circleClient.getWallet({ id: TREASURY_WALLET_ID });
+      treasuryWalletAddress = walletResponse.data?.wallet?.address ?? null;
+      treasuryAccountType = walletResponse.data?.wallet?.accountType ?? null;
+    }
+    if (!treasuryWalletAddress || !treasuryAccountType) {
+      throw new RelayHttpError("Circle treasury wallet identity is unavailable", 503);
+    }
+    if (!sameAddress(treasuryWalletAddress, SELLER)) {
+      throw new RelayHttpError("Circle treasury wallet address does not match the x402 seller", 503);
+    }
+
+    instruction = await backendJson(
+      `/api/internal/invoices/${encodeURIComponent(req.params.invoiceId)}/verdict-settlement`,
+    ) as VerdictSettlementInstruction;
+    const requestedOperation = String(req.body?.operation_id || "");
+    if (!requestedOperation || requestedOperation !== instruction.operation_id) {
+      throw new RelayHttpError("verdict settlement operation_id mismatch", 409);
+    }
+
+    const checkpoint = async (value: SettlementCheckpoint) => backendJson(
+      `/api/internal/invoices/${encodeURIComponent(req.params.invoiceId)}/verdict-settlement/checkpoint`,
+      { method: "POST", body: JSON.stringify(value) },
+    );
+    const result = await executeVerdictSettlement(instruction, {
+      circleClient: circleClient as any,
+      treasuryWalletId: TREASURY_WALLET_ID,
+      treasuryAddress: treasuryWalletAddress,
+      treasuryAccountType,
+      delegateWalletId: GATEWAY_DELEGATE_WALLET_ID,
+      delegateAddress: GATEWAY_DELEGATE_ADDRESS,
+      gatewayWallet: GATEWAY_WALLET,
+      gatewayMinter: GATEWAY_MINTER,
+      arcUsdc: ARC_TESTNET_USDC,
+      arcDomain: ARC_DOMAIN,
+      arcExplorer: ARC_EXPLORER,
+      maxFeeRaw: GATEWAY_MAX_FEE_RAW,
+      fetchSourceSettlement: fetchCircleTransfer,
+      requestAttestation: async (requests) => {
+        const transferRes = await fetch(`${GATEWAY_API}/v1/transfer`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requests),
+        });
+        const transferData = await transferRes.json().catch(() => ({})) as any;
+        if (!transferRes.ok || transferData.success === false || transferData.error) {
+          throw new RelayHttpError(
+            `gateway transfer failed: ${transferData.message || transferData.error || `HTTP ${transferRes.status}`}`,
+            502,
+          );
+        }
+        if (!transferData.attestation || !transferData.signature) {
+          throw new RelayHttpError("Gateway transfer response is missing attestation or signature", 502);
+        }
+        return { attestation: transferData.attestation, signature: transferData.signature };
+      },
+      checkpoint,
+    });
+    res.json(result);
+  } catch (err) {
+    if (instruction?.operation_id && INTERNAL_SECRET) {
+      await backendJson(
+        `/api/internal/invoices/${encodeURIComponent(req.params.invoiceId)}/verdict-settlement/checkpoint`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            operation_id: instruction.operation_id,
+            status: "retryable",
+            action: instruction.action,
+            recipient: instruction.recipient,
+            transfer_amount_raw: instruction.transfer_amount_raw,
+            error: String((err as Error).message ?? err).slice(0, 500),
+          }),
+        },
+      ).catch(() => undefined);
+    }
+    const status = err instanceof RelayHttpError ? err.status : 502;
+    res.status(status).json({ error: String((err as Error).message ?? err) });
+  }
 });
 
 app.post("/api/creator/claim", async (req, res) => {

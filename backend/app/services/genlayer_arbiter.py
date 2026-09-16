@@ -1,160 +1,278 @@
-"""GenLayer SLA Arbiter Service.
+"""Fail-closed GenLayer client for GenQMA report verification.
 
-Coordinates on-chain SLA verification, validator consensus simulation,
-and interaction with GenLayer Intelligent Contracts for QMA agentic commerce.
+This service never manufactures orders, transaction hashes, verdicts, or web
+evidence. A successful result must come from finalized contract state.
 """
 
-import os
+from __future__ import annotations
+
 import json
-import time
-import urllib.request
 import logging
-from typing import Dict, Any, Optional
-
-logger = logging.getLogger("QMA-GenLayer")
-
-GENLAYER_CONTRACT_ADDRESS = os.getenv(
-    "GENLAYER_CONTRACT_ADDRESS",
-    "0x0C2485e1918D3a41762E124a06c0Be33171508BD"  # Live deployed GenQMAShield address
-)
-GENLAYER_STUDIO_URL = os.getenv(
-    "GENLAYER_STUDIO_URL",
-    "https://studio.genlayer.com"
-)
-GENLAYER_NETWORK = os.getenv("GENLAYER_NETWORK", "Bradbury Testnet")
-
-# In-memory storage for demonstration / local testing
-_GENLAYER_ORDERS: Dict[int, Dict[str, Any]] = {}
-_ORDER_COUNTER = 100
+import os
+from dataclasses import replace
+from typing import Any, Optional
 
 
-def get_genlayer_config() -> Dict[str, Any]:
-    """Returns GenLayer integration metadata."""
+logger = logging.getLogger("GenQMA-GenLayer")
+
+GENLAYER_CONTRACT_ADDRESS = os.getenv("GENLAYER_CONTRACT_ADDRESS", "").strip()
+GENLAYER_PRIVATE_KEY = os.getenv("GENLAYER_PRIVATE_KEY", "").strip()
+GENLAYER_NETWORK = os.getenv("GENLAYER_NETWORK", "studio-next").strip().lower()
+GENLAYER_RPC_ENDPOINT = os.getenv(
+    "GENLAYER_RPC_ENDPOINT",
+    "https://studio-next.genlayer.com/api" if "next" in GENLAYER_NETWORK else "https://studio.genlayer.com/api",
+).strip()
+STUDIO_NEXT_CHAIN_ID = 61997
+STUDIO_NEXT_EXPLORER_URL = "https://explorer-studio-dev.genlayer.com"
+
+
+class GenLayerVerificationError(RuntimeError):
+    """Raised when no finalized, successful GenLayer verdict is available."""
+
+    def __init__(self, message: str, *, transaction_hash: Optional[str] = None):
+        super().__init__(message)
+        self.transaction_hash = transaction_hash
+
+
+def get_genlayer_config() -> dict[str, Any]:
+    configured = bool(GENLAYER_CONTRACT_ADDRESS and GENLAYER_PRIVATE_KEY)
+    explorer_url = (
+        STUDIO_NEXT_EXPLORER_URL
+        if "next" in GENLAYER_NETWORK
+        else "https://explorer-studio.genlayer.com"
+    )
     return {
         "network": GENLAYER_NETWORK,
-        "contract_address": GENLAYER_CONTRACT_ADDRESS,
-        "studio_url": GENLAYER_STUDIO_URL,
+        "chain_id": STUDIO_NEXT_CHAIN_ID if "next" in GENLAYER_NETWORK else 61999,
+        "rpc_endpoint": GENLAYER_RPC_ENDPOINT,
+        "explorer_url": explorer_url,
+        "contract_address": GENLAYER_CONTRACT_ADDRESS or None,
         "contract_source": "contracts/GenQMAShield.py",
-        "validator_threshold": "Strict Equivalence (gl.eq_principle.strict_eq)",
-        "platform_fee_bps": 2000,
-        "status": "active"
+        "consensus": "gl.vm.run_nondet(leader_fn, validator_fn)",
+        "role": "report_verifier",
+        "configured": configured,
+        "status": "ready" if configured else "configuration_required",
     }
 
 
-def create_order(
+def _create_client():
+    if not GENLAYER_CONTRACT_ADDRESS:
+        raise GenLayerVerificationError("GENLAYER_CONTRACT_ADDRESS is required")
+    if not GENLAYER_PRIVATE_KEY:
+        raise GenLayerVerificationError("GENLAYER_PRIVATE_KEY is required")
+    if GENLAYER_NETWORK not in ("studio-next", "studionext", "studionet"):
+        raise GenLayerVerificationError(
+            f"Unsupported GENLAYER_NETWORK {GENLAYER_NETWORK!r}; expected 'studio-next' or 'studionet'"
+        )
+    try:
+        from genlayer_py import create_account, create_client
+        from genlayer_py.chains import studionet
+    except ImportError as exc:
+        raise GenLayerVerificationError(
+            "genlayer-py is not installed; install the project dependencies"
+        ) from exc
+
+    is_studio_next = GENLAYER_NETWORK in ("studio-next", "studionext")
+    chain = studionet
+    default_rpc = studionet.rpc_urls["default"]["http"][0]
+    if is_studio_next:
+        # genlayer-py 0.18 only exports the legacy ``studionet`` preset. Studio
+        # Next is a different chain, so replacing only its RPC URL would still
+        # sign requests for chain 61999. Clone the preset with its complete
+        # public Studio Next identity.
+        chain = replace(
+            studionet,
+            id=STUDIO_NEXT_CHAIN_ID,
+            name="GenLayer Studio Next",
+            rpc_urls={"default": {"http": [GENLAYER_RPC_ENDPOINT]}},
+            block_explorers={
+                "default": {
+                    "name": "GenLayer Studio Next Explorer",
+                    "url": STUDIO_NEXT_EXPLORER_URL,
+                }
+            },
+        )
+    elif GENLAYER_RPC_ENDPOINT != default_rpc:
+        chain = replace(
+            studionet,
+            rpc_urls={"default": {"http": [GENLAYER_RPC_ENDPOINT]}},
+        )
+
+    account = create_account(GENLAYER_PRIVATE_KEY)
+    return create_client(chain=chain, account=account), account
+
+
+def _hash_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    hex_method = getattr(value, "hex", None)
+    if callable(hex_method):
+        rendered = hex_method()
+        return rendered if str(rendered).startswith("0x") else f"0x{rendered}"
+    return str(value)
+
+
+def _field(value: Any, *names: str) -> Any:
+    for name in names:
+        if isinstance(value, dict) and name in value:
+            return value[name]
+        if hasattr(value, name):
+            return getattr(value, name)
+    return None
+
+
+def _wait_for_finalized(client, transaction_hash: str) -> Any:
+    try:
+        from genlayer_py.types import ExecutionResult, TransactionStatus
+
+        receipt = client.wait_for_transaction_receipt(
+            transaction_hash=transaction_hash,
+            status=TransactionStatus.FINALIZED,
+            interval=3000,
+            retries=40,
+            full_transaction=False,
+        )
+        execution_result = _field(
+            receipt, "tx_execution_result_name", "txExecutionResultName"
+        )
+        expected = getattr(ExecutionResult.FINISHED_WITH_RETURN, "value", "FINISHED_WITH_RETURN")
+        if str(execution_result) != str(expected):
+            status_name = _field(receipt, "status_name", "statusName", "status")
+            raise GenLayerVerificationError(
+                f"GenLayer transaction failed: {status_name} / {execution_result}",
+                transaction_hash=transaction_hash,
+            )
+        return receipt
+    except GenLayerVerificationError:
+        raise
+    except Exception as exc:
+        raise GenLayerVerificationError(
+            f"GenLayer finalization unavailable: {exc}",
+            transaction_hash=transaction_hash,
+        ) from exc
+
+
+def _read_order(client, invoice_id: str) -> Optional[dict[str, Any]]:
+    try:
+        raw = client.read_contract(
+            address=GENLAYER_CONTRACT_ADDRESS,
+            function_name="get_order",
+            args=[invoice_id],
+        )
+    except Exception as exc:
+        raise GenLayerVerificationError(f"Could not read GenLayer order: {exc}") from exc
+    if not raw:
+        return None
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8")
+    try:
+        order = json.loads(raw) if isinstance(raw, str) else dict(raw)
+    except (TypeError, ValueError) as exc:
+        raise GenLayerVerificationError("GenLayer returned malformed order data") from exc
+    return order
+
+
+def _validate_order(
+    order: Optional[dict[str, Any]],
+    *,
+    invoice_id: str,
+    query_hash: str,
+    report_hash: str,
+    transaction_hash: Optional[str],
+) -> dict[str, Any]:
+    if not order:
+        raise GenLayerVerificationError(
+            "Finalized transaction produced no contract order",
+            transaction_hash=transaction_hash,
+        )
+    if str(order.get("invoice_id")) != invoice_id:
+        raise GenLayerVerificationError("GenLayer invoice binding mismatch")
+    if str(order.get("query_hash")) != query_hash:
+        raise GenLayerVerificationError("GenLayer query hash mismatch")
+    if str(order.get("report_hash")) != report_hash:
+        raise GenLayerVerificationError("GenLayer report hash mismatch")
+
+    verdict = str(order.get("verdict") or "").upper()
+    status = str(order.get("status") or "").upper()
+    valid_pair = (verdict == "VALID" and status == "VERIFIED") or (
+        verdict == "INVALID" and status == "REJECTED"
+    )
+    if not valid_pair:
+        raise GenLayerVerificationError(
+            f"GenLayer order is not final: {status or 'UNKNOWN'} / {verdict or 'UNKNOWN'}",
+            transaction_hash=transaction_hash,
+        )
+    try:
+        confidence = int(order.get("confidence"))
+    except (TypeError, ValueError) as exc:
+        raise GenLayerVerificationError("GenLayer confidence is malformed") from exc
+    if not 0 <= confidence <= 100 or not str(order.get("reasoning") or "").strip():
+        raise GenLayerVerificationError("GenLayer verdict metadata is incomplete")
+    return {
+        **order,
+        "contract_address": GENLAYER_CONTRACT_ADDRESS,
+        "network": GENLAYER_NETWORK,
+        "transaction_hash": transaction_hash,
+        "consensus_type": "GenLayer run_nondet semantic validation",
+    }
+
+
+def verify_report(
+    *,
+    invoice_id: str,
     buyer: str,
     provider: str,
     symbol: str,
     expected_anomaly: str,
-    deposit_usdc: float = 0.005
-) -> Dict[str, Any]:
-    """Creates a new SLA-guaranteed order anchored to GenLayer."""
-    global _ORDER_COUNTER
-    _ORDER_COUNTER += 1
-    order_id = _ORDER_COUNTER
-
-    order = {
-        "order_id": order_id,
-        "buyer": buyer,
-        "provider": provider,
-        "symbol": symbol.upper(),
-        "expected_anomaly": expected_anomaly,
-        "deposit_usdc": deposit_usdc,
-        "status": "ESCROWED",
-        "verdict": "PENDING",
-        "confidence": 0,
-        "reasoning": "Awaiting provider delivery and validator consensus",
-        "evidence_url": "",
-        "created_at": int(time.time()),
-        "contract_address": GENLAYER_CONTRACT_ADDRESS,
-        "tx_hash": f"0xgen_{int(time.time())}_{order_id}"
-    }
-    _GENLAYER_ORDERS[order_id] = order
-    return order
-
-
-def fetch_live_web_evidence(url: str, max_chars: int = 2000) -> str:
-    """Fetches live web content to replicate gl.get_webpage()."""
-    if not url.startswith("http"):
-        return f"Simulated market anomaly feed for {url}"
-    try:
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "GenLayer-Validator/1.0 (IntelligentContract)"}
-        )
-        with urllib.request.urlopen(req, timeout=5) as response:
-            content = response.read().decode("utf-8", errors="ignore")
-            return content[:max_chars]
-    except Exception as e:
-        logger.warning(f"Failed to fetch live web evidence from {url}: {e}")
-        return f"Live data snapshot at {time.strftime('%Y-%m-%d %H:%M:%S UTC')}: [Anomaly confirmed in orderbook]"
-
-
-def adjudicate_sla(
-    order_id: int,
-    report_summary: str,
+    query_hash: str,
+    report_hash: str,
+    verification_manifest: str,
     evidence_url: str,
-    provider_address: Optional[str] = None,
-    simulate_hallucination: bool = False
-) -> Dict[str, Any]:
-    """
-    Executes on-chain adjudication matching contracts/GenQMAShield.py.
-    
-    1. Reads live data from evidence_url.
-    2. Runs validator reasoning over report vs live data.
-    3. Settles payment (80/20 split) or triggers chargeback.
-    """
-    order = _GENLAYER_ORDERS.get(order_id)
-    if not order:
-        # Create an ad-hoc order if not pre-registered
-        order = create_order(
-            buyer="0xBuyerAgentWallet",
-            provider=provider_address or "0xProviderCreatorWallet",
-            symbol="ETH-USDT",
-            expected_anomaly="Severe funding divergence"
-        )
-        order_id = order["order_id"]
+    transaction_hash: Optional[str] = None,
+) -> dict[str, Any]:
+    """Submit or resume an on-chain verification and return finalized state."""
+    client, account = _create_client()
 
-    evidence_data = fetch_live_web_evidence(evidence_url)
+    if transaction_hash:
+        _wait_for_finalized(client, transaction_hash)
+    else:
+        existing = _read_order(client, invoice_id)
+        if existing:
+            return _validate_order(
+                existing,
+                invoice_id=invoice_id,
+                query_hash=query_hash,
+                report_hash=report_hash,
+                transaction_hash=None,
+            )
+        try:
+            submitted = client.write_contract(
+                account=account,
+                address=GENLAYER_CONTRACT_ADDRESS,
+                function_name="submit_and_verify",
+                args=[
+                    invoice_id,
+                    buyer,
+                    provider,
+                    symbol,
+                    expected_anomaly,
+                    query_hash,
+                    report_hash,
+                    verification_manifest,
+                    evidence_url,
+                ],
+                value=0,
+            )
+            transaction_hash = _hash_text(submitted)
+        except Exception as exc:
+            raise GenLayerVerificationError(f"GenLayer write failed: {exc}") from exc
+        _wait_for_finalized(client, transaction_hash)
 
-    # Evaluation logic matching GenLayer validator consensus
-    # Detect if report contains reasonable quant metrics
-    is_valid = True
-    confidence = 96
-    reasoning = (
-        f"Validators reached strict consensus: Live exchange data confirms anomaly on {order['symbol']}. "
-        "Delivered outcome distribution matches historical analogs without hallucination."
+    order = _read_order(client, invoice_id)
+    return _validate_order(
+        order,
+        invoice_id=invoice_id,
+        query_hash=query_hash,
+        report_hash=report_hash,
+        transaction_hash=transaction_hash,
     )
-
-    # Check for hallucination red flags or simulated SLA attack
-    lower_report = report_summary.lower()
-    if simulate_hallucination or "fake" in lower_report or "placeholder" in lower_report or "test error" in lower_report or "hallucination" in lower_report:
-        is_valid = False
-        confidence = 95
-        reasoning = (
-            "Validators rejected report: Live exchange data from MEXC diverges from claimed anomaly. "
-            "Detected hallucinated metrics violating SLA standards. 100% Autonomous Chargeback executed to buyer."
-        )
-
-
-    order["evidence_url"] = evidence_url
-    order["verdict"] = "VALID" if is_valid else "INVALID"
-    order["confidence"] = confidence
-    order["reasoning"] = reasoning
-    order["status"] = "SETTLED" if is_valid else "REFUNDED"
-    order["adjudicated_at"] = int(time.time())
-    order["validator_count"] = 5
-    order["consensus_type"] = "Strict Equivalence (5/5 validators agree: Claude Sonnet 3.5, Kimi, Llama 3)"
-    order["split_distribution"] = {
-        "creator_usdc": round(order["deposit_usdc"] * 0.8, 4) if is_valid else 0.0,
-        "platform_usdc": round(order["deposit_usdc"] * 0.2, 4) if is_valid else 0.0,
-        "refund_buyer_usdc": order["deposit_usdc"] if not is_valid else 0.0
-    }
-
-
-    return order
-
-
-def list_orders() -> list:
-    """Returns all recorded GenLayer SLA orders."""
-    return list(_GENLAYER_ORDERS.values())

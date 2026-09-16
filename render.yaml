@@ -19,6 +19,8 @@ services:
         sync: false
       - key: QMA_ARC_SELLER_ADDRESS
         sync: false
+      - key: QMA_ARC_SETTLEMENT_RECONCILE_SECONDS
+        value: "30"
       - key: QMA_FUNDING_MEMORY_OWNER_WALLET
         sync: false
       - key: QMA_OI_MEMORY_OWNER_WALLET
@@ -40,6 +42,15 @@ services:
       - key: QMA_SPLIT_RECEIPT_SECRET
         sync: false
       - key: QMA_ADMIN_TOKEN
+        sync: false
+      - key: GENLAYER_NETWORK
+        value: studio-next
+      - key: GENLAYER_RPC_ENDPOINT
+        value: https://studio-next.genlayer.com/api
+      - key: GENLAYER_CONTRACT_ADDRESS
+        sync: false
+      # Relayer/admin key for GenQMAShield. Never expose this to frontend clients.
+      - key: GENLAYER_PRIVATE_KEY
         sync: false
 
   - type: web
@@ -64,6 +75,20 @@ services:
       - key: QMA_SPLIT_RECEIPT_SECRET
         sync: false
       - key: QMA_ARC_SELLER_ADDRESS
+        sync: false
+      # Circle developer-controlled wallet used to execute verdict-bound Gateway mints.
+      - key: CIRCLE_CONSOLE_API_KEY
+        sync: false
+      - key: CIRCLE_ENTITY_SECRET
+        sync: false
+      - key: TREASURY_WALLET_ID
+        sync: false
+      - key: QMA_GATEWAY_MAX_FEE_RAW
+        value: "2010000"
+      # Required only when the treasury wallet above is an SCA.
+      - key: QMA_GATEWAY_DELEGATE_WALLET_ID
+        sync: false
+      - key: QMA_GATEWAY_DELEGATE_ADDRESS
         sync: false
 
   - type: web

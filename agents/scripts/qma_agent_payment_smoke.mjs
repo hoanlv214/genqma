@@ -33,13 +33,9 @@ const invoice = {
   invoice_id: "inv_reconcile",
   invoice_secret: "invoice_secret_for_smoke",
   amount: 0.001,
-  split_legs: [{
-    leg_id: "creator",
-    resource: "https://gateway.test/creator",
-    pay_to: "0x2222222222222222222222222222222222222222",
-    amount_raw: "1000",
-    amount_usdc: 0.001,
-  }],
+  arc_gateway_url: "https://gateway.test/report",
+  wallet_address: "0x3333333333333333333333333333333333333333",
+  split_legs: [],
 };
 
 globalThis.fetch = async (input, options = {}) => {
@@ -55,6 +51,10 @@ globalThis.fetch = async (input, options = {}) => {
     return Response.json(invoice);
   }
   if (url.pathname === "/api/v1/payment/verify") {
+    const payload = JSON.parse(String(options.body || "{}"));
+    assert.equal(payload.settlement_id, "settled_single");
+    assert.equal(payload.amount_usdc, 0.001);
+    assert.equal("split_settlements" in payload, false);
     return Response.json({ detail: "temporary verification failure" }, { status: 503 });
   }
   if (url.pathname === `/api/v1/payment/invoices/${invoice.invoice_id}/status`) {
@@ -63,12 +63,12 @@ globalThis.fetch = async (input, options = {}) => {
       ? {
         status: "paid",
         access_token: "paid_access_token",
-        split_settlement_ids: ["settled_creator"],
+        settlement_id: "settled_single",
       }
       : {
         status: "partial_paid",
         access_token: null,
-        split_settlement_ids: ["settled_creator"],
+        settlement_id: "settled_single",
       });
   }
   if (url.pathname === "/api/v1/providers/funding_memory/preview") {
@@ -86,15 +86,18 @@ const signer = {
   async signLeg() {
     return { paymentHeader: "unused" };
   },
-  async payLeg({ legId, amountUsdc }) {
+  async payLeg({ legId, resourceUrl, amountUsdc }) {
     paymentCalls += 1;
+    assert.equal(legId, "single");
+    assert.equal(resourceUrl, invoice.arc_gateway_url);
     assert.equal(amountUsdc, 0.001);
     return {
       leg_id: legId,
-      settlement_id: "settled_creator",
-      pay_to: invoice.split_legs[0].pay_to,
-      amount_raw: invoice.split_legs[0].amount_raw,
-      sidecar_receipt: "receipt_creator_long_enough_for_smoke",
+      settlement_id: "settled_single",
+      pay_to: invoice.wallet_address,
+      amount_raw: "1000",
+      amount_usdc: 0.001,
+      sidecar_receipt: "receipt_single_long_enough_for_smoke",
     };
   },
 };

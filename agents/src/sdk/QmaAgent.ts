@@ -180,7 +180,6 @@ export class QmaAgent extends EventEmitter {
             symbol: candidate.symbol,
             tier: candidate.upgrade ? "full" : candidate.tier as any,
             amount_usdc: candidate.price_usdc,
-            settlement_ids: ["dry_run_settlement_mock"]
           };
         }
         if (!this.signer) {
@@ -251,10 +250,17 @@ export class QmaAgent extends EventEmitter {
             },
           });
           executionSettlements = execution.settlements;
+          const splitPayment = Array.isArray(createdInvoice.split_legs) && createdInvoice.split_legs.length > 0;
+          const firstSettlement = execution.settlements[0];
           const verified = await this.client.verifyAgentPayment(createdInvoice.invoice_id, {
             invoice_secret: createdInvoice.invoice_secret,
             payer_address: execution.settlements.find((s) => s.payer_address)?.payer_address || this.signer?.walletAddress,
-            split_settlements: execution.settlements,
+            ...(splitPayment
+              ? { split_settlements: execution.settlements }
+              : {
+                  settlement_id: firstSettlement?.settlement_id,
+                  amount_usdc: firstSettlement?.amount_usdc ?? createdInvoice.amount,
+                }),
           });
           if (!paidInvoiceState(verified)) {
             throw new Error(`Invoice verification returned status ${String(verified?.status || "unknown")} without paid access.`);

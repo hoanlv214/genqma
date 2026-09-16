@@ -1,114 +1,167 @@
-# GenLayer Agent Tank Submission Pack
+# GenLayer Agent Tank — Bản Điền Form Nộp Bài Chuẩn 1:1
 
-> **Project Name:** GenQMA Shield  
-> **Track:** Agentic Commerce Infrastructure  
-> **Repo:** https://github.com/hoanlv214/genqma  
-> **Submission Deadline:** Sep 17, 2026 · 15:30 UTC  
-
----
-
-## 00. Track Selection
-* **Chosen Track:** `Agentic Commerce Infrastructure`
-* **Target Objective from GenLayer Brief:**
-  - *"SLA and uptime enforcement. API escrow that releases against signed logs or decentralized monitoring."*
-  - *"Stablecoin payments with chargeback. One dispute API across cards, x402 and any chain."*
+> **Link nộp bài trực tiếp:** [portal.genlayer.foundation/agent-tank/hackathon/submit](https://portal.genlayer.foundation/agent-tank/hackathon/submit)
+> **Hạn chót nộp bài:** 17/09/2026 · 15:30 UTC
+> **Quy tắc:** Chỉ copy nội dung trong các khung `[COPY NỘI DUNG NÀY]` tương ứng với từng ô trên giao diện web.
 
 ---
 
-## 01. Identity
-* **Project Name:** `GenQMA Shield`
-* **Short Symbol:** `GQMA`
-* **Logo Asset:** `public/logo.png` (or `public/icon.png`)
-
----
-
-## 02. Project Summary (One-Liner)
-> **Limit: 180 characters**  
-> **Current Count: 134 characters**
+### [Trường 00] Track
+* **Tên trường trên web:** `00 Track / Choose a track`
+* **Loại input:** Dropdown chọn 1 track
 
 ```text
-Autonomous market-memory marketplace with GenLayer-powered SLA enforcement and chargeback protection for x402 agentic micropayments.
+Agentic Commerce Infrastructure
 ```
 
 ---
 
-## 03. Project Overview (Description)
-> **Limit: 1000 characters**  
-> **Current Count: 964 characters**
+### [Trường 01A] GitHub repository
+* **Tên trường trên web:** `01 GitHub repository / The repository the panel reviews`
+* **Loại input:** Chọn repo từ GitHub account đã liên kết
 
 ```text
-Autonomous agents trading in the agentic economy face a fundamental trust dilemma: when an agent purchases quantitative market memory or API intelligence via x402, traditional EVM smart contracts cannot inspect data authenticity. If a provider hallucinates or breaches SLA, the buyer agent loses funds with zero recourse.
+https://github.com/hoanlv214/genqma
+```
+*(Hoặc chọn repository `genqma` trong danh sách dropdown)*
 
-GenQMA Shield introduces an Intelligent Contract on GenLayer that acts as an autonomous on-chain SLA arbiter and chargeback guardian for agentic commerce:
+---
 
-1. Zero-Oracle Web Verification: The contract uses GenLayer's native gl.get_webpage() to fetch live exchange orderbooks and funding feeds directly from MEXC/Binance to verify anomaly existence.
-2. Decentralized LLM Consensus: Validator nodes run gl.exec_prompt() wrapped in strict equivalence principles to evaluate report integrity against hallucination.
-3. Autonomous 2-Leg Settlement & Chargeback: On valid delivery, funds auto-split (80% creator / 20% platform treasury). If data is fabricated, the contract triggers an instant on-chain chargeback.
+### [Trường 01B] Identity
+* **Tên trường trên web:** `01 Identity / Make it recognizable`
+
+1. **Choose logo (PNG, JPEG, WebP · 128–2048 px · max 2 MB):**
+   *Upload file logo có sẵn trong repo tại đường dẫn:*
+   `frontend/public/android-chrome-512x512.png` (Kích thước 512x512 px, 66 KB, chuẩn PNG)
+
+2. **Project name:**
+```text
+GenQMA
 ```
 
 ---
 
-## 04. Demo Video (Script for 90 Seconds)
-* **0:00 - 0:20:** The Problem — Agent A pays for market memory via x402. How to ensure Agent B did not hallucinate?
-* **0:20 - 0:45:** The Architecture — GenQMA + GenLayer Intelligent Contract (`contracts/GenQMAShield.py`).
-* **0:45 - 1:15:** Live Walkthrough:
-  - Agent detects ETH-USDT funding rate divergence.
-  - Generates invoice & deposits into GenLayer SLA Escrow.
-  - GenLayer validators fetch live exchange API & reach 5/5 LLM consensus.
-  - Payment auto-settles (80/20) and unlocks 42 historical analogs.
-* **1:15 - 1:30:** Chargeback Test — Show deliberate hallucinated payload triggering autonomous refund.
-
----
-
-## 05. How-To (Step-by-Step Path for Judges)
-
-### Step 01: Discover Anomaly & Autonomous Decision
-* **Heading:** `Scan Live Anomalies`
-* **Instruction:** Navigate to the live radar on the web app. Observe the autonomous agent scan real-time funding rate & open interest divergences, reason over expected utility versus query cost ($0.005), and respect hard spending caps.
-
-### Step 02: Escrow with GenLayer SLA Guarantee
-* **Heading:** `Anchor GenLayer SLA Escrow`
-* **Instruction:** Click "Unlock Market Memory" on any anomaly card. The system anchors an SLA Escrow order in the GenLayer Intelligent Contract (`contracts/GenQMAShield.py`), recording the expected anomaly criteria and buyer budget.
-
-### Step 03: Run GenLayer Validator Adjudication
-* **Heading:** `Execute LLM Validator Consensus`
-* **Instruction:** In the Paywall or Terminal, click **"Trigger GenLayer SLA Verification"**. The GenLayer contract fetches live exchange data via `gl.get_webpage()` and executes multi-node validator reasoning via `gl.exec_prompt()`.
-
-### Step 04: Verify Settlement or Autonomous Chargeback
-* **Heading:** `Inspect On-chain Verdict & Historical Analogs`
-* **Instruction:** Confirm the validator consensus receipt: `VALID` triggers an automated 80/20 payment split to the quant creator wallet; `INVALID` triggers an immediate chargeback refund to the buyer. Review the unlocked historical regime analogs.
-
----
-
-## 06. Review Verification
-
-### Expected Verification Outcome
-> **Limit: 500 characters**  
-> **Current Count: 462 characters**
+### [Trường 02] Project summary
+* **Tên trường trên web:** `02 Project summary / One-liner (0/180 characters)`
+* **Độ dài ký tự thực tế:** 132 / 180 ký tự (Đạt chuẩn)
 
 ```text
-The GenQMAShield contract on GenLayer executes strict equivalence consensus (gl.eq_principle.strict_eq) across validators. Calling verify_and_settle(order_id, report, evidence_url) fetches real-world exchange data and evaluates analytical integrity. For authentic reports, validators return {"verdict": "VALID", "status": "SETTLED", "confidence": 96} settling 80% to provider. For hallucinated payloads, it outputs {"verdict": "INVALID", "status": "REFUNDED"} executing instant chargeback.
+Market-memory marketplace with one-signature x402 USDC payment and hash-bound, fail-closed GenLayer report verification.
 ```
 
-### Contract Deployment Link
-* **Studio URL:** `https://studio.genlayer.com` (File: `GenQMAShield.py`)
-* **Contract Address:** `0x0C2485e1918D3a41762E124a06c0Be33171508BD`
-* **Deployer Address:** `0x3fcC95f6FDf79D201D56e38186f046D7A7BCB81e`
+---
+
+### [Trường 03] Project overview
+* **Tên trường trên web:** `03 Project overview / Description (0/1000 characters)`
+* **Độ dài ký tự thực tế:** 862 / 1000 ký tự (Đạt chuẩn)
+
+```text
+When AI agents buy quantitative market memory via x402, ordinary smart contracts cannot judge data quality. A fabricated report can take the buyer's funds with no recourse.
+
+GenQMA adds a GenLayer Intelligent Contract as an on-chain SLA arbiter:
+
+1. Live Evidence: gl.nondet.web.render() fetches the provider-specific MEXC API.
+2. Semantic Consensus: gl.vm.run_nondet validates structured verdicts without comparing LLM prose byte-for-byte.
+3. Hash Binding: invoice_id, query_hash and report_hash bind the verdict to the exact cached report. Only finalized VALID / VERIFIED unlocks it; all errors stay locked.
+4. Verdict Settlement: after one buyer authorization, VALID schedules the creator share while the platform share stays in treasury. INVALID schedules a full Arc refund to the verified payer. Only a Circle COMPLETE receipt marks money movement complete.
+```
 
 ---
 
-## 07. Project Links
-* **Website (Required):** `https://genqma.vercel.app` (or your active Vercel domain)
-* **GitHub Repository (Public):** `https://github.com/hoanlv214/genqma`
+### [Trường 04] Demo video (Bắt buộc cho Agent Tank)
+* **Tên trường trên web:** `04 Demo video / Show it in action (YouTube URL · optional)`
+* **Loại input:** Ô dán đường dẫn video YouTube (`https://youtu.be/...` hoặc `https://www.youtube.com/watch?v=...`)
+
+```text
+[Dán link YouTube video demo hoàn chỉnh vào đây]
+```
+*(Giao diện có thể ghi Optional, nhưng luật Agent Tank yêu cầu video để bài dự thi hợp lệ. Không nộp khi ô này còn trống.)*
 
 ---
 
-## 08. Cross-Chain Architecture & Technical Debt Roadmap
-* **Current Production Implementation (Cross-Chain Arbiter):**
-  - **Payment Settlement:** Arc Network (Circle Gateway x402 USDC micropayments).
-  - **SLA & Dispute Resolution:** GenLayer Intelligent Contract (`0x0C2485e1918D3a41762E124a06c0Be33171508BD`).
-  - **Mechanic:** Single-signature user authorization with autonomous 80/20 release or 100% chargeback upon 5/5 validator LLM consensus.
-* **Technical Debt & Phase 4 Roadmap (Native GenLayer Rail):**
-  - Direct native `$GEN` token deposits on GenLayer Studionet / Bradbury Mainnet using `@gl.public.write.payable` and `_Payee.emit_transfer(...)` for native smart contract escrow alongside cross-chain x402 USDC.
-  - Full architectural analysis and upgrade contract blueprint: [docs/architecture/tech-debt-genlayer-native-gen.md](docs/architecture/tech-debt-genlayer-native-gen.md).
+### [Trường 05] How-to
+* **Tên trường trên web:** `05 How-to / Write the exact path`
+* **Cách điền trên web:** Bấm `+ Add another step` để tạo 4 bước, mỗi bước copy đúng cặp Heading và Instruction:
 
+#### Step 1:
+* **Heading (Optional):**
+```text
+1. Explore Live Market Anomalies
+```
+* **Instruction:**
+```text
+Open https://genqma.vercel.app. The autonomous agent continuously scans live funding rate and open-interest divergences across crypto pairs (e.g. ETH-USDT). Select any live anomaly card on the radar to inspect current divergence and expected historical analog utility.
+```
+
+#### Step 2:
+* **Heading (Optional):**
+```text
+2. Connect Wallet & Authorize One x402 Payment
+```
+* **Instruction:**
+```text
+Connect your wallet on Arc Testnet and click 'Unlock Full Memory' or 'Preview ($0.001)'. The invoice contains one treasury-bound Circle x402 requirement, so the buyer signs one payment authorization. The backend then generates and hashes the exact report selected by that invoice.
+```
+
+#### Step 3:
+* **Heading (Optional):**
+```text
+3. Validator Consensus & Live Exchange Verification
+```
+* **Instruction:**
+```text
+The backend relayer submits `invoice_id`, `query_hash`, the full-report hash, a public verification manifest (excluding paid analog rows), and an HTTPS evidence URL. The contract fetches evidence and executes `gl.vm.run_nondet` with a semantic validator before recording `VALID` or `INVALID`.
+```
+
+#### Step 4:
+* **Heading (Optional):**
+```text
+4. Verify Access, Payout, or Refund
+```
+* **Instruction:**
+```text
+Inspect the finalized contract order. VALID / VERIFIED unlocks the exact cached report and schedules the configured creator payout; the platform share remains in treasury. INVALID / REJECTED blocks access and schedules a full refund to the verified payer. Arc payout/refund is complete only after Circle reports COMPLETE; RPC errors remain locked and retryable.
+```
+
+---
+
+### [Trường 06] Review verification
+* **Tên trường trên web:** `06 Review verification / Prove the path works`
+
+1. **Expected verification outcome (0/500 characters):**
+   *Độ dài thực tế: 441 / 500 ký tự (Đạt chuẩn)*
+```text
+GenQMAShield binds invoice_id, query_hash and report_hash, fetches live HTTPS evidence and runs gl.vm.run_nondet. VALID / VERIFIED unlocks only that report and schedules the configured creator payout. INVALID / REJECTED blocks access and schedules a full refund to the verified payer. Money movement is confirmed only by a Circle COMPLETE receipt; the GenLayer contract does not custody Arc USDC.
+```
+
+2. **Contract link 1 (optional):**
+   *Dán URL Studio hoặc Contract Explorer:*
+```text
+https://explorer-studio-dev.genlayer.com/address/0x367728bf66Cf962Ce15fD2b65193b7a1466f087c
+```
+*(Contract deployed on GenLayer Studio Next, Chain ID 61997: `0x367728bf66Cf962Ce15fD2b65193b7a1466f087c`)*
+
+---
+
+### [Trường 07] Project links
+* **Tên trường trên web:** `07 Project links / Send people to it`
+
+1. **Website (required):**
+```text
+https://genqma.vercel.app
+```
+
+2. **GitHub:**
+```text
+https://github.com/hoanlv214/genqma
+```
+
+---
+
+## Phụ Lục Kỹ Thuật (Dành Riêng Cho Bạn - Không Cần Dán Lên Web)
+
+### Gợi ý kịch bản quay Video Demo 60-90 giây (Nếu bạn muốn quay):
+1. **0:00 - 0:15:** Mở [genqma.vercel.app](https://genqma.vercel.app), chỉ vào radar: Anomaly ETH-USDT xuất hiện (funding rate âm sâu, OI tăng vọt).
+2. **0:15 - 0:35:** Nhấn mua báo cáo Market Memory ($0.005). Giải thích vấn đề: nếu không có GenLayer, nếu nhà cung cấp trả data rác/ảo giác thì agent mất tiền.
+3. **0:35 - 0:55:** Cho xem bước GenLayer: `GenQMAShield.py` lấy feed MEXC thật và chạy `gl.vm.run_nondet` semantic consensus. `VALID` mở đúng report hash; `INVALID` khóa report. Không mô tả payout/refund là hoàn tất nếu chưa có Arc receipt.
+4. **0:55 - 1:15:** Cho xem order finalized trên GenLayer: `VALID / VERIFIED` mở đúng report hash; `INVALID / REJECTED` chặn access token. Không dùng cờ giả lập public.

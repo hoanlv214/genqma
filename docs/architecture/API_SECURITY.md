@@ -211,15 +211,15 @@ creator_earned_usdc = revenue_usdc * provider.revenue_share_bps / 10000
 platform_fee_usdc   = revenue_usdc - creator_earned_usdc
 ```
 
-The default `x402_direct_split` mode binds the creator leg to the provider
-revenue wallet and the platform leg to the platform treasury. Those are
-independent Gateway balances. Legacy `treasury_ledger` providers may still
-account creator revenue in the QMA ledger and use the creator claim endpoint.
+New invoices use one `seller_wallet` x402 payment to the platform treasury.
+After Arc settlement validation, the backend creates one report draft and sends
+its invoice/query/report hashes to GenLayer. Access is issued only for a finalized
+`VALID` result. `INVALID`, timeout, missing configuration, or an indeterminate
+transaction remains locked.
 
-A direct-split creator withdrawal is wallet-level: the signed Gateway
-withdrawal operates on the connected revenue wallet's Gateway balance, not on
-an arbitrary provider row. Selecting provider rows filters accounting display
-and does not change the wallet-level withdrawal authorization.
+Creator/platform amounts may be shown as accounting allocations, but they are
+not payout proof. Creator payouts and buyer refunds must be performed by an
+idempotent Arc executor and recorded with their Arc transaction receipts.
 
 Recommended roadmap:
 

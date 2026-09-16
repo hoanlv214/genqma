@@ -52,9 +52,22 @@ QMA_CIRCLE_GATEWAY_API=https://gateway-api-testnet.circle.com
 QMA_ARC_EXPLORER=https://testnet.arcscan.app
 QMA_SPLIT_LEG_URL_SECRET=replace-with-split-url-secret
 QMA_ARC_GATEWAY_INTERNAL_SECRET=replace-with-sidecar-internal-secret
+GENLAYER_NETWORK=studionet
+GENLAYER_RPC_ENDPOINT=https://studio.genlayer.com/api
+GENLAYER_CONTRACT_ADDRESS=replace-after-deploy
+GENLAYER_PRIVATE_KEY=backend-relayer-private-key
+CIRCLE_CONSOLE_API_KEY=gateway-only-circle-api-key
+CIRCLE_ENTITY_SECRET=gateway-only-circle-entity-secret
+TREASURY_WALLET_ID=circle-wallet-id-matching-platform-treasury
+QMA_GATEWAY_MAX_FEE_RAW=2010000
+# SCA treasury only: pre-register this EOA as its Gateway delegate
+QMA_GATEWAY_DELEGATE_WALLET_ID=circle-eoa-wallet-id
+QMA_GATEWAY_DELEGATE_ADDRESS=0xregistered-gateway-delegate
 ```
 
-The platform treasury receives the platform leg of direct split payments. Keep buyer, creator, and platform treasury wallets separate during testing. `QMA_ARC_SELLER_ADDRESS` is kept as a backward-compatible alias for older single-seller payment flows.
+New invoices route one x402 payment to the platform treasury so buyers sign once.
+Direct-split invoice parsing remains only for older persisted invoices. Keep buyer,
+creator, and treasury wallets separate during testing.
 
 ## Demo Flow
 
@@ -65,9 +78,15 @@ The platform treasury receives the platform leg of direct split payments. Keep b
 4. Wallet switches/adds Arc Testnet and asks you to sign `TransferWithAuthorization`.
 5. The Arc Gateway sidecar settles the signed authorization through Circle Gateway.
 6. QMA verifies the returned settlement UUID through Circle's transfer API.
-7. The report unlocks only after the backend settlement policy accepts all
-   required payment legs. A pending, expired, failed, or disputed invoice does
-   not issue a new access token.
+7. GenQMA generates the report once, hashes the exact payload, and submits that
+   hash and a public claim manifest to `GenQMAShield`; paid analog rows are not
+   placed in public transaction calldata.
+8. The report unlocks only after a finalized GenLayer `VALID` verdict. Pending,
+   rejected, expired, failed, or disputed invoices do not issue an access token.
+9. `VALID` persists one idempotent Arc creator payout for the exact integer share;
+   the platform remainder stays in treasury. `INVALID` persists one full refund
+   to Circle's authoritative `fromAddress`. The sidecar resumes stored
+   attestation/transaction checkpoints and polls Circle to a terminal state.
 
 If your Circle Gateway balance on Arc is lower than the report price, the UI now asks wallet to send two real transactions first:
 
@@ -83,7 +102,9 @@ For UX, QMA preloads Gateway balance instead of depositing exactly one report at
 - Preview price: `0.001 USDC`
 - Full report price: `0.005 USDC`
 
-After the first preload, the next reports only need the final x402 signature until the buyer's Gateway balance drops below the report price.
+After the first preload, each report needs one x402 signature until the buyer's
+Gateway balance drops below the report price. The backend relayer, not the buyer,
+submits the separate GenLayer verification transaction.
 
 The Arc gateway sidecar reads `amount_usdc` from the invoice resource URL, so the wallet signs the exact tier amount. QMA still verifies the Circle settlement amount against the server-side invoice before issuing access.
 
@@ -95,6 +116,11 @@ Invoices are provider-aware:
 - `query_hash`: exact market snapshot fingerprint
 
 This prevents one settlement from being reused for another provider, another tier, or changed signal data.
+
+GenLayer does not custody Arc USDC. An `INVALID` verdict blocks delivery and
+schedules the refund, but the invoice becomes `refunded` only after the sidecar
+records Circle transaction state `COMPLETE`. See `docs/agent/PAYMENT_FLOW.md`
+for the exact state machine and retry/idempotency boundary.
 
 The settlement UUID is immediate. The on-chain `submitBatch` transaction may appear several minutes later on testnet because Circle batches low-volume payments. Use:
 

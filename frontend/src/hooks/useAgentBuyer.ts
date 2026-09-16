@@ -351,11 +351,11 @@ export function useAgentBuyer({
           ...(splitSettlements.length ? { split_settlements: splitSettlements } : {}),
         });
         setAgentVerifyResult(verifyData);
-        if (verifyData.status === "refunded" || (verifyData as any).genlayer?.verdict === "INVALID") {
+        if (verifyData.status === "verification_rejected" || (verifyData as any).genlayer?.verdict === "INVALID") {
           const glReason = (verifyData as any).genlayer?.reasoning || "Divergence from live exchange feed";
           setAgentTrace((prev) => [
             ...prev,
-            { text: "shield:  GenLayer SLA Breached -> 100% Autonomous Chargeback executed", tone: "t-error" },
+            { text: "shield:  GenLayer rejected report -> access blocked", tone: "t-error" },
             { text: `reason:  ${glReason.slice(0, 80)}...`, tone: "t-dim" },
           ]);
           setAgentSessionStage("error");
@@ -365,7 +365,7 @@ export function useAgentBuyer({
         if ((verifyData as any).genlayer) {
           setAgentTrace((prev) => [
             ...prev,
-            { text: `shield:  GenLayer SLA Verified (5/5 validators, ${(verifyData as any).genlayer.confidence}%)`, tone: "t-val" },
+            { text: `shield:  GenLayer SLA finalized VALID (${(verifyData as any).genlayer.confidence}%)`, tone: "t-val" },
           ]);
         }
         setAgentTrace((prev) => [...prev, { text: "result:  JSON report unlocked ok", tone: "t-accent" }]);
@@ -704,11 +704,11 @@ export function useAgentBuyer({
         throw new Error("Verification failed");
       }
       setAgentVerifyResult(verifyData);
-      if (verifyData.status === "refunded" || (verifyData as any).genlayer?.verdict === "INVALID") {
+      if (verifyData.status === "verification_rejected" || (verifyData as any).genlayer?.verdict === "INVALID") {
         const glReason = (verifyData as any).genlayer?.reasoning || "Divergence from live exchange feed";
         setAgentTrace((prev) => [
           ...prev,
-          { text: "shield:  GenLayer SLA Breached -> 100% Autonomous Chargeback executed", tone: "t-error" },
+          { text: "shield:  GenLayer rejected report -> access blocked", tone: "t-error" },
           { text: `reason:  ${glReason.slice(0, 80)}...`, tone: "t-dim" },
         ]);
         setAgentSessionStage("error");
@@ -718,7 +718,7 @@ export function useAgentBuyer({
       if ((verifyData as any).genlayer) {
         setAgentTrace((prev) => [
           ...prev,
-          { text: `shield:  GenLayer SLA Verified (5/5 validators, ${(verifyData as any).genlayer.confidence}%)`, tone: "t-val" },
+          { text: `shield:  GenLayer SLA finalized VALID (${(verifyData as any).genlayer.confidence}%)`, tone: "t-val" },
         ]);
       }
       setAgentTrace((prev) => [

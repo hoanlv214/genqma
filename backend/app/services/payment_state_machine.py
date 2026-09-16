@@ -31,8 +31,11 @@ def invoice_split_mode(invoice: dict) -> str:
 
 
 def refresh_split_invoice_status(invoice: dict) -> str:
-    if invoice.get("status") in ("disputed", "refunded") or (invoice.get("genlayer") or {}).get("verdict") == "INVALID":
-        return "refunded" if invoice.get("status") == "refunded" or (invoice.get("genlayer") or {}).get("verdict") == "INVALID" else "disputed"
+    if invoice.get("status") == "verification_rejected" or (invoice.get("genlayer") or {}).get("verdict") == "INVALID":
+        invoice["status"] = "verification_rejected"
+        return "verification_rejected"
+    if invoice.get("status") in ("disputed", "refunded"):
+        return invoice.get("status")
     if invoice_split_mode(invoice) != "x402_direct_split":
         return invoice.get("status", "pending")
     legs = invoice_required_split_legs(invoice)
@@ -42,8 +45,10 @@ def refresh_split_invoice_status(invoice: dict) -> str:
     ]
     settled_count = len(paid_legs)
     if settled_count == len(legs) and legs:
-        if invoice.get("status") in ("disputed", "refunded") or (invoice.get("genlayer") or {}).get("verdict") == "INVALID":
-            invoice["status"] = "refunded"
+        if invoice.get("verification_required") and (invoice.get("genlayer") or {}).get("verdict") != "VALID":
+            invoice["status"] = "verification_pending"
+        elif invoice.get("status") in ("disputed", "refunded"):
+            invoice["status"] = invoice.get("status")
         else:
             invoice["status"] = "paid"
         invoice_id = invoice.get("invoice_id")
@@ -145,10 +150,13 @@ def invoice_has_failed_settlement(invoice: dict) -> bool:
 
 
 def invoice_access_status(invoice: dict) -> str:
+    if invoice.get("status") == "refunded":
+        return "refunded"
+    if invoice.get("status") == "verification_rejected" or (invoice.get("genlayer") or {}).get("verdict") == "INVALID":
+        return "verification_rejected"
     if (
         invoice_has_failed_settlement(invoice)
-        or invoice.get("status") in ("disputed", "refunded")
-        or (invoice.get("genlayer") or {}).get("verdict") == "INVALID"
+        or invoice.get("status") == "disputed"
     ):
         return "disputed"
 
@@ -157,6 +165,14 @@ def invoice_access_status(invoice: dict) -> str:
         return "expired"
     if status_value == "partial_paid":
         return "partial_paid"
+    if status_value in ("settlement_verified", "verification_pending"):
+        return "verification_pending"
+    if (
+        status_value == "paid"
+        and invoice.get("verification_required")
+        and (invoice.get("genlayer") or {}).get("verdict") != "VALID"
+    ):
+        return "verification_pending"
     if status_value != "paid":
         return "pending"
     if invoice_split_mode(invoice) == "x402_direct_split":

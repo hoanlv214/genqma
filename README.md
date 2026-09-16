@@ -1,18 +1,18 @@
-# GenQMA Shield
+# GenQMA
 
 [![GenLayer Agent Tank](https://img.shields.io/badge/GenLayer-Agent_Tank-4F46E5)](https://portal.genlayer.foundation/agent-tank/hackathon)
 [![Track: Agentic Commerce Infrastructure](https://img.shields.io/badge/Track-Agentic_Commerce_Infrastructure-10B981)](https://portal.genlayer.foundation/agent-tank/hackathon/submit?track=Agentic%20Commerce%20Infrastructure)
 [![Contract: GenQMAShield.py](https://img.shields.io/badge/Intelligent_Contract-GenQMAShield.py-F59E0B)](contracts/GenQMAShield.py)
-[![settles on Arc & GenLayer](https://img.shields.io/badge/settles_on-Arc_%26_GenLayer-1f1f1f)](https://studio.genlayer.com)
+[![Arc payment + GenLayer verification](https://img.shields.io/badge/Arc_payment-GenLayer_verification-1f1f1f)](https://studio-next.genlayer.com)
 [![payments: Circle x402](https://img.shields.io/badge/payments-Circle_x402-2775CA)](https://github.com/circlefin/arc-nanopayments)
-[![MCP: OAuth 2.1 PKCE](https://img.shields.io/badge/MCP-Claude_%26_ChatGPT-6E56CF)](https://qma-three.vercel.app/connect)
+[![MCP: OAuth 2.1 PKCE](https://img.shields.io/badge/MCP-Claude_%26_ChatGPT-6E56CF)](https://genqma.vercel.app/connect)
 
-**Market memory for autonomous crypto agents with GenLayer-powered SLA enforcement and chargeback protection for x402 micropayments.**
+**Market memory for autonomous crypto agents with one-signature x402 payment and fail-closed GenLayer report verification.**
 
-Live App: **[qma-three.vercel.app](https://qma-three.vercel.app)** — free market-memory scans on live anomalies  
+Live App: **[genqma.vercel.app](https://genqma.vercel.app)** — free market-memory scans on live anomalies
 · Submission Pack: **[GENLAYER_SUBMISSION.md](GENLAYER_SUBMISSION.md)** — portal fields, video script, and verification steps  
 · Intelligent Contract: **[contracts/GenQMAShield.py](contracts/GenQMAShield.py)** — GenLayer Python contract with web scraping & LLM consensus  
-· Connect Claude & ChatGPT: **[qma-three.vercel.app/connect](https://qma-three.vercel.app/connect)** — OAuth 2.1 PKCE connector for AI assistants  
+· Connect Claude & ChatGPT: **[genqma.vercel.app/connect](https://genqma.vercel.app/connect)** — OAuth 2.1 PKCE connector for AI assistants
 · CLI Agent: `qma agent run` — autonomous CLI agent with bounded spending policy  
 · Setup & Run: **[Quickstart](#quickstart--environment-setup)** — 1-click environment audit and service orchestrator  
 
@@ -40,25 +40,27 @@ QMA provides a **market-memory layer for crypto agents**. When an agent detects 
 1. Scan Anomaly  -> Agent discovers live funding or OI anomaly (free public radar)
 2. Value & Cost  -> Agent evaluates analog value against a hard session budget (BUY / SKIP)
 3. Pay per Query -> Settles micro-USDC ($0.001 preview / $0.005 full) via Circle Gateway on Arc
-4. Two-Toll Split-> 80% directly to creator wallet · 20% to Platform Treasury
-5. Unlock Memory -> Cryptographic access token unlocks structured historical regime JSON
+4. Verify Report -> Bind invoice/query/report hashes and await a finalized GenLayer verdict
+5. Unlock Memory -> A VALID verdict unlocks the exact cached historical-regime JSON
 ```
 
 Zero corporate credit cards. Zero subscriptions. Pay per query within immutable spending limits.
 
 ---
 
-## The GenLayer Shield: Autonomous SLA & Chargeback Arbiter
+## The GenLayer Shield: Fail-Closed SLA Arbiter
 
 In traditional Web3 agent commerce, if an agent pays via x402 on Arc or any EVM chain and receives low-quality or fabricated data, there is zero recourse — no EVM contract can read external websites or reason about analytical quality.
 
-**GenQMA Shield** solves this with an Intelligent Contract deployed on GenLayer ([contracts/GenQMAShield.py](contracts/GenQMAShield.py)):
+**GenQMA Shield** gates report delivery with an Intelligent Contract on GenLayer ([contracts/GenQMAShield.py](contracts/GenQMAShield.py)):
 
-1. **Zero-Oracle Web Verification:** The contract calls `gl.get_webpage()` directly to fetch live exchange orderbooks and funding feeds from Binance and MEXC to verify whether the anomaly actually exists.
-2. **LLM Equivalence Consensus:** Multiple validator nodes invoke `gl.exec_prompt()` wrapped in `gl.eq_principle.strict_eq` to verify statistical integrity and absence of hallucination.
-3. **Autonomous Settlement or Chargeback:**
-   - **VALID:** The contract releases escrowed funds with an automated 80/20 split (80% to creator, 20% to treasury).
-   - **INVALID / SLA Breach:** The contract triggers an instant on-chain chargeback refund to the buyer agent.
+1. **Live Web Verification:** The contract uses `gl.nondet.web.render()` to fetch the provider-specific MEXC evidence URL.
+2. **Semantic Validator Consensus:** `gl.vm.run_nondet(leader_fn, validator_fn)` compares structured verdicts without requiring byte-identical LLM prose.
+3. **Hash-Bound Access Control:** `invoice_id`, `query_hash`, and the SHA-256 `report_hash` are recorded on-chain. Only finalized `VALID` / `VERIFIED` state unlocks that exact cached report.
+
+Arc USDC is a separate chain and is not held by this GenLayer contract. A rejected
+report is blocked, but the application does not claim a refund until a real Arc
+payout transaction is confirmed. See [the payment flow](docs/agent/PAYMENT_FLOW.md).
 
 ---
 
@@ -72,9 +74,8 @@ QMA's differentiator is **Visible Agency** — the agent inspects the anomaly, c
 [decide]      BUY "Funding Memory" analog report:
               -> Price: $0.005 USDC (within $0.05 cap, remaining budget: $4.995 USDC)
               -> Rationale: Worth spending $0.005 to check outcome distribution in comparable regimes.
-[pay]         Circle Gateway x402 Settled on Arc:
-              -> $0.0040 USDC settled to Quant Creator wallet (80%)
-              -> $0.0010 USDC platform routing fee (20%)
+[pay]         One Circle Gateway x402 authorization settles to the Arc treasury.
+[verify]      GenLayer finalizes VALID for the bound invoice/query/report hashes.
 [unlocked]    Market Memory: Retrieved 42 historical analogs. In 68% of similar regimes, price reversed within 4h.
 [action]      Context received -> Evaluated outcome distribution -> Executed informed hedging decision.
 ```
@@ -112,8 +113,8 @@ class BaseProvider:
 ## For data creators & quants (Sellers)
 
 - **Monetize without building billing:** Do not build custom billing infrastructure with Stripe, auth portals, and recurring invoices. Register your API endpoint on QMA.
-- **Direct 80% creator payout:** 80% of every query fee goes directly to your wallet; 20% platform fee.
-- **Instant Circle Gateway settlement:** Micropayments settle sub-cent on Arc without 30-day payment cycles.
+- **Verdict-gated accounting:** Each provider's creator/platform allocation is recorded only after a finalized `VALID` report verdict.
+- **Receipt-backed payouts:** A payout or refund is complete only when its Arc transaction receipt is stored; the GenLayer verdict alone is not money-movement proof.
 - **Gas-free, self-serve cashouts:** Sign a Gateway `BurnIntent` in your browser at any time to withdraw accumulated USDC straight to your personal EVM wallet.
 - **Proof of sales:** Every purchase emits a verifiable on-chain `qma_payment_events` record with a public Arc transaction hash.
 
@@ -121,7 +122,7 @@ class BaseProvider:
 
 ## For developers & autonomous agents (Buyers)
 
-- **Claude & ChatGPT MCP Connectors:** Add QMA as a custom connector in Claude or ChatGPT via [`/connect`](https://qma-three.vercel.app/connect). The LLM autonomously scans anomalies, verifies spend limits, and purchases intelligence.
+- **Claude & ChatGPT MCP Connectors:** Add QMA as a custom connector in Claude or ChatGPT via [`/connect`](https://genqma.vercel.app/connect). The LLM autonomously scans anomalies, verifies spend limits, and purchases intelligence.
 - **Gasless Circle Agent Wallets:** Users fund an isolated Agent Wallet with pure USDC. No ETH or native gas tokens required — the Arc protocol uses native USDC for gas abstraction.
 - **Hard budget caps & spending safety:** Money safety is enforced in immutable backend code, not by the LLM prompt. You set per-query and total session budget caps (e.g. max $0.05/call, total $5.00); hallucinated models cannot overspend.
 
@@ -141,21 +142,24 @@ class BaseProvider:
             │ 2. Create invoice (x402)      │                               │
             │──────────────────────────────>│                               │
             │                               │                               │
-            │ 3. Settle 2-leg split payment │                               │
-            │    (80% Creator / 20% QMA)    │                               │
+            │ 3. Sign one x402 payment      │                               │
+            │    to platform treasury       │                               │
             │──────────────────────────────────────────────────────────────>│
             │                               │                               │
             │ 4. Verify settlement proof    │                               │
             │──────────────────────────────>│ 5. Deduplicate settlement_id  │
             │                               │    & verify sidecar receipt   │
             │                               │                               │
-            │ 6. Access Token & Report      │                               │
+            │ 6. GenLayer verifies hash     │                               │
+            │    VALID: schedule creator payout ───────────────────────────>│
+            │    INVALID: schedule payer refund ───────────────────────────>│
+            │ 7. VALID: Access Token & Report│                               │
             │<──────────────────────────────│                               │
 ```
 
 1. **Strict Settlement Deduplication (`UNIQUE INDEX`):** Enforced at the PostgreSQL database level (`UNIQUE (settlement_id)`). Replaying a previously settled Circle Gateway receipt to unlock another report is strictly rejected (`HTTP 409 Conflict`).
-2. **Atomic 2-Leg Direct Split:** An invoice is marked `paid` only when both the Creator leg (80%) and Platform leg (20%) have verified settlement receipts. Partial payments remain `partial_paid` and never grant report access.
-3. **Cryptographic Invoice HMAC:** Receipts are signed with a server-side HMAC binding `invoice_id`, `leg_id`, `pay_to`, and `amount_raw` to eliminate amount tampering.
+2. **One buyer authorization:** New invoices contain no split legs. Browser, Agent SDK, hosted worker, and MCP buyers settle once to the invoice treasury address.
+3. **Fail-closed report verification:** A finalized GenLayer `VALID` verdict for the invoice/query/full-report hashes is required before an access token is issued. `INVALID`, timeout, or indeterminate consensus stays locked.
 
 ---
 
@@ -298,7 +302,7 @@ qma agent run --live --budget 0.05 --executor circle-agent-wallet --wallet <your
 - **Backend:** Python 3.12+, FastAPI, Pydantic, Scipy, Uvicorn, managed by `uv`
 - **Frontend:** React 18, Vite, TypeScript, Lucide, Canvas-confetti, managed by `bun`
 - **Gateway & Wallets:** Express 5, TypeScript, Viem, `@circle-fin/x402-batching`, Circle Developer-Controlled Wallets
-- **Blockchain Rails:** GenLayer Studionet (Intelligent Contracts) & Arc Testnet (Circle Gateway USDC Nanopayments)
+- **Blockchain Rails:** GenLayer Studio Next, chain 61997 (Intelligent Contracts) & Arc Testnet (Circle Gateway USDC Nanopayments)
 - **Database:** PostgreSQL (Supabase) with strict unique constraints and financial ledger
 - **AI Protocols:** Model Context Protocol (MCP) with RFC 8414 / RFC 9728 OAuth 2.1 PKCE
 
@@ -306,4 +310,4 @@ qma agent run --live --budget 0.05 --executor circle-agent-wallet --wallet <your
 
 ## License
 
-Apache 2.0. Built for the autonomous agent economy on [GenLayer](https://studio.genlayer.com), [Arc](https://docs.arc.network), and [Circle Gateway](https://developers.circle.com).
+Apache 2.0. Built for the autonomous agent economy on [GenLayer Studio Next](https://studio-next.genlayer.com), [Arc](https://docs.arc.network), and [Circle Gateway](https://developers.circle.com).

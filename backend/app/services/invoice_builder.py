@@ -41,6 +41,7 @@ from backend.app.services.payment_state_machine import (
     split_missing_legs,
     split_paid_legs,
 )
+from backend.app.services.arc_verdict_settlement import public_arc_settlement
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +234,9 @@ def invoice_payment_state_response(
     access_status = invoice_access_status(invoice)
     access_token = (
         issue_invoice_access_token(invoice_id, invoice)
-        if include_access_token and invoice.get("status") == "paid" and access_status != "disputed"
+        if include_access_token
+        and invoice.get("status") == "paid"
+        and access_status in {"settlement_confirmed", "access_issued_pending_batch"}
         else None
     )
     seller_balance = fetch_gateway_balance_fn(PAYMENT_WALLET_ADDRESS) if include_seller_balance and invoice_split_mode(invoice) != "x402_direct_split" and fetch_gateway_balance_fn else {}
@@ -273,6 +276,7 @@ def invoice_payment_state_response(
         "explorer_url": invoice.get("explorer_url"),
         "verification_mode": invoice.get("verification_mode"),
         "genlayer": invoice.get("genlayer"),
+        "arc_settlement": public_arc_settlement(invoice.get("arc_settlement")),
         "access_token": access_token,
         "access_token_expires_in": ACCESS_TOKEN_TTL_SECONDS if access_token else None,
         "require_completed_settlement": REQUIRE_COMPLETED_SETTLEMENT,
@@ -283,6 +287,12 @@ def invoice_payment_state_response(
             if access_status == "access_issued_pending_batch" else
             "Invoice is partially paid. Resume the missing split leg(s) before expiry."
             if access_status == "partial_paid" else
+            "Payment is settled; GenLayer verification is still pending and report access remains locked."
+            if access_status == "verification_pending" else
+            "GenLayer rejected the report. Access is blocked; no refund is recorded until an Arc payout is confirmed."
+            if access_status == "verification_rejected" else
+            "GenLayer rejected the report. Access is blocked and the full payment was refunded to the settlement payer."
+            if access_status == "refunded" else
             "Invoice expired. Create a new purchase."
             if access_status == "expired" else
             "Circle reported a terminal settlement failure after access was granted. "
@@ -354,6 +364,7 @@ def paid_invoice_event(invoice: dict) -> dict:
         "explorer_url": invoice.get("explorer_url"),
         "paid_at": invoice.get("paid_at"),
         "query_hash": invoice.get("query_hash"),
+        "arc_settlement": public_arc_settlement(invoice.get("arc_settlement")),
     }
 
 

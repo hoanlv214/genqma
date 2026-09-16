@@ -1,6 +1,15 @@
 export type Tier = "preview" | "full";
 export type BuyerType = "human" | "agent";
-export type PaymentStatus = "pending" | "partial_paid" | "paid" | "expired" | "disputed" | "refunded";
+export type PaymentStatus =
+  | "pending"
+  | "partial_paid"
+  | "settlement_verified"
+  | "verification_pending"
+  | "verification_rejected"
+  | "paid"
+  | "expired"
+  | "disputed"
+  | "refunded";
 export type PaymentStepState = "waiting" | "active" | "completed" | "failed";
 export type PaymentStepKey = "wallet" | "gateway" | "settlement" | "genlayer" | "report";
 export type AgentSessionStage =
@@ -15,6 +24,8 @@ export type AgentSessionStage =
 export type AccessStatus =
   | "pending"
   | "partial_paid"
+  | "verification_pending"
+  | "verification_rejected"
   | "paid"
   | "expired"
   | "disputed"
@@ -186,7 +197,6 @@ export interface PaymentVerifyRequest {
   payer_address?: string;
   amount_usdc?: number;
   split_settlements?: SplitSettlementProof[];
-  simulate_hallucination?: boolean;
 }
 
 export interface PaymentVerifyResponse {
@@ -199,6 +209,16 @@ export interface PaymentVerifyResponse {
   transaction_hash?: string;
   explorer_url?: string;
   genlayer?: any;
+  arc_settlement?: {
+    operation_id?: string;
+    action?: "creator_payout" | "buyer_refund";
+    status?: string;
+    recipient?: string;
+    transfer_amount_raw?: string;
+    transaction_hash?: string;
+    explorer_url?: string;
+    error?: string;
+  };
 }
 
 
