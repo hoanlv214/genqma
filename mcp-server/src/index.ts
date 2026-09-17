@@ -19,7 +19,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-const MCP_URL = process.env.QMA_MCP_URL || "https://qma-api-7o9v.onrender.com/mcp";
+const MCP_URL = process.env.QMA_MCP_URL || "https://qma-api.onrender.com/mcp";
 const MCP_TOKEN = process.env.QMA_MCP_TOKEN || "";
 
 export async function run(): Promise<void> {

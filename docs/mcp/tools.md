@@ -1,21 +1,22 @@
 # QMA MCP Tools Reference
 
-All tools are served by the hosted MCP server at `https://qma-api-7o9v.onrender.com/mcp`
+All tools are served by the hosted MCP server at `https://qma-api.onrender.com/mcp`
 (Streamable HTTP, JSON responses). Authentication: `Authorization: Bearer <mcp connection token>`.
 
 ---
 
 ## `qma_scan_anomalies` — FREE
 
-Live market anomalies from a QMA provider (funding rates, open-interest
-divergence, volatility regime shifts on MEXC-derived feeds).
+**Primary First Step:** Live market anomalies from a QMA provider (funding rates, open-interest
+divergence, volatility regime shifts on MEXC-derived feeds). Always run this tool first to discover
+active anomaly candidate tokens (e.g. `PUFFER`, `IOST`, `AVA`). Do NOT guess generic tokens like BTC or ETH.
 
 **Input**
 
 | Param | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `provider_id` | string | `"funding_memory"` | Provider to scan |
-| `symbol` | string | `""` | Case-insensitive substring filter (e.g. `"btc"`) |
+| `provider_id` | string | `"funding_memory"` | Provider to scan (`"funding_memory"`, `"oi_memory"`) |
+| `symbol` | string | `""` | Case-insensitive substring filter (e.g. `"PUFFER"`) |
 | `limit` | int | `10` | 1–50 |
 
 **Output** (condensed)
@@ -24,8 +25,8 @@ divergence, volatility regime shifts on MEXC-derived feeds).
 {
   "provider_id": "funding_memory",
   "count": 1,
-  "anomalies": [{"symbol": "BTCUSDT", "funding": -0.12, "divergence": 3.1}],
-  "hint": "Buy evidence with qma_query_market_memory (costs USDC within your connection budget)."
+  "anomalies": [{"symbol": "PUFFER", "fundingRate": -0.85, "divergence": 3.1}],
+  "hint": "Pick an anomalous token from the list above and buy its report with qma_query_market_memory."
 }
 ```
 
@@ -69,11 +70,11 @@ worker uses, with identical safeguards.
 
 | Param | Type | Default | Notes |
 | --- | --- | --- | --- |
-| `symbol` | string | required | e.g. `"BTCUSDT"` |
-| `query` | string | required | Natural-language description of the anomaly |
+| `symbol` | string | `""` (auto) | Detected token symbol from `qma_scan_anomalies` (e.g. `"PUFFER"`, `"IOST"`). Do NOT guess generic tokens like BTC/ETH. Leave empty (`""`) to auto-select the #1 live anomaly |
+| `query` | string | `""` (auto) | Description of the anomaly. Leave empty to auto-generate from the signal |
 | `tier` | string | `"preview"` | `"preview"` (~$0.001) or `"full"` (~$0.05, provider-priced) |
 | `max_price_usdc` | number | connection cap | Per-call cap; cannot exceed connection caps |
-| `provider_id` | string | auto | Omit to let QMA rank providers |
+| `provider_id` | string | auto | Omit to let QMA rank providers (`"funding_memory"`) |
 
 **Behavior**
 

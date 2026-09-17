@@ -424,3 +424,46 @@ def test_revoked_connection_is_rejected(client):
     result = response.json()["result"]
     # Tool-level refusal comes back as a tool error payload.
     assert "revoked" in result.get("content", [{}])[0].get("text", "") or result.get("isError")
+
+
+def test_purchase_tool_rejects_non_anomalous_symbol(client):
+    client.scripted_api.queue("/api/v1/providers/funding_memory/live-anomalies", [
+        (200, {"anomalies": [{"symbol": "PUFFER", "fundingRate": -0.85}, {"symbol": "IOST", "fundingRate": -0.72}]}),
+    ])
+    data = tool_text(tool_call(client, "qma_query_market_memory", {
+        "symbol": "BTC", "query": "funding rate on BTC",
+    }))
+    assert data["error"] == "symbol_not_anomalous"
+    assert data["requested_symbol"] == "BTC"
+    assert "PUFFER" in data["active_anomalies_detected"]
+    assert "IOST" in data["active_anomalies_detected"]
+
+
+def test_purchase_tool_auto_selects_top_live_anomaly(client):
+    client.scripted_api.queue("/api/v1/providers/funding_memory/live-anomalies", [
+        (200, {"anomalies": [{"symbol": "PUFFER", "fundingRate": -0.85}]}),
+    ])
+
+    created_tasks = []
+
+    def handler(method, path, json_body, headers):
+        if (method, path) == ("POST", "/api/v1/sessions"):
+            created_tasks.append(json_body["task"])
+            return 200, {"id": "sess-auto", "status": "draft"}
+        if path == "/api/v1/sessions/sess-auto/start":
+            return 200, {"status": "queued"}
+        if path == "/api/v1/sessions/sess-auto" and method == "GET":
+            return 200, {"id": "sess-auto", "status": "completed",
+                         "runtime_state": {"status": "completed", "spentUsdc": 0.01}}
+        if path == "/api/v1/entitlements/wallet/0x1111111111111111111111111111111111111111":
+            return 200, {"entitlements": [{"entitlement_id": "ent-auto", "symbol": "PUFFER"}]}
+        if path == "/api/v1/wallets/0x1111111111111111111111111111111111111111/reports/ent-auto":
+            return 200, {"address": OWNER, "entitlement": {"entitlement_id": "ent-auto", "report": {"symbol": "PUFFER"}}}
+        return None
+
+    client.scripted_api.set_default(handler)
+    data = tool_text(tool_call(client, "qma_query_market_memory", {
+        "symbol": "", "query": "",
+    }))
+    assert "PUFFER" in created_tasks[0]
+    assert data["entitlement"]["report"]["symbol"] == "PUFFER"

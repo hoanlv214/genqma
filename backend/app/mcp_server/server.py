@@ -88,9 +88,24 @@ def create_mcp_http_app(deps):
             "caps": client.get("caps") or {},
         }
 
+    @mcp.prompt(name="qma_analyst")
+    def qma_analyst() -> str:
+        return (
+            "You are the QMA Market Memory Assistant. Follow this workflow:\n"
+            "1. Always call `qma_scan_anomalies` first to discover live detected market anomalies (e.g. PUFFER, IOST, AVA).\n"
+            "2. Never guess or invent generic symbols like BTC or ETH; QMA tracks anomalous funding and OI events.\n"
+            "3. Call `qma_check_budget` to verify spend caps.\n"
+            "4. Call `qma_query_market_memory` with the exact symbol from step 1 (or leave symbol empty to auto-select the top anomaly)."
+        )
+
     @mcp.tool(
         title="Scan live market anomalies",
-        description="Scan live market anomalies (funding, OI, volatility divergence) across QMA providers. Free — never spends USDC.",
+        description=(
+            "PRIMARY FIRST STEP: Always call this tool first before buying a report to discover active market signals. "
+            "Scans live market anomalies (funding rates, open-interest divergence, volatility shifts) across QMA providers "
+            "and returns real detected candidate tokens (e.g. PUFFER, IOST, AVA, OKTASTOCK). "
+            "Do NOT guess generic tokens like BTC or ETH. Free — never spends USDC."
+        ),
     )
     async def qma_scan_anomalies(
         provider_id: str = "funding_memory",
@@ -108,7 +123,7 @@ def create_mcp_http_app(deps):
             "provider_id": provider_id,
             "count": len(anomalies[:limit]),
             "anomalies": anomalies[:limit],
-            "hint": "Buy evidence with qma_query_market_memory (protected by GenLayer Intelligent Contract SLA verification).",
+            "hint": "Pick an anomalous token from the list above and buy its report with qma_query_market_memory.",
         }
 
     @mcp.tool(
@@ -137,15 +152,17 @@ def create_mcp_http_app(deps):
     @mcp.tool(
         title="Buy historical analog report",
         description=(
-            "Buy an evidence-backed historical analog report for a market signal. "
+            "Buy an evidence-backed historical analog report for a detected market anomaly. "
+            "IMPORTANT: Do NOT invent or guess symbols like BTC or ETH. You MUST select an active token symbol "
+            "from the candidates returned by qma_scan_anomalies (or leave symbol empty '' to auto-select the strongest live anomaly). "
             "Protected by GenLayer Intelligent Contract SLA verification against data fabrication. "
             "Costs USDC within the connection's spend caps. Returns the purchased report; "
             "the purchase runs through a durable agent session on the owner's Agent Wallet."
         ),
     )
     async def qma_query_market_memory(
-        symbol: str,
-        query: str,
+        symbol: str = "",
+        query: str = "",
         tier: str = "preview",
         max_price_usdc: float = 0.0,
         provider_id: str = "",
@@ -165,13 +182,50 @@ def create_mcp_http_app(deps):
                 "hint": "Ask the owner to raise the caps by re-approving the connection, or free budget.",
             }
 
+        # Resolve live candidate anomalies to guard against hallucinated non-anomalous symbols (e.g. BTC/ETH)
+        active_candidates = []
+        try:
+            target_provider = provider_id or "funding_memory"
+            scan_status, scan_data = await deps.call_api("GET", f"/api/v1/providers/{target_provider}/live-anomalies")
+            if scan_status == 200 and isinstance(scan_data, dict):
+                active_candidates = scan_data.get("anomalies") or []
+        except Exception:
+            pass
+
+        symbol_clean = symbol.strip().upper() if symbol else ""
+        if not symbol_clean or symbol_clean in ("AUTO", "TOP", "ANY"):
+            if active_candidates:
+                top_cand = active_candidates[0]
+                symbol_clean = str(top_cand.get("symbol") or top_cand.get("pair") or "").strip().upper()
+                if not query:
+                    fr = top_cand.get("fundingRate")
+                    query = f"Funding rate anomaly ({fr}%) detected on {symbol_clean}"
+            else:
+                symbol_clean = "PUFFER"
+                if not query:
+                    query = "Live market anomaly report"
+
+        elif active_candidates:
+            cand_symbols = [str(c.get("symbol") or c.get("pair") or "").strip().upper() for c in active_candidates]
+            if symbol_clean not in cand_symbols and not any(symbol_clean in s for s in cand_symbols):
+                return {
+                    "error": "symbol_not_anomalous",
+                    "requested_symbol": symbol_clean,
+                    "message": f"No active market anomaly detected for '{symbol_clean}'. QMA generates evidence reports for tokens with detected live funding/OI anomalies.",
+                    "active_anomalies_detected": [c.get("symbol") for c in active_candidates[:8]],
+                    "hint": f"Please call qma_query_market_memory with an active symbol from the list above (e.g. symbol='{cand_symbols[0]}'), or leave symbol empty ('') to auto-select the strongest anomaly.",
+                }
+
+        if not query:
+            query = f"Market anomaly investigation for {symbol_clean}"
+
         tier = tier if tier in ("preview", "full") else "preview"
-        task = f"buy 1 {tier} analog report for {symbol.strip().upper()}: {query.strip()}"
+        task = f"buy 1 {tier} analog report for {symbol_clean}: {query.strip()}"
         headers = _wallet_profile_headers(access_token_secret, connection["wallet"])
 
         status, session = await deps.call_api("POST", "/api/v1/sessions", json={
             "owner_wallet": connection["wallet"],
-            "title": f"MCP {connection['client_name'] or connection['client_id'][:12]}: {symbol.strip().upper()}",
+            "title": f"MCP {connection['client_name'] or connection['client_id'][:12]}: {symbol_clean}",
             "task": task,
             "budget_usdc": round(min(price_cap, remaining), 6),
         }, headers=headers)
@@ -190,7 +244,7 @@ def create_mcp_http_app(deps):
         deadline = time.time() + PURCHASE_TIMEOUT_SECONDS
         final_status, final_state, report_or_none = await _await_session(
             deps, storage, connection["client_id"], headers,
-            connection["wallet"], session_id, symbol.strip().upper(), deadline,
+            connection["wallet"], session_id, symbol_clean, deadline,
         )
         if report_or_none is not None:
             return report_or_none["report"]
@@ -212,7 +266,7 @@ def create_mcp_http_app(deps):
             "status": "pending",
             "session_status": final_status,
             "session_id": session_id,
-            "symbol": symbol.strip().upper(),
+            "symbol": symbol_clean,
             "hint": "The purchase session is running server-side. Call qma_get_purchase with this session_id to collect the report.",
         }
 
