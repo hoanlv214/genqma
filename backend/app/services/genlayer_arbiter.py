@@ -198,7 +198,42 @@ def _wait_for_finalized(client, transaction_hash: str) -> Any:
         ) from exc
 
 
+def _read_via_node(invoice_id: str) -> Optional[dict[str, Any]]:
+    from pathlib import Path
+    import subprocess
+    repo_root = Path(__file__).resolve().parents[3]
+    script_path = repo_root / "scripts" / "genlayer_submit.mjs"
+    try:
+        proc = subprocess.run(
+            ["node", str(script_path), "read", invoice_id],
+            text=True,
+            capture_output=True,
+            timeout=30,
+            cwd=str(repo_root),
+        )
+    except Exception as exc:
+        raise GenLayerVerificationError(f"GenLayer node reader failed: {exc}") from exc
+
+    stdout_text = proc.stdout.strip()
+    json_lines = [l for l in stdout_text.splitlines() if l.strip().startswith("{") and l.strip().endswith("}")]
+    if proc.returncode != 0 or not json_lines:
+        err_msg = proc.stderr.strip() or stdout_text
+        raise GenLayerVerificationError(f"GenLayer read error: {err_msg}")
+
+    try:
+        data = json.loads(json_lines[-1])
+        raw_order = data.get("order")
+        if not raw_order:
+            return None
+        return json.loads(raw_order) if isinstance(raw_order, str) else dict(raw_order)
+    except Exception as exc:
+        raise GenLayerVerificationError(f"Could not parse GenLayer reader JSON: {exc}") from exc
+
+
 def _read_order(client, invoice_id: str) -> Optional[dict[str, Any]]:
+    is_real_client = type(client).__name__ == "GenLayerClient"
+    if "next" in _network() and is_real_client:
+        return _read_via_node(invoice_id)
     addr = _contract_address()
     try:
         raw = client.read_contract(
@@ -340,6 +375,7 @@ def verify_report(
             "report_hash": report_hash,
             "verification_manifest": verification_manifest,
             "evidence_url": evidence_url,
+            "transaction_hash": transaction_hash,
         }
         res = _submit_via_node(payload)
         tx_hash = res.get("transaction_hash") or transaction_hash

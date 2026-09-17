@@ -17,7 +17,7 @@ import path from "node:path";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-const DEFAULT_API = "https://qma-api-7o9v.onrender.com";
+const DEFAULT_API = "https://qma-api.onrender.com";
 const ARC_CHAIN_ID = 5042002;
 const ARC_TESTNET_CHAIN = {
   id: ARC_CHAIN_ID,

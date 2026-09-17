@@ -35,6 +35,7 @@
     "agents"
   ],
   "dependencies": {
+    "@circle-fin/cli": "^1.1.1",
     "viem": "^2.48.11"
   },
   "devDependencies": {

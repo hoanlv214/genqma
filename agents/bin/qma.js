@@ -144,7 +144,7 @@ OUTPUT
 ENVIRONMENT VARIABLES
   AGENT_PRIVATE_KEY              EVM private key for local live mode.
   CIRCLE_AGENT_WALLET_ADDRESS  Your Circle wallet address for 'circle-agent-wallet'.
-  QMA_API_URL                    Default: https://qma-api-7o9v.onrender.com
+  QMA_API_URL                    Default: https://qma-api.onrender.com
   QMA_LLM_PROVIDER / QMA_LLM_MODEL / QMA_LLM_BASE_URL
   OPENAI_API_KEY / GEMINI_API_KEY / GROQ_API_KEY / OPENROUTER_API_KEY
   `);
@@ -165,7 +165,7 @@ function loadEnv() {
 }
 loadEnv();
 
-const apiUrl = String(argValue("api", process.env.QMA_API_URL || "https://qma-api-7o9v.onrender.com")).replace(/\/$/, "");
+const apiUrl = String(argValue("api", process.env.QMA_API_URL || "https://qma-api.onrender.com")).replace(/\/$/, "");
 const executor = argValue("executor", process.env.QMA_AGENT_EXECUTOR || "local-private-key");
 if (!["local-private-key", "circle-agent-wallet"].includes(executor)) {
   throw new Error("--executor must be 'local-private-key' or 'circle-agent-wallet'.");

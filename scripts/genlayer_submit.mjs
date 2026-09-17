@@ -108,24 +108,27 @@ async function main() {
       return;
     }
 
-    const fees = await client.estimateTransactionFees();
-    const txHash = await client.writeContract({
-      address: contractAddress,
-      functionName: "submit_and_verify",
-      args: [
-        invoice_id,
-        buyer,
-        provider,
-        symbol,
-        expected_anomaly,
-        query_hash,
-        report_hash,
-        verification_manifest,
-        evidence_url,
-      ],
-      fees,
-      value: 0n,
-    });
+    let txHash = payload.transaction_hash;
+    if (!txHash) {
+      const fees = await client.estimateTransactionFees();
+      txHash = await client.writeContract({
+        address: contractAddress,
+        functionName: "submit_and_verify",
+        args: [
+          invoice_id,
+          buyer,
+          provider,
+          symbol,
+          expected_anomaly,
+          query_hash,
+          report_hash,
+          verification_manifest,
+          evidence_url,
+        ],
+        fees,
+        value: 0n,
+      });
+    }
 
     // Wait for finalization
     const receipt = await client.waitForTransactionReceipt({
