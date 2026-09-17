@@ -1,4 +1,4 @@
-const DEFAULT_REMOTE_API = "https://qma-api-7o9v.onrender.com";
+const DEFAULT_REMOTE_API = "https://qma-api.onrender.com";
 
 export const API_BASE_URL = String(
   import.meta.env.VITE_QMA_API_BASE_URL ||

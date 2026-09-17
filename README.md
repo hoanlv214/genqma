@@ -244,22 +244,65 @@ bun run build:all
 
 ---
 
-## Production Deployment (CLI Only)
+## Production Deployment & CI/CD (100% Zero-UI / CLI Automation)
 
-QMA supports deployment directly from the terminal without opening web consoles for Supabase, Vercel, or Render:
+QMA supports full automated deployment and environment synchronization directly from the terminal without opening web dashboards or manually copy-pasting variables:
+
+### 1. Backend & Worker Services (Render Automation)
+
+All 3 services (`qma-api`, `qma-arc-gateway`, `qma-agent-worker`) across Render workspaces can be updated and redeployed with a single command:
 
 ```bash
-# 1. Deploy database schema to Supabase:
-bun run deploy:db
+# Sync all environment variables from .env & trigger automated redeployment:
+bun run deploy:render
+# (Equivalent to: python scripts/render_sync.py --api-key <RENDER_API_KEY> --distributed --sync-env --deploy)
 
-# 2. Deploy frontend to Vercel Production:
-bun run deploy:fe
+# Check real-time build and live health status:
+bun run deploy:render:status
 
-# 3. Trigger backend deployment on Render:
-curl -X POST https://api.render.com/deploy/srv-xxxxxx?key=yyyyyy
+# Inspect live environment variables currently configured on Render:
+bun run deploy:render:inspect
 ```
 
-For authentication tokens, project linking, and automated CI/CD setup, see [docs/infrastructure/CLI_DEPLOYMENT.md](docs/infrastructure/CLI_DEPLOYMENT.md).
+**Key features of `render_sync.py`:**
+- **Cross-Workspace Auto-Discovery (`--distributed`):** Automatically maps and links the active services across multiple workspaces (`Hoàn Lại Văn's Workspace` and `penn`).
+- **Smart Merge:** Preserves existing custom production keys on Render while updating missing secrets, Circle Developer-Controlled Wallet credentials, and relayer keys.
+- **Shared Secret Synchronization:** Enforces matching `QMA_ARC_GATEWAY_INTERNAL_SECRET` and split-receipt secrets across all 3 services for authenticated zero-trust communication.
+
+---
+
+### 2. Frontend Deployment (Vercel Automation)
+
+No need to manually add `VITE_*` keys in the Vercel project settings:
+
+```bash
+# Sync frontend environment variables and deploy production bundle to Vercel:
+bun run deploy:vercel
+# (Or using Vercel Token: python scripts/vercel_sync.py --token <VERCEL_TOKEN> --all)
+
+# Sync environment variables only:
+bun run deploy:vercel:env
+```
+
+**Auto-configured frontend variables:**
+- `VITE_QMA_API_BASE_URL`: Live Render backend (`https://qma-api.onrender.com`)
+- `VITE_GENLAYER_CONTRACT_ADDRESS`: Deployed GenLayer Shield Intelligent Contract address
+- `VITE_GENLAYER_STUDIO_URL` & `VITE_GENLAYER_EXPLORER_URL`: Studio Next endpoints
+- `VITE_QMA_MCP_PUBLIC_URL`: Public Model Context Protocol endpoint
+
+---
+
+### 3. Database & Smart Contracts
+
+```bash
+# Deploy PostgreSQL schema, triggers, and financial ledger to Supabase:
+bun run deploy:db
+
+# Deploy GenLayer Intelligent Contract (GenQMAShield) to Studio Next:
+bun run deploy:genlayer
+```
+
+For full CI/CD pipeline examples (GitHub Actions) and CLI token configuration, see [docs/infrastructure/CLI_DEPLOYMENT.md](docs/infrastructure/CLI_DEPLOYMENT.md).
 
 ---
 

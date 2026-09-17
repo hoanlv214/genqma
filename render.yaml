@@ -56,6 +56,20 @@ services:
         value: https://qma-api.onrender.com
       - key: QMA_MCP_CONNECT_BASE_URL
         value: https://genqma.vercel.app
+      - key: QMA_SETTLEMENT_RAIL
+        value: circle_gateway_x402
+      - key: QMA_DEFAULT_SETTLEMENT_MODE
+        value: x402_direct_split
+      - key: QMA_WITHDRAW_RELAYER_ADDRESS
+        sync: false
+      - key: QMA_LLM_PROVIDER
+        value: gemini
+      - key: QMA_LLM_MODEL
+        value: gemini-2.5-flash
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
 
   - type: web
     name: qma-arc-gateway
@@ -94,6 +108,14 @@ services:
         sync: false
       - key: QMA_GATEWAY_DELEGATE_ADDRESS
         sync: false
+      - key: QMA_WITHDRAW_RELAYER_ADDRESS
+        sync: false
+      - key: QMA_WITHDRAW_RELAYER_PRIVATE_KEY
+        sync: false
+      - key: QMA_CIRCLE_GATEWAY_API
+        value: https://gateway-api-testnet.circle.com
+      - key: QMA_ARC_EXPLORER
+        value: https://testnet.arcscan.app
 
   - type: web
     name: qma-agent-worker
@@ -107,6 +129,8 @@ services:
     envVars:
       - key: API_BASE_URL
         value: https://qma-api.onrender.com
+      - key: QMA_API_URL
+        value: https://qma-api.onrender.com
       - key: QMA_ARC_GATEWAY_URL
         value: https://qma-arc-gateway.onrender.com
       # One Node process runs this many autonomous sessions concurrently.
@@ -119,3 +143,9 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: QMA_LLM_PROVIDER
+        value: gemini
+      - key: QMA_LLM_MODEL
+        value: gemini-2.5-flash
