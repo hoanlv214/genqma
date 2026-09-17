@@ -173,4 +173,5 @@ https://github.com/hoanlv214/genqma
 - **Giao Dịch Xác Thực Thực Tế (Live Verified Txs):**
   - **Tx 1:** `0x10c014f608b3b550127ff3d0fdc419460c91ba260a95127c110e3b09931e6f0e` ([Xem trên Explorer](https://explorer-studio-dev.genlayer.com/transactions/0x10c014f608b3b550127ff3d0fdc419460c91ba260a95127c110e3b09931e6f0e)) - Verdict: `VALID` (94% Confidence), Anomaly: `LASERTECSTOCK`
   - **Tx 2:** `0x73b618c6266f9b5e700b545b8fb2cfc601fc2e658669a0ae124d0d2dc373d685` ([Xem trên Explorer](https://explorer-studio-dev.genlayer.com/transactions/0x73b618c6266f9b5e700b545b8fb2cfc601fc2e658669a0ae124d0d2dc373d685)) - Verdict: `VALID` (91% Confidence), Anomaly: `SOFTBANKSTOCK`
+  - **Tx 3 (Live End-to-End Autonomous Agent Purchase):** `0x581dd9292beb9e356aa1a97b1e8e7b30b83d8530e6c30eaf8218f7518ce263cb` ([Xem trên Explorer](https://explorer-studio-dev.genlayer.com/transactions/0x581dd9292beb9e356aa1a97b1e8e7b30b83d8530e6c30eaf8218f7518ce263cb)) - Verdict: `VALID` (92% Confidence), Anomaly: `AVA`
 
