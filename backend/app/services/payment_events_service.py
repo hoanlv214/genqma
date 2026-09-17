@@ -14,9 +14,21 @@ from backend.app.services.payment_state_machine import (
 )
 
 
+def _is_dry_run_event(event: dict) -> bool:
+    settlement_id = str(event.get("settlement_id") or "")
+    if settlement_id.startswith("DRY:"):
+        return True
+    buyer_type = str(event.get("buyer_type") or "").lower()
+    if buyer_type == "dry_run":
+        return True
+    return False
+
+
 def summarize_payment_events(events: list, provider_split_metadata_fn) -> dict:
     unique_events = {}
     for event in events:
+        if _is_dry_run_event(event):
+            continue
         key = payment_event_key(event)
         if key:
             unique_events[key] = {**unique_events.get(key, {}), **event}
@@ -245,6 +257,8 @@ def build_traction_snapshot(
 
     report_groups = {}
     for event in events:
+        if _is_dry_run_event(event):
+            continue
         report_key = str(event.get("invoice_id") or payment_event_key(event) or "")
         if report_key:
             report_groups.setdefault(report_key, []).append(event)
@@ -362,6 +376,8 @@ def build_traction_snapshot(
 def merge_payment_sources(events: list, invoice_events: Optional[list] = None) -> list:
     unique_events = {}
     for event in list(events or []) + list(invoice_events or []):
+        if _is_dry_run_event(event):
+            continue
         key = payment_event_key(event)
         if not key:
             continue

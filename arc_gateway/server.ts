@@ -19,7 +19,10 @@ import { decodeBatch } from "./decode-batch.js";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import circle from "@circle-fin/developer-controlled-wallets";
+import {
+  initiateDeveloperControlledWalletsClient,
+  type CircleDeveloperControlledWalletsClient,
+} from "@circle-fin/developer-controlled-wallets";
 import {
   executeVerdictSettlement,
   type SettlementCheckpoint,
@@ -83,13 +86,13 @@ const GATEWAY_MAX_FEE_RAW = process.env.QMA_GATEWAY_MAX_FEE_RAW ?? "2010000";
 const GATEWAY_DELEGATE_WALLET_ID = process.env.QMA_GATEWAY_DELEGATE_WALLET_ID;
 const GATEWAY_DELEGATE_ADDRESS = process.env.QMA_GATEWAY_DELEGATE_ADDRESS;
 
-let circleClient: ReturnType<typeof circle.initiateDeveloperControlledWalletsClient> | null = null;
+let circleClient: CircleDeveloperControlledWalletsClient | null = null;
 let walletSetId: string | null = null;
 let treasuryWalletAddress: string | null = null;
 let treasuryAccountType: string | null = null;
 
 if (CIRCLE_CONSOLE_API_KEY && CIRCLE_ENTITY_SECRET) {
-  circleClient = circle.initiateDeveloperControlledWalletsClient({
+  circleClient = initiateDeveloperControlledWalletsClient({
     apiKey: CIRCLE_CONSOLE_API_KEY,
     entitySecret: CIRCLE_ENTITY_SECRET,
   });

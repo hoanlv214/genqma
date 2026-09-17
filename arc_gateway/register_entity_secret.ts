@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
-import circle from "@circle-fin/developer-controlled-wallets";
+import { registerEntitySecretCiphertext } from "@circle-fin/developer-controlled-wallets";
 import * as path from "node:path";
 import { loadEnvFile } from "./load-env.js";
 
@@ -29,7 +29,7 @@ const recoveryFilePath: string = "./recovery";
 
 mkdirSync(recoveryFilePath, { recursive: true });
 
-await circle.registerEntitySecretCiphertext({
+await registerEntitySecretCiphertext({
   apiKey,
   entitySecret,
   recoveryFileDownloadPath: recoveryFilePath,

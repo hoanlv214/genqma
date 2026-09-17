@@ -172,7 +172,7 @@ export function PaywallPanel(props: PaywallPanelProps) {
                           {paymentStepStatus.genlayer?.status === "active"
                             ? "Fetching authoritative MEXC evidence and awaiting GenLayer validator consensus..."
                             : paymentStepStatus.genlayer?.status === "completed"
-                              ? "Finalized GenLayer verdict: VALID. The bound report hash may be unlocked."
+                              ? `Finalized GenLayer verdict: VALID${(paymentDetails.genlayerTxHash || genlayerReceipt?.transaction_hash) ? ` (Tx: ${shortAddress(paymentDetails.genlayerTxHash || genlayerReceipt?.transaction_hash)})` : ""}. The bound report hash may be unlocked.`
                               : paymentStepStatus.genlayer?.status === "failed"
                                 ? "SLA rejected. Report access remains blocked."
                                 : "The configured contract verifies the report hash before access is issued."}
@@ -273,7 +273,21 @@ export function PaywallPanel(props: PaywallPanelProps) {
                       </div>
                     </>
                   ) : null}
-                  {paymentDetails.txHash ? (
+                  {(paymentDetails.genlayerTxHash || genlayerReceipt?.transaction_hash) ? (
+                    <div className="paywall-detail-row">
+                      <span className="paywall-detail-label">GenLayer Tx</span>
+                      <a
+                        className="paywall-detail-value tx-link"
+                        href={paymentDetails.genlayerExplorerUrl || `https://explorer-studio-dev.genlayer.com/transactions/${paymentDetails.genlayerTxHash || genlayerReceipt?.transaction_hash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: "#2dd4bf", fontWeight: 600 }}
+                      >
+                        {shortAddress(paymentDetails.genlayerTxHash || genlayerReceipt?.transaction_hash)}
+                      </a>
+                    </div>
+                  ) : null}
+                  {paymentDetails.txHash && paymentDetails.txHash !== (paymentDetails.genlayerTxHash || genlayerReceipt?.transaction_hash) ? (
                     <div className="paywall-detail-row">
                       <span className="paywall-detail-label">Arcscan Tx</span>
                       <a className="paywall-detail-value tx-link" href={paymentDetails.explorerUrl || `https://testnet.arcscan.app/tx/${paymentDetails.txHash}`} target="_blank" rel="noreferrer">

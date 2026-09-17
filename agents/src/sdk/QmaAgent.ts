@@ -180,6 +180,7 @@ export class QmaAgent extends EventEmitter {
             symbol: candidate.symbol,
             tier: candidate.upgrade ? "full" : candidate.tier as any,
             amount_usdc: candidate.price_usdc,
+            settlement_ids: [`DRY:sim_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`],
           };
         }
         if (!this.signer) {
@@ -295,23 +296,39 @@ export class QmaAgent extends EventEmitter {
                   ...delivery,
                 };
               }
-              throw new Error(
-                `payment_outcome_uncertain: invoice ${invoice.invoice_id} is ${String(reconciled?.status || "unknown")}; `
-                + "session stopped to prevent a duplicate payment. Resume this invoice after reconciliation.",
-              );
+              const uncertainMsg = `payment_outcome_uncertain: invoice ${invoice.invoice_id} is ${String(reconciled?.status || "unknown")}; `
+                + "session stopped to prevent a duplicate payment. Resume this invoice after reconciliation.";
+              this.emit("payment_outcome_uncertain", {
+                invoice_id: invoice.invoice_id,
+                invoice_secret: invoice.invoice_secret,
+                status: reconciled?.status || "unknown",
+                candidate_id: candidate.candidate_id,
+                symbol: candidate.symbol,
+                tier: candidate.tier,
+                error: uncertainMsg,
+              });
+              throw new Error(uncertainMsg);
             } catch (reconcileError) {
               if (reconcileError instanceof Error && reconcileError.message.startsWith("payment_outcome_uncertain:")) {
                 throw reconcileError;
               }
-              throw new Error(
-                `payment_outcome_uncertain: could not reconcile invoice ${invoice.invoice_id}; `
-                + `session stopped to prevent a duplicate payment (${reconcileError instanceof Error ? reconcileError.message : String(reconcileError)}).`,
-              );
+              const failMsg = `payment_outcome_uncertain: could not reconcile invoice ${invoice.invoice_id}; `
+                + `session stopped to prevent a duplicate payment (${reconcileError instanceof Error ? reconcileError.message : String(reconcileError)}).`;
+              this.emit("payment_outcome_uncertain", {
+                invoice_id: invoice.invoice_id,
+                invoice_secret: invoice.invoice_secret,
+                candidate_id: candidate.candidate_id,
+                symbol: candidate.symbol,
+                tier: candidate.tier,
+                error: failMsg,
+              });
+              throw new Error(failMsg);
             }
           }
           return {
             status: "failed",
-            error: e instanceof Error ? e.message : String(e)
+            error: e instanceof Error ? e.message : String(e),
+            invoice_id: invoice?.invoice_id,
           };
         }
       },

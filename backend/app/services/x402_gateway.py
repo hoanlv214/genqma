@@ -32,6 +32,21 @@ def find_arc_batch_tx(
             "message": "Circle accepted the payment authorization; on-chain batch tx is still pending.",
         }
 
+    direct_tx = (
+        settlement.get("transactionHash")
+        or settlement.get("txHash")
+        or settlement.get("batchTxHash")
+        or settlement.get("batchTransactionHash")
+        or settlement.get("batch_tx")
+    )
+    if direct_tx:
+        return {
+            "batch_tx": direct_tx,
+            "explorer_url": f"{arc_explorer}/tx/{direct_tx}" if arc_explorer else None,
+            "status": status_value,
+            "match_type": "authoritative_receipt",
+        }
+
     transactions, error = load_arc_gateway_transactions()
     if error:
         return {
@@ -66,6 +81,7 @@ def find_arc_batch_tx(
             "batch_tx": tx_hash,
             "explorer_url": f"{arc_explorer}/tx/{tx_hash}" if tx_hash else None,
             "status": status_value,
+            "match_type": "heuristic_window",
         }
 
     return {

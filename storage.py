@@ -521,14 +521,17 @@ class SupabaseStorage:
         if not settlement_id:
             return False
         try:
+            params = {
+                "select": "invoice_id",
+                "settlement_id": f"eq.{settlement_id}",
+                "limit": "1"
+            }
+            if exclude_invoice_id:
+                params["invoice_id"] = f"neq.{exclude_invoice_id}"
             rows = self._request(
                 "GET",
                 "qma_payment_events",
-                params={
-                    "select": "invoice_id",
-                    "settlement_id": f"eq.{settlement_id}",
-                    "limit": "1"
-                },
+                params=params,
             ) or []
             for row in rows:
                 if row.get("invoice_id") != exclude_invoice_id:

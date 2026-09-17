@@ -79,7 +79,10 @@ def refresh_split_invoice_status(invoice: dict) -> str:
             invoice["verification_mode"] = "circle-gateway-x402-direct-split"
         invoice["gateway_status"] = aggregate_split_gateway_status(invoice)
     elif settled_count > 0:
-        invoice["status"] = "partial_paid"
+        if time.time() > float(invoice.get("expires_at") or 0):
+            invoice["status"] = "expired"
+        else:
+            invoice["status"] = "partial_paid"
     elif time.time() > float(invoice.get("expires_at") or 0):
         invoice["status"] = "expired"
     else:

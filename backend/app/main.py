@@ -630,11 +630,15 @@ storage_backend = create_storage_backend(
 from backend.app.core.provider_registry import ProviderRegistryV2
 from backend.app.services.plugins.funding_provider import FundingProviderV2
 from backend.app.services.plugins.oi_provider import OpenInterestMemoryProviderV2
+from backend.app.services.plugins.polymarket_provider import PolymarketDivergenceProviderV2
+from backend.app.services.plugins.pyth_provider import PythStressBandProviderV2
 from backend.app.services.providers_meta import provider_metadata
 
 provider_registry = ProviderRegistryV2()
 provider_registry.register(FundingProviderV2(owner_wallet=os.getenv("QMA_FUNDING_MEMORY_OWNER_WALLET", PAYMENT_WALLET_ADDRESS)))
 provider_registry.register(OpenInterestMemoryProviderV2(owner_wallet=os.getenv("QMA_OI_MEMORY_OWNER_WALLET", "0x2222222222222222222222222222222222222222")))
+provider_registry.register(PolymarketDivergenceProviderV2(owner_wallet=os.getenv("QMA_POLYMARKET_OWNER_WALLET", "0x3333333333333333333333333333333333333333")))
+provider_registry.register(PythStressBandProviderV2(owner_wallet=os.getenv("QMA_PYTH_OWNER_WALLET", "0x4444444444444444444444444444444444444444")))
 CREATOR_CLAIMS_PATH = str(settings.creator_claims_path)
 
 
@@ -1581,6 +1585,16 @@ _PUBLIC_VERIFICATION_CLAIMS = (
     "turnover_context",
     "provider_diagnostics",
     "declared_confidence",
+    "arbitrage_bias",
+    "recommended_strategy",
+    "divergence_spread_pct",
+    "polymarket_probability",
+    "implied_derivative_prob",
+    "cctp_bridge_required",
+    "anomaly",
+    "regime",
+    "predicted_bias",
+    "bias",
 )
 
 
@@ -1589,11 +1603,17 @@ def _report_verification_manifest(report, invoice):
     report_data = report if isinstance(report, dict) else {}
     payload = report_data.get("payload")
     source = payload if isinstance(payload, dict) else report_data
-    claims = {
-        key: source[key]
-        for key in _PUBLIC_VERIFICATION_CLAIMS
-        if key in source
-    }
+    inner = source.get("payload") if isinstance(source.get("payload"), dict) else {}
+    claims = {}
+    for key in _PUBLIC_VERIFICATION_CLAIMS:
+        if key in inner:
+            claims[key] = inner[key]
+        elif key in source:
+            claims[key] = source[key]
+        elif key in report_data:
+            claims[key] = report_data[key]
+    if "declared_confidence" not in claims and "confidence" in report_data:
+        claims["declared_confidence"] = report_data["confidence"]
     return jsonable_encoder({
         "invoice_id": invoice.get("invoice_id"),
         "provider_id": invoice.get("provider_id"),
@@ -1605,12 +1625,18 @@ def _report_verification_manifest(report, invoice):
     })
 
 
+
 def _genlayer_evidence_url(invoice):
     symbol = str(invoice.get("symbol") or (invoice.get("query") or {}).get("symbol") or "").strip()
     clean_symbol = symbol.replace("-", "_").replace("/", "_").upper()
+    if not clean_symbol.endswith("_USDT") and not clean_symbol.endswith("USDT"):
+        clean_symbol = f"{clean_symbol}_USDT"
+    elif clean_symbol.endswith("USDT") and not clean_symbol.endswith("_USDT"):
+        clean_symbol = f"{clean_symbol[:-4]}_USDT"
     if invoice.get("provider_id") == "oi_memory":
         return f"https://contract.mexc.com/api/v1/contract/ticker?symbol={clean_symbol}"
     return f"https://contract.mexc.com/api/v1/contract/funding_rate/{clean_symbol}"
+
 
 
 def verify_invoice_report_with_genlayer(invoice_id, invoice):
@@ -1714,9 +1740,9 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
         ) from exc
 
     report_hash = hashlib.sha256(canonical_report.encode("utf-8")).hexdigest()
-    verification_manifest = _canonical_report_json(
-        _report_verification_manifest(report, invoice)
-    )
+    manifest_dict = _report_verification_manifest(report, invoice)
+    verification_manifest = _canonical_report_json(manifest_dict)
+    manifest_claims = manifest_dict.get("claims", {})
     if len(verification_manifest.encode("utf-8")) > 12000:
         invoice["status"] = "verification_pending"
         _save_invoice(invoice)
@@ -1747,8 +1773,9 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
             provider=invoice.get("owner_wallet") or "",
             symbol=str(invoice.get("symbol") or ""),
             expected_anomaly=(
-                "Verify the current symbol and anomaly inputs against authoritative live "
-                "market evidence, and reject malformed or internally inconsistent summary claims."
+                f"Verify {invoice.get('symbol')} market anomaly against live MEXC evidence: "
+                f"strategy={manifest_claims.get('recommended_strategy') or manifest_claims.get('bias') or manifest_claims.get('anomaly') or 'funding_arbitrage'}, "
+                f"declared_confidence={manifest_claims.get('declared_confidence', 0.6)}"
             ),
             query_hash=str(invoice.get("query_hash") or ""),
             report_hash=report_hash,
@@ -1756,6 +1783,7 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
             evidence_url=_genlayer_evidence_url(invoice),
             transaction_hash=pending_tx,
         )
+
     except genlayer_arbiter.GenLayerVerificationError as exc:
         invoice["status"] = "verification_pending"
         invoice["genlayer"] = {

@@ -1,4 +1,4 @@
-import circle from "@circle-fin/developer-controlled-wallets";
+import { initiateDeveloperControlledWalletsClient } from "@circle-fin/developer-controlled-wallets";
 import * as path from "node:path";
 import { loadEnvFile } from "./load-env.js";
 
@@ -12,7 +12,7 @@ if (!apiKey || !entitySecret) {
   throw new Error("CIRCLE_CONSOLE_API_KEY and CIRCLE_ENTITY_SECRET are required.");
 }
 
-const circleClient = circle.initiateDeveloperControlledWalletsClient({
+const circleClient = initiateDeveloperControlledWalletsClient({
   apiKey,
   entitySecret,
 });

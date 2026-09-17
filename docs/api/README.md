@@ -79,13 +79,21 @@ The Access column must match the operation's `x-qma-access` value in
 
 | Method | Path | Access | Summary |
 | --- | --- | --- | --- |
+| GET | `/.well-known/agent.json` | `public` | ERC-8004 Agent Card metadata for external AI agent discovery |
+| GET | `/.well-known/circle-service.json` | `public` | Circle Agent Marketplace service discovery descriptor |
 | GET | `/.well-known/oauth-authorization-server` | `public` | RFC 8414 OAuth 2.1 metadata for MCP clients |
 | GET | `/.well-known/oauth-protected-resource` | `public` | RFC 9728 protected-resource metadata (root fallback) |
 | GET | `/.well-known/oauth-protected-resource/mcp` | `public` | RFC 9728 protected-resource metadata for the /mcp endpoint |
 | GET | `/.well-known/openid-configuration` | `public` | OpenID/OAuth authorization server metadata for MCP clients (fallback discovery) |
 | GET | `/api/v1/admin/public-config` | `public` | Read public admin capability hints |
 | POST | `/api/v1/agent/decision` | `public` | Create a bounded purchase decision |
+| GET | `/api/v1/agent/identity` | `public` | Read QMA ERC-8004 on-chain agent identity and capabilities |
+| POST | `/api/v1/agent/jobs` | `public` | Dispatch an ERC-8183 escrowed intelligence task |
+| GET | `/api/v1/agent/jobs/{job_id}` | `public` | Inspect an ERC-8183 escrowed task status and GenLayer proof |
 | GET | `/api/v1/agent/recommendations` | `public` | Rank purchase candidates for an agent |
+| GET | `/api/v1/agent/spending-policy` | `public` | Read Circle agent wallet spending policy caps |
+| POST | `/api/v1/agent/spending-policy/evaluate` | `public` | Evaluate proposed purchase against agent spending policy |
+| GET | `/api/v1/agent/wallet-config` | `public` | Read supported agent wallet connection methods and passkey configuration |
 | POST | `/api/v1/analyze` | `paid-access` | Deprecated paid full-report alias |
 | POST | `/api/v1/chat` | `paid-access` | Ask a question about a paid report |
 | GET | `/api/v1/config` | `public` | Read client runtime configuration |
@@ -96,6 +104,7 @@ The Access column must match the operation's `x-qma-access` value in
 | GET | `/api/v1/entitlements/wallet/{address}` | `public-optional-auth` | List redacted or private wallet entitlements |
 | GET | `/api/v1/gateway/info` | `public` | Read Circle Gateway capabilities |
 | GET | `/api/v1/health` | `public` | Check API health |
+| GET | `/api/v1/marketplace/service-card` | `public` | Read Circle Agent Marketplace service card |
 | GET | `/api/v1/metrics` | `public` | Read landing-page traction metrics |
 | GET | `/api/v1/metrics/wallet/{address}` | `public-optional-auth` | Deprecated wallet metrics alias |
 | POST | `/api/v1/oauth/approve` | `wallet-owner` | Consent-page callback binding an MCP client to the approving wallet (returns single-use code) |

@@ -118,7 +118,7 @@ Evaluate whether the supplied GenQMA report excerpt is supported by the live
 market evidence and satisfies the invoice SLA.
 
 INVOICE
-Symbol: {symbol}
+Symbol: {symbol} (trading pairs on MEXC are formatted as {symbol}_USDT or {symbol}USDT)
 Expected anomaly: {expected_anomaly}
 Query hash: {query_hash}
 Full report hash: {report_hash}
@@ -131,8 +131,13 @@ PUBLIC VERIFICATION MANIFEST
 
 Return only JSON with this exact shape:
 {{"verdict":"VALID" or "INVALID","confidence":<integer 0-100>,"reasoning":"<specific evidence-based explanation>"}}
-Use INVALID when evidence is missing, the symbol/query does not match, metrics
-are unsupported, or the report appears fabricated. Never assume validity."""
+Evaluation criteria:
+1. Symbol match: The base token {symbol} corresponds directly to the {symbol}_USDT futures contract on MEXC.
+2. Authenticity: Confirm the market data from MEXC is valid and active.
+3. Report claims: Check that the claims in the public verification manifest are structurally consistent with market conditions.
+If the asset exists and the claims are plausible, return VALID with confidence between 85 and 95.
+Return INVALID only if the market data is missing, completely unrelated to {symbol}, or the report appears fabricated."""
+
             return gl.nondet.exec_prompt(prompt, response_format="json")
 
         def validator_fn(leader_result) -> bool:

@@ -46,7 +46,7 @@ class WebhookProviderAdapter(ProviderPlugin):
         return self._owner_wallet
 
     def _validate_url(self, url: str):
-        """Prevent SSRF attacks by blocking local/private IPs and invalid schemes."""
+        """Prevent SSRF and DNS rebinding attacks by validating all resolved IPs."""
         parsed = urlparse(url)
         if parsed.scheme not in ('http', 'https'):
             raise HTTPException(status_code=400, detail="Invalid URL scheme. Must be http or https.")
@@ -54,15 +54,30 @@ class WebhookProviderAdapter(ProviderPlugin):
         if not hostname:
             raise HTTPException(status_code=400, detail="Invalid URL hostname.")
             
+        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
         try:
-            ip_addr = socket.gethostbyname(hostname)
-            ip = ipaddress.ip_address(ip_addr)
-            if ip.is_private or ip.is_loopback or ip.is_link_local:
-                raise HTTPException(status_code=400, detail="Private or internal IP addresses are strictly prohibited (SSRF protection).")
+            addr_info = socket.getaddrinfo(hostname, port, socket.AF_UNSPEC, socket.SOCK_STREAM)
+            if not addr_info:
+                raise HTTPException(status_code=400, detail="Could not resolve hostname.")
+            for *_, sockaddr in addr_info:
+                ip_str = sockaddr[0]
+                ip = ipaddress.ip_address(ip_str)
+                if (
+                    ip.is_private
+                    or ip.is_loopback
+                    or ip.is_link_local
+                    or ip.is_reserved
+                    or ip.is_multicast
+                    or ip.is_unspecified
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Private, loopback, or reserved IP addresses are strictly prohibited (SSRF/DNS rebinding protection).",
+                    )
         except socket.gaierror:
             raise HTTPException(status_code=400, detail="Could not resolve hostname.")
         except ValueError:
-            pass # Invalid IP address string, caught by gethostbyname usually
+            raise HTTPException(status_code=400, detail="Invalid resolved IP address.")
 
     def _sign_request(self, payload: dict) -> dict:
         """
@@ -106,8 +121,24 @@ class WebhookProviderAdapter(ProviderPlugin):
                         if len(content_bytes) > 1024 * 1024:
                             logger.error(f"Provider {self.provider_id} exceeded 1MB response size limit.")
                             raise HTTPException(status_code=502, detail="Provider response too large (limit 1MB).")
-                            
-                    return json.loads(content_bytes.decode('utf-8'))
+
+                    raw_body = content_bytes.decode('utf-8')
+
+                    # Inbound Response HMAC verification (Finding W-01)
+                    inbound_sig = resp.headers.get("X-QMA-Signature") or resp.headers.get("X-Provider-Signature")
+                    inbound_ts = resp.headers.get("X-QMA-Timestamp") or resp.headers.get("X-Provider-Timestamp")
+                    if inbound_sig and inbound_ts:
+                        expected_msg = f"{inbound_ts}.{raw_body}".encode('utf-8')
+                        expected_sig = hmac.new(
+                            key=self.webhook_secret,
+                            msg=expected_msg,
+                            digestmod=hashlib.sha256
+                        ).hexdigest()
+                        if not hmac.compare_digest(inbound_sig, expected_sig):
+                            logger.error(f"Provider {self.provider_id} response HMAC signature mismatch.")
+                            raise HTTPException(status_code=502, detail="Provider response signature verification failed.")
+
+                    return json.loads(raw_body)
         except httpx.TimeoutException:
             logger.error(f"Provider {self.provider_id} timeout on {endpoint}")
             raise HTTPException(status_code=504, detail=f"Provider {self.provider_id} took too long to respond (>{timeout_val}s).")

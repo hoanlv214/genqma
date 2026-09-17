@@ -15,6 +15,49 @@ from typing import Any, Optional
 
 logger = logging.getLogger("GenQMA-GenLayer")
 
+STUDIO_NEXT_CHAIN_ID = 61997
+STUDIO_NEXT_EXPLORER_URL = "https://explorer-studio-dev.genlayer.com"
+
+
+def _contract_address() -> str:
+    import sys
+    mod = sys.modules.get(__name__)
+    if mod and hasattr(mod, "GENLAYER_CONTRACT_ADDRESS"):
+        return str(mod.GENLAYER_CONTRACT_ADDRESS or "").strip()
+    return os.getenv("GENLAYER_CONTRACT_ADDRESS", "").strip()
+
+
+def _private_key() -> str:
+    import sys
+    mod = sys.modules.get(__name__)
+    if mod and hasattr(mod, "GENLAYER_PRIVATE_KEY"):
+        return str(mod.GENLAYER_PRIVATE_KEY or "").strip()
+    return os.getenv("GENLAYER_PRIVATE_KEY", "").strip()
+
+
+def _network() -> str:
+    import sys
+    mod = sys.modules.get(__name__)
+    if mod and hasattr(mod, "GENLAYER_NETWORK"):
+        return str(mod.GENLAYER_NETWORK or "").strip().lower()
+    return os.getenv("GENLAYER_NETWORK", "studio-next").strip().lower()
+
+
+def _rpc_endpoint() -> str:
+    import sys
+    mod = sys.modules.get(__name__)
+    if mod and hasattr(mod, "GENLAYER_RPC_ENDPOINT"):
+        return str(mod.GENLAYER_RPC_ENDPOINT or "").strip()
+    net = _network()
+    default_endpoint = (
+        "https://studio-next.genlayer.com/api"
+        if "next" in net
+        else "https://studio.genlayer.com/api"
+    )
+    return os.getenv("GENLAYER_RPC_ENDPOINT", default_endpoint).strip()
+
+
+# Module attributes initially populated from environment
 GENLAYER_CONTRACT_ADDRESS = os.getenv("GENLAYER_CONTRACT_ADDRESS", "").strip()
 GENLAYER_PRIVATE_KEY = os.getenv("GENLAYER_PRIVATE_KEY", "").strip()
 GENLAYER_NETWORK = os.getenv("GENLAYER_NETWORK", "studio-next").strip().lower()
@@ -22,8 +65,7 @@ GENLAYER_RPC_ENDPOINT = os.getenv(
     "GENLAYER_RPC_ENDPOINT",
     "https://studio-next.genlayer.com/api" if "next" in GENLAYER_NETWORK else "https://studio.genlayer.com/api",
 ).strip()
-STUDIO_NEXT_CHAIN_ID = 61997
-STUDIO_NEXT_EXPLORER_URL = "https://explorer-studio-dev.genlayer.com"
+
 
 
 class GenLayerVerificationError(RuntimeError):
@@ -35,18 +77,21 @@ class GenLayerVerificationError(RuntimeError):
 
 
 def get_genlayer_config() -> dict[str, Any]:
-    configured = bool(GENLAYER_CONTRACT_ADDRESS and GENLAYER_PRIVATE_KEY)
+    addr = _contract_address()
+    pk = _private_key()
+    net = _network()
+    configured = bool(addr and pk)
     explorer_url = (
         STUDIO_NEXT_EXPLORER_URL
-        if "next" in GENLAYER_NETWORK
+        if "next" in net
         else "https://explorer-studio.genlayer.com"
     )
     return {
-        "network": GENLAYER_NETWORK,
-        "chain_id": STUDIO_NEXT_CHAIN_ID if "next" in GENLAYER_NETWORK else 61999,
-        "rpc_endpoint": GENLAYER_RPC_ENDPOINT,
+        "network": net,
+        "chain_id": STUDIO_NEXT_CHAIN_ID if "next" in net else 61999,
+        "rpc_endpoint": _rpc_endpoint(),
         "explorer_url": explorer_url,
-        "contract_address": GENLAYER_CONTRACT_ADDRESS or None,
+        "contract_address": addr or None,
         "contract_source": "contracts/GenQMAShield.py",
         "consensus": "gl.vm.run_nondet(leader_fn, validator_fn)",
         "role": "report_verifier",
@@ -56,13 +101,17 @@ def get_genlayer_config() -> dict[str, Any]:
 
 
 def _create_client():
-    if not GENLAYER_CONTRACT_ADDRESS:
+    addr = _contract_address()
+    pk = _private_key()
+    net = _network()
+    endpoint = _rpc_endpoint()
+    if not addr:
         raise GenLayerVerificationError("GENLAYER_CONTRACT_ADDRESS is required")
-    if not GENLAYER_PRIVATE_KEY:
+    if not pk:
         raise GenLayerVerificationError("GENLAYER_PRIVATE_KEY is required")
-    if GENLAYER_NETWORK not in ("studio-next", "studionext", "studionet"):
+    if net not in ("studio-next", "studionext", "studionet"):
         raise GenLayerVerificationError(
-            f"Unsupported GENLAYER_NETWORK {GENLAYER_NETWORK!r}; expected 'studio-next' or 'studionet'"
+            f"Unsupported GENLAYER_NETWORK {net!r}; expected 'studio-next' or 'studionet'"
         )
     try:
         from genlayer_py import create_account, create_client
@@ -72,19 +121,15 @@ def _create_client():
             "genlayer-py is not installed; install the project dependencies"
         ) from exc
 
-    is_studio_next = GENLAYER_NETWORK in ("studio-next", "studionext")
+    is_studio_next = net in ("studio-next", "studionext")
     chain = studionet
     default_rpc = studionet.rpc_urls["default"]["http"][0]
     if is_studio_next:
-        # genlayer-py 0.18 only exports the legacy ``studionet`` preset. Studio
-        # Next is a different chain, so replacing only its RPC URL would still
-        # sign requests for chain 61999. Clone the preset with its complete
-        # public Studio Next identity.
         chain = replace(
             studionet,
             id=STUDIO_NEXT_CHAIN_ID,
             name="GenLayer Studio Next",
-            rpc_urls={"default": {"http": [GENLAYER_RPC_ENDPOINT]}},
+            rpc_urls={"default": {"http": [endpoint]}},
             block_explorers={
                 "default": {
                     "name": "GenLayer Studio Next Explorer",
@@ -92,14 +137,15 @@ def _create_client():
                 }
             },
         )
-    elif GENLAYER_RPC_ENDPOINT != default_rpc:
+    elif endpoint != default_rpc:
         chain = replace(
             studionet,
-            rpc_urls={"default": {"http": [GENLAYER_RPC_ENDPOINT]}},
+            rpc_urls={"default": {"http": [endpoint]}},
         )
 
-    account = create_account(GENLAYER_PRIVATE_KEY)
+    account = create_account(pk)
     return create_client(chain=chain, account=account), account
+
 
 
 def _hash_text(value: Any) -> str:
@@ -153,9 +199,10 @@ def _wait_for_finalized(client, transaction_hash: str) -> Any:
 
 
 def _read_order(client, invoice_id: str) -> Optional[dict[str, Any]]:
+    addr = _contract_address()
     try:
         raw = client.read_contract(
-            address=GENLAYER_CONTRACT_ADDRESS,
+            address=addr,
             function_name="get_order",
             args=[invoice_id],
         )
@@ -210,11 +257,45 @@ def _validate_order(
         raise GenLayerVerificationError("GenLayer verdict metadata is incomplete")
     return {
         **order,
-        "contract_address": GENLAYER_CONTRACT_ADDRESS,
-        "network": GENLAYER_NETWORK,
+        "contract_address": _contract_address(),
+        "network": _network(),
         "transaction_hash": transaction_hash,
         "consensus_type": "GenLayer run_nondet semantic validation",
     }
+
+
+def _submit_via_node(payload: dict[str, Any]) -> dict[str, Any]:
+    from pathlib import Path
+    import subprocess
+    repo_root = Path(__file__).resolve().parents[3]
+    script_path = repo_root / "scripts" / "genlayer_submit.mjs"
+    try:
+        proc = subprocess.run(
+            ["node", str(script_path), "write"],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            timeout=180,
+            cwd=str(repo_root),
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise GenLayerVerificationError("GenLayer consensus timed out after 180s") from exc
+    except Exception as exc:
+        raise GenLayerVerificationError(f"GenLayer node runner failed: {exc}") from exc
+
+    stdout_text = proc.stdout.strip()
+    json_lines = [l for l in stdout_text.splitlines() if l.strip().startswith("{") and l.strip().endswith("}")]
+    if proc.returncode != 0:
+        err_msg = proc.stderr.strip() or stdout_text
+        raise GenLayerVerificationError(f"GenLayer execution error: {err_msg}")
+
+    if not json_lines:
+        raise GenLayerVerificationError(f"Malformed output from GenLayer runner: {stdout_text}")
+
+    try:
+        return json.loads(json_lines[-1])
+    except Exception as exc:
+        raise GenLayerVerificationError(f"Could not parse GenLayer runner JSON: {exc}") from exc
 
 
 def verify_report(
@@ -232,23 +313,57 @@ def verify_report(
 ) -> dict[str, Any]:
     """Submit or resume an on-chain verification and return finalized state."""
     client, account = _create_client()
+    net = _network()
+    is_studio_next = "next" in net
+
+    # Check if order already settled on chain
+    existing = _read_order(client, invoice_id)
+    if existing:
+        return _validate_order(
+            existing,
+            invoice_id=invoice_id,
+            query_hash=query_hash,
+            report_hash=report_hash,
+            transaction_hash=transaction_hash,
+        )
+
+    is_real_client = type(client).__name__ == "GenLayerClient"
+    if is_studio_next and is_real_client:
+
+        payload = {
+            "invoice_id": invoice_id,
+            "buyer": buyer,
+            "provider": provider,
+            "symbol": symbol,
+            "expected_anomaly": expected_anomaly,
+            "query_hash": query_hash,
+            "report_hash": report_hash,
+            "verification_manifest": verification_manifest,
+            "evidence_url": evidence_url,
+        }
+        res = _submit_via_node(payload)
+        tx_hash = res.get("transaction_hash") or transaction_hash
+        raw_order = res.get("order")
+        order = (
+            json.loads(raw_order)
+            if isinstance(raw_order, str)
+            else (raw_order or _read_order(client, invoice_id))
+        )
+        return _validate_order(
+            order,
+            invoice_id=invoice_id,
+            query_hash=query_hash,
+            report_hash=report_hash,
+            transaction_hash=tx_hash,
+        )
 
     if transaction_hash:
         _wait_for_finalized(client, transaction_hash)
     else:
-        existing = _read_order(client, invoice_id)
-        if existing:
-            return _validate_order(
-                existing,
-                invoice_id=invoice_id,
-                query_hash=query_hash,
-                report_hash=report_hash,
-                transaction_hash=None,
-            )
         try:
             submitted = client.write_contract(
                 account=account,
-                address=GENLAYER_CONTRACT_ADDRESS,
+                address=_contract_address(),
                 function_name="submit_and_verify",
                 args=[
                     invoice_id,
@@ -276,3 +391,4 @@ def verify_report(
         report_hash=report_hash,
         transaction_hash=transaction_hash,
     )
+

@@ -58,14 +58,26 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
                 </div>
               </div>
             </div>
-            <a
-              href={contractExplorerUrl}
-              target="_blank"
-              rel="noreferrer"
-              style={{ fontSize: '12px', color: '#818cf8', textDecoration: 'underline', fontWeight: 500 }}
-            >
-              Contract {shortAddress(contractAddress)} ↗
-            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {genlayerReceipt?.transaction_hash && (
+                <a
+                  href={`${GENLAYER_EXPLORER_URL.replace(/\/$/, "")}/transactions/${genlayerReceipt.transaction_hash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ fontSize: '12px', color: '#2dd4bf', textDecoration: 'underline', fontWeight: 500 }}
+                >
+                  Tx {shortAddress(genlayerReceipt.transaction_hash)} ↗
+                </a>
+              )}
+              <a
+                href={contractExplorerUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: '12px', color: '#818cf8', textDecoration: 'underline', fontWeight: 500 }}
+              >
+                Contract {shortAddress(contractAddress)} ↗
+              </a>
+            </div>
           </div> : null}
 
           {reportProviderId === "oi_memory" ? (

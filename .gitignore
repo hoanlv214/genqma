@@ -43,3 +43,5 @@ __v0_jsx-dev-runtime.ts
 .zcode/
 skills-lock.json
 .codegraphmcp-server/dist/
+
+graphify-out/

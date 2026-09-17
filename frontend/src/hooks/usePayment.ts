@@ -66,6 +66,8 @@ export function usePayment({
     sellerPending: "",
     txHash: "",
     explorerUrl: "",
+    genlayerTxHash: "",
+    genlayerExplorerUrl: "",
   });
   const [reportDetailsOpen, setReportDetailsOpen] = useState(true);
   const [showDepositModal, setShowDepositModal] = useState(false);
@@ -112,6 +114,8 @@ export function usePayment({
       sellerPending: "",
       txHash: "",
       explorerUrl: "",
+      genlayerTxHash: "",
+      genlayerExplorerUrl: "",
     });
     setPaymentStep("wallet");
     setPaymentStepStatus({
@@ -175,11 +179,27 @@ export function usePayment({
           symbol: invoiceData.symbol || effectiveQuery.symbol || (invoiceData.payment_requirement as any)?.symbol,
         };
         setCurrentInvoice(fullInvoice);
+        if (invoiceData.genlayer) {
+          setGenlayerReceipt(invoiceData.genlayer);
+        }
+        const glTxHash = invoiceData.genlayer?.transaction_hash;
+        const glExplorerUrl = glTxHash
+          ? `https://explorer-studio-dev.genlayer.com/transactions/${glTxHash}`
+          : "";
+        setPaymentDetails((prev) => ({
+          ...prev,
+          settlementId: invoiceData.settlement_id || prev.settlementId,
+          txHash: glTxHash || invoiceData.transaction_hash || prev.txHash,
+          explorerUrl: glExplorerUrl || invoiceData.explorer_url || prev.explorerUrl,
+          genlayerTxHash: glTxHash || "",
+          genlayerExplorerUrl: glExplorerUrl,
+        }));
         sessionStorage.setItem(`qma_accessToken_${invoiceData.invoice_id}`, invoiceData.access_token);
         setPaymentStepStatus((prev) => ({
           ...prev,
           gateway: { status: "completed", label: "Funded" },
           settlement: { status: "completed", label: "Accepted" },
+          genlayer: { status: "completed", label: "SLA Verified" },
           report: { status: "active", label: "Opening" },
         }));
         setPayStatusText("Recovered paid invoice. Opening report...");
@@ -231,6 +251,21 @@ export function usePayment({
       }
 
       if (invoiceData.status === "verification_pending" && invoiceData.settlement_id) {
+        if (invoiceData.genlayer) {
+          setGenlayerReceipt(invoiceData.genlayer);
+        }
+        const glTxHash = invoiceData.genlayer?.transaction_hash;
+        const glExplorerUrl = glTxHash
+          ? `https://explorer-studio-dev.genlayer.com/transactions/${glTxHash}`
+          : "";
+        setPaymentDetails((prev) => ({
+          ...prev,
+          settlementId: invoiceData.settlement_id,
+          txHash: glTxHash || invoiceData.transaction_hash || prev.txHash,
+          explorerUrl: glExplorerUrl || invoiceData.explorer_url || prev.explorerUrl,
+          genlayerTxHash: glTxHash || "",
+          genlayerExplorerUrl: glExplorerUrl,
+        }));
         setPaymentStepStatus((prev) => ({
           ...prev,
           gateway: { status: "completed", label: "Funded" },
@@ -543,6 +578,7 @@ export function usePayment({
         report: { status: "waiting", label: "Waiting" },
       }));
       setPayStatusText("Settlement confirmed. Verifying the bound report with the GenLayer Intelligent Contract...");
+      showToast("Settlement confirmed. Verifying the bound report with the GenLayer Intelligent Contract...", "info");
 
       const verifyData: any = await verifyPayment(currentInvoice.invoice_id, {
         invoice_secret: currentInvoice.invoice_secret,
@@ -604,16 +640,32 @@ export function usePayment({
         console.warn("Failed to refresh balance after settlement", balErr);
       }
 
+      const glTxHash = glReceipt?.transaction_hash;
+      const glExplorerUrl = glTxHash
+        ? `https://explorer-studio-dev.genlayer.com/transactions/${glTxHash}`
+        : "";
+
       setPaymentDetails((prev) => ({
         ...prev,
         settlementId: verifyData.settlement_id || settlementId || splitSettlements.map((item: any) => item.settlement_id).join(", "),
         sellerAvailable: verifyData.seller_gateway_available_usdc != null ? `${Number(verifyData.seller_gateway_available_usdc).toFixed(6)} USDC` : prev.sellerAvailable,
         sellerPending: verifyData.seller_gateway_pending_batch_usdc != null ? `${Number(verifyData.seller_gateway_pending_batch_usdc).toFixed(6)} USDC` : prev.sellerPending,
-        txHash: verifyData.transaction_hash || prev.txHash,
-        explorerUrl: verifyData.explorer_url || prev.explorerUrl,
+        txHash: glTxHash || verifyData.transaction_hash || prev.txHash,
+        explorerUrl: glExplorerUrl || verifyData.explorer_url || prev.explorerUrl,
+        genlayerTxHash: glTxHash || "",
+        genlayerExplorerUrl: glExplorerUrl,
       }));
-      setPayStatusText("GenLayer returned a finalized VALID verdict for this report hash. Report unlocked.");
+      setPayStatusText(
+        glTxHash
+          ? `GenLayer finalized VALID verdict (Tx: ${shortAddress(glTxHash)}). Report unlocked.`
+          : "GenLayer returned a finalized VALID verdict for this report hash. Report unlocked."
+      );
       setPaymentSuccess(true);
+      if (glTxHash) {
+        showToast(`GenLayer SLA Verified! Tx: ${shortAddress(glTxHash)}`, "success");
+      } else {
+        showToast("GenLayer SLA Verified! Report unlocked.", "success");
+      }
       sessionStorage.setItem(`qma_accessToken_${currentInvoice.invoice_id}`, verifyData.access_token);
       const invoiceQuery = currentInvoice?.query || activeQuery;
       const invoiceProviderId = currentInvoice?.provider_id || selectedProviderId;
