@@ -124,8 +124,8 @@ SPLIT_RECEIPT_SECRET = os.getenv("QMA_SPLIT_RECEIPT_SECRET") or f"split-receipt:
 MCP_TOKEN_TTL_SECONDS = int(os.getenv("QMA_MCP_TOKEN_TTL_SECONDS", str(30 * 24 * 3600)))
 MCP_MAX_BUDGET_USDC = float(os.getenv("QMA_MCP_MAX_BUDGET_USDC", "50"))
 MCP_MAX_PRICE_USDC = float(os.getenv("QMA_MCP_MAX_PRICE_USDC", "5"))
-MCP_CONNECT_BASE_URL = os.getenv("QMA_MCP_CONNECT_BASE_URL", "http://localhost:5173")
-MCP_API_BASE_URL = os.getenv("QMA_MCP_API_BASE_URL", "http://127.0.0.1:8000")
+MCP_CONNECT_BASE_URL = os.getenv("QMA_MCP_CONNECT_BASE_URL") or ("https://genqma.vercel.app" if os.getenv("RENDER_EXTERNAL_URL") else "http://localhost:5173")
+MCP_API_BASE_URL = os.getenv("QMA_MCP_API_BASE_URL") or os.getenv("RENDER_EXTERNAL_URL") or "http://127.0.0.1:8000"
 
 # ---------------------------------------------------------------------------
 # Admin

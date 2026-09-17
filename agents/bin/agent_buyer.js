@@ -727,6 +727,20 @@ async function main() {
   console.log(`Verified: ${verifyData.status} tx=${verifyData.transaction_hash ? short(verifyData.transaction_hash) : "batch pending"}`);
   console.log(`Agent wallet (authorization): ${account.address}`);
   console.log(`Settlement payer (backing EOA): ${verifyData.payer_address || "pending"}`);
+  if (verifyData.genlayer) {
+    const gl = verifyData.genlayer;
+    console.log(`GenLayer Shield: ${gl.status} verdict=${gl.verdict} (${gl.confidence}% confidence)`);
+    if (gl.transaction_hash) {
+      console.log(`GenLayer Tx: ${gl.transaction_hash} (https://explorer-studio-dev.genlayer.com/transactions/${gl.transaction_hash})`);
+    }
+  }
+  if (verifyData.status === "verification_rejected" || verifyData.genlayer?.verdict === "INVALID") {
+    console.error(`GenLayer SLA Violated: ${verifyData.genlayer?.reasoning || "Data divergence from live exchange feed"}. Report access blocked.`);
+    return;
+  }
+  if (!verifyData.access_token) {
+    throw new Error(`Verification did not return an access token: ${JSON.stringify(verifyData)}`);
+  }
 
   const report = await fetchReport(invoice, verifyData, pick);
   console.log("\nPaid JSON report:");
@@ -738,6 +752,7 @@ async function main() {
     rough_win_rate: report.rough_win_rate,
     avg_profit: report.avg_profit,
     top_analogs: report.top_analogs || report.analog_symbols,
+    genlayer_sla: verifyData.genlayer || report.genlayer || report.invoice?.genlayer,
     invoice: report.invoice,
   }, null, 2));
 }

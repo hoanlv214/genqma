@@ -108,7 +108,7 @@ def create_mcp_http_app(deps):
             "provider_id": provider_id,
             "count": len(anomalies[:limit]),
             "anomalies": anomalies[:limit],
-            "hint": "Buy evidence with qma_query_market_memory (costs USDC within your connection budget).",
+            "hint": "Buy evidence with qma_query_market_memory (protected by GenLayer Intelligent Contract SLA verification).",
         }
 
     @mcp.tool(
@@ -138,6 +138,7 @@ def create_mcp_http_app(deps):
         title="Buy historical analog report",
         description=(
             "Buy an evidence-backed historical analog report for a market signal. "
+            "Protected by GenLayer Intelligent Contract SLA verification against data fabrication. "
             "Costs USDC within the connection's spend caps. Returns the purchased report; "
             "the purchase runs through a durable agent session on the owner's Agent Wallet."
         ),
@@ -328,30 +329,39 @@ def create_mcp_http_app(deps):
             if scope["type"] != "http":
                 await self.app(scope, receive, send)
                 return
+            path = scope.get("path", "")
+            if path != "/mcp" and not path.startswith("/mcp/"):
+                body = b'{"error":"not_found","message":"Not Found","status_code":404,"detail":"Not Found"}'
+                await send({"type": "http.response.start", "status": 404,
+                            "headers": [(b"content-type", b"application/json")]})
+                await send({"type": "http.response.body", "body": body})
+                return
             headers = {key.decode("latin-1").lower(): value.decode("latin-1") for key, value in scope.get("headers", [])}
             auth = headers.get("authorization", "")
             if not auth.startswith("Bearer "):
-                logger.warning("MCP auth rejected (no bearer): %s %s", scope.get("method"), scope.get("path"))
-                await self._reject(send, "missing bearer token")
+                logger.warning("MCP auth rejected (no bearer): %s %s", scope.get("method"), path)
+                await self._reject(send, "missing bearer token", headers)
                 return
             try:
                 payload = mcp_oauth.verify_mcp_access_token(auth[len("Bearer "):].strip())
             except Exception as exc:
                 detail = exc.detail if hasattr(exc, "detail") else str(exc)
-                logger.warning("MCP auth rejected (invalid token): %s %s — %s", scope.get("method"), scope.get("path"), detail)
-                await self._reject(send, f"invalid token: {detail}")
+                logger.warning("MCP auth rejected (invalid token): %s %s \u2014 %s", scope.get("method"), path, detail)
+                await self._reject(send, f"invalid token: {detail}", headers)
                 return
             token = _mcp_payload.set(payload)
             try:
-                logger.info("MCP authed: %s %s (client=%s)", scope.get("method"), scope.get("path"), payload.get("client_id", "")[:16])
+                logger.info("MCP authed: %s %s (client=%s)", scope.get("method"), path, payload.get("client_id", "")[:16])
                 await self.app(scope, receive, send)
             finally:
                 _mcp_payload.reset(token)
 
-        async def _reject(self, send, reason: str):
+        async def _reject(self, send, reason: str, headers: Optional[dict] = None):
             body = b'{"error":"invalid_token","message":"A valid MCP connection bearer token is required."}'
-            if self.api_base_url:
-                www_auth = f'Bearer realm="qma-mcp", resource_metadata="{self.api_base_url}/.well-known/oauth-protected-resource/mcp"'
+            import os
+            base_url = self.api_base_url or os.getenv("RENDER_EXTERNAL_URL", "").rstrip("/")
+            if base_url:
+                www_auth = f'Bearer realm="qma-mcp", resource_metadata="{base_url}/.well-known/oauth-protected-resource/mcp"'
             else:
                 www_auth = 'Bearer realm="qma-mcp"'
             await send({"type": "http.response.start", "status": 401,

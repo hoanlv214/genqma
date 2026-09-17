@@ -137,9 +137,10 @@ GenQMAShield binds invoice_id, query_hash and report_hash, fetches live HTTPS ev
 2. **Contract link 1 (optional):**
    *Dán URL Studio hoặc Contract Explorer:*
 ```text
-https://explorer-studio-dev.genlayer.com/address/0x367728bf66Cf962Ce15fD2b65193b7a1466f087c
+https://explorer-studio-dev.genlayer.com/address/0x1e5B4d7Be22A3f7F4Ecb616bA65123cB03B7cc13
 ```
-*(Contract deployed on GenLayer Studio Next, Chain ID 61997: `0x367728bf66Cf962Ce15fD2b65193b7a1466f087c`)*
+*(Contract deployed on GenLayer Studio Next, Chain ID 61997: `0x1e5B4d7Be22A3f7F4Ecb616bA65123cB03B7cc13`)*
+*(Live On-Chain Verified Txs: `0x10c014f608b3b550127ff3d0fdc419460c91ba260a95127c110e3b09931e6f0e` (94% confidence), `0x73b618c6266f9b5e700b545b8fb2cfc601fc2e658669a0ae124d0d2dc373d685` (91% confidence))*
 
 ---
 
@@ -163,5 +164,13 @@ https://github.com/hoanlv214/genqma
 ### Gợi ý kịch bản quay Video Demo 60-90 giây (Nếu bạn muốn quay):
 1. **0:00 - 0:15:** Mở [genqma.vercel.app](https://genqma.vercel.app), chỉ vào radar: Anomaly ETH-USDT xuất hiện (funding rate âm sâu, OI tăng vọt).
 2. **0:15 - 0:35:** Nhấn mua báo cáo Market Memory ($0.005). Giải thích vấn đề: nếu không có GenLayer, nếu nhà cung cấp trả data rác/ảo giác thì agent mất tiền.
-3. **0:35 - 0:55:** Cho xem bước GenLayer: `GenQMAShield.py` lấy feed MEXC thật và chạy `gl.vm.run_nondet` semantic consensus. `VALID` mở đúng report hash; `INVALID` khóa report. Không mô tả payout/refund là hoàn tất nếu chưa có Arc receipt.
-4. **0:55 - 1:15:** Cho xem order finalized trên GenLayer: `VALID / VERIFIED` mở đúng report hash; `INVALID / REJECTED` chặn access token. Không dùng cờ giả lập public.
+3. **0:35 - 0:55:** Cho xem bước GenLayer: `GenQMAShield.py` lấy feed MEXC thật và chạy `gl.vm.run_nondet` semantic consensus. UI hiển thị toast xác nhận settlement Arc USDC và tiến hành verify GenLayer.
+4. **0:55 - 1:15:** GenLayer consensus hoàn tất trả về `VALID / VERIFIED`, UI lập tức hiển thị toast chứa GenLayer Tx hash (`0x73b6...`) và mở khóa đúng báo cáo.
+
+### Bằng Chứng On-Chain Đã Xác Thực (Sẵn Sàng Cho Giám Khảo):
+- **GenLayer Intelligent Contract:** `0x1e5B4d7Be22A3f7F4Ecb616bA65123cB03B7cc13`
+- **GenLayer Studio Dev Explorer:** [explorer-studio-dev.genlayer.com/address/0x1e5B4d7Be22A3f7F4Ecb616bA65123cB03B7cc13](https://explorer-studio-dev.genlayer.com/address/0x1e5B4d7Be22A3f7F4Ecb616bA65123cB03B7cc13)
+- **Giao Dịch Xác Thực Thực Tế (Live Verified Txs):**
+  - **Tx 1:** `0x10c014f608b3b550127ff3d0fdc419460c91ba260a95127c110e3b09931e6f0e` ([Xem trên Explorer](https://explorer-studio-dev.genlayer.com/transactions/0x10c014f608b3b550127ff3d0fdc419460c91ba260a95127c110e3b09931e6f0e)) - Verdict: `VALID` (94% Confidence), Anomaly: `LASERTECSTOCK`
+  - **Tx 2:** `0x73b618c6266f9b5e700b545b8fb2cfc601fc2e658669a0ae124d0d2dc373d685` ([Xem trên Explorer](https://explorer-studio-dev.genlayer.com/transactions/0x73b618c6266f9b5e700b545b8fb2cfc601fc2e658669a0ae124d0d2dc373d685)) - Verdict: `VALID` (91% Confidence), Anomaly: `SOFTBANKSTOCK`
+

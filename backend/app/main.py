@@ -2120,6 +2120,22 @@ app.include_router(create_oauth_router(SimpleNamespace(
 )))
 
 
+@app.get("/", include_in_schema=False)
+def root_index():
+    return {
+        "status": "ok",
+        "service": "qma-api",
+        "mcp": "/mcp",
+        "docs": "/docs",
+        "version": "v1",
+    }
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    from fastapi.responses import Response
+    return Response(status_code=204)
+
 
 async def mcp_call_api(method: str, path: str, *, json=None, headers=None):
     """In-process HTTP call into this app for MCP tools (no network hop)."""
@@ -2139,6 +2155,7 @@ _mcp_asgi_app, _mcp_session_manager = create_mcp_http_app(SimpleNamespace(
     storage_backend=storage_backend,
     access_token_secret=ACCESS_TOKEN_SECRET,
     call_api=mcp_call_api,
+    mcp_api_base_url=MCP_API_BASE_URL,
 ))
 _mcp_session_manager_holder["manager"] = _mcp_session_manager
 # Mounted at "/" (must stay LAST): its internal route matches POST /mcp

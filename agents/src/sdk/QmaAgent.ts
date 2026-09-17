@@ -263,6 +263,9 @@ export class QmaAgent extends EventEmitter {
                   amount_usdc: firstSettlement?.amount_usdc ?? createdInvoice.amount,
                 }),
           });
+          if (verified?.status === "verification_rejected" || verified?.genlayer?.verdict === "INVALID") {
+            throw new Error(`GenLayer rejected report: ${verified?.genlayer?.reasoning || "Data divergence"}. Report access blocked.`);
+          }
           if (!paidInvoiceState(verified)) {
             throw new Error(`Invoice verification returned status ${String(verified?.status || "unknown")} without paid access.`);
           }
@@ -276,12 +279,16 @@ export class QmaAgent extends EventEmitter {
             amount_usdc: invoiceAmount,
             settlement_ids: settlementIds(verified, execution.settlements),
             access_token_received: true,
+            genlayer: verified.genlayer,
             ...delivery,
           };
         } catch (e) {
           if (paymentStarted && invoice?.invoice_id && invoice.invoice_secret) {
             try {
               const reconciled = await this.client.getAgentInvoiceStatus(invoice.invoice_id, invoice.invoice_secret);
+              if (reconciled?.status === "verification_rejected" || reconciled?.genlayer?.verdict === "INVALID") {
+                throw new Error(`GenLayer rejected report: ${reconciled?.genlayer?.reasoning || "Data divergence"}. Report access blocked.`);
+              }
               if (paidInvoiceState(reconciled)) {
                 const delivery = await deliverAfterPayment(invoice.invoice_id, reconciled.access_token);
                 return {
@@ -293,6 +300,7 @@ export class QmaAgent extends EventEmitter {
                   amount_usdc: invoiceAmount,
                   settlement_ids: settlementIds(reconciled, executionSettlements),
                   access_token_received: true,
+                  genlayer: reconciled.genlayer,
                   ...delivery,
                 };
               }

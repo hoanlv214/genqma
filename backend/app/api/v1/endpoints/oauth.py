@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from typing import List, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Request, Security
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, ValidationError
 
 from backend.app.core.security_schemes import qma_wallet_token_header
@@ -110,6 +111,31 @@ def create_oauth_router(deps: SimpleNamespace) -> APIRouter:
     connect_base = str(getattr(deps, "mcp_connect_base_url", "http://localhost:5173")).rstrip("/")
     api_base = str(getattr(deps, "mcp_api_base_url", "")).rstrip("/")
 
+    def _is_localhost(url: str) -> bool:
+        return not url or any(h in url for h in ("127.0.0.1", "localhost"))
+
+    def _resolve_api_base(request: Optional[Request] = None) -> str:
+        if api_base and not _is_localhost(api_base):
+            return api_base
+        import os
+        render_url = os.getenv("RENDER_EXTERNAL_URL", "").rstrip("/")
+        if render_url:
+            return render_url
+        if request:
+            proto = request.headers.get("x-forwarded-proto") or request.url.scheme or "http"
+            host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+            if host and not any(h in host for h in ("127.0.0.1", "localhost", "testserver")):
+                return f"{proto}://{host}".rstrip("/")
+        return api_base or "http://127.0.0.1:8000"
+
+    def _resolve_connect_base(request: Optional[Request] = None) -> str:
+        if connect_base and not _is_localhost(connect_base):
+            return connect_base
+        resolved_api = _resolve_api_base(request)
+        if "onrender.com" in resolved_api or (resolved_api and not _is_localhost(resolved_api) and "testserver" not in resolved_api):
+            return "https://genqma.vercel.app"
+        return connect_base or "http://localhost:5173"
+
     def require_wallet_owner(owner_wallet: str, token: Optional[str]) -> str:
         normalized = deps.normalize_address(owner_wallet)
         deps.verify_wallet_profile_token(normalized, token or "")
@@ -125,13 +151,21 @@ def create_oauth_router(deps: SimpleNamespace) -> APIRouter:
 **Authentication:** Public.""",
         responses=documented_errors(429, 500),
     )
-    def oauth_authorization_server_metadata():
+    @migrated.get(
+        "/.well-known/oauth-authorization-server/mcp",
+        response_model=OAuthServerMetadataResponse,
+        response_model_exclude_unset=True,
+        include_in_schema=False,
+    )
+    def oauth_authorization_server_metadata(request: Request):
+        resolved_api = _resolve_api_base(request)
+        resolved_connect = _resolve_connect_base(request)
         return {
-            "issuer": api_base,
-            "authorization_endpoint": f"{connect_base}/connect",
-            "token_endpoint": f"{api_base}/api/v1/oauth/token",
-            "registration_endpoint": f"{api_base}/api/v1/oauth/register",
-            "revocation_endpoint": f"{api_base}/api/v1/oauth/revoke",
+            "issuer": resolved_api,
+            "authorization_endpoint": f"{resolved_connect}/connect",
+            "token_endpoint": f"{resolved_api}/api/v1/oauth/token",
+            "registration_endpoint": f"{resolved_api}/api/v1/oauth/register",
+            "revocation_endpoint": f"{resolved_api}/api/v1/oauth/revoke",
             "response_types_supported": ["code"],
             "grant_types_supported": ["authorization_code"],
             "code_challenge_methods_supported": ["S256"],
@@ -149,14 +183,21 @@ def create_oauth_router(deps: SimpleNamespace) -> APIRouter:
 **Authentication:** Public.""",
         responses=documented_errors(429, 500),
     )
-    def openid_configuration_metadata():
-        return oauth_authorization_server_metadata()
+    @migrated.get(
+        "/.well-known/openid-configuration/mcp",
+        response_model=OAuthServerMetadataResponse,
+        response_model_exclude_unset=True,
+        include_in_schema=False,
+    )
+    def openid_configuration_metadata(request: Request):
+        return oauth_authorization_server_metadata(request)
 
-    def _protected_resource_metadata() -> dict:
+    def _protected_resource_metadata(request: Optional[Request] = None) -> dict:
         # RFC 9728: tells MCP clients which authorization server protects /mcp.
+        resolved_api = _resolve_api_base(request)
         return {
-            "resource": f"{api_base}/mcp",
-            "authorization_servers": [api_base],
+            "resource": f"{resolved_api}/mcp",
+            "authorization_servers": [resolved_api],
             "scopes_supported": [mcp_oauth.MCP_OAUTH_SCOPE],
             "bearer_methods_supported": ["header"],
         }
@@ -171,8 +212,8 @@ def create_oauth_router(deps: SimpleNamespace) -> APIRouter:
 **Authentication:** Public.""",
         responses=documented_errors(429, 500),
     )
-    def oauth_protected_resource_mcp():
-        return _protected_resource_metadata()
+    def oauth_protected_resource_mcp(request: Request):
+        return _protected_resource_metadata(request)
 
     @migrated.get(
         "/.well-known/oauth-protected-resource",
@@ -184,8 +225,17 @@ def create_oauth_router(deps: SimpleNamespace) -> APIRouter:
 **Authentication:** Public.""",
         responses=documented_errors(429, 500),
     )
-    def oauth_protected_resource_root():
-        return _protected_resource_metadata()
+    def oauth_protected_resource_root(request: Request):
+        return _protected_resource_metadata(request)
+
+    @migrated.get("/authorize", include_in_schema=False)
+    @migrated.get("/oauth/authorize", include_in_schema=False)
+    def oauth_authorize_redirect(request: Request):
+        resolved_connect = _resolve_connect_base(request)
+        target = f"{resolved_connect}/connect"
+        if request.url.query:
+            target = f"{target}?{request.url.query}"
+        return RedirectResponse(url=target, status_code=307)
 
     @migrated.post(
         "/api/v1/oauth/register",
@@ -197,6 +247,8 @@ def create_oauth_router(deps: SimpleNamespace) -> APIRouter:
 **Authentication:** Public (rate-limited). Returns a public `client_id`; PKCE is mandatory, no client secret is issued.""",
         responses=OAUTH_RESPONSES,
     )
+    @migrated.post("/register", response_model=OAuthClientResponse, response_model_exclude_unset=True, include_in_schema=False)
+    @migrated.post("/oauth/register", response_model=OAuthClientResponse, response_model_exclude_unset=True, include_in_schema=False)
     def oauth_register(payload: OAuthClientRegistrationRequest):
         row = mcp_oauth.register_client(storage, payload.client_name, payload.redirect_uris)
         return {
@@ -249,6 +301,8 @@ def create_oauth_router(deps: SimpleNamespace) -> APIRouter:
 **Request format:** `application/x-www-form-urlencoded` (RFC 6749, what Claude/ChatGPT send) or JSON.""",
         responses=OAUTH_RESPONSES,
     )
+    @migrated.post("/token", response_model=OAuthTokenResponse, response_model_exclude_unset=True, include_in_schema=False)
+    @migrated.post("/oauth/token", response_model=OAuthTokenResponse, response_model_exclude_unset=True, include_in_schema=False)
     async def oauth_token(request: Request):
         # RFC 6749 §4.1.3: token requests are form-encoded. Claude/ChatGPT
         # send form data, so accept both forms and JSON here.

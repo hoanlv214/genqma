@@ -204,6 +204,7 @@ export async function runSessionTick(
       pauseSession(state);
     } else {
       recordFailure(state, { error: message });
+      recordAction(state, { action: "failure", reason: message });
       finishSession(state, "failed", message);
     }
     deps.onStateChange?.(state);

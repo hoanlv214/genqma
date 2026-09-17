@@ -22,7 +22,11 @@ def rate_limit_for_path(path: str) -> tuple[str, int]:
         return "payment_verify", int(os.getenv("QMA_RATE_LIMIT_PAYMENT_VERIFY_PER_MIN", "8"))
     if path.startswith("/api/v1/payment/invoice"):
         return "payment_invoice", int(os.getenv("QMA_RATE_LIMIT_INVOICE_PER_MIN", "20"))
-    if path.startswith("/api/v1/oauth/register") or path.startswith("/api/v1/oauth/token"):
+    if (
+        path.startswith("/api/v1/oauth/register")
+        or path.startswith("/api/v1/oauth/token")
+        or path in ("/register", "/oauth/register", "/token", "/oauth/token")
+    ):
         return "oauth_token", int(os.getenv("QMA_RATE_LIMIT_OAUTH_PER_MIN", "20"))
     if path == "/mcp" or path.startswith("/mcp/"):
         return "mcp", int(os.getenv("QMA_RATE_LIMIT_MCP_PER_MIN", "60"))

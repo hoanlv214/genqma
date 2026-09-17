@@ -198,8 +198,13 @@ function alreadySettled(leg: InvoiceSplitLeg): SettlementProof | null {
   if (leg.status !== "paid") return null;
   const settlementId = text(leg.settlement_id);
   const sidecarReceipt = text(leg.sidecar_receipt);
-  if (!settlementId || !sidecarReceipt) {
-    throw new Error(`Paid split leg ${leg.leg_id} is missing its settlement proof.`);
+  const isSplitLeg = leg.leg_id !== "single";
+  if (!settlementId || (isSplitLeg && !sidecarReceipt)) {
+    throw new Error(
+      isSplitLeg
+        ? `Paid split leg ${leg.leg_id} is missing its settlement proof.`
+        : "Paid leg is missing its settlement proof.",
+    );
   }
   return {
     leg_id: leg.leg_id,
@@ -207,7 +212,7 @@ function alreadySettled(leg: InvoiceSplitLeg): SettlementProof | null {
     pay_to: leg.pay_to,
     amount_raw: rawAmount(leg.amount_raw),
     amount_usdc: leg.amount_usdc,
-    sidecar_receipt: sidecarReceipt,
+    sidecar_receipt: sidecarReceipt || "",
     payer_address: leg.payer_address,
     gateway_status: leg.gateway_status,
   };
@@ -216,9 +221,14 @@ function alreadySettled(leg: InvoiceSplitLeg): SettlementProof | null {
 function normalizeSettlement(leg: InvoiceSplitLeg, value: unknown): SettlementProof {
   const body = settlementBody(value);
   const settlementId = text(body.settlement_id) || text(body.settlementId);
-  const sidecarReceipt = text(body.sidecar_receipt);
-  if (!settlementId || !sidecarReceipt) {
-    throw new Error(`Payment for split leg ${leg.leg_id} returned no settlement_id and sidecar_receipt.`);
+  const sidecarReceipt = text(body.sidecar_receipt) || text(body.sidecarReceipt);
+  const isSplitLeg = leg.leg_id !== "single";
+  if (!settlementId || (isSplitLeg && !sidecarReceipt)) {
+    throw new Error(
+      isSplitLeg
+        ? `Payment for split leg ${leg.leg_id} returned no settlement_id and sidecar_receipt.`
+        : "Payment returned no settlement_id.",
+    );
   }
 
   const returnedLegId = text(body.leg_id);
@@ -247,8 +257,8 @@ function normalizeSettlement(leg: InvoiceSplitLeg, value: unknown): SettlementPr
     pay_to: returnedPayTo || leg.pay_to,
     amount_raw: rawAmount(returnedAmount ?? leg.amount_raw),
     amount_usdc: amountUsdc,
-    sidecar_receipt: sidecarReceipt,
-    payer_address: text(body.payer) || text(body.payer_address) || null,
+    sidecar_receipt: sidecarReceipt || "",
+    payer_address: text(body.payer) || text(body.payer_address) || text(body.paid_by) || null,
     gateway_status: text(body.gateway_status) || text(body.status) || null,
   };
 }

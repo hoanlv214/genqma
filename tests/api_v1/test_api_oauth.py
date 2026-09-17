@@ -353,3 +353,81 @@ def test_missing_migration_returns_actionable_503():
 
     registered = probe.post("/api/v1/oauth/register", json={"client_name": "X", "redirect_uris": []})
     assert registered.status_code == 503
+
+
+def test_oauth_registration_and_authorize_aliases(client):
+    # Test standard RFC 7591 /register and /oauth/register aliases
+    resp1 = client.post("/register", json={"client_name": "Claude Desktop", "redirect_uris": ["https://claude.ai/callback"]})
+    assert resp1.status_code == 200
+    assert "client_id" in resp1.json()
+
+    resp2 = client.post("/oauth/register", json={"client_name": "Cursor Agent", "redirect_uris": ["http://localhost:8000/cb"]})
+    assert resp2.status_code == 200
+    assert "client_id" in resp2.json()
+
+    # Test path-specific metadata aliases
+    meta_mcp = client.get("/.well-known/oauth-authorization-server/mcp")
+    assert meta_mcp.status_code == 200
+    assert meta_mcp.json()["token_endpoint"] == "https://api.test/api/v1/oauth/token"
+
+    openid_mcp = client.get("/.well-known/openid-configuration/mcp")
+    assert openid_mcp.status_code == 200
+    assert openid_mcp.json()["token_endpoint"] == "https://api.test/api/v1/oauth/token"
+
+    # Test /authorize and /oauth/authorize redirect to connect page with query preserved
+    auth_resp = client.get("/authorize?client_id=c123&response_type=code&code_challenge=xyz", follow_redirects=False)
+    assert auth_resp.status_code == 307
+    assert auth_resp.headers["location"] == "http://frontend.test/connect?client_id=c123&response_type=code&code_challenge=xyz"
+
+    auth_resp2 = client.get("/oauth/authorize?client_id=c123", follow_redirects=False)
+    assert auth_resp2.status_code == 307
+    assert auth_resp2.headers["location"] == "http://frontend.test/connect?client_id=c123"
+
+
+def test_dynamic_url_resolution_on_render_or_forwarded_headers():
+    from types import SimpleNamespace
+    from fastapi import FastAPI
+    from backend.app.api.v1.endpoints.oauth import create_oauth_router
+
+    storage = InMemoryOAuthStorage()
+    app = FastAPI()
+    app.include_router(create_oauth_router(SimpleNamespace(
+        storage_backend=storage,
+        normalize_address=lambda v: str(v).lower(),
+        verify_wallet_profile_token=lambda a, t: {"wallet": a.lower()},
+        mcp_token_ttl_seconds=3600,
+        mcp_max_budget_usdc=50.0,
+        mcp_max_price_usdc=5.0,
+        mcp_connect_base_url="http://localhost:5173",
+        mcp_api_base_url="http://127.0.0.1:8000",
+    )))
+    test_client = TestClient(app)
+
+    # Request with forwarded headers mimicking reverse proxy / Render
+    headers = {
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "qma-api.onrender.com",
+    }
+    meta = test_client.get("/.well-known/oauth-authorization-server", headers=headers).json()
+    assert meta["issuer"] == "https://qma-api.onrender.com"
+    assert meta["token_endpoint"] == "https://qma-api.onrender.com/api/v1/oauth/token"
+    assert meta["registration_endpoint"] == "https://qma-api.onrender.com/api/v1/oauth/register"
+    assert meta["authorization_endpoint"] == "https://genqma.vercel.app/connect"
+
+    resource_meta = test_client.get("/.well-known/oauth-protected-resource/mcp", headers=headers).json()
+    assert resource_meta["resource"] == "https://qma-api.onrender.com/mcp"
+    assert resource_meta["authorization_servers"] == ["https://qma-api.onrender.com"]
+
+
+def test_root_and_favicon_routes():
+    from backend.app.main import app as main_app
+    test_client = TestClient(main_app)
+
+    root_resp = test_client.get("/")
+    assert root_resp.status_code == 200
+    assert root_resp.json()["service"] == "qma-api"
+    assert root_resp.json()["mcp"] == "/mcp"
+
+    fav_resp = test_client.get("/favicon.ico")
+    assert fav_resp.status_code == 204
+

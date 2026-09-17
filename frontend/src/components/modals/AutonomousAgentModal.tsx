@@ -59,7 +59,8 @@ function stageIndex(status: string, purchases: number): number {
     case "queued": return 0;
     case "running": return purchases > 0 ? 2 : 1;
     case "stopped": return purchases > 0 ? 2 : 1;
-    case "error": return purchases > 0 ? 2 : 1;
+    case "error":
+    case "failed": return purchases > 0 ? 2 : 1;
     case "completed": return 3;
     default: return 0;
   }
@@ -68,7 +69,7 @@ function stageIndex(status: string, purchases: number): number {
 export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentModalProps) {
   const [prompt, setPrompt] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "creating" | "queued" | "running" | "completed" | "error" | "stopped">("idle");
+  const [status, setStatus] = useState<"idle" | "creating" | "queued" | "running" | "completed" | "error" | "stopped" | "failed">("idle");
   const [budget, setBudget] = useState<number>(0);
   const [spent, setSpent] = useState<number>(0);
   const [purchases, setPurchases] = useState<number>(0);
@@ -200,7 +201,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                       </div>
                     );
                   }
-                } else if (a.action === "retry_backoff") {
+                } else if (a.action === "retry_backoff" || a.action === "failure") {
                   const timeStr = new Date(a.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                   addIfUnique(
                     `action-${data.id}-${index}`,
@@ -210,6 +211,19 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                     </div>
                   );
                 }
+              });
+
+              // Render any recorded runtime failures
+              const failures = Array.isArray(data.runtime_state?.failures) ? data.runtime_state.failures : [];
+              failures.forEach((f: any, fIdx: number) => {
+                const timeStr = f.at ? new Date(f.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : "";
+                addIfUnique(
+                  `failure-${data.id}-${fIdx}`,
+                  <div>
+                    ❌ <span style={{ color: 'var(--c-red, #ff5c5c)', fontFamily: 'monospace' }}>{String(f.error || f.message || "Execution error")}</span>
+                    {timeStr && <div className="agent-runner-purchase-time">{timeStr}</div>}
+                  </div>
+                );
               });
 
               if (data.status === "stopped") addIfUnique(`status-stopped-${data.id}`, "⚠️ Session has been stopped.");
@@ -262,7 +276,23 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                   </div>
                 ));
               }
-              if (data.status === "error") addIfUnique(`status-error-${data.id}`, "❌ Session Failed!");
+              if (data.status === "error" || data.status === "failed") {
+                const lastFail = failures.length > 0 ? failures[failures.length - 1]?.error : null;
+                const errMsg = data.runtime_state?.lastError || lastFail || "Session execution failed.";
+                addIfUnique(`status-failed-${data.id}`, (
+                  <div className="agent-runner-failure-card" style={{
+                    background: 'rgba(255, 92, 92, 0.08)',
+                    border: '1px solid rgba(255, 92, 92, 0.2)',
+                    borderRadius: '8px',
+                    padding: '10px 12px',
+                    marginTop: '8px',
+                    color: 'var(--c-red, #ff5c5c)'
+                  }}>
+                    <strong style={{ display: 'block', marginBottom: '4px' }}>❌ Session Stopped / Failed</strong>
+                    <span style={{ fontSize: '12px', wordBreak: 'break-word', color: 'var(--t2)' }}>{String(errMsg)}</span>
+                  </div>
+                ));
+              }
 
               return newMessages;
             });
@@ -800,7 +830,10 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
   let statusText = "Active";
   let statusClass = "ready";
 
-  if (currentWalletBalance <= 0) {
+  if (status === "error" || status === "failed") {
+    statusText = "Failed";
+    statusClass = "failed";
+  } else if (currentWalletBalance <= 0) {
     statusText = "Gateway Empty";
     statusClass = "failed";
   } else if (remainingBudget <= 0) {
@@ -809,16 +842,13 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
   } else if (status === "stopped") {
     statusText = "User Paused";
     statusClass = "failed";
-  } else if (status === "error") {
-    statusText = "Error";
-    statusClass = "failed";
   } else if (status === "completed") {
     statusText = "Completed";
     statusClass = "ready";
   }
 
   const curStage = stageIndex(status, purchases);
-  const stageFailed = status === "error" || status === "stopped";
+  const stageFailed = status === "error" || status === "stopped" || status === "failed";
   const stageProgressPct = (curStage / (STAGE_LABELS.length - 1)) * 100;
 
   const renderMessage = (msg: ChatMessage) => {
@@ -878,7 +908,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
           {/* Chat log */}
           <div className="agent-chat-panel">
             <div className="agent-chat-topline">
-              <span className={`agent-live-pill${status === "running" ? " active" : ""}${status === "error" ? " error" : ""}`}>
+              <span className={`agent-live-pill${status === "running" ? " active" : ""}${status === "error" || status === "failed" ? " error" : ""}`}>
                 {status}
               </span>
               <span className="agent-chat-wallet">{shortWallet}</span>
@@ -957,7 +987,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               )}
             </div>
 
-            {(status === "queued" || status === "running" || status === "stopped" || status === "error" || status === "completed") && (
+            {(status === "queued" || status === "running" || status === "stopped" || status === "error" || status === "failed" || status === "completed") && (
               <div className="agent-modal-actions">
                 {status === "queued" || status === "running" ? (
                   <button className="agent-modal-cancel" onClick={handleStop}>
