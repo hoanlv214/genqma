@@ -734,15 +734,44 @@ async function main() {
       console.log(`GenLayer Tx: ${gl.transaction_hash} (https://explorer-studio-dev.genlayer.com/transactions/${gl.transaction_hash})`);
     }
   }
-  if (verifyData.status === "verification_rejected" || verifyData.genlayer?.verdict === "INVALID") {
-    console.error(`GenLayer SLA Violated: ${verifyData.genlayer?.reasoning || "Data divergence from live exchange feed"}. Report access blocked.`);
-    return;
-  }
-  if (!verifyData.access_token) {
-    throw new Error(`Verification did not return an access token: ${JSON.stringify(verifyData)}`);
+  let currentVerify = verifyData;
+  if (!currentVerify.access_token && currentVerify.status === "verification_pending") {
+    console.log("GenLayer SLA consensus is verifying on Studio Next. Polling for final verdict...");
+    const startTime = Date.now();
+    const maxWaitMs = 60000;
+    while (!currentVerify.access_token && Date.now() - startTime < maxWaitMs) {
+      await sleep(3000);
+      try {
+        currentVerify = await request(`/api/v1/payment/invoices/${encodeURIComponent(invoice.invoice_id)}/status?invoice_secret=${encodeURIComponent(invoice.invoice_secret)}&refresh=true`);
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        if (currentVerify.status === "paid" && currentVerify.access_token) {
+          console.log(`GenLayer verified in ${elapsed}s! Verdict=${currentVerify.genlayer?.verdict}`);
+          break;
+        }
+        if (currentVerify.status === "verification_rejected" || currentVerify.genlayer?.verdict === "INVALID") {
+          break;
+        }
+        process.stdout.write(`...waiting for GenLayer consensus (${elapsed}s)\r`);
+      } catch {
+        // Keep polling
+      }
+    }
   }
 
-  const report = await fetchReport(invoice, verifyData, pick);
+  if (currentVerify.status === "verification_rejected" || currentVerify.genlayer?.verdict === "INVALID") {
+    console.error(`\nGenLayer SLA Violated: ${currentVerify.genlayer?.reasoning || "Data divergence from live exchange feed"}. Report access blocked.`);
+    return;
+  }
+  if (!currentVerify.access_token) {
+    if (currentVerify.status === "verification_pending") {
+      console.log(`\nPayment settled on Arc. GenLayer consensus tx ${currentVerify.genlayer?.transaction_hash || "broadcast"} is confirming on-chain.`);
+      console.log(`Report will unlock automatically once consensus completes on GenLayer Studio Next.`);
+      return;
+    }
+    throw new Error(`Verification did not return an access token: ${JSON.stringify(currentVerify)}`);
+  }
+
+  const report = await fetchReport(invoice, currentVerify, pick);
   console.log("\nPaid JSON report:");
   console.log(JSON.stringify({
     symbol: report.query_symbol || report.symbol || pick.symbol,

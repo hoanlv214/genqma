@@ -130,14 +130,30 @@ async function main() {
       });
     }
 
-    // Wait for finalization
-    const receipt = await client.waitForTransactionReceipt({
-      hash: txHash,
-      waitUntil: "finalized",
-      retries: 150,
-      interval: 2000,
-    });
+    // Fast check for immediate finalization (e.g. 2 retries, 1500ms -> max ~3s)
+    let receipt = null;
+    try {
+      receipt = await client.waitForTransactionReceipt({
+        hash: txHash,
+        waitUntil: "finalized",
+        retries: 2,
+        interval: 1500,
+      });
+    } catch {
+      receipt = null;
+    }
 
+    if (!receipt) {
+      // Transaction broadcasted to Studio Next mempool/validators, consensus running asynchronously
+      console.log(JSON.stringify({
+        success: true,
+        pending: true,
+        transaction_hash: txHash,
+        status: "VERIFICATION_PENDING",
+        order: null,
+      }));
+      return;
+    }
 
     const executionResult = receipt?.txExecutionResultName || receipt?.tx_execution_result_name;
     const finalOrder = await client.readContract({
@@ -148,6 +164,7 @@ async function main() {
 
     console.log(JSON.stringify({
       success: true,
+      pending: false,
       transaction_hash: txHash,
       execution_result: executionResult,
       order: finalOrder,

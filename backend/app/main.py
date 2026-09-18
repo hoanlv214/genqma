@@ -1175,13 +1175,20 @@ def verify_split_payment(invoice_id, invoice, proof):
         invoice["split_settlement_ids"] = [leg.get("settlement_id") for leg in required_legs]
         invoice["gateway_status"] = aggregate_split_gateway_status(invoice)
         invoice["amount_raw"] = (invoice.get("split") or {}).get("total_amount_raw")
-        invoice["verification_mode"] = "circle-gateway-x402-direct-split"
-        gl_receipt = verify_invoice_report_with_genlayer(invoice_id, invoice)
-        if gl_receipt["verdict"] == "INVALID":
-            return invoice_payment_state_response(
-                invoice_id, invoice, include_access_token=False, include_seller_balance=False,
-                fetch_gateway_balance_fn=fetch_gateway_balance,
-            )
+        try:
+            gl_receipt = verify_invoice_report_with_genlayer(invoice_id, invoice)
+            if gl_receipt["verdict"] == "INVALID":
+                return invoice_payment_state_response(
+                    invoice_id, invoice, include_access_token=False, include_seller_balance=False,
+                    fetch_gateway_balance_fn=fetch_gateway_balance,
+                )
+        except HTTPException as exc:
+            if exc.status_code == 503:
+                return invoice_payment_state_response(
+                    invoice_id, invoice, include_access_token=False, include_seller_balance=False,
+                    fetch_gateway_balance_fn=fetch_gateway_balance,
+                )
+            raise
     reload_persistent_state(include_reports=False)
     sync_split_payment_events(invoice)
     _save_payment_ledger(state.payment_events)
@@ -1224,14 +1231,25 @@ def verify_payment(invoice_id, proof=None):
             fetch_gateway_balance_fn=fetch_gateway_balance,
         )
     if invoice.get("status") == "verification_pending" and invoice.get("settlement_id"):
-        receipt = verify_invoice_report_with_genlayer(invoice_id, invoice)
-        return invoice_payment_state_response(
-            invoice_id,
-            invoice,
-            include_access_token=receipt.get("verdict") == "VALID",
-            include_seller_balance=receipt.get("verdict") == "VALID",
-            fetch_gateway_balance_fn=fetch_gateway_balance,
-        )
+        try:
+            receipt = verify_invoice_report_with_genlayer(invoice_id, invoice)
+            return invoice_payment_state_response(
+                invoice_id,
+                invoice,
+                include_access_token=receipt.get("verdict") == "VALID",
+                include_seller_balance=receipt.get("verdict") == "VALID",
+                fetch_gateway_balance_fn=fetch_gateway_balance,
+            )
+        except HTTPException as exc:
+            if exc.status_code == 503:
+                return invoice_payment_state_response(
+                    invoice_id,
+                    invoice,
+                    include_access_token=False,
+                    include_seller_balance=False,
+                    fetch_gateway_balance_fn=fetch_gateway_balance,
+                )
+            raise
     if invoice_split_mode(invoice) == "x402_direct_split" or proof.split_settlements:
         return verify_split_payment(invoice_id, invoice, proof)
     if not proof.settlement_id:
@@ -1257,12 +1275,20 @@ def verify_payment(invoice_id, proof=None):
         invoice["gateway_status"] = settlement.get("status")
         invoice["amount_raw"] = settlement.get("amount")
         invoice["verification_mode"] = "circle-gateway-arc-testnet"
-        gl_receipt = verify_invoice_report_with_genlayer(invoice_id, invoice)
-        if gl_receipt["verdict"] == "INVALID":
-            return invoice_payment_state_response(
-                invoice_id, invoice, include_access_token=False, include_seller_balance=False,
-                fetch_gateway_balance_fn=fetch_gateway_balance,
-            )
+        try:
+            gl_receipt = verify_invoice_report_with_genlayer(invoice_id, invoice)
+            if gl_receipt["verdict"] == "INVALID":
+                return invoice_payment_state_response(
+                    invoice_id, invoice, include_access_token=False, include_seller_balance=False,
+                    fetch_gateway_balance_fn=fetch_gateway_balance,
+                )
+        except HTTPException as exc:
+            if exc.status_code == 503:
+                return invoice_payment_state_response(
+                    invoice_id, invoice, include_access_token=False, include_seller_balance=False,
+                    fetch_gateway_balance_fn=fetch_gateway_balance,
+                )
+            raise
     reload_persistent_state(include_reports=False)
     if not any(event.get("settlement_id") == proof.settlement_id for event in state.payment_events):
         state.payment_events.append({
@@ -1645,6 +1671,43 @@ def verify_invoice_report_with_genlayer(invoice_id, invoice):
         return _verify_invoice_report_with_genlayer_locked(invoice_id, invoice)
 
 
+def _sync_single_payment_event(invoice: dict) -> None:
+    settlement_id = invoice.get("settlement_id")
+    if not settlement_id or invoice_split_mode(invoice) == "x402_direct_split":
+        return
+    reload_persistent_state(include_reports=False)
+    if not any(event.get("settlement_id") == settlement_id for event in state.payment_events):
+        state.payment_events.append({
+            "invoice_id": invoice.get("invoice_id"),
+            "symbol": invoice.get("symbol"),
+            "provider_id": invoice.get("provider_id", "funding_memory"),
+            "provider_owner_wallet": invoice.get("owner_wallet"),
+            "buyer_type": invoice.get("buyer_type", "human"),
+            "synthetic": invoice.get("synthetic", False),
+            "agent_label": invoice.get("agent_label"),
+            "run_source": invoice.get("run_source"),
+            "tier": invoice.get("tier", "full"),
+            "resource_type": invoice.get("resource_type", PAYMENT_RESOURCE_TYPE),
+            "query": invoice.get("query"),
+            "query_hash": invoice.get("query_hash"),
+            "payer_address": invoice.get("payer_address"),
+            "buyer_wallet_address": invoice.get("buyer_wallet_address"),
+            "seller_address": PAYMENT_WALLET_ADDRESS,
+            "amount_usdc": invoice.get("amount"),
+            "amount_raw": invoice.get("amount_raw"),
+            "pricing": invoice.get("pricing"),
+            "settlement": invoice.get("settlement"),
+            "accounting": invoice.get("accounting"),
+            "settlement_id": settlement_id,
+            "gateway_status": invoice.get("gateway_status"),
+            "transaction_hash": invoice.get("transaction_hash"),
+            "explorer_url": invoice.get("explorer_url"),
+            "paid_at": invoice.get("paid_at") or time.time(),
+            "arc_settlement": public_arc_settlement(invoice.get("arc_settlement")),
+        })
+        _save_payment_ledger(state.payment_events)
+
+
 def _sync_arc_settlement_to_payment_events(invoice: dict) -> None:
     public_plan = public_arc_settlement(invoice.get("arc_settlement"))
     if not public_plan:
@@ -1685,8 +1748,22 @@ def settle_genlayer_verdict_on_arc(invoice_id: str, invoice: dict) -> dict | Non
 
 def reconcile_arc_verdict_settlements_once(max_invoices: int = 20) -> int:
     """Advance persisted verdict operations that no buyer is actively polling."""
+    pending_verifications = [
+        invoice for invoice in list(state.invoices_db.values())
+        if invoice.get("status") == "verification_pending"
+        and invoice.get("settlement_id")
+    ][:max_invoices]
+    for invoice in pending_verifications:
+        try:
+            inv_id = str(invoice.get("invoice_id") or "")
+            verify_invoice_report_with_genlayer(inv_id, invoice)
+        except HTTPException:
+            pass
+        except Exception:
+            logger.exception("GenLayer background reconciliation failed for invoice %s", invoice.get("invoice_id"))
+
     candidates = [
-        invoice for invoice in state.invoices_db.values()
+        invoice for invoice in list(state.invoices_db.values())
         if (invoice.get("genlayer") or {}).get("verdict") in {"VALID", "INVALID"}
         and (invoice.get("arc_settlement") or {}).get("status")
         not in {"confirmed", "failed_terminal"}
@@ -1701,7 +1778,7 @@ def reconcile_arc_verdict_settlements_once(max_invoices: int = 20) -> int:
                 "Arc verdict settlement reconciliation failed for invoice %s",
                 invoice.get("invoice_id"),
             )
-    return len(candidates)
+    return len(candidates) + len(pending_verifications)
 
 
 async def _arc_settlement_reconcile_loop() -> None:
@@ -1822,6 +1899,7 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
     _save_invoice(invoice)
     paid_kit.record_entitlement(state.paid_reports, invoice=invoice, report=report)
     _save_paid_reports(state.paid_reports)
+    _sync_single_payment_event(invoice)
     settle_genlayer_verdict_on_arc(invoice_id, invoice)
     logger.info(
         "GenLayer verified invoice %s at %s with report hash %s",

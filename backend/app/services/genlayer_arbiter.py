@@ -310,11 +310,11 @@ def _submit_via_node(payload: dict[str, Any]) -> dict[str, Any]:
             input=json.dumps(payload),
             text=True,
             capture_output=True,
-            timeout=180,
+            timeout=30,
             cwd=str(repo_root),
         )
     except subprocess.TimeoutExpired as exc:
-        raise GenLayerVerificationError("GenLayer consensus timed out after 180s") from exc
+        raise GenLayerVerificationError("GenLayer submission timed out after 30s") from exc
     except Exception as exc:
         raise GenLayerVerificationError(f"GenLayer node runner failed: {exc}") from exc
 
@@ -385,6 +385,11 @@ def verify_report(
             if isinstance(raw_order, str)
             else (raw_order or _read_order(client, invoice_id))
         )
+        if not order and res.get("pending"):
+            raise GenLayerVerificationError(
+                "GenLayer consensus verification is pending on-chain",
+                transaction_hash=tx_hash,
+            )
         return _validate_order(
             order,
             invoice_id=invoice_id,
