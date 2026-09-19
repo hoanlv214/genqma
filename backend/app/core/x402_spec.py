@@ -15,6 +15,7 @@ from backend.app.core.config import (
 
 SELLER_ADDRESS = PAYMENT_WALLET_ADDRESS or "0x23e7c029a287a83d80b2e084e008211658dda11d"
 GATEWAY_WALLET_CONTRACT = ARC_GATEWAY_WALLET or "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+MAINNET_GATEWAY_WALLET = "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
 
 # Multi-chain network configurations for maximum agent fill rate
 NETWORKS_CONFIG = [
@@ -37,28 +38,30 @@ NETWORKS_CONFIG = [
         "alias": "base",
         "chainId": 8453,
         "tokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-        "verifyingContract": GATEWAY_WALLET_CONTRACT,
+        "verifyingContract": MAINNET_GATEWAY_WALLET,
     },
     {
         "network": "eip155:42161",
         "alias": "arbitrum",
         "chainId": 42161,
         "tokenAddress": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+        "verifyingContract": MAINNET_GATEWAY_WALLET,
+    },
+    {
+        "network": "eip155:421614",
+        "alias": "arbitrum-sepolia",
+        "chainId": 421614,
+        "tokenAddress": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+        "verifyingContract": GATEWAY_WALLET_CONTRACT,
+    },
+    {
+        "network": "eip155:11155111",
+        "alias": "sepolia",
+        "chainId": 11155111,
+        "tokenAddress": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
         "verifyingContract": GATEWAY_WALLET_CONTRACT,
     },
 ]
-
-X_PAYMENT_INFO = {
-    "price": {
-        "mode": "fixed",
-        "currency": "USDC",
-        "amount": "0.010000",
-    },
-    "protocols": [
-        {"x402": {}},
-        {"mpp": {}},
-    ],
-}
 
 AGENT_GUIDANCE = """GenQMA is an AI agent marketplace for real-time quantitative market intelligence, anomaly detection, funding rate arbitrage signals, and prediction market analytics with on-chain GenLayer SLA settlement verification.
 
@@ -99,47 +102,55 @@ def build_x402_accepts(
 
     accepts = []
     for cfg in NETWORKS_CONFIG:
-        # Standard CAIP-2 entry
+        # Standard CAIP-2 entry compliant with @circle-fin/x402-batching
         accepts.append({
             "scheme": "exact",
             "network": cfg["network"],
-            "chainId": cfg["chainId"],
-            "currency": "USDC",
             "asset": cfg["tokenAddress"],
-            "tokenAddress": cfg["tokenAddress"],
-            "payTo": seller,
-            "recipient": seller,
             "amount": atomic_amount,
-            "maxAmountRequired": atomic_amount,
-            "maxTimeoutSeconds": 604800,
-            "settlementMode": "gateway",
-            "extra": {
-                "name": "Circle Gateway",
-                "version": "1",
-                "verifyingContract": cfg["verifyingContract"],
-            },
-        })
-        # Friendly network name entry for client diversity
-        accepts.append({
-            "scheme": "exact",
-            "network": cfg["alias"],
-            "chainId": cfg["chainId"],
-            "currency": "USDC",
-            "asset": cfg["tokenAddress"],
-            "tokenAddress": cfg["tokenAddress"],
             "payTo": seller,
-            "recipient": seller,
-            "amount": atomic_amount,
-            "maxAmountRequired": atomic_amount,
-            "maxTimeoutSeconds": 604800,
-            "settlementMode": "gateway",
+            "maxTimeoutSeconds": 604900,
             "extra": {
-                "name": "Circle Gateway",
+                "name": "GatewayWalletBatched",
                 "version": "1",
                 "verifyingContract": cfg["verifyingContract"],
             },
         })
     return accepts
+
+
+def build_x_payment_info(
+    amount_decimal: str = "0.010000",
+    seller_address: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Generate rich x-payment-info vendor extension with multi-network protocols and accepts list."""
+    accepts_list = build_x402_accepts(amount_decimal, seller_address)
+    networks_list = [cfg["network"] for cfg in NETWORKS_CONFIG]
+    return {
+        "price": {
+            "mode": "fixed",
+            "currency": "USDC",
+            "amount": amount_decimal,
+        },
+        "protocols": [
+            {
+                "x402": {
+                    "networks": networks_list,
+                    "accepts": accepts_list,
+                }
+            },
+            {
+                "mpp": {
+                    "networks": networks_list,
+                }
+            },
+        ],
+        "networks": networks_list,
+        "accepts": accepts_list,
+    }
+
+
+X_PAYMENT_INFO = build_x_payment_info("0.010000")
 
 
 def build_402_challenge_payload(
@@ -170,10 +181,9 @@ def build_402_challenge_payload(
 
     headers = {
         "PAYMENT-REQUIRED": b64_header,
-        "WWW-Authenticate": f'Payment realm="x402", token="USDC", amount="{amount_decimal}", accepts="arc-testnet,base,base-sepolia,arbitrum"',
+        "WWW-Authenticate": f'Payment realm="x402", token="USDC", amount="{amount_decimal}", accepts="arc-testnet,base,base-sepolia,arbitrum,ethereum,polygon,optimism,avalanche"',
         "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, payment-required, WWW-Authenticate",
     }
-
 
     body = {
         "error": "payment_required",
@@ -189,3 +199,4 @@ def build_402_challenge_payload(
     }
 
     return body, headers
+

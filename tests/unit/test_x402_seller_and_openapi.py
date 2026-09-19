@@ -58,6 +58,12 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
             self.assertIn("x402", protocol_names)
             self.assertIn("mpp", protocol_names)
 
+            # Check that accepts[] and networks declare multi-chain compatibility in OpenAPI
+            networks = payment_info.get("networks", [])
+            self.assertGreaterEqual(len(networks), 2, f"Expected multiple networks in x-payment-info for {path}")
+            accepts_spec = payment_info.get("accepts", [])
+            self.assertGreaterEqual(len(accepts_spec), 2, f"Expected multiple accepts entries in x-payment-info for {path}")
+
     def test_request_schemas_have_field_descriptions(self):
         schemas = self.schema["components"]["schemas"]
 
@@ -100,6 +106,13 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
         self.assertTrue(any("84532" in n or "base-sepolia" in n for n in networks), "Base Sepolia missing")
         self.assertTrue(any("8453" in n or "base" in n for n in networks), "Base Mainnet missing")
         self.assertTrue(any("42161" in n or "arbitrum" in n for n in networks), "Arbitrum missing")
+
+        # Verify Circle Gateway batching specification compliance
+        for item in accepts:
+            extra = item.get("extra", {})
+            self.assertEqual(extra.get("name"), "GatewayWalletBatched")
+            self.assertEqual(extra.get("version"), "1")
+            self.assertTrue(extra.get("verifyingContract"))
 
         # Header payload decodable
         raw_b64 = response.headers["payment-required"]

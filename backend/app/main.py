@@ -631,6 +631,37 @@ def qma_openapi():
             operation["x-qma-audiences"] = _operation_audiences(path, method, operation, access)
             if access == "paid-access":
                 operation["x-payment-info"] = X_PAYMENT_INFO
+                responses = operation.setdefault("responses", {})
+                responses["402"] = {
+                    "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks.",
+                    "headers": {
+                        "PAYMENT-REQUIRED": {
+                            "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array",
+                            "schema": {"type": "string"},
+                        },
+                        "WWW-Authenticate": {
+                            "description": "Payment challenge realm and supported schemes",
+                            "schema": {"type": "string"},
+                        },
+                    },
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+                            "example": {
+                                "error": "payment_required",
+                                "message": "Payment required: $0.010000 USDC over x402 / Circle Gateway to access report.",
+                                "status_code": 402,
+                                "price": {
+                                    "mode": "fixed",
+                                    "currency": "USDC",
+                                    "amount": "0.010000",
+                                },
+                                "x402Version": 2,
+                                "accepts": X_PAYMENT_INFO.get("accepts", []),
+                            },
+                        }
+                    },
+                }
 
     app.openapi_schema = schema
     return schema
