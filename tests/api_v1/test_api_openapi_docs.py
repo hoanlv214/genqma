@@ -59,6 +59,8 @@ class OpenApiDocsTests(unittest.TestCase):
                 "X-QMA-Invoice-Secret",
                 "x-qma-admin-token",
                 "x-qma-internal-secret",
+                "walletAuth",
+                "x402",
             },
         )
         self.assertEqual(

@@ -1,7 +1,7 @@
-# QMA Vestiarion 🏛️
+# Financial Intelligence Marketplace (Codename: GenQMA)
 
 [![live: genqma.vercel.app](https://img.shields.io/badge/live-genqma.vercel.app-1aa251)](https://genqma.vercel.app)
-[![firm: QMA Autonomous Quant](https://img.shields.io/badge/firm-QMA_Autonomous_Quant-2563EB)](https://genqma.vercel.app)
+[![marketplace: Two-Sided Intelligence](https://img.shields.io/badge/marketplace-Two--Sided_Intelligence-2563EB)](docs/business/POSITIONING_STRATEGY.md)
 [![API docs: onrender](https://img.shields.io/badge/API-qma--api.onrender.com-6E56CF)](https://qma-api.onrender.com/docs)
 [![settles on Arc testnet](https://img.shields.io/badge/settles_on-Arc_testnet-1f1f1f)](https://testnet.arcscan.app)
 [![payments: Circle x402](https://img.shields.io/badge/payments-Circle_x402-2775CA)](https://docs.arc.network)
@@ -9,41 +9,50 @@
 [![audit: Euthyna SHA-256](https://img.shields.io/badge/audit-Euthyna_Continuous_Proof-8B5CF6)](docs/audit/SECURITY_AND_AUDIT_REPORT.md)
 [![tests: 207 passing](https://img.shields.io/badge/tests-207%2F207_passing-success)](tests/)
 
-**The first Autonomous AI Quant Firm on Arc: streaming x402 market alpha, optimistic GenLayer data consensus, and the Vestiarion AI CFO managing 5% USYC treasury yield and JIT payables.**
+**A two-sided marketplace for financial intelligence where quant creators publish and monetize market signals, and autonomous AI agents or traders purchase verified reports per query via Circle x402 USDC micropayments with on-chain cryptographic proof.**
 
-🔗 Live: **[genqma.vercel.app](https://genqma.vercel.app)** — interactive Treasury Radar & Market Intelligence  
+🔗 Live Marketplace: **[genqma.vercel.app](https://genqma.vercel.app)** — interactive Signal Explorer & Treasury Radar  
 &nbsp;·&nbsp; ⚡ Backend: **[qma-api.onrender.com](https://qma-api.onrender.com)** — live API & OpenAPI docs at `/docs`  
+&nbsp;·&nbsp; 📖 Strategy: **[Positioning & Business Strategy](docs/business/POSITIONING_STRATEGY.md)** — two-sided business constitution  
 &nbsp;·&nbsp; 🔎 **[public proof](https://testnet.arcscan.app/address/0x934e7309d7fca371db946b0643f2136cc0a0fcb2)** — USYC ERC-4626 Vault & on-chain tx hashes on Arcscan  
-&nbsp;·&nbsp; ▶️ `npm run demo:treasury` — the whole CFO financial loop in 30s  
 &nbsp;·&nbsp; 🛡️ [Security & Audit Report](docs/audit/SECURITY_AND_AUDIT_REPORT.md) — formal threat model & verification report  
 
 ---
 
-## The problem
+## The Problem
 
-Traditional corporate finance assumes slow money: invoices arrive net-30, payroll runs bi-weekly, and human CFOs balance spreadsheets on Fridays. The on-chain agent economy broke that paradigm. Revenue arrives continuously in unpredictable micro-streams (x402 pay-per-call), while infrastructure costs (Pyth oracles, AI inference, compute nodes, and contractors) demand instant on-demand settlement.
+Traditional financial intelligence forces two broken paradigms:
+1. **For Signal Creators:** Talented quants and analysts must build bespoke SaaS billing, payment gateways, and user management just to monetize a quantitative signal or funding-rate model.
+2. **For Autonomous Buyers (AI Agents & Traders):** Existing intelligence providers demand $500–$2,000/month recurring subscriptions just to query historical regime data on-demand. Autonomous agents require structured JSON payloads paid per query via stablecoins, with hard spending budgets and cryptographic verification.
 
-Today, on-chain businesses and autonomous agents leak capital at both ends. Most autonomous agent treasury prototypes are empty toys — moving mock funds between wallets without real commercial revenue or real bills. In real operations, idle USDC left sitting in hot wallets earns **0% yield**, steadily eroded by inflation and opportunity cost. Conversely, leaving too little liquid cash causes critical oracle calls to fail. Human managers cannot sweep micro-balances into yield protocols every ten minutes, and existing "agent wallets" blindly spend without balancing burn rate, runway, or verifiable audit trails.
+## The Solution: Two-Sided Financial Intelligence Marketplace
 
-## What QMA Vestiarion is
+The platform operates as a decentralized, two-sided protocol:
 
-**QMA Vestiarion** is an autonomous quantitative intelligence firm operating end-to-end on Arc. It is not an abstract wallet demo; it is an active commercial enterprise governed by its AI Chief Financial Officer (**Vestiarion** — named after the Byzantine imperial state treasury that minted coin, stored reserves, and paid the army):
+1. **Supply Side (Quant Creators & Signal Providers):**
+   - Publish quantitative feeds (`POST /api/v1/creators/apply`) across anomalies, CEX funding rate divergences, Pyth entropy, and prediction market spreads.
+   - Monetize directly per query in USDC with automatic revenue sharing.
+   - Claim accrued earnings non-custodially via signed cryptographic proofs (`POST /api/v1/creators/claim`).
+2. **Demand Side (Autonomous Agents & Algorithmic Buyers):**
+   - Pay-per-query ($0.001 - $0.010 USDC) over HTTP via Circle Gateway x402 / MPP headers with zero subscription lock-in.
+   - Enforce mathematical spending guardrails via agent spending policies (`GET /api/v1/agent/spending-policy`).
+   - Discover providers via **ERC-8004** (`/.well-known/agent.json`) and **ERC-8183** escrow tasks (`POST /api/v1/agent/jobs`).
+3. **Decentralized SLA & Verification (GenLayer Shield):**
+   - Evaluates purchased intelligence payloads with optimistic consensus (`contracts/GenQMAShield.py`).
+   - Only finalized `VALID` reports trigger payment settlement; fraudulent providers are slashed and buyers refunded.
 
-1. **QMA Alpha Desk (Commercial Inflow):** Scans live crypto markets (funding rates, Polymarket prediction spreads, Pyth real-time feeds) and sells institutional intelligence reports via Circle x402 streaming micropayments.
-2. **QMA Shield Desk (Risk & Truth Gate):** Decentralized optimistic consensus staking on GenLayer (`contracts/GenQMAShield.py`), guaranteeing report truthfulness and slashing fraudulent AI generators.
-3. **Vestiarion CFO Desk (Corporate Treasury):** Manages the enterprise's cash on Arc:
-   - **Forecasts runway & liquidity** — models incoming revenue velocity against burn rate, dynamically enforcing a strict 30-day operating buffer.
-   - **Sweeps idle cash into USYC** — the moment liquid reserves exceed the buffer, the CFO autonomously deposits surplus USDC into an on-chain ERC-4626 yield vault earning ~5.0% APY.
-   - **Settles payables Just-In-Time (JIT)** — when operational invoices arrive (Pyth oracle feeds, model inference tolls, contractor payouts), it redeems exact principal and yield only when needed, maintaining 100% capital productivity.
-   - **Audits every cent with Euthyna** — generates a deterministic SHA-256 state digest for every transaction, guaranteeing zero unallocated funds and an unforgeable public ledger.
+### Internal Subsystems
 
-The result is a self-sustaining on-chain enterprise: money earns yield while idle, bills settle with sub-second finality, and the treasury balances itself 24/7.
+To keep architecture clear and prevent branding confusion:
+- **QMA Engine:** The internal analytical engine (**Q**uant **M**arket **A**nalytics / Memory) that matches live anomalies to historical regime archives and calculates analog win-rate distributions.
+- **Vestiarion Engine:** The internal corporate treasury engine on Arc that collects protocol take-rates, maintains a 30-day operating buffer, sweeps surplus idle USDC into ERC-4626 USYC vaults (~5.0% APY), redeems Just-In-Time (JIT) for compute/oracle payables, and seals transactions via Euthyna SHA-256 continuous audits.
+- **Brand Status:** The commercial public brand name is pending final selection and centralized in `BRAND_CONFIG` (in `backend/app/core/config.py` and `frontend/src/config/branding.ts`) for single-point updating.
 
 ---
 
-## An agent that genuinely decides
+## Autonomous Corporate Treasury & Liquidity Engine (Vestiarion)
 
-Most "treasury tools" are static scripts. Vestiarion's differentiator is **visible agency** — the AI CFO actively reasons about corporate financial health, solvency, and opportunity cost, streaming its decisions live:
+While the marketplace handles commercial inflows and outflows, the internal **Vestiarion** module autonomously governs corporate financial health, solvency, and opportunity cost:
 
 - **SWEEP / KEEP / REDEEM with rationale** — every financial movement names the exact runway multiplier, excess reserves, and economic justification.
 - **Dynamic reserve buffering** — scales the cash buffer up during high volatility and down during predictable inflow regimes.

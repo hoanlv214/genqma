@@ -94,6 +94,7 @@ from backend.app.core import state
 from backend.app.core.rate_limit import client_ip_from_request, rate_limit_for_path
 from backend.app.core.x402_spec import (
     AGENT_GUIDANCE,
+    BAZAAR_EXTENSIONS,
     X_PAYMENT_INFO,
     build_402_challenge_payload,
     build_x402_accepts,
@@ -413,7 +414,7 @@ async def qma_http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 402:
         challenge_body, challenge_headers = build_402_challenge_payload(
             url=str(request.url.path),
-            amount_decimal="0.010000",
+            amount_decimal="0.005000",
             description="GenQMA Quantitative Intelligence Report",
         )
         for k, v in challenge_headers.items():
@@ -421,6 +422,7 @@ async def qma_http_exception_handler(request: Request, exc: HTTPException):
         content["price"] = challenge_body["price"]
         content["x402Version"] = challenge_body["x402Version"]
         content["accepts"] = challenge_body["accepts"]
+        content["extensions"] = challenge_body.get("extensions", {})
 
     return JSONResponse(
         status_code=exc.status_code,
@@ -605,6 +607,24 @@ def qma_openapi():
             "description": "Internal gateway secret. Internal routes are intentionally hidden from the public schema.",
         },
     )
+    security_schemes.setdefault(
+        "walletAuth",
+        {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "SIWE",
+            "description": "Wallet authentication via EIP-4361 (Sign-In with Ethereum). Authenticate using verified wallet session token in Authorization: Bearer <token> or X-QMA-Wallet-Token header.",
+        },
+    )
+    security_schemes.setdefault(
+        "x402",
+        {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-PAYMENT",
+            "description": "x402 v2 payment authorization header (or PAYMENT-SIGNATURE) providing signed exact USDC transfer intent on supported multi-chain networks.",
+        },
+    )
 
     optional_security = {
         "/api/v1/metrics/wallet/{address}": "X-QMA-Wallet-Token",
@@ -634,14 +654,14 @@ def qma_openapi():
                 operation["x-payment-info"] = X_PAYMENT_INFO
                 responses = operation.setdefault("responses", {})
                 responses["402"] = {
-                    "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks.",
+                    "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks and Bazaar schema.",
                     "headers": {
                         "PAYMENT-REQUIRED": {
-                            "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array",
+                            "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array and Bazaar schema",
                             "schema": {"type": "string"},
                         },
                         "WWW-Authenticate": {
-                            "description": "Payment challenge realm and supported schemes",
+                            "description": "Payment challenge realm, requirements, and supported schemes",
                             "schema": {"type": "string"},
                         },
                     },
@@ -650,15 +670,16 @@ def qma_openapi():
                             "schema": {"$ref": "#/components/schemas/ErrorResponse"},
                             "example": {
                                 "error": "payment_required",
-                                "message": "Payment required: $0.010000 USDC over x402 / Circle Gateway to access report.",
+                                "message": "Payment required: $0.005000 USDC over x402 / Circle Gateway to access report.",
                                 "status_code": 402,
                                 "price": {
                                     "mode": "fixed",
                                     "currency": "USDC",
-                                    "amount": "0.010000",
+                                    "amount": "0.005000",
                                 },
                                 "x402Version": 2,
                                 "accepts": X_PAYMENT_INFO.get("accepts", []),
+                                "extensions": BAZAAR_EXTENSIONS,
                             },
                         }
                     },
@@ -1481,7 +1502,7 @@ def submit_withdraw(payload):
 def authorize_paid_invoice(*, query, invoice_id, token, required_tier, provider_id="funding_memory"):
     from fastapi import HTTPException, status
     if not invoice_id:
-        amount_dec = "0.010000" if required_tier == "full" else "0.001000"
+        amount_dec = "0.005000" if required_tier == "full" else "0.002000"
         challenge_body, challenge_headers = build_402_challenge_payload(
             url=f"/api/v1/providers/{provider_id}/{'preview' if required_tier == 'preview' else 'full-report'}",
             amount_decimal=amount_dec,
@@ -1494,7 +1515,7 @@ def authorize_paid_invoice(*, query, invoice_id, token, required_tier, provider_
                 "message": f"Payment required: ${amount_dec} USDC over x402 / Circle Gateway to access {provider_id} {required_tier} report.",
                 "payment": payment_requirement(
                     symbol=query.get("symbol", "BTC_USDT"),
-                    amount_usdc=0.01 if required_tier == "full" else 0.001,
+                    amount_usdc=0.005 if required_tier == "full" else 0.002,
                     tier=required_tier,
                     provider_id=provider_id,
                 ),
@@ -2097,12 +2118,12 @@ def _process_agent_direct_x402_payment(
     )
     accepted = payload.get("accepted") or {}
     network = accepted.get("network") or "eip155:5042002"
-    amount = accepted.get("amount") or ("10000" if required_tier == "full" else "1000")
+    amount = accepted.get("amount") or ("5000" if required_tier == "full" else "2000")
 
     invoice_id = f"inv_x402_{uuid.uuid4().hex[:12]}"
     now = time.time()
     symbol = str(query.get("symbol", "BTC_USDT")).upper()
-    amount_usdc = 0.01 if required_tier == "full" else 0.001
+    amount_usdc = 0.005 if required_tier == "full" else 0.002
 
     invoice = {
         "invoice_id": invoice_id,
@@ -2147,7 +2168,11 @@ def run_paid_provider_report(*, provider_id, query, invoice_id, token, required_
     # Check for direct x402 payment header from agents
     payment_header = None
     if request:
-        payment_header = request.headers.get("payment-signature") or request.headers.get("authorization")
+        payment_header = (
+            request.headers.get("payment-signature")
+            or request.headers.get("x-payment")
+            or request.headers.get("authorization")
+        )
 
     if payment_header and not token:
         invoice = _process_agent_direct_x402_payment(

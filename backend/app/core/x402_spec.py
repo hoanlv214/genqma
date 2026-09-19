@@ -67,7 +67,7 @@ AGENT_GUIDANCE = """GenQMA is an AI agent marketplace for real-time quantitative
 
 ### How and When to Call
 - Call when autonomous trading agents or risk engines require verified market anomalies (e.g. extreme CEX funding rate disparities, sudden open-interest shifts, or Polymarket/Pyth divergences) before executing on-chain trades.
-- Endpoints accept direct pay-per-call micropayments ($0.010000 USDC per report) over x402 and MPP across Arc Testnet, Base Sepolia, Base, and Arbitrum.
+- Endpoints accept direct pay-per-call nanopayments ($0.002000 - $0.005000 USDC per report) over x402 and MPP across Arc Testnet, Base Sepolia, Base, and Arbitrum.
 
 ### Operations & Endpoints
 - `POST /api/v1/providers/{provider_id}/full-report`: Primary paid report endpoint. Provide a JSON query payload with `symbol` (e.g. 'BTC_USDT') and optional technical filters. Returns anomaly classifications, historical analogs, predictive regimes, and GenLayer SLA verdict proof.
@@ -84,16 +84,16 @@ AGENT_GUIDANCE = """GenQMA is an AI agent marketplace for real-time quantitative
 
 
 def parse_usdc_atomic(amount_decimal: str) -> str:
-    """Convert decimal USDC string (e.g. '0.010000') to atomic units string (e.g. '10000')."""
+    """Convert decimal USDC string (e.g. '0.005000') to atomic units string (e.g. '5000')."""
     try:
         val = float(amount_decimal.replace("$", ""))
         return str(int(round(val * 1_000_000)))
     except Exception:
-        return "10000"
+        return "5000"
 
 
 def build_x402_accepts(
-    amount_decimal: str = "0.010000",
+    amount_decimal: str = "0.005000",
     seller_address: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Build multi-chain accepts array supported by Circle Gateway and x402 clients."""
@@ -120,7 +120,7 @@ def build_x402_accepts(
 
 
 def build_x_payment_info(
-    amount_decimal: str = "0.010000",
+    amount_decimal: str = "0.005000",
     seller_address: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Generate rich x-payment-info vendor extension with multi-network protocols and accepts list."""
@@ -128,9 +128,11 @@ def build_x_payment_info(
     networks_list = [cfg["network"] for cfg in NETWORKS_CONFIG]
     return {
         "price": {
-            "mode": "fixed",
+            "mode": "dynamic",
             "currency": "USDC",
             "amount": amount_decimal,
+            "min": "0.002000",
+            "max": "0.005000",
         },
         "protocols": [
             {
@@ -150,16 +152,113 @@ def build_x_payment_info(
     }
 
 
-X_PAYMENT_INFO = build_x_payment_info("0.010000")
+X_PAYMENT_INFO = build_x_payment_info("0.005000")
+
+# Standard Circle Bazaar schema extension enabling AI agents to discover input/output payload shapes directly from 402
+BAZAAR_EXTENSIONS: Dict[str, Any] = {
+    "bazaar": {
+        "schema": {
+            "type": "object",
+            "properties": {
+                "input": {
+                    "type": "object",
+                    "properties": {
+                        "body": {
+                            "type": "object",
+                            "required": ["symbol"],
+                            "properties": {
+                                "symbol": {
+                                    "type": "string",
+                                    "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC",
+                                },
+                                "fundingRate": {
+                                    "type": "number",
+                                    "description": "Current annualized or period funding rate (optional)",
+                                },
+                                "openInterest": {
+                                    "type": "number",
+                                    "description": "Aggregate open interest in quote currency (optional)",
+                                },
+                                "volume24h": {
+                                    "type": "number",
+                                    "description": "24-hour volume in quote currency (optional)",
+                                },
+                                "price": {
+                                    "type": "number",
+                                    "description": "Current reference spot or index price (optional)",
+                                },
+                                "longShortRatio": {
+                                    "type": "number",
+                                    "description": "Long-to-short positioning ratio across venues (optional)",
+                                },
+                            },
+                        },
+                    },
+                },
+                "output": {
+                    "type": "object",
+                    "properties": {
+                        "example": {
+                            "type": "object",
+                            "properties": {
+                                "query_symbol": {"type": "string"},
+                                "tier": {"type": "string"},
+                                "anomalies": {"type": "array"},
+                                "historical_analogs": {"type": "array"},
+                                "weighted_win_rate": {"type": "number"},
+                                "regime_score": {"type": "number"},
+                                "genlayer_sla": {"type": "object"},
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "info": {
+            "input": {
+                "type": "http",
+                "method": "POST",
+                "discoverable": True,
+                "bodyFields": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC",
+                    },
+                    "fundingRate": {
+                        "type": "number",
+                        "description": "Current annualized or period funding rate (optional)",
+                    },
+                    "openInterest": {
+                        "type": "number",
+                        "description": "Aggregate open interest in quote currency (optional)",
+                    },
+                    "volume24h": {
+                        "type": "number",
+                        "description": "24-hour volume in quote currency (optional)",
+                    },
+                    "price": {
+                        "type": "number",
+                        "description": "Current reference spot or index price (optional)",
+                    },
+                    "longShortRatio": {
+                        "type": "number",
+                        "description": "Long-to-short positioning ratio across venues (optional)",
+                    },
+                },
+            },
+            "output": None,
+        },
+    }
+}
 
 
 def build_402_challenge_payload(
     url: str = "/api/v1/providers/funding_memory/full-report",
-    amount_decimal: str = "0.010000",
+    amount_decimal: str = "0.005000",
     description: str = "Paid Quantitative Intelligence Report",
     seller_address: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, str]]:
-    """Construct standard HTTP 402 challenge response body and headers."""
+    """Construct standard HTTP 402 challenge response body and headers with Circle Bazaar schema extensions."""
     accepts = build_x402_accepts(amount_decimal, seller_address)
     payment_required_obj = {
         "x402Version": 2,
@@ -174,6 +273,7 @@ def build_402_challenge_payload(
             "amount": amount_decimal,
         },
         "accepts": accepts,
+        "extensions": BAZAAR_EXTENSIONS,
     }
 
     raw_json = json.dumps(payment_required_obj)
@@ -181,7 +281,7 @@ def build_402_challenge_payload(
 
     headers = {
         "PAYMENT-REQUIRED": b64_header,
-        "WWW-Authenticate": f'Payment realm="x402", token="USDC", amount="{amount_decimal}", accepts="arc-testnet,base,base-sepolia,arbitrum,ethereum,polygon,optimism,avalanche"',
+        "WWW-Authenticate": f'X402 requirements="{b64_header}", Payment realm="x402", token="USDC", amount="{amount_decimal}", accepts="arc-testnet,base,base-sepolia,arbitrum,ethereum,polygon,optimism,avalanche"',
         "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, payment-required, WWW-Authenticate",
     }
 
@@ -196,6 +296,7 @@ def build_402_challenge_payload(
         },
         "x402Version": 2,
         "accepts": accepts,
+        "extensions": BAZAAR_EXTENSIONS,
     }
 
     return body, headers

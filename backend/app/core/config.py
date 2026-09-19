@@ -26,6 +26,23 @@ def load_local_env(env_path: Path | None = None) -> None:
 load_local_env()
 
 
+# ---------------------------------------------------------------------------
+# Brand & Project Identity (Single Source of Truth)
+# The public brand name is pending final selection. When decided, update here.
+# ---------------------------------------------------------------------------
+BRAND_NAME: str = os.getenv("APP_BRAND_NAME", "Financial Intelligence Marketplace")
+BRAND_CODENAME: str = "GenQMA"
+BRAND_TITLE: str = os.getenv("APP_BRAND_TITLE", "GenQMA Intelligence & Payments API")
+BRAND_TAGLINE: str = "Two-Sided Marketplace for Financial Intelligence & Agent Commerce"
+BRAND_DESCRIPTION: str = (
+    "A two-sided marketplace for financial intelligence where quant creators and data providers "
+    "monetize signals, and autonomous AI agents or traders purchase verified reports per query "
+    "via x402 USDC micropayments with on-chain SLA and verification proof."
+)
+INTERNAL_QUANT_ENGINE: str = "QMA"  # Internal market-memory & anomaly matching engine
+INTERNAL_TREASURY_MODULE: str = "Vestiarion"  # Internal corporate treasury & liquidity engine
+
+
 @dataclass(frozen=True)
 class Settings:
     root_dir: Path = ROOT_DIR
@@ -36,7 +53,13 @@ class Settings:
     creator_applications_path: Path = ROOT_DIR / "creator_applications.json"
     provider_controls_path: Path = ROOT_DIR / "provider_controls.json"
     creator_claims_path: Path = ROOT_DIR / "creator_claims.json"
-    api_title: str = "Quant Memory Agent (QMA) Server"
+    brand_name: str = BRAND_NAME
+    brand_codename: str = BRAND_CODENAME
+    brand_tagline: str = BRAND_TAGLINE
+    brand_description: str = BRAND_DESCRIPTION
+    internal_quant_engine: str = INTERNAL_QUANT_ENGINE
+    internal_treasury_module: str = INTERNAL_TREASURY_MODULE
+    api_title: str = BRAND_TITLE
     api_version: str = "1.0.0"
 
     @property

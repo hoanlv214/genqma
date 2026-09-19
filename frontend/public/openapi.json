@@ -9,7 +9,7 @@
       "email": "agent-support@genqma.com",
       "url": "https://genqma.vercel.app"
     },
-    "x-guidance": "GenQMA is an AI agent marketplace for real-time quantitative market intelligence, anomaly detection, funding rate arbitrage signals, and prediction market analytics with on-chain GenLayer SLA settlement verification.\n\n### How and When to Call\n- Call when autonomous trading agents or risk engines require verified market anomalies (e.g. extreme CEX funding rate disparities, sudden open-interest shifts, or Polymarket/Pyth divergences) before executing on-chain trades.\n- Endpoints accept direct pay-per-call micropayments ($0.010000 USDC per report) over x402 and MPP across Arc Testnet, Base Sepolia, Base, and Arbitrum.\n\n### Operations & Endpoints\n- `POST /api/v1/providers/{provider_id}/full-report`: Primary paid report endpoint. Provide a JSON query payload with `symbol` (e.g. 'BTC_USDT') and optional technical filters. Returns anomaly classifications, historical analogs, predictive regimes, and GenLayer SLA verdict proof.\n- `POST /api/v1/providers/{provider_id}/preview`: Low-cost sample preview for fast agent filtering prior to full report retrieval.\n- `POST /api/v1/chat`: Interrogate an existing paid report regarding historical analogs and risk parameters.\n\n### Inputs\n- Path param: `provider_id` (string, e.g. 'funding_memory', 'polymarket_orderbook', 'pyth_entropy').\n- Body (application/json): `symbol` (required, string, 1-32 chars, e.g. 'BTC_USDT'), optional technical parameters (`fundingRate`, `openInterest`, `volume24h`, `price`, `longShortRatio`).\n- Unpaid requests receive an HTTP 402 challenge containing payment requirements and accepted multi-chain networks.\n\n### Outputs\n- JSON object containing `anomalies`, `historical_analogs`, `weighted_win_rate`, `regime_score`, and cryptographic `genlayer_sla` verdict."
+    "x-guidance": "GenQMA is an AI agent marketplace for real-time quantitative market intelligence, anomaly detection, funding rate arbitrage signals, and prediction market analytics with on-chain GenLayer SLA settlement verification.\n\n### How and When to Call\n- Call when autonomous trading agents or risk engines require verified market anomalies (e.g. extreme CEX funding rate disparities, sudden open-interest shifts, or Polymarket/Pyth divergences) before executing on-chain trades.\n- Endpoints accept direct pay-per-call nanopayments ($0.002000 - $0.005000 USDC per report) over x402 and MPP across Arc Testnet, Base Sepolia, Base, and Arbitrum.\n\n### Operations & Endpoints\n- `POST /api/v1/providers/{provider_id}/full-report`: Primary paid report endpoint. Provide a JSON query payload with `symbol` (e.g. 'BTC_USDT') and optional technical filters. Returns anomaly classifications, historical analogs, predictive regimes, and GenLayer SLA verdict proof.\n- `POST /api/v1/providers/{provider_id}/preview`: Low-cost sample preview for fast agent filtering prior to full report retrieval.\n- `POST /api/v1/chat`: Interrogate an existing paid report regarding historical analogs and risk parameters.\n\n### Inputs\n- Path param: `provider_id` (string, e.g. 'funding_memory', 'polymarket_orderbook', 'pyth_entropy').\n- Body (application/json): `symbol` (required, string, 1-32 chars, e.g. 'BTC_USDT'), optional technical parameters (`fundingRate`, `openInterest`, `volume24h`, `price`, `longShortRatio`).\n- Unpaid requests receive an HTTP 402 challenge containing payment requirements and accepted multi-chain networks.\n\n### Outputs\n- JSON object containing `anomalies`, `historical_analogs`, `weighted_win_rate`, `regime_score`, and cryptographic `genlayer_sla` verdict."
   },
   "servers": [
     {
@@ -2375,16 +2375,16 @@
             }
           },
           "402": {
-            "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks.",
+            "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks and Bazaar schema.",
             "headers": {
               "PAYMENT-REQUIRED": {
-                "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array",
+                "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array and Bazaar schema",
                 "schema": {
                   "type": "string"
                 }
               },
               "WWW-Authenticate": {
-                "description": "Payment challenge realm and supported schemes",
+                "description": "Payment challenge realm, requirements, and supported schemes",
                 "schema": {
                   "type": "string"
                 }
@@ -2397,12 +2397,12 @@
                 },
                 "example": {
                   "error": "payment_required",
-                  "message": "Payment required: $0.010000 USDC over x402 / Circle Gateway to access report.",
+                  "message": "Payment required: $0.005000 USDC over x402 / Circle Gateway to access report.",
                   "status_code": 402,
                   "price": {
                     "mode": "fixed",
                     "currency": "USDC",
-                    "amount": "0.010000"
+                    "amount": "0.005000"
                   },
                   "x402Version": 2,
                   "accepts": [
@@ -2410,7 +2410,7 @@
                       "scheme": "exact",
                       "network": "eip155:5042002",
                       "asset": "0x3600000000000000000000000000000000000000",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -2423,7 +2423,7 @@
                       "scheme": "exact",
                       "network": "eip155:84532",
                       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -2436,7 +2436,7 @@
                       "scheme": "exact",
                       "network": "eip155:8453",
                       "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -2449,7 +2449,7 @@
                       "scheme": "exact",
                       "network": "eip155:42161",
                       "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -2462,7 +2462,7 @@
                       "scheme": "exact",
                       "network": "eip155:421614",
                       "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -2475,7 +2475,7 @@
                       "scheme": "exact",
                       "network": "eip155:11155111",
                       "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -2484,7 +2484,118 @@
                         "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
                       }
                     }
-                  ]
+                  ],
+                  "extensions": {
+                    "bazaar": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "input": {
+                            "type": "object",
+                            "properties": {
+                              "body": {
+                                "type": "object",
+                                "required": [
+                                  "symbol"
+                                ],
+                                "properties": {
+                                  "symbol": {
+                                    "type": "string",
+                                    "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC"
+                                  },
+                                  "fundingRate": {
+                                    "type": "number",
+                                    "description": "Current annualized or period funding rate (optional)"
+                                  },
+                                  "openInterest": {
+                                    "type": "number",
+                                    "description": "Aggregate open interest in quote currency (optional)"
+                                  },
+                                  "volume24h": {
+                                    "type": "number",
+                                    "description": "24-hour volume in quote currency (optional)"
+                                  },
+                                  "price": {
+                                    "type": "number",
+                                    "description": "Current reference spot or index price (optional)"
+                                  },
+                                  "longShortRatio": {
+                                    "type": "number",
+                                    "description": "Long-to-short positioning ratio across venues (optional)"
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "output": {
+                            "type": "object",
+                            "properties": {
+                              "example": {
+                                "type": "object",
+                                "properties": {
+                                  "query_symbol": {
+                                    "type": "string"
+                                  },
+                                  "tier": {
+                                    "type": "string"
+                                  },
+                                  "anomalies": {
+                                    "type": "array"
+                                  },
+                                  "historical_analogs": {
+                                    "type": "array"
+                                  },
+                                  "weighted_win_rate": {
+                                    "type": "number"
+                                  },
+                                  "regime_score": {
+                                    "type": "number"
+                                  },
+                                  "genlayer_sla": {
+                                    "type": "object"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "info": {
+                        "input": {
+                          "type": "http",
+                          "method": "POST",
+                          "discoverable": true,
+                          "bodyFields": {
+                            "symbol": {
+                              "type": "string",
+                              "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC"
+                            },
+                            "fundingRate": {
+                              "type": "number",
+                              "description": "Current annualized or period funding rate (optional)"
+                            },
+                            "openInterest": {
+                              "type": "number",
+                              "description": "Aggregate open interest in quote currency (optional)"
+                            },
+                            "volume24h": {
+                              "type": "number",
+                              "description": "24-hour volume in quote currency (optional)"
+                            },
+                            "price": {
+                              "type": "number",
+                              "description": "Current reference spot or index price (optional)"
+                            },
+                            "longShortRatio": {
+                              "type": "number",
+                              "description": "Long-to-short positioning ratio across venues (optional)"
+                            }
+                          }
+                        },
+                        "output": null
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -2542,9 +2653,11 @@
         ],
         "x-payment-info": {
           "price": {
-            "mode": "fixed",
+            "mode": "dynamic",
             "currency": "USDC",
-            "amount": "0.010000"
+            "amount": "0.005000",
+            "min": "0.002000",
+            "max": "0.005000"
           },
           "protocols": [
             {
@@ -2562,7 +2675,7 @@
                     "scheme": "exact",
                     "network": "eip155:5042002",
                     "asset": "0x3600000000000000000000000000000000000000",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -2575,7 +2688,7 @@
                     "scheme": "exact",
                     "network": "eip155:84532",
                     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -2588,7 +2701,7 @@
                     "scheme": "exact",
                     "network": "eip155:8453",
                     "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -2601,7 +2714,7 @@
                     "scheme": "exact",
                     "network": "eip155:42161",
                     "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -2614,7 +2727,7 @@
                     "scheme": "exact",
                     "network": "eip155:421614",
                     "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -2627,7 +2740,7 @@
                     "scheme": "exact",
                     "network": "eip155:11155111",
                     "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -2665,7 +2778,7 @@
               "scheme": "exact",
               "network": "eip155:5042002",
               "asset": "0x3600000000000000000000000000000000000000",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -2678,7 +2791,7 @@
               "scheme": "exact",
               "network": "eip155:84532",
               "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -2691,7 +2804,7 @@
               "scheme": "exact",
               "network": "eip155:8453",
               "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -2704,7 +2817,7 @@
               "scheme": "exact",
               "network": "eip155:42161",
               "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -2717,7 +2830,7 @@
               "scheme": "exact",
               "network": "eip155:421614",
               "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -2730,7 +2843,7 @@
               "scheme": "exact",
               "network": "eip155:11155111",
               "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -4327,16 +4440,16 @@
             }
           },
           "402": {
-            "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks.",
+            "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks and Bazaar schema.",
             "headers": {
               "PAYMENT-REQUIRED": {
-                "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array",
+                "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array and Bazaar schema",
                 "schema": {
                   "type": "string"
                 }
               },
               "WWW-Authenticate": {
-                "description": "Payment challenge realm and supported schemes",
+                "description": "Payment challenge realm, requirements, and supported schemes",
                 "schema": {
                   "type": "string"
                 }
@@ -4349,12 +4462,12 @@
                 },
                 "example": {
                   "error": "payment_required",
-                  "message": "Payment required: $0.010000 USDC over x402 / Circle Gateway to access report.",
+                  "message": "Payment required: $0.005000 USDC over x402 / Circle Gateway to access report.",
                   "status_code": 402,
                   "price": {
                     "mode": "fixed",
                     "currency": "USDC",
-                    "amount": "0.010000"
+                    "amount": "0.005000"
                   },
                   "x402Version": 2,
                   "accepts": [
@@ -4362,7 +4475,7 @@
                       "scheme": "exact",
                       "network": "eip155:5042002",
                       "asset": "0x3600000000000000000000000000000000000000",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4375,7 +4488,7 @@
                       "scheme": "exact",
                       "network": "eip155:84532",
                       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4388,7 +4501,7 @@
                       "scheme": "exact",
                       "network": "eip155:8453",
                       "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4401,7 +4514,7 @@
                       "scheme": "exact",
                       "network": "eip155:42161",
                       "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4414,7 +4527,7 @@
                       "scheme": "exact",
                       "network": "eip155:421614",
                       "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4427,7 +4540,7 @@
                       "scheme": "exact",
                       "network": "eip155:11155111",
                       "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4436,7 +4549,118 @@
                         "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
                       }
                     }
-                  ]
+                  ],
+                  "extensions": {
+                    "bazaar": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "input": {
+                            "type": "object",
+                            "properties": {
+                              "body": {
+                                "type": "object",
+                                "required": [
+                                  "symbol"
+                                ],
+                                "properties": {
+                                  "symbol": {
+                                    "type": "string",
+                                    "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC"
+                                  },
+                                  "fundingRate": {
+                                    "type": "number",
+                                    "description": "Current annualized or period funding rate (optional)"
+                                  },
+                                  "openInterest": {
+                                    "type": "number",
+                                    "description": "Aggregate open interest in quote currency (optional)"
+                                  },
+                                  "volume24h": {
+                                    "type": "number",
+                                    "description": "24-hour volume in quote currency (optional)"
+                                  },
+                                  "price": {
+                                    "type": "number",
+                                    "description": "Current reference spot or index price (optional)"
+                                  },
+                                  "longShortRatio": {
+                                    "type": "number",
+                                    "description": "Long-to-short positioning ratio across venues (optional)"
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "output": {
+                            "type": "object",
+                            "properties": {
+                              "example": {
+                                "type": "object",
+                                "properties": {
+                                  "query_symbol": {
+                                    "type": "string"
+                                  },
+                                  "tier": {
+                                    "type": "string"
+                                  },
+                                  "anomalies": {
+                                    "type": "array"
+                                  },
+                                  "historical_analogs": {
+                                    "type": "array"
+                                  },
+                                  "weighted_win_rate": {
+                                    "type": "number"
+                                  },
+                                  "regime_score": {
+                                    "type": "number"
+                                  },
+                                  "genlayer_sla": {
+                                    "type": "object"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "info": {
+                        "input": {
+                          "type": "http",
+                          "method": "POST",
+                          "discoverable": true,
+                          "bodyFields": {
+                            "symbol": {
+                              "type": "string",
+                              "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC"
+                            },
+                            "fundingRate": {
+                              "type": "number",
+                              "description": "Current annualized or period funding rate (optional)"
+                            },
+                            "openInterest": {
+                              "type": "number",
+                              "description": "Aggregate open interest in quote currency (optional)"
+                            },
+                            "volume24h": {
+                              "type": "number",
+                              "description": "24-hour volume in quote currency (optional)"
+                            },
+                            "price": {
+                              "type": "number",
+                              "description": "Current reference spot or index price (optional)"
+                            },
+                            "longShortRatio": {
+                              "type": "number",
+                              "description": "Long-to-short positioning ratio across venues (optional)"
+                            }
+                          }
+                        },
+                        "output": null
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -4500,9 +4724,11 @@
         ],
         "x-payment-info": {
           "price": {
-            "mode": "fixed",
+            "mode": "dynamic",
             "currency": "USDC",
-            "amount": "0.010000"
+            "amount": "0.005000",
+            "min": "0.002000",
+            "max": "0.005000"
           },
           "protocols": [
             {
@@ -4520,7 +4746,7 @@
                     "scheme": "exact",
                     "network": "eip155:5042002",
                     "asset": "0x3600000000000000000000000000000000000000",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -4533,7 +4759,7 @@
                     "scheme": "exact",
                     "network": "eip155:84532",
                     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -4546,7 +4772,7 @@
                     "scheme": "exact",
                     "network": "eip155:8453",
                     "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -4559,7 +4785,7 @@
                     "scheme": "exact",
                     "network": "eip155:42161",
                     "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -4572,7 +4798,7 @@
                     "scheme": "exact",
                     "network": "eip155:421614",
                     "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -4585,7 +4811,7 @@
                     "scheme": "exact",
                     "network": "eip155:11155111",
                     "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -4623,7 +4849,7 @@
               "scheme": "exact",
               "network": "eip155:5042002",
               "asset": "0x3600000000000000000000000000000000000000",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -4636,7 +4862,7 @@
               "scheme": "exact",
               "network": "eip155:84532",
               "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -4649,7 +4875,7 @@
               "scheme": "exact",
               "network": "eip155:8453",
               "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -4662,7 +4888,7 @@
               "scheme": "exact",
               "network": "eip155:42161",
               "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -4675,7 +4901,7 @@
               "scheme": "exact",
               "network": "eip155:421614",
               "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -4688,7 +4914,7 @@
               "scheme": "exact",
               "network": "eip155:11155111",
               "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -4791,16 +5017,16 @@
             }
           },
           "402": {
-            "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks.",
+            "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks and Bazaar schema.",
             "headers": {
               "PAYMENT-REQUIRED": {
-                "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array",
+                "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array and Bazaar schema",
                 "schema": {
                   "type": "string"
                 }
               },
               "WWW-Authenticate": {
-                "description": "Payment challenge realm and supported schemes",
+                "description": "Payment challenge realm, requirements, and supported schemes",
                 "schema": {
                   "type": "string"
                 }
@@ -4813,12 +5039,12 @@
                 },
                 "example": {
                   "error": "payment_required",
-                  "message": "Payment required: $0.010000 USDC over x402 / Circle Gateway to access report.",
+                  "message": "Payment required: $0.005000 USDC over x402 / Circle Gateway to access report.",
                   "status_code": 402,
                   "price": {
                     "mode": "fixed",
                     "currency": "USDC",
-                    "amount": "0.010000"
+                    "amount": "0.005000"
                   },
                   "x402Version": 2,
                   "accepts": [
@@ -4826,7 +5052,7 @@
                       "scheme": "exact",
                       "network": "eip155:5042002",
                       "asset": "0x3600000000000000000000000000000000000000",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4839,7 +5065,7 @@
                       "scheme": "exact",
                       "network": "eip155:84532",
                       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4852,7 +5078,7 @@
                       "scheme": "exact",
                       "network": "eip155:8453",
                       "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4865,7 +5091,7 @@
                       "scheme": "exact",
                       "network": "eip155:42161",
                       "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4878,7 +5104,7 @@
                       "scheme": "exact",
                       "network": "eip155:421614",
                       "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4891,7 +5117,7 @@
                       "scheme": "exact",
                       "network": "eip155:11155111",
                       "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -4900,7 +5126,118 @@
                         "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
                       }
                     }
-                  ]
+                  ],
+                  "extensions": {
+                    "bazaar": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "input": {
+                            "type": "object",
+                            "properties": {
+                              "body": {
+                                "type": "object",
+                                "required": [
+                                  "symbol"
+                                ],
+                                "properties": {
+                                  "symbol": {
+                                    "type": "string",
+                                    "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC"
+                                  },
+                                  "fundingRate": {
+                                    "type": "number",
+                                    "description": "Current annualized or period funding rate (optional)"
+                                  },
+                                  "openInterest": {
+                                    "type": "number",
+                                    "description": "Aggregate open interest in quote currency (optional)"
+                                  },
+                                  "volume24h": {
+                                    "type": "number",
+                                    "description": "24-hour volume in quote currency (optional)"
+                                  },
+                                  "price": {
+                                    "type": "number",
+                                    "description": "Current reference spot or index price (optional)"
+                                  },
+                                  "longShortRatio": {
+                                    "type": "number",
+                                    "description": "Long-to-short positioning ratio across venues (optional)"
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "output": {
+                            "type": "object",
+                            "properties": {
+                              "example": {
+                                "type": "object",
+                                "properties": {
+                                  "query_symbol": {
+                                    "type": "string"
+                                  },
+                                  "tier": {
+                                    "type": "string"
+                                  },
+                                  "anomalies": {
+                                    "type": "array"
+                                  },
+                                  "historical_analogs": {
+                                    "type": "array"
+                                  },
+                                  "weighted_win_rate": {
+                                    "type": "number"
+                                  },
+                                  "regime_score": {
+                                    "type": "number"
+                                  },
+                                  "genlayer_sla": {
+                                    "type": "object"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "info": {
+                        "input": {
+                          "type": "http",
+                          "method": "POST",
+                          "discoverable": true,
+                          "bodyFields": {
+                            "symbol": {
+                              "type": "string",
+                              "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC"
+                            },
+                            "fundingRate": {
+                              "type": "number",
+                              "description": "Current annualized or period funding rate (optional)"
+                            },
+                            "openInterest": {
+                              "type": "number",
+                              "description": "Aggregate open interest in quote currency (optional)"
+                            },
+                            "volume24h": {
+                              "type": "number",
+                              "description": "24-hour volume in quote currency (optional)"
+                            },
+                            "price": {
+                              "type": "number",
+                              "description": "Current reference spot or index price (optional)"
+                            },
+                            "longShortRatio": {
+                              "type": "number",
+                              "description": "Long-to-short positioning ratio across venues (optional)"
+                            }
+                          }
+                        },
+                        "output": null
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -4964,9 +5301,11 @@
         ],
         "x-payment-info": {
           "price": {
-            "mode": "fixed",
+            "mode": "dynamic",
             "currency": "USDC",
-            "amount": "0.010000"
+            "amount": "0.005000",
+            "min": "0.002000",
+            "max": "0.005000"
           },
           "protocols": [
             {
@@ -4984,7 +5323,7 @@
                     "scheme": "exact",
                     "network": "eip155:5042002",
                     "asset": "0x3600000000000000000000000000000000000000",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -4997,7 +5336,7 @@
                     "scheme": "exact",
                     "network": "eip155:84532",
                     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5010,7 +5349,7 @@
                     "scheme": "exact",
                     "network": "eip155:8453",
                     "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5023,7 +5362,7 @@
                     "scheme": "exact",
                     "network": "eip155:42161",
                     "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5036,7 +5375,7 @@
                     "scheme": "exact",
                     "network": "eip155:421614",
                     "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5049,7 +5388,7 @@
                     "scheme": "exact",
                     "network": "eip155:11155111",
                     "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5087,7 +5426,7 @@
               "scheme": "exact",
               "network": "eip155:5042002",
               "asset": "0x3600000000000000000000000000000000000000",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5100,7 +5439,7 @@
               "scheme": "exact",
               "network": "eip155:84532",
               "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5113,7 +5452,7 @@
               "scheme": "exact",
               "network": "eip155:8453",
               "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5126,7 +5465,7 @@
               "scheme": "exact",
               "network": "eip155:42161",
               "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5139,7 +5478,7 @@
               "scheme": "exact",
               "network": "eip155:421614",
               "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5152,7 +5491,7 @@
               "scheme": "exact",
               "network": "eip155:11155111",
               "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5238,16 +5577,16 @@
             }
           },
           "402": {
-            "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks.",
+            "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks and Bazaar schema.",
             "headers": {
               "PAYMENT-REQUIRED": {
-                "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array",
+                "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array and Bazaar schema",
                 "schema": {
                   "type": "string"
                 }
               },
               "WWW-Authenticate": {
-                "description": "Payment challenge realm and supported schemes",
+                "description": "Payment challenge realm, requirements, and supported schemes",
                 "schema": {
                   "type": "string"
                 }
@@ -5260,12 +5599,12 @@
                 },
                 "example": {
                   "error": "payment_required",
-                  "message": "Payment required: $0.010000 USDC over x402 / Circle Gateway to access report.",
+                  "message": "Payment required: $0.005000 USDC over x402 / Circle Gateway to access report.",
                   "status_code": 402,
                   "price": {
                     "mode": "fixed",
                     "currency": "USDC",
-                    "amount": "0.010000"
+                    "amount": "0.005000"
                   },
                   "x402Version": 2,
                   "accepts": [
@@ -5273,7 +5612,7 @@
                       "scheme": "exact",
                       "network": "eip155:5042002",
                       "asset": "0x3600000000000000000000000000000000000000",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5286,7 +5625,7 @@
                       "scheme": "exact",
                       "network": "eip155:84532",
                       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5299,7 +5638,7 @@
                       "scheme": "exact",
                       "network": "eip155:8453",
                       "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5312,7 +5651,7 @@
                       "scheme": "exact",
                       "network": "eip155:42161",
                       "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5325,7 +5664,7 @@
                       "scheme": "exact",
                       "network": "eip155:421614",
                       "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5338,7 +5677,7 @@
                       "scheme": "exact",
                       "network": "eip155:11155111",
                       "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5347,7 +5686,118 @@
                         "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
                       }
                     }
-                  ]
+                  ],
+                  "extensions": {
+                    "bazaar": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "input": {
+                            "type": "object",
+                            "properties": {
+                              "body": {
+                                "type": "object",
+                                "required": [
+                                  "symbol"
+                                ],
+                                "properties": {
+                                  "symbol": {
+                                    "type": "string",
+                                    "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC"
+                                  },
+                                  "fundingRate": {
+                                    "type": "number",
+                                    "description": "Current annualized or period funding rate (optional)"
+                                  },
+                                  "openInterest": {
+                                    "type": "number",
+                                    "description": "Aggregate open interest in quote currency (optional)"
+                                  },
+                                  "volume24h": {
+                                    "type": "number",
+                                    "description": "24-hour volume in quote currency (optional)"
+                                  },
+                                  "price": {
+                                    "type": "number",
+                                    "description": "Current reference spot or index price (optional)"
+                                  },
+                                  "longShortRatio": {
+                                    "type": "number",
+                                    "description": "Long-to-short positioning ratio across venues (optional)"
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "output": {
+                            "type": "object",
+                            "properties": {
+                              "example": {
+                                "type": "object",
+                                "properties": {
+                                  "query_symbol": {
+                                    "type": "string"
+                                  },
+                                  "tier": {
+                                    "type": "string"
+                                  },
+                                  "anomalies": {
+                                    "type": "array"
+                                  },
+                                  "historical_analogs": {
+                                    "type": "array"
+                                  },
+                                  "weighted_win_rate": {
+                                    "type": "number"
+                                  },
+                                  "regime_score": {
+                                    "type": "number"
+                                  },
+                                  "genlayer_sla": {
+                                    "type": "object"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "info": {
+                        "input": {
+                          "type": "http",
+                          "method": "POST",
+                          "discoverable": true,
+                          "bodyFields": {
+                            "symbol": {
+                              "type": "string",
+                              "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC"
+                            },
+                            "fundingRate": {
+                              "type": "number",
+                              "description": "Current annualized or period funding rate (optional)"
+                            },
+                            "openInterest": {
+                              "type": "number",
+                              "description": "Aggregate open interest in quote currency (optional)"
+                            },
+                            "volume24h": {
+                              "type": "number",
+                              "description": "24-hour volume in quote currency (optional)"
+                            },
+                            "price": {
+                              "type": "number",
+                              "description": "Current reference spot or index price (optional)"
+                            },
+                            "longShortRatio": {
+                              "type": "number",
+                              "description": "Long-to-short positioning ratio across venues (optional)"
+                            }
+                          }
+                        },
+                        "output": null
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -5409,9 +5859,11 @@
         ],
         "x-payment-info": {
           "price": {
-            "mode": "fixed",
+            "mode": "dynamic",
             "currency": "USDC",
-            "amount": "0.010000"
+            "amount": "0.005000",
+            "min": "0.002000",
+            "max": "0.005000"
           },
           "protocols": [
             {
@@ -5429,7 +5881,7 @@
                     "scheme": "exact",
                     "network": "eip155:5042002",
                     "asset": "0x3600000000000000000000000000000000000000",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5442,7 +5894,7 @@
                     "scheme": "exact",
                     "network": "eip155:84532",
                     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5455,7 +5907,7 @@
                     "scheme": "exact",
                     "network": "eip155:8453",
                     "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5468,7 +5920,7 @@
                     "scheme": "exact",
                     "network": "eip155:42161",
                     "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5481,7 +5933,7 @@
                     "scheme": "exact",
                     "network": "eip155:421614",
                     "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5494,7 +5946,7 @@
                     "scheme": "exact",
                     "network": "eip155:11155111",
                     "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5532,7 +5984,7 @@
               "scheme": "exact",
               "network": "eip155:5042002",
               "asset": "0x3600000000000000000000000000000000000000",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5545,7 +5997,7 @@
               "scheme": "exact",
               "network": "eip155:84532",
               "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5558,7 +6010,7 @@
               "scheme": "exact",
               "network": "eip155:8453",
               "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5571,7 +6023,7 @@
               "scheme": "exact",
               "network": "eip155:42161",
               "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5584,7 +6036,7 @@
               "scheme": "exact",
               "network": "eip155:421614",
               "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5597,7 +6049,7 @@
               "scheme": "exact",
               "network": "eip155:11155111",
               "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5683,16 +6135,16 @@
             }
           },
           "402": {
-            "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks.",
+            "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks and Bazaar schema.",
             "headers": {
               "PAYMENT-REQUIRED": {
-                "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array",
+                "description": "Base64-encoded x402 payment challenge JSON with multi-network accepts[] array and Bazaar schema",
                 "schema": {
                   "type": "string"
                 }
               },
               "WWW-Authenticate": {
-                "description": "Payment challenge realm and supported schemes",
+                "description": "Payment challenge realm, requirements, and supported schemes",
                 "schema": {
                   "type": "string"
                 }
@@ -5705,12 +6157,12 @@
                 },
                 "example": {
                   "error": "payment_required",
-                  "message": "Payment required: $0.010000 USDC over x402 / Circle Gateway to access report.",
+                  "message": "Payment required: $0.005000 USDC over x402 / Circle Gateway to access report.",
                   "status_code": 402,
                   "price": {
                     "mode": "fixed",
                     "currency": "USDC",
-                    "amount": "0.010000"
+                    "amount": "0.005000"
                   },
                   "x402Version": 2,
                   "accepts": [
@@ -5718,7 +6170,7 @@
                       "scheme": "exact",
                       "network": "eip155:5042002",
                       "asset": "0x3600000000000000000000000000000000000000",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5731,7 +6183,7 @@
                       "scheme": "exact",
                       "network": "eip155:84532",
                       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5744,7 +6196,7 @@
                       "scheme": "exact",
                       "network": "eip155:8453",
                       "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5757,7 +6209,7 @@
                       "scheme": "exact",
                       "network": "eip155:42161",
                       "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5770,7 +6222,7 @@
                       "scheme": "exact",
                       "network": "eip155:421614",
                       "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5783,7 +6235,7 @@
                       "scheme": "exact",
                       "network": "eip155:11155111",
                       "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-                      "amount": "10000",
+                      "amount": "5000",
                       "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                       "maxTimeoutSeconds": 604900,
                       "extra": {
@@ -5792,7 +6244,118 @@
                         "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
                       }
                     }
-                  ]
+                  ],
+                  "extensions": {
+                    "bazaar": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "input": {
+                            "type": "object",
+                            "properties": {
+                              "body": {
+                                "type": "object",
+                                "required": [
+                                  "symbol"
+                                ],
+                                "properties": {
+                                  "symbol": {
+                                    "type": "string",
+                                    "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC"
+                                  },
+                                  "fundingRate": {
+                                    "type": "number",
+                                    "description": "Current annualized or period funding rate (optional)"
+                                  },
+                                  "openInterest": {
+                                    "type": "number",
+                                    "description": "Aggregate open interest in quote currency (optional)"
+                                  },
+                                  "volume24h": {
+                                    "type": "number",
+                                    "description": "24-hour volume in quote currency (optional)"
+                                  },
+                                  "price": {
+                                    "type": "number",
+                                    "description": "Current reference spot or index price (optional)"
+                                  },
+                                  "longShortRatio": {
+                                    "type": "number",
+                                    "description": "Long-to-short positioning ratio across venues (optional)"
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "output": {
+                            "type": "object",
+                            "properties": {
+                              "example": {
+                                "type": "object",
+                                "properties": {
+                                  "query_symbol": {
+                                    "type": "string"
+                                  },
+                                  "tier": {
+                                    "type": "string"
+                                  },
+                                  "anomalies": {
+                                    "type": "array"
+                                  },
+                                  "historical_analogs": {
+                                    "type": "array"
+                                  },
+                                  "weighted_win_rate": {
+                                    "type": "number"
+                                  },
+                                  "regime_score": {
+                                    "type": "number"
+                                  },
+                                  "genlayer_sla": {
+                                    "type": "object"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "info": {
+                        "input": {
+                          "type": "http",
+                          "method": "POST",
+                          "discoverable": true,
+                          "bodyFields": {
+                            "symbol": {
+                              "type": "string",
+                              "description": "Trading pair symbol, e.g. BTC_USDT, ETH_USDC"
+                            },
+                            "fundingRate": {
+                              "type": "number",
+                              "description": "Current annualized or period funding rate (optional)"
+                            },
+                            "openInterest": {
+                              "type": "number",
+                              "description": "Aggregate open interest in quote currency (optional)"
+                            },
+                            "volume24h": {
+                              "type": "number",
+                              "description": "24-hour volume in quote currency (optional)"
+                            },
+                            "price": {
+                              "type": "number",
+                              "description": "Current reference spot or index price (optional)"
+                            },
+                            "longShortRatio": {
+                              "type": "number",
+                              "description": "Long-to-short positioning ratio across venues (optional)"
+                            }
+                          }
+                        },
+                        "output": null
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -5854,9 +6417,11 @@
         ],
         "x-payment-info": {
           "price": {
-            "mode": "fixed",
+            "mode": "dynamic",
             "currency": "USDC",
-            "amount": "0.010000"
+            "amount": "0.005000",
+            "min": "0.002000",
+            "max": "0.005000"
           },
           "protocols": [
             {
@@ -5874,7 +6439,7 @@
                     "scheme": "exact",
                     "network": "eip155:5042002",
                     "asset": "0x3600000000000000000000000000000000000000",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5887,7 +6452,7 @@
                     "scheme": "exact",
                     "network": "eip155:84532",
                     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5900,7 +6465,7 @@
                     "scheme": "exact",
                     "network": "eip155:8453",
                     "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5913,7 +6478,7 @@
                     "scheme": "exact",
                     "network": "eip155:42161",
                     "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5926,7 +6491,7 @@
                     "scheme": "exact",
                     "network": "eip155:421614",
                     "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5939,7 +6504,7 @@
                     "scheme": "exact",
                     "network": "eip155:11155111",
                     "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-                    "amount": "10000",
+                    "amount": "5000",
                     "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
                     "maxTimeoutSeconds": 604900,
                     "extra": {
@@ -5977,7 +6542,7 @@
               "scheme": "exact",
               "network": "eip155:5042002",
               "asset": "0x3600000000000000000000000000000000000000",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -5990,7 +6555,7 @@
               "scheme": "exact",
               "network": "eip155:84532",
               "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -6003,7 +6568,7 @@
               "scheme": "exact",
               "network": "eip155:8453",
               "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -6016,7 +6581,7 @@
               "scheme": "exact",
               "network": "eip155:42161",
               "asset": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -6029,7 +6594,7 @@
               "scheme": "exact",
               "network": "eip155:421614",
               "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -6042,7 +6607,7 @@
               "scheme": "exact",
               "network": "eip155:11155111",
               "asset": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-              "amount": "10000",
+              "amount": "5000",
               "payTo": "0x23e7c029a287a83d80b2e084e008211658dda11d",
               "maxTimeoutSeconds": 604900,
               "extra": {
@@ -15611,6 +16176,18 @@
         "description": "Server-to-server secret for trusted QMA workers and the Arc Gateway.\n\nIt authenticates Agent Session queue/event/runtime operations. It must never be embedded in frontend code, browser storage, examples, logs, or public client configuration. Gateway-only `/api/internal/*` routes are excluded from public OpenAPI entirely.",
         "in": "header",
         "name": "x-qma-internal-secret"
+      },
+      "walletAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "SIWE",
+        "description": "Wallet authentication via EIP-4361 (Sign-In with Ethereum). Authenticate using verified wallet session token in Authorization: Bearer <token> or X-QMA-Wallet-Token header."
+      },
+      "x402": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-PAYMENT",
+        "description": "x402 v2 payment authorization header (or PAYMENT-SIGNATURE) providing signed exact USDC transfer intent on supported multi-chain networks."
       }
     }
   },

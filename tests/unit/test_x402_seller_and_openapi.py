@@ -49,9 +49,11 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
 
             payment_info = post_op.get("x-payment-info")
             self.assertIsNotNone(payment_info, f"Missing x-payment-info on {path}")
-            self.assertEqual(payment_info["price"]["mode"], "fixed")
+            self.assertEqual(payment_info["price"]["mode"], "dynamic")
             self.assertEqual(payment_info["price"]["currency"], "USDC")
-            self.assertEqual(payment_info["price"]["amount"], "0.010000")
+            self.assertEqual(payment_info["price"]["amount"], "0.005000")
+            self.assertEqual(payment_info["price"]["min"], "0.002000")
+            self.assertEqual(payment_info["price"]["max"], "0.005000")
 
             protocols = payment_info.get("protocols", [])
             protocol_names = {k for p in protocols for k in p.keys()}
@@ -63,6 +65,13 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
             self.assertGreaterEqual(len(networks), 2, f"Expected multiple networks in x-payment-info for {path}")
             accepts_spec = payment_info.get("accepts", [])
             self.assertGreaterEqual(len(accepts_spec), 2, f"Expected multiple accepts entries in x-payment-info for {path}")
+
+    def test_security_schemes_include_wallet_auth_and_x402(self):
+        schemes = self.schema["components"]["securitySchemes"]
+        self.assertIn("walletAuth", schemes, "Missing walletAuth SIWE scheme in securitySchemes")
+        self.assertEqual(schemes["walletAuth"]["bearerFormat"], "SIWE")
+        self.assertIn("x402", schemes, "Missing x402 payment scheme in securitySchemes")
+        self.assertEqual(schemes["x402"]["name"], "X-PAYMENT")
 
     def test_request_schemas_have_field_descriptions(self):
         schemas = self.schema["components"]["schemas"]
@@ -89,13 +98,19 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
         # Headers check
         self.assertIn("payment-required", response.headers)
         self.assertIn("www-authenticate", response.headers)
-        self.assertTrue(response.headers["www-authenticate"].startswith('Payment realm="x402"'))
+        self.assertTrue(
+            response.headers["www-authenticate"].startswith("X402")
+            or "x402" in response.headers["www-authenticate"].lower()
+        )
 
         # Body check
         data = response.json()
         self.assertEqual(data["error"], "payment_required")
         self.assertEqual(data["price"]["currency"], "USDC")
-        self.assertEqual(data["price"]["amount"], "0.010000")
+        self.assertEqual(data["price"]["amount"], "0.005000")
+        self.assertIn("extensions", data)
+        self.assertIn("bazaar", data["extensions"])
+        self.assertIn("schema", data["extensions"]["bazaar"])
 
         # Multi-chain network accepts
         accepts = data.get("accepts", [])
@@ -114,17 +129,19 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
             self.assertEqual(extra.get("version"), "1")
             self.assertTrue(extra.get("verifyingContract"))
 
-        # Header payload decodable
+        # Header payload decodable and contains Bazaar extensions
         raw_b64 = response.headers["payment-required"]
         decoded_header = json.loads(base64.b64decode(raw_b64).decode("utf-8"))
         self.assertEqual(decoded_header["x402Version"], 2)
         self.assertEqual(len(decoded_header["accepts"]), len(accepts))
+        self.assertIn("extensions", decoded_header)
+        self.assertIn("bazaar", decoded_header["extensions"])
 
     def test_direct_x402_payment_header_grants_access(self):
         simulated_payment = {
             "accepted": {
                 "network": "eip155:5042002",
-                "amount": "10000",
+                "amount": "5000",
             },
             "authorization": {
                 "from": "0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4",
