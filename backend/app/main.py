@@ -435,7 +435,34 @@ async def qma_http_exception_handler(request: Request, exc: HTTPException):
 from fastapi.exceptions import RequestValidationError
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Wrap FastAPI 422 validation errors in the standard QMA error envelope."""
+    """Wrap FastAPI 422 validation errors in the standard QMA error envelope.
+    For paid endpoints called without credentials/payment, return standard 402 challenge."""
+    path = request.url.path
+    is_paid_path = (
+        path == "/api/v1/chat"
+        or path == "/api/v1/preview"
+        or path == "/api/v1/analyze"
+        or (path.startswith("/api/v1/providers/") and (path.endswith("/preview") or path.endswith("/full-report")))
+    )
+    has_credentials = (
+        request.headers.get("x-qma-access-token")
+        or request.headers.get("payment-signature")
+        or request.query_params.get("invoice_id")
+    )
+    if is_paid_path and not has_credentials:
+        from backend.app.core.x402_spec import build_402_challenge_payload
+        amount_dec = "0.005000" if ("full-report" in path or "chat" in path or "analyze" in path) else "0.002000"
+        challenge_body, challenge_headers = build_402_challenge_payload(
+            url=path,
+            amount_decimal=amount_dec,
+            description=f"GenQMA Paid Service ({path})",
+        )
+        return JSONResponse(
+            status_code=402,
+            content=challenge_body,
+            headers=challenge_headers,
+        )
+
     return JSONResponse(
         status_code=422,
         content={

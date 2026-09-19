@@ -260,6 +260,17 @@ def build_402_challenge_payload(
 ) -> Tuple[Dict[str, Any], Dict[str, str]]:
     """Construct standard HTTP 402 challenge response body and headers with Circle Bazaar schema extensions."""
     accepts = build_x402_accepts(amount_decimal, seller_address)
+    networks_list = [cfg["network"] for cfg in NETWORKS_CONFIG]
+    protocols_list = [
+        {"x402": {"networks": networks_list, "accepts": accepts}},
+        {"mpp": {"networks": networks_list}},
+    ]
+    extended_extensions = {
+        **BAZAAR_EXTENSIONS,
+        "siwx": {"enabled": True, "standards": ["EIP-4361", "CAIP-122"]},
+        "proofOfHuman": {"enabled": True, "provider": "world-id"},
+    }
+
     payment_required_obj = {
         "x402Version": 2,
         "resource": {
@@ -272,8 +283,10 @@ def build_402_challenge_payload(
             "currency": "USDC",
             "amount": amount_decimal,
         },
+        "protocols": protocols_list,
+        "auth": {"scheme": "siwx", "type": "wallet", "standards": ["EIP-4361", "CAIP-122"]},
         "accepts": accepts,
-        "extensions": BAZAAR_EXTENSIONS,
+        "extensions": extended_extensions,
     }
 
     raw_json = json.dumps(payment_required_obj)
@@ -281,7 +294,7 @@ def build_402_challenge_payload(
 
     headers = {
         "PAYMENT-REQUIRED": b64_header,
-        "WWW-Authenticate": f'X402 requirements="{b64_header}", Payment realm="x402", token="USDC", amount="{amount_decimal}", accepts="arc-testnet,base,base-sepolia,arbitrum,ethereum,polygon,optimism,avalanche"',
+        "WWW-Authenticate": f'X402 requirements="{b64_header}", SIWX realm="siwx", Payment realm="x402", token="USDC", amount="{amount_decimal}", accepts="arc-testnet,base,base-sepolia,arbitrum,ethereum,polygon,optimism,avalanche"',
         "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, payment-required, WWW-Authenticate",
     }
 
@@ -295,8 +308,10 @@ def build_402_challenge_payload(
             "amount": amount_decimal,
         },
         "x402Version": 2,
+        "protocols": protocols_list,
+        "auth": {"scheme": "siwx", "type": "wallet", "standards": ["EIP-4361", "CAIP-122"]},
         "accepts": accepts,
-        "extensions": BAZAAR_EXTENSIONS,
+        "extensions": extended_extensions,
     }
 
     return body, headers

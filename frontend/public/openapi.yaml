@@ -1674,8 +1674,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ChatRequest'
-        required: true
+              anyOf:
+              - $ref: '#/components/schemas/ChatRequest'
+              - type: 'null'
+              title: Payload
       responses:
         '200':
           description: Successful Response

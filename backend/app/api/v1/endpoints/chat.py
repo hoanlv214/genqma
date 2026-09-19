@@ -4,11 +4,12 @@ from types import SimpleNamespace
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, status, Security
+from fastapi import APIRouter, Body, HTTPException, status, Security
 
 from backend.app.schemas import ChatRequest, ChatResponse
 from backend.app.core.openapi_responses import documented_errors
 from backend.app.core.security_schemes import qma_access_token_header
+from backend.app.core.x402_spec import build_402_challenge_payload
 
 
 router = APIRouter(tags=["Report chat"])
@@ -17,6 +18,24 @@ router = APIRouter(tags=["Report chat"])
 def create_chat_router(deps: SimpleNamespace) -> APIRouter:
     migrated = APIRouter(tags=["Report chat"])
 
+    @migrated.get(
+        "/api/v1/chat",
+        responses=documented_errors(402),
+        include_in_schema=False,
+    )
+    def handle_chat_probe():
+        """Returns 402 challenge for agents probing chat endpoint."""
+        challenge_body, challenge_headers = build_402_challenge_payload(
+            url="/api/v1/chat",
+            amount_decimal="0.005000",
+            description="GenQMA AI Report Chat",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=challenge_body,
+            headers=challenge_headers,
+        )
+
     @migrated.post(
         "/api/v1/chat",
         response_model=ChatResponse,
@@ -24,10 +43,22 @@ def create_chat_router(deps: SimpleNamespace) -> APIRouter:
         responses=documented_errors(402, 404, 429, 500),
     )
     def handle_chat_request(
-        payload: ChatRequest,
+        payload: Optional[ChatRequest] = Body(None),
         qma_access_token: Optional[str] = Security(qma_access_token_header),
     ):
         """Answers interactive user queries regarding a paid report."""
+        if payload is None:
+            challenge_body, challenge_headers = build_402_challenge_payload(
+                url="/api/v1/chat",
+                amount_decimal="0.005000",
+                description="GenQMA AI Report Chat",
+            )
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=challenge_body,
+                headers=challenge_headers,
+            )
+
         invoice_id = payload.invoice_id
         user_message = payload.message
 

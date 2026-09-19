@@ -8,12 +8,49 @@ from fastapi import APIRouter, Body, HTTPException, Path, Query, Request, Securi
 from backend.app.schemas import ProviderReportResponse, QueryModel
 from backend.app.core.security_schemes import qma_access_token_header
 from backend.app.core.openapi_responses import documented_errors
+from backend.app.core.x402_spec import build_402_challenge_payload
 
 router = APIRouter(tags=["Reports"])
 
 
 def create_reports_router(deps: SimpleNamespace) -> APIRouter:
     migrated = APIRouter()
+
+    @migrated.get(
+        "/api/v1/providers/{provider_id}/preview",
+        responses=documented_errors(402),
+        include_in_schema=False,
+    )
+    def provider_preview_probe(provider_id: str, request: Request):
+        """Probe endpoint returning 402 challenge for agents discovering payment parameters."""
+        challenge_body, challenge_headers = build_402_challenge_payload(
+            url=f"/api/v1/providers/{provider_id}/preview",
+            amount_decimal="0.002000",
+            description=f"GenQMA {provider_id} Preview Report",
+        )
+        raise HTTPException(
+            status_code=402,
+            detail=challenge_body,
+            headers=challenge_headers,
+        )
+
+    @migrated.get(
+        "/api/v1/preview",
+        responses=documented_errors(402),
+        include_in_schema=False,
+    )
+    def preview_probe(request: Request):
+        """Legacy preview probe returning 402 challenge."""
+        challenge_body, challenge_headers = build_402_challenge_payload(
+            url="/api/v1/preview",
+            amount_decimal="0.002000",
+            description="GenQMA Funding Memory Preview Report",
+        )
+        raise HTTPException(
+            status_code=402,
+            detail=challenge_body,
+            headers=challenge_headers,
+        )
 
     @migrated.post(
         "/api/v1/providers/{provider_id}/preview",
