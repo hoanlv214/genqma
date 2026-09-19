@@ -254,11 +254,14 @@ def upsert_payment_event(event: dict) -> None:
     state.payment_events.append(event)
 
 
-def sync_split_payment_events(invoice: dict) -> None:
+def sync_split_payment_events(invoice: dict, save_event_fn=None) -> None:
     if invoice_split_mode(invoice) != "x402_direct_split":
         return
     for leg in split_paid_legs(invoice):
-        upsert_payment_event(split_leg_event(invoice, leg))
+        event = split_leg_event(invoice, leg)
+        upsert_payment_event(event)
+        if save_event_fn:
+            save_event_fn(event)
 
 
 def payment_events_for_provider(

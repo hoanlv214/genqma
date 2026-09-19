@@ -145,7 +145,7 @@ def test_polymarket_divergence_provider():
     provider = PolymarketDivergenceProviderV2(owner_wallet="0x3333333333333333333333333333333333333333")
     manifest = provider.manifest()
     assert manifest["category"] == "prediction_market"
-    assert manifest["price_tiers"] == {"preview": 0.002, "full": 0.010}
+    assert manifest["price_tiers"] == {"preview": 0.002, "full": 0.005}
 
     # Score calculation
     ctx = {
@@ -175,7 +175,7 @@ def test_pyth_stress_band_provider_and_eip712_hedge():
     provider = PythStressBandProviderV2(owner_wallet="0x4444444444444444444444444444444444444444")
     manifest = provider.manifest()
     assert manifest["category"] == "market_stress"
-    assert manifest["price_tiers"] == {"preview": 0.003, "full": 0.015}
+    assert manifest["price_tiers"] == {"preview": 0.002, "full": 0.005}
 
     # Low stress condition
     score_calm = provider.score({

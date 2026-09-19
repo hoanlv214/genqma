@@ -9,9 +9,12 @@ import hashlib
 import json
 import time
 from typing import Any, Dict
+import requests
 
 from backend.app.core.provider_registry import ProviderPlugin
 import paid_intelligence_kit as paid_kit
+
+_POLY_CACHE: Dict[str, Any] = {}
 
 
 class PolymarketDivergenceProviderV2(ProviderPlugin):
@@ -41,7 +44,7 @@ class PolymarketDivergenceProviderV2(ProviderPlugin):
             ),
             "price_tiers": {
                 "preview": 0.002,
-                "full": 0.010,
+                "full": 0.005,
             },
             "input_schema": {
                 "type": "object",
@@ -65,17 +68,107 @@ class PolymarketDivergenceProviderV2(ProviderPlugin):
             },
         }
 
+    def fetch_live_market(self, symbol: str) -> dict:
+        clean_sym = str(symbol or "BTC").strip().upper()
+        now = time.time()
+        cached = _POLY_CACHE.get(clean_sym)
+        if cached and (now - cached.get("timestamp", 0)) < 30.0:
+            return cached.get("data")
+        
+        try:
+            # 1. Fetch Polymarket Gamma events
+            gamma_url = "https://gamma-api.polymarket.com/events?limit=10&active=true&closed=false"
+            res = requests.get(gamma_url, timeout=3.0)
+            events = res.json() if res.status_code == 200 else []
+            
+            matched_market = None
+            matched_event = None
+            for event in events:
+                title = str(event.get("title", ""))
+                if clean_sym in title.upper() or (clean_sym == "BTC" and "BITCOIN" in title.upper()) or (clean_sym == "ETH" and "ETHEREUM" in title.upper()) or (clean_sym == "SOL" and "SOLANA" in title.upper()):
+                    markets = event.get("markets") or []
+                    for m in markets:
+                        if m.get("active") and not m.get("closed"):
+                            matched_market = m
+                            matched_event = event
+                            break
+                    if matched_market:
+                        break
+            
+            prob = 0.50
+            event_title = f"{clean_sym} Prediction Market Divergence"
+            slug = "crypto"
+            if matched_market and matched_event:
+                event_title = matched_event.get("title", event_title)
+                slug = matched_event.get("slug", slug)
+                prices_raw = matched_market.get("outcomePrices")
+                if isinstance(prices_raw, str):
+                    try:
+                        prices = json.loads(prices_raw)
+                        if prices and len(prices) > 0:
+                            prob = float(prices[0])
+                    except Exception:
+                        pass
+                elif isinstance(prices_raw, list) and len(prices_raw) > 0:
+                    prob = float(prices_raw[0])
+            
+            # 2. Fetch live MEXC funding rate
+            mexc_symbol = f"{clean_sym}_USDT"
+            mexc_url = f"https://contract.mexc.com/api/v1/contract/funding_rate/{mexc_symbol}"
+            m_res = requests.get(mexc_url, timeout=3.0)
+            funding_pct = 0.01
+            if m_res.status_code == 200:
+                m_data = m_res.json()
+                rate = (m_data.get("data") or {}).get("fundingRate")
+                if rate is not None:
+                    funding_pct = float(rate) * 100.0  # e.g. 0.00025 -> 0.025%
+            
+            result = {
+                "symbol": clean_sym,
+                "event_title": event_title,
+                "market_probability": prob,
+                "perpetual_funding_8h": funding_pct,
+                "evidence_url": f"https://gamma-api.polymarket.com/events?slug={slug}",
+            }
+            _POLY_CACHE[clean_sym] = {"timestamp": now, "data": result}
+            return result
+        except Exception:
+            return None
+
     def _normalize_query(self, query: dict) -> dict:
         symbol = str(query.get("symbol") or "BTC").strip().upper()
-        prob = float(query.get("market_probability") or query.get("marketProbability") or 0.5)
-        funding = float(query.get("perpetual_funding_8h") or query.get("perpetualFunding") or 0.01)
+        use_live = bool(query.get("use_live") or query.get("live") or ("market_probability" not in query and "marketProbability" not in query))
+        
+        prob = query.get("market_probability") if query.get("market_probability") is not None else query.get("marketProbability")
+        funding = query.get("perpetual_funding_8h") if query.get("perpetual_funding_8h") is not None else query.get("perpetualFunding")
+        evidence_url = str(query.get("evidence_url") or "")
+        event_title = str(query.get("event_title") or "")
+        
+        if use_live or prob is None:
+            live = self.fetch_live_market(symbol)
+            if live:
+                if prob is None:
+                    prob = live.get("market_probability")
+                if funding is None:
+                    funding = live.get("perpetual_funding_8h")
+                if not evidence_url:
+                    evidence_url = live.get("evidence_url", "")
+                if not event_title:
+                    event_title = live.get("event_title", "")
+        
+        if prob is None:
+            prob = 0.5
+        if funding is None:
+            funding = 0.01
         basis = float(query.get("basis_spread_bps") or query.get("basisSpread") or 20.0)
+        
         return {
             "symbol": symbol,
-            "event_title": str(query.get("event_title") or f"{symbol} Price Milestone Target"),
-            "market_probability": max(0.01, min(0.99, prob)),
-            "perpetual_funding_8h": funding,
+            "event_title": event_title or f"{symbol} Price Milestone Target",
+            "market_probability": max(0.01, min(0.99, float(prob))),
+            "perpetual_funding_8h": float(funding),
             "basis_spread_bps": basis,
+            "evidence_url": evidence_url or "https://gamma-api.polymarket.com/events?limit=5&active=true",
         }
 
     def normalize_query(self, query: dict) -> dict:
@@ -94,7 +187,7 @@ class PolymarketDivergenceProviderV2(ProviderPlugin):
         # Confidence is highest when divergence is statistically significant (> 10%)
         confidence = min(0.95, 0.50 + (divergence * 1.5))
         tier = str(context.get("tier") or "preview").lower()
-        amount_usdc = 0.010 if tier == "full" else 0.002
+        amount_usdc = 0.005 if tier == "full" else 0.002
 
         return {
             "tier": tier,

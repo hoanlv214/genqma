@@ -146,6 +146,12 @@ The Access column must match the operation's `x-qma-access` value in
 | POST | `/api/v1/sessions/{session_id}/start` | `wallet-owner` | Queue a session |
 | POST | `/api/v1/sessions/{session_id}/stop` | `wallet-owner` | Stop a session |
 | GET | `/api/v1/traction` | `public` | Read the public traction snapshot |
+| GET | `/api/v1/treasury/audit/euthyna` | `public` | Retrieve immutable audit records for regulatory and board examination |
+| POST | `/api/v1/treasury/audit/verify` | `public` | Recompute SHA-256 integrity digests across all audit entries to verify no records were tampered |
+| GET | `/api/v1/treasury/usyc/forecast` | `public` | Predictive cash-flow forecasting and APY earnings projection for autonomous agents |
+| POST | `/api/v1/treasury/usyc/jit-redeem` | `public` | Prepare and record JIT redemption of USYC into liquid USDC for x402 bills |
+| GET | `/api/v1/treasury/usyc/position` | `public` | Retrieve live on-chain USYC balance, equivalent USDC assets, and APY |
+| POST | `/api/v1/treasury/usyc/sweep` | `public` | Prepare and record an autonomous corporate treasury idle sweep into USYC yielding vault |
 | GET | `/api/v1/wallets/{address}` | `public` | Deprecated wallet summary alias |
 | GET | `/api/v1/wallets/{address}/nonce` | `public` | Issue a single-use nonce for wallet profile session signing |
 | GET | `/api/v1/wallets/{address}/payments` | `public-optional-auth` | Read redacted or private payment history |

@@ -45,3 +45,9 @@ skills-lock.json
 .codegraphmcp-server/dist/
 
 graphify-out/
+
+# Arc Studio, Foundry build artifacts, and temporary scratch
+.arc-studio/
+contracts/out/
+contracts/cache/
+scratch/

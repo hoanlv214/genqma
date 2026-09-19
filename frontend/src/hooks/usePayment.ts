@@ -580,7 +580,7 @@ export function usePayment({
       setPayStatusText("Settlement confirmed. Verifying the bound report with the GenLayer Intelligent Contract...");
       showToast("Settlement confirmed. Verifying the bound report with the GenLayer Intelligent Contract...", "info");
 
-      const verifyData: any = await verifyPayment(currentInvoice.invoice_id, {
+      let verifyData: any = await verifyPayment(currentInvoice.invoice_id, {
         invoice_secret: currentInvoice.invoice_secret,
         payer_address: wallet,
         ...(settlementId ? { settlement_id: settlementId, amount_usdc: paidAmountUsdc } : {}),
@@ -611,11 +611,103 @@ export function usePayment({
         return;
       }
 
-      if (!verifyData?.access_token) throw new Error("QMA verification did not return an access token.");
+      // If GenLayer verification is still pending on-chain, poll until finalized
+      if (
+        !verifyData?.access_token &&
+        (verifyData?.status === "verification_pending" ||
+          glReceipt?.status === "VERIFICATION_PENDING" ||
+          glReceipt?.verdict === "PENDING")
+      ) {
+        setPaymentStep("genlayer");
+        setPaymentStepStatus((prev) => ({
+          ...prev,
+          settlement: { status: "completed", label: "Settled" },
+          genlayer: { status: "active", label: "Consensus SLA" },
+          report: { status: "waiting", label: "Waiting" },
+        }));
+        setPayStatusText("Settlement confirmed. GenLayer multi-validator consensus is finalizing on-chain...");
+        showToast("GenLayer consensus in progress. Awaiting validator finalization...", "info");
 
+        const maxPollAttempts = 15;
+        for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          try {
+            const pollData: any = await verifyPayment(currentInvoice.invoice_id, {
+              invoice_secret: currentInvoice.invoice_secret,
+              payer_address: wallet,
+              ...(settlementId ? { settlement_id: settlementId, amount_usdc: paidAmountUsdc } : {}),
+              ...(splitSettlements.length ? { split_settlements: splitSettlements } : {}),
+            });
+
+            if (pollData) {
+              verifyData = pollData;
+              if (pollData.genlayer) {
+                glReceipt = pollData.genlayer;
+                setGenlayerReceipt(glReceipt);
+              }
+
+              if (pollData.status === "verification_rejected" || glReceipt?.verdict === "INVALID") {
+                setPaymentStepStatus((prev) => ({
+                  ...prev,
+                  genlayer: { status: "failed", label: "SLA Violated" },
+                  report: { status: "failed", label: "Access Blocked" },
+                }));
+                setPayStatusText("");
+                setPayErrorText(`GenLayer validators rejected this report: ${glReceipt?.reasoning || "Failed validation"}. Access blocked.`);
+                showToast("GenLayer Shield rejected the report.", "error");
+                clearPendingInvoice(activeQuery, normalizeTierForCache(currentInvoice.tier), currentInvoice.provider_id || selectedProviderId, wallet);
+                return;
+              }
+
+              if (pollData.access_token) {
+                break;
+              }
+            }
+          } catch (pollErr: any) {
+            if (pollErr instanceof ApiError && pollErr.status === 503) {
+              continue;
+            }
+            console.warn("GenLayer poll attempt failed:", pollErr);
+          }
+        }
+      }
+
+      if (!verifyData?.access_token) {
+        if (
+          verifyData?.status === "verification_pending" ||
+          glReceipt?.status === "VERIFICATION_PENDING" ||
+          glReceipt?.verdict === "PENDING"
+        ) {
+          const pendingInvoice = {
+            ...currentInvoice,
+            status: "verification_pending",
+            settlement_id: settlementId,
+          };
+          setCurrentInvoice(pendingInvoice);
+          rememberPendingInvoice(
+            pendingInvoice,
+            activeQuery,
+            normalizeTierForCache(pendingInvoice.tier),
+            pendingInvoice.provider_id || selectedProviderId,
+            wallet,
+          );
+          setPaymentStep("genlayer");
+          setPaymentStepStatus((prev) => ({
+            ...prev,
+            settlement: { status: "completed", label: "Settled" },
+            genlayer: { status: "waiting", label: "In Progress" },
+            report: { status: "waiting", label: "Locked" },
+          }));
+          setPayStatusText("");
+          setPayErrorText("Settlement confirmed on Arc! GenLayer validator consensus is still finalizing. Click 'Unlock Report' to complete verification without any new payment.");
+          return;
+        }
+        throw new Error("QMA verification did not return an access token.");
+      }
 
       setPaymentStepStatus((prev) => ({
         ...prev,
+        settlement: { status: "completed", label: "Settled" },
         genlayer: { status: "completed", label: "SLA Verified" },
         report: { status: "completed", label: "Unlocked" },
       }));
@@ -678,7 +770,10 @@ export function usePayment({
       );
       clearPendingInvoice(invoiceQuery, normalizeTierForCache(currentInvoice.tier), invoiceProviderId, wallet);
     } catch (err: any) {
-      if (err instanceof ApiError && err.status === 503 && settlementId) {
+      if (
+        (err instanceof ApiError && err.status === 503 && settlementId) ||
+        (settlementId && err?.message && err.message.includes("access token"))
+      ) {
         const pendingInvoice = {
           ...currentInvoice,
           status: "verification_pending",
@@ -699,7 +794,7 @@ export function usePayment({
           genlayer: { status: "waiting", label: "Retry available" },
           report: { status: "waiting", label: "Locked" },
         }));
-        setPayErrorText("Payment is settled, but GenLayer has not returned a finalized verdict. Retry verification; no new signature or payment is required.");
+        setPayErrorText("Payment is settled, but GenLayer has not returned a finalized verdict yet. Retry verification; no new signature or payment is required.");
         return;
       }
       setPayErrorText(err.message || "Settlement signature cancelled or failed.");

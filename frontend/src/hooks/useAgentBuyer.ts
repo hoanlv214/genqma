@@ -344,12 +344,40 @@ export function useAgentBuyer({
         }
         setAgentTrace((prev) => [...prev, { text: "pay:     x402 authorization accepted", tone: "t-green" }]);
         setAgentSessionStage("verifying");
-        const verifyData = await verifyPayment(invData.invoice_id, {
+        let verifyData = await verifyPayment(invData.invoice_id, {
           invoice_secret: invData.invoice_secret,
           payer_address: wallet,
           ...(settlementId ? { settlement_id: settlementId, amount_usdc: paidAmountUsdc } : {}),
           ...(splitSettlements.length ? { split_settlements: splitSettlements } : {}),
         });
+
+        if (
+          !verifyData?.access_token &&
+          (verifyData?.status === "verification_pending" ||
+            (verifyData as any)?.genlayer?.status === "VERIFICATION_PENDING" ||
+            (verifyData as any)?.genlayer?.verdict === "PENDING")
+        ) {
+          setAgentTrace((prev) => [...prev, { text: "shield:  Awaiting GenLayer consensus SLA...", tone: "t-dim" }]);
+          for (let attempt = 1; attempt <= 15; attempt++) {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            try {
+              const pollData: any = await verifyPayment(invData.invoice_id, {
+                invoice_secret: invData.invoice_secret,
+                payer_address: wallet,
+                ...(settlementId ? { settlement_id: settlementId, amount_usdc: paidAmountUsdc } : {}),
+                ...(splitSettlements.length ? { split_settlements: splitSettlements } : {}),
+              });
+              if (pollData) {
+                verifyData = pollData;
+                if (pollData.access_token || pollData.status === "verification_rejected" || pollData.genlayer?.verdict === "INVALID") {
+                  break;
+                }
+              }
+            } catch {
+              // continue polling
+            }
+          }
+        }
         setAgentVerifyResult(verifyData);
         if (verifyData.status === "verification_rejected" || (verifyData as any).genlayer?.verdict === "INVALID") {
           const glReason = (verifyData as any).genlayer?.reasoning || "Divergence from live exchange feed";
@@ -406,8 +434,8 @@ export function useAgentBuyer({
     setShowAgentBuyerModal(false);
   };
 
-  const handleAgentRun = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleAgentRun = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
     if (!agentPrompt.trim()) return;
     clearUnlockedReport();
     setReportCollapsed(true);
@@ -693,7 +721,7 @@ export function useAgentBuyer({
 
       // Verify tokens split Leg on backend
       setAgentSessionStage("verifying");
-      const verifyData = await verifyPayment(invData.invoice_id, {
+      let verifyData = await verifyPayment(invData.invoice_id, {
         invoice_secret: invData.invoice_secret,
         payer_address: wallet,
         ...(settlementId ? { settlement_id: settlementId, amount_usdc: paidAmountUsdc } : {}),
@@ -702,6 +730,34 @@ export function useAgentBuyer({
 
       if (!verifyData) {
         throw new Error("Verification failed");
+      }
+
+      if (
+        !verifyData?.access_token &&
+        (verifyData?.status === "verification_pending" ||
+          (verifyData as any)?.genlayer?.status === "VERIFICATION_PENDING" ||
+          (verifyData as any)?.genlayer?.verdict === "PENDING")
+      ) {
+        setAgentTrace((prev) => [...prev, { text: "shield:  Awaiting GenLayer consensus SLA...", tone: "t-dim" }]);
+        for (let attempt = 1; attempt <= 15; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          try {
+            const pollData: any = await verifyPayment(invData.invoice_id, {
+              invoice_secret: invData.invoice_secret,
+              payer_address: wallet,
+              ...(settlementId ? { settlement_id: settlementId, amount_usdc: paidAmountUsdc } : {}),
+              ...(splitSettlements.length ? { split_settlements: splitSettlements } : {}),
+            });
+            if (pollData) {
+              verifyData = pollData;
+              if (pollData.access_token || pollData.status === "verification_rejected" || pollData.genlayer?.verdict === "INVALID") {
+                break;
+              }
+            }
+          } catch {
+            // continue polling
+          }
+        }
       }
       setAgentVerifyResult(verifyData);
       if (verifyData.status === "verification_rejected" || (verifyData as any).genlayer?.verdict === "INVALID") {

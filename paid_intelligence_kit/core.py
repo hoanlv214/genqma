@@ -13,7 +13,7 @@ SUPPORTED_TIERS = {
         "rank": 1,
         "label": "Preview",
         "env": "QMA_PRICE_PREVIEW_USDC",
-        "default": "0.001",
+        "default": "0.002",
     },
     "full": {
         "rank": 2,

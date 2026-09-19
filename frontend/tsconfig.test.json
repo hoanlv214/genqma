@@ -14,8 +14,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["bun"],
+    "composite": true
   },
-  "include": ["src"],
-  "exclude": ["src/**/__tests__/*", "src/test-setup.ts"]
+  "include": [
+    "src"
+  ]
 }

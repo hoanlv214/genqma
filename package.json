@@ -17,10 +17,16 @@
     "deploy:render:inspect": "python scripts/render_sync.py --distributed --inspect all",
     "deploy:db": "bun x supabase db execute -f scripts/schema.sql",
     "deploy:genlayer": "node scripts/deploy_genqma_shield.mjs",
+    "compile:vault": "node scripts/compile_vault.mjs",
+    "deploy:vault": "node scripts/deploy_hardened_vault.mjs",
+    "test:vault": "node --test tests/solidity/test_vault_invariants.test.mjs",
+    "test:frontend": "bun --filter frontend test",
     "agent:build": "tsc -p agents/tsconfig.json",
     "agent:preview": "node agents/bin/agent_buyer.js --live --tier preview",
     "agent:full": "node agents/bin/agent_buyer.js --live --tier full",
     "agent:swarm": "node scripts/qma_agent_swarm.mjs",
+    "demo:treasury": "node agents/bin/agent_buyer.js --treasury --sweep 10.0 --redeem 0.05",
+    "demo": "node agents/bin/agent_buyer.js --treasury --sweep 10.0 --redeem 0.05",
     "sg:smoke": "powershell -ExecutionPolicy Bypass -File scripts/ast_grep_smoke.ps1",
     "sg:routes": "sg scan -r .ast-grep/rules/python-fastapi-app-route.yml backend main.py tests",
     "sg:invoice": "sg scan -r .ast-grep/rules/python-save-invoice-call.yml backend main.py tests",
@@ -39,6 +45,8 @@
     "viem": "^2.48.11"
   },
   "devDependencies": {
-    "@ast-grep/cli": "^0.44.1"
+    "@ast-grep/cli": "^0.44.1",
+    "@openzeppelin/contracts": "^5.6.1",
+    "solc": "^0.8.37"
   }
 }

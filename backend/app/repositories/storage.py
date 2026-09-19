@@ -70,6 +70,16 @@ def save_payment_ledger(storage_backend, events: list) -> None:
         logger.warning(f"Could not save payment ledger: {exc}")
 
 
+def save_single_payment_event(storage_backend, event: dict) -> None:
+    try:
+        if hasattr(storage_backend, "save_single_payment_event"):
+            storage_backend.save_single_payment_event(event)
+        else:
+            storage_backend.save_payment_events([event])
+    except Exception as exc:
+        logger.warning(f"Could not save single payment event: {exc}")
+
+
 # ---------------------------------------------------------------------------
 # Paid reports
 # ---------------------------------------------------------------------------
@@ -232,6 +242,16 @@ def save_paid_reports(storage_backend, reports: dict) -> None:
         storage_backend.save_paid_reports(reports)
     except Exception as exc:
         logger.warning(f"Could not save paid reports: {exc}")
+
+
+def save_single_paid_report(storage_backend, entitlement_id: str, record: dict) -> None:
+    try:
+        if hasattr(storage_backend, "save_single_paid_report"):
+            storage_backend.save_single_paid_report(entitlement_id, record)
+        else:
+            storage_backend.save_paid_reports({entitlement_id: record})
+    except Exception as exc:
+        logger.warning(f"Could not save single paid report: {exc}")
 
 
 # ---------------------------------------------------------------------------

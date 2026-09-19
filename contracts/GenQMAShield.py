@@ -23,6 +23,8 @@ class Contract(gl.contract.Contract):
 
     admin: Address
     orders: TreeMap[str, str]
+    slashes: TreeMap[str, int]
+    provider_bonds: TreeMap[str, int]
 
     def __init__(self):
         self.admin = gl.message.sender_address
@@ -41,6 +43,25 @@ class Contract(gl.contract.Contract):
     def get_order(self, invoice_id: str) -> str:
         """Return an empty string when an invoice has not been submitted."""
         return self.orders.get(invoice_id, "")
+
+    @gl.public.view
+    def get_provider_slashes(self, provider_address: str) -> int:
+        """Return the cumulative count of invalidated reports for this provider."""
+        return self.slashes.get(provider_address.lower(), 0)
+
+    @gl.public.view
+    def get_provider_bond(self, provider_address: str) -> int:
+        """Return the active bonded stake for this provider in micro USDC."""
+        return self.provider_bonds.get(provider_address.lower(), 0)
+
+    @gl.public.write
+    def register_provider_bond(self, provider_address: str, bond_amount_micro_usdc: int) -> None:
+        """Deposit or register a security bond for an intelligence provider."""
+        self._require_admin()
+        if bond_amount_micro_usdc <= 0:
+            raise gl.vm.UserError("Bond amount must be positive")
+        prev = self.provider_bonds.get(provider_address.lower(), 0)
+        self.provider_bonds[provider_address.lower()] = prev + bond_amount_micro_usdc
 
     @gl.public.write
     def submit_and_verify(
@@ -79,8 +100,15 @@ class Contract(gl.contract.Contract):
             raise gl.vm.UserError("Verification manifest query binding mismatch")
         if str(manifest.get("symbol", "")).upper() != symbol.upper():
             raise gl.vm.UserError("Verification manifest symbol binding mismatch")
-        if not evidence_url.startswith("https://contract.mexc.com/"):
-            raise gl.vm.UserError("Evidence URL must use the authoritative MEXC HTTPS API")
+        ALLOWED_EVIDENCE_PREFIXES = (
+            "https://contract.mexc.com/",
+            "https://clob.polymarket.com/",
+            "https://gamma-api.polymarket.com/",
+            "https://hermes.pyth.network/",
+            "https://api.binance.com/",
+        )
+        if not any(evidence_url.startswith(prefix) for prefix in ALLOWED_EVIDENCE_PREFIXES):
+            raise gl.vm.UserError("Evidence URL must use an authoritative whitelisted API (MEXC, Polymarket, Pyth, Binance)")
 
         order = {
             "invoice_id": invoice_id,
@@ -132,8 +160,8 @@ PUBLIC VERIFICATION MANIFEST
 Return only JSON with this exact shape:
 {{"verdict":"VALID" or "INVALID","confidence":<integer 0-100>,"reasoning":"<specific evidence-based explanation>"}}
 Evaluation criteria:
-1. Symbol match: The base token {symbol} corresponds directly to the {symbol}_USDT futures contract on MEXC.
-2. Authenticity: Confirm the market data from MEXC is valid and active.
+1. Asset / Market match: The requested symbol or event matches the authoritative live evidence from the provider.
+2. Authenticity: Confirm the market data from the source is valid and active.
 3. Report claims: Check that the claims in the public verification manifest are structurally consistent with market conditions.
 If the asset exists and the claims are plausible, return VALID with confidence between 85 and 95.
 Return INVALID only if the market data is missing, completely unrelated to {symbol}, or the report appears fabricated."""
@@ -180,8 +208,16 @@ Return INVALID only if the market data is missing, completely unrelated to {symb
             verdict = "INVALID"
             reasoning = "Confidence below the 70% release threshold. " + reasoning
 
+        if verdict == "INVALID":
+            order["status"] = "REJECTED"
+            order["slashed"] = True
+            current_slashes = self.slashes.get(provider_address.lower(), 0)
+            self.slashes[provider_address.lower()] = current_slashes + 1
+        else:
+            order["status"] = "VERIFIED"
+            order["slashed"] = False
+
         order["verdict"] = verdict
         order["confidence"] = confidence
         order["reasoning"] = reasoning
-        order["status"] = "VERIFIED" if verdict == "VALID" else "REJECTED"
         self.orders[invoice_id] = json.dumps(order)

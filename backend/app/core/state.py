@@ -65,47 +65,89 @@ except Exception:  # pragma: no cover - Windows dev boxes without fcntl
 _LOCK_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", ".locks")
 
 
+_IN_PROCESS_LOCKS: dict[str, threading.Lock] = {}
+_IN_PROCESS_LOCKS_MUTEX = threading.Lock()
+
+
+def _get_in_process_lock(key: str) -> threading.Lock:
+    with _IN_PROCESS_LOCKS_MUTEX:
+        if key not in _IN_PROCESS_LOCKS:
+            _IN_PROCESS_LOCKS[key] = threading.Lock()
+        return _IN_PROCESS_LOCKS[key]
+
+
 class cross_process_lock:
     """Context manager: OS-level advisory lock keyed by name.
 
-    Falls back to a no-op if fcntl isn't available (e.g. local Windows dev),
-    in which case the in-process threading.Lock is still the safety net for
-    that single process.
+    Combines an in-process threading.Lock (for thread-safe concurrency across
+    all platforms, including Windows) with an OS-level flock when available
+    (for multi-worker deployment safety on Linux/containers).
     """
 
     def __init__(self, key: str, timeout_seconds: float = 15.0):
+        self._key = key
         safe_key = "".join(c if c.isalnum() or c in "-_:." else "_" for c in key)
         self._path = os.path.join(_LOCK_DIR, f"{safe_key}.lock")
         self._timeout = timeout_seconds
         self._fh = None
+        self._thread_lock = _get_in_process_lock(key)
+        self._thread_locked = False
 
     def __enter__(self):
+        start = time.time()
+        acquired = self._thread_lock.acquire(timeout=self._timeout)
+        if not acquired:
+            raise HTTPException(
+                status_code=409,
+                detail="Another settlement verification for this invoice is already in progress. Retry shortly.",
+            )
+        self._thread_locked = True
+
         if not _FLOCK_AVAILABLE:
             return self
-        os.makedirs(_LOCK_DIR, exist_ok=True)
-        self._fh = open(self._path, "a+")
-        deadline = time.time() + self._timeout
-        while True:
-            try:
-                fcntl.flock(self._fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                return self
-            except BlockingIOError:
-                if time.time() > deadline:
+
+        try:
+            os.makedirs(_LOCK_DIR, exist_ok=True)
+            self._fh = open(self._path, "a+")
+            remaining = max(0.1, self._timeout - (time.time() - start))
+            deadline = time.time() + remaining
+            while True:
+                try:
+                    fcntl.flock(self._fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    return self
+                except BlockingIOError:
+                    if time.time() > deadline:
+                        self._fh.close()
+                        self._fh = None
+                        raise HTTPException(
+                            status_code=409,
+                            detail="Another settlement verification for this invoice is already in progress. Retry shortly.",
+                        )
+                    time.sleep(0.05)
+        except Exception:
+            if self._fh is not None:
+                try:
                     self._fh.close()
-                    self._fh = None
-                    raise HTTPException(
-                        status_code=409,
-                        detail="Another settlement verification for this invoice is already in progress. Retry shortly.",
-                    )
-                time.sleep(0.05)
+                except Exception:
+                    pass
+                self._fh = None
+            if self._thread_locked:
+                self._thread_lock.release()
+                self._thread_locked = False
+            raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._fh is not None:
-            try:
-                fcntl.flock(self._fh.fileno(), fcntl.LOCK_UN)
-            finally:
-                self._fh.close()
-                self._fh = None
+        try:
+            if self._fh is not None:
+                try:
+                    fcntl.flock(self._fh.fileno(), fcntl.LOCK_UN)
+                finally:
+                    self._fh.close()
+                    self._fh = None
+        finally:
+            if self._thread_locked:
+                self._thread_lock.release()
+                self._thread_locked = False
         return False
 
 

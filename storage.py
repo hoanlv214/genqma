@@ -202,6 +202,19 @@ class JsonStorage:
     def save_payment_events(self, events: list) -> None:
         self._save_json(self.ledger_path, events[-500:])
 
+    def save_single_payment_event(self, event: dict) -> None:
+        events = self.load_payment_events()
+        key = event_key(event)
+        updated = False
+        for i, existing in enumerate(events):
+            if event_key(existing) == key:
+                events[i] = event
+                updated = True
+                break
+        if not updated:
+            events.append(event)
+        self.save_payment_events(events)
+
     def load_paid_reports(self) -> dict:
         data = self._load_json(self.reports_path, {})
         return data if isinstance(data, dict) else {}
@@ -289,6 +302,11 @@ class JsonStorage:
     def save_paid_reports(self, reports: dict) -> None:
         self._save_json(self.reports_path, reports)
 
+    def save_single_paid_report(self, entitlement_id: str, record: dict) -> None:
+        reports = self.load_paid_reports()
+        reports[entitlement_id] = record
+        self.save_paid_reports(reports)
+
     def load_invoices(self) -> dict:
         data = self._load_json(self.invoices_path, {})
         return data if isinstance(data, dict) else {}
@@ -364,22 +382,41 @@ class SupabaseStorage:
         }
 
     def _request(self, method: str, table: str, *, params: Optional[dict] = None, json_body=None, prefer: str = ""):
+        import time as _time
+        import random as _random
         headers = dict(self.headers)
         if prefer:
             headers["Prefer"] = prefer
-        resp = requests.request(
-            method,
-            f"{self.rest_url}/{table}",
-            params=params,
-            json=json_body,
-            headers=headers,
-            timeout=self.timeout,
-        )
-        if not resp.ok:
-            raise RuntimeError(f"Supabase {method} {table} returned {resp.status_code}: {resp.text[:300]}")
-        if resp.status_code == 204 or not resp.text:
-            return None
-        return resp.json()
+        url = f"{self.rest_url}/{table}"
+        max_retries = 3
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                resp = requests.request(
+                    method,
+                    url,
+                    params=params,
+                    json=json_body,
+                    headers=headers,
+                    timeout=self.timeout,
+                )
+                if resp.ok:
+                    if resp.status_code == 204 or not resp.text:
+                        return None
+                    return resp.json()
+                error_body = resp.text[:300]
+                if (resp.status_code in (500, 502, 503, 504) and "40P01" in error_body) or resp.status_code in (502, 503, 504):
+                    last_error = RuntimeError(f"Supabase {method} {table} returned {resp.status_code}: {error_body}")
+                    _time.sleep(0.15 * (2 ** attempt) + _random.uniform(0.05, 0.15))
+                    continue
+                raise RuntimeError(f"Supabase {method} {table} returned {resp.status_code}: {error_body}")
+            except (requests.RequestException, TimeoutError) as exc:
+                last_error = exc
+                if attempt < max_retries - 1:
+                    _time.sleep(0.15 * (2 ** attempt) + _random.uniform(0.05, 0.15))
+                    continue
+                raise RuntimeError(f"Supabase {method} {table} request failed: {exc}") from exc
+        raise last_error or RuntimeError(f"Supabase {method} {table} failed after {max_retries} attempts.")
 
     def rpc(self, fn_name: str, payload: Optional[dict] = None):
         return self._request("POST", f"rpc/{fn_name}", json_body=payload or {})
@@ -441,6 +478,27 @@ class SupabaseStorage:
                 "event": event,
             })
         self._upsert("qma_payment_events", rows, "event_id")
+
+    def save_single_payment_event(self, event: dict) -> None:
+        key = event_key(event)
+        if not key:
+            return
+        row = {
+            "event_id": key,
+            "invoice_id": event.get("invoice_id"),
+            "settlement_id": event.get("settlement_id"),
+            "payer_address": normalize_address(event.get("payer_address")),
+            "symbol": event.get("symbol"),
+            "tier": event.get("tier"),
+            "provider_id": event.get("provider_id", "funding_memory"),
+            "amount_usdc": event.get("amount_usdc"),
+            "gateway_status": event.get("gateway_status"),
+            "transaction_hash": event.get("transaction_hash"),
+            "explorer_url": event.get("explorer_url"),
+            "paid_at": event.get("paid_at"),
+            "event": event,
+        }
+        self._upsert("qma_payment_events", [row], "event_id")
 
     def load_paid_reports(self) -> dict:
         rows = self._request(
@@ -558,6 +616,23 @@ class SupabaseStorage:
                 "entitlement": record,
             })
         self._upsert("qma_paid_reports", rows, "entitlement_id")
+
+    def save_single_paid_report(self, entitlement_id: str, record: dict) -> None:
+        if not entitlement_id or not isinstance(record, dict):
+            return
+        row = {
+            "entitlement_id": entitlement_id,
+            "payer_address": normalize_address(record.get("payer_address")),
+            "symbol": record.get("symbol"),
+            "tier": record.get("tier"),
+            "provider_id": record.get("provider_id", "funding_memory"),
+            "query_hash": record.get("query_hash"),
+            "settlement_id": record.get("settlement_id"),
+            "paid_at": record.get("paid_at"),
+            "saved_at": record.get("saved_at"),
+            "entitlement": record,
+        }
+        self._upsert("qma_paid_reports", [row], "entitlement_id")
 
     def load_invoices(self) -> dict:
         rows = self._request(
