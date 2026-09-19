@@ -7317,6 +7317,41 @@ components:
       additionalProperties: true
       type: object
       title: Page[PayerBreakdownItem]
+    Page_PaymentEventItem_:
+      properties:
+        page:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Page
+        page_size:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Page Size
+        total:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Total
+        total_pages:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Total Pages
+        has_next:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Has Next
+        has_prev:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Has Prev
+      additionalProperties: true
+      type: object
+      title: Page[PaymentEventItem]
     PayerBreakdownItem:
       properties:
         payer_address:
@@ -7863,7 +7898,7 @@ components:
           type: array
           title: Recent Payments
         recent_payments_page:
-          $ref: '#/components/schemas/backend__app__schemas__wallet_responses__Page[PaymentEventItem]'
+          $ref: '#/components/schemas/Page_PaymentEventItem_'
       additionalProperties: true
       type: object
       required:
@@ -9120,7 +9155,7 @@ components:
           type: array
           title: Recent Payments
         recent_payments_page:
-          $ref: '#/components/schemas/backend__app__schemas__wallet_responses__Page[PaymentEventItem]'
+          $ref: '#/components/schemas/Page_PaymentEventItem_'
       additionalProperties: true
       type: object
       required:
@@ -9154,7 +9189,7 @@ components:
           type: array
           title: Recent Payments
         recent_payments_page:
-          $ref: '#/components/schemas/backend__app__schemas__wallet_responses__Page[PaymentEventItem]'
+          $ref: '#/components/schemas/Page_PaymentEventItem_'
       additionalProperties: true
       type: object
       required:
@@ -9395,41 +9430,6 @@ components:
       - withdraw_owner
       title: WithdrawResponse
       description: Withdraw response with dynamic Gateway/relayer fields preserved.
-    backend__app__schemas__wallet_responses__Page[PaymentEventItem]:
-      properties:
-        page:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Page
-        page_size:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Page Size
-        total:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Total
-        total_pages:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Total Pages
-        has_next:
-          anyOf:
-          - type: boolean
-          - type: 'null'
-          title: Has Next
-        has_prev:
-          anyOf:
-          - type: boolean
-          - type: 'null'
-          title: Has Prev
-      additionalProperties: true
-      type: object
-      title: Page[PaymentEventItem]
   securitySchemes:
     x-qma-admin-token:
       type: apiKey

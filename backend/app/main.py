@@ -13,6 +13,7 @@ import time
 import logging
 import hashlib
 import json
+from typing import Optional
 from types import SimpleNamespace
 from contextlib import suppress
 

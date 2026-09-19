@@ -1,12 +1,15 @@
 """Export OpenAPI 3.1.0 specification for static hosting and Vercel CDN deployment."""
 
 import json
+import sys
 from pathlib import Path
 import yaml
 
-from backend.app.main import app
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from backend.app.main import app
 FRONTEND_PUBLIC = REPO_ROOT / "frontend" / "public"
 
 def export_specs():
