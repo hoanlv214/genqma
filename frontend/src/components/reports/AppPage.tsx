@@ -263,7 +263,7 @@ export function AppPage({
       const walletHeaders = await requireWalletProfileHeaders(wallet);
       const res = await fetch(`${API_BASE_URL}/api/v1/sessions/withdraw`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...walletHeaders },
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1", ...walletHeaders },
         body: JSON.stringify({
           owner_wallet: wallet,
           amount_usdc: amount

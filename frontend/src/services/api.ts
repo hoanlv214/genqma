@@ -38,6 +38,7 @@ function errorMessage(payload: unknown, fallback: string) {
 export async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  headers.set("ngrok-skip-browser-warning", "1");
   const response = await fetch(apiUrl(path), { ...init, headers });
   const payload = await response.json().catch(async () => ({ detail: await response.text() }));
   if (!response.ok) {

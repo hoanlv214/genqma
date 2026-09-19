@@ -34,7 +34,9 @@ export async function prepareX402Payment(resourceUrl: string, account: string): 
   const provider = getInjectedWallet();
   if (!provider) throw new Error("No EVM wallet provider found.");
 
-  const challengeResp = await fetch(resourceUrl);
+  const challengeResp = await fetch(resourceUrl, {
+    headers: { "ngrok-skip-browser-warning": "1" },
+  });
   if (challengeResp.status !== 402) {
     throw new Error(`Expected x402 challenge, got ${challengeResp.status}.`);
   }
@@ -106,7 +108,10 @@ export async function prepareX402Payment(resourceUrl: string, account: string): 
 
 export async function submitX402Payment(prepared: PreparedX402Payment) {
   const paidResp = await fetch(prepared.resourceUrl, {
-    headers: { "payment-signature": prepared.paymentSignature },
+    headers: {
+      "payment-signature": prepared.paymentSignature,
+      "ngrok-skip-browser-warning": "1",
+    },
   });
   const paidData = await paidResp.json().catch(async () => ({ error: await paidResp.text() }));
   if (!paidResp.ok) {
