@@ -65,7 +65,7 @@ qma agent run \
 The production API default is:
 
 ```text
-https://qma-api-7o9v.onrender.com
+https://qma-api.onrender.com
 ```
 
 Use `--api http://127.0.0.1:8000` or `QMA_API_URL` for a different backend.
@@ -220,7 +220,7 @@ const signer = createCircleAgentWalletSigner({
 });
 
 const agent = new QmaAgent({
-  apiUrl: "https://qma-api-7o9v.onrender.com",
+  apiUrl: "https://qma-api.onrender.com",
   signer,
 });
 

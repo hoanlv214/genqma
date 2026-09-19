@@ -53,8 +53,8 @@ class Settings:
             "http://127.0.0.1:5173",
             "http://localhost:3000",
             "http://127.0.0.1:3000",
-            "https://qma-api-7o9v.onrender.com",
-            "https://qma-arc-gateway-4elg.onrender.com",
+            "https://qma-api.onrender.com",
+            "https://qma-arc-gateway.onrender.com",
             "*",
         ]
 

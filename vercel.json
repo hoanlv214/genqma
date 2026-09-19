@@ -9,30 +9,72 @@
     {
       "source": "/openapi.json",
       "headers": [
-        { "key": "Content-Type", "value": "application/json; charset=utf-8" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, HEAD, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "*" },
-        { "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=60" }
+        {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, HEAD, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "*"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=60"
+        }
       ]
     },
     {
       "source": "/openapi.yaml",
       "headers": [
-        { "key": "Content-Type", "value": "application/yaml; charset=utf-8" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, HEAD, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "*" },
-        { "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=60" }
+        {
+          "key": "Content-Type",
+          "value": "application/yaml; charset=utf-8"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, HEAD, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "*"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=60"
+        }
       ]
     },
     {
       "source": "/api/:path*",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization, payment-signature, X-QMA-Access-Token, X-QMA-Wallet-Token, X-QMA-Invoice-Secret, x-qma-admin-token" },
-        { "key": "Access-Control-Expose-Headers", "value": "PAYMENT-REQUIRED, payment-required, WWW-Authenticate" }
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, payment-signature, X-QMA-Access-Token, X-QMA-Wallet-Token, X-QMA-Invoice-Secret, x-qma-admin-token"
+        },
+        {
+          "key": "Access-Control-Expose-Headers",
+          "value": "PAYMENT-REQUIRED, payment-required, WWW-Authenticate"
+        }
       ]
     }
   ],
@@ -47,11 +89,11 @@
     },
     {
       "source": "/.well-known/:path*",
-      "destination": "https://qma-api-7o9v.onrender.com/.well-known/:path*"
+      "destination": "https://qma-api.onrender.com/.well-known/:path*"
     },
     {
       "source": "/api/:path*",
-      "destination": "https://qma-api-7o9v.onrender.com/api/:path*"
+      "destination": "https://qma-api.onrender.com/api/:path*"
     },
     {
       "source": "/:path*",
@@ -59,4 +101,3 @@
     }
   ]
 }
-

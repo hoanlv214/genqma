@@ -17,7 +17,7 @@
       "description": "Local development API"
     },
     {
-      "url": "https://qma-api-7o9v.onrender.com",
+      "url": "https://qma-api.onrender.com",
       "description": "Production API"
     }
   ],

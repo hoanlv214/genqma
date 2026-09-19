@@ -4,7 +4,7 @@ QMA ships a hosted MCP server so AI agents (Claude, ChatGPT, custom LLM apps)
 can scan live market anomalies for free and buy evidence-backed historical
 analog reports with USDC — from within a chat.
 
-- **Hosted endpoint:** `https://qma-api-7o9v.onrender.com/mcp` (Streamable HTTP, JSON)
+- **Hosted endpoint:** `https://qma-api.onrender.com/mcp` (Streamable HTTP, JSON)
 - **Auth:** OAuth 2.1 + PKCE; the browser flow binds the connection to **your wallet** and **spend caps you choose**
 - **Custody:** purchases run from your dedicated QMA Agent Wallet (never your main hot wallet) and are withdrawable anytime
 - **Local CLI mode:** `@qma/mcp-server` bridges stdio hosts (Claude Code, Cursor) to the same server

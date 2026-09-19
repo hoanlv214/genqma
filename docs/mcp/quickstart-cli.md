@@ -12,7 +12,7 @@ The hosted OAuth flow with an empty `redirect_uri` returns the code directly
 
 ```bash
 # 1a. Register a local client
-curl -s -X POST https://qma-api-7o9v.onrender.com/api/v1/oauth/register \
+curl -s -X POST https://qma-api.onrender.com/api/v1/oauth/register \
   -H "Content-Type: application/json" \
   -d '{"client_name":"my-local-agent"}'
 # → {"client_id":"qma_..."}
@@ -26,7 +26,7 @@ CHALLENGE=$(printf %s "$VERIFIER" | openssl dgst -sha256 -binary | base64 | tr '
 #   (use a URL-encoder or your own script; the page displays the code)
 
 # 1d. Exchange code → 30-day token
-curl -s -X POST https://qma-api-7o9v.onrender.com/api/v1/oauth/token \
+curl -s -X POST https://qma-api.onrender.com/api/v1/oauth/token \
   -H "Content-Type: application/json" \
   -d "{\"grant_type\":\"authorization_code\",\"code\":\"<CODE>\",\"client_id\":\"qma_...\",\"code_verifier\":\"$VERIFIER\"}"
 # → {"access_token":"...","expires_in":2592000,"scope":"mcp"}
@@ -51,7 +51,7 @@ $challenge = [Convert]::ToBase64String($sha.ComputeHash([Text.Encoding]::ASCII.G
       "command": "npx",
       "args": ["-y", "@qma/mcp-server"],
       "env": {
-        "QMA_MCP_URL": "https://qma-api-7o9v.onrender.com/mcp",
+        "QMA_MCP_URL": "https://qma-api.onrender.com/mcp",
         "QMA_MCP_TOKEN": "<your 30-day connection token>"
       }
     }
@@ -80,7 +80,7 @@ client = MultiServerMCPClient({
 
 ```bash
 QMA_MCP_TOKEN=<token> npx -y @qma/mcp-server
-# stderr: qma-mcp: bridging stdio → https://qma-api-7o9v.onrender.com/mcp
+# stderr: qma-mcp: bridging stdio → https://qma-api.onrender.com/mcp
 ```
 
 Then in Claude Code: *"Scan QMA anomalies"* → *"check my QMA budget"*.

@@ -3,7 +3,7 @@
  * the hosted QMA MCP server (Streamable HTTP).
  *
  * Env:
- *   QMA_MCP_URL    hosted MCP endpoint (default https://qma-api-7o9v.onrender.com/mcp)
+ *   QMA_MCP_URL    hosted MCP endpoint (default https://qma-api.onrender.com/mcp)
  *   QMA_MCP_TOKEN  MCP connection token (OAuth scope "mcp", 30-day TTL)
  *
  * The token carries the owner's spend caps; every tools/call is re-validated
@@ -14,7 +14,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, } from "@modelcontextprotocol/sdk/types.js";
-const MCP_URL = process.env.QMA_MCP_URL || "https://qma-api-7o9v.onrender.com/mcp";
+const MCP_URL = process.env.QMA_MCP_URL || "https://qma-api.onrender.com/mcp";
 const MCP_TOKEN = process.env.QMA_MCP_TOKEN || "";
 export async function run() {
     if (!MCP_TOKEN) {

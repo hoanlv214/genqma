@@ -109,7 +109,7 @@ npm run agent -- --api http://127.0.0.1:8000 --dry-run --run-once --budget 1 --m
 npm run agent -- --api http://127.0.0.1:8000 --dry-run --duration 10m --poll 60 --budget 1 --max-price 0.005
 
 # Stop after at most three live purchases with a pre-funded Circle Agent Wallet
-npm run agent -- --api https://qma-api-7o9v.onrender.com --live --executor circle-agent-wallet --wallet 0xYOUR_AGENT_WALLET --max-purchases 3 --budget 0.05 --max-price 0.005 --no-auto-deposit
+npm run agent -- --api https://qma-api.onrender.com --live --executor circle-agent-wallet --wallet 0xYOUR_AGENT_WALLET --max-purchases 3 --budget 0.05 --max-price 0.005 --no-auto-deposit
 ```
 
 Optional output controls are `--json`, `--report-file`, `--event-log`, and

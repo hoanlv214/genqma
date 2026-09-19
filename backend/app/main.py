@@ -354,7 +354,7 @@ app = FastAPI(
     version="1.0.0",
     servers=[
         {"url": "http://127.0.0.1:8000", "description": "Local development API"},
-        {"url": "https://qma-api-7o9v.onrender.com", "description": "Production API"},
+        {"url": "https://qma-api.onrender.com", "description": "Production API"},
     ],
     openapi_tags=OPENAPI_TAGS,
     docs_url=None,
