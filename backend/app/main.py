@@ -476,6 +476,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     """Ensure unhandled 500 errors also return the standard QMA error envelope."""
+    logger.exception("Unhandled error on %s %s: %s", request.method, request.url.path, exc)
     return JSONResponse(
         status_code=500,
         content={
@@ -1142,7 +1143,7 @@ def create_invoice(req: InvoiceRequest):
 def get_payment_invoice_status(invoice_id, invoice_secret, refresh=True):
     import hmac as _hmac
     from fastapi import status, Query
-    invoice = get_invoice_or_402(state.invoices_db, invoice_id)
+    invoice = get_invoice_or_402(state.invoices_db, invoice_id, load_invoices_fn=_load_invoices)
     hydrate_payment_schema(invoice)
     if not _hmac.compare_digest(str(invoice_secret), str(invoice.get("invoice_secret"))):
         from fastapi import HTTPException
@@ -1167,11 +1168,16 @@ def get_payment_invoice_status(invoice_id, invoice_secret, refresh=True):
             verify_invoice_report_with_genlayer(invoice_id, invoice)
             changed = True
         except HTTPException as exc:
-            if exc.status_code != 503:
+            if exc.status_code not in (409, 503):
                 raise
+        except Exception as exc:
+            logger.warning("GenLayer verification in get_payment_invoice_status failed for %s: %s", invoice_id, exc)
     if refresh and (invoice.get("genlayer") or {}).get("verdict") in {"VALID", "INVALID"}:
-        settle_genlayer_verdict_on_arc(invoice_id, invoice)
-        changed = True
+        try:
+            settle_genlayer_verdict_on_arc(invoice_id, invoice)
+            changed = True
+        except Exception as exc:
+            logger.warning("Arc verdict settlement in get_payment_invoice_status failed for %s: %s", invoice_id, exc)
     if changed:
         _save_invoice(invoice)
     return invoice_payment_state_response(
@@ -1361,7 +1367,7 @@ def verify_payment(invoice_id, proof=None):
                 fetch_gateway_balance_fn=fetch_gateway_balance,
             )
         except HTTPException as exc:
-            if exc.status_code == 503:
+            if exc.status_code in (409, 503):
                 return invoice_payment_state_response(
                     invoice_id,
                     invoice,
@@ -1378,7 +1384,7 @@ def verify_payment(invoice_id, proof=None):
         if settlement_id_already_claimed(proof.settlement_id, exclude_invoice_id=invoice_id, load_invoices_fn=_load_invoices, invoices_db=state.invoices_db, storage_backend=storage_backend):
             raise HTTPException(status_code=409, detail="settlement_id already claimed by another invoice.")
         with state.cross_process_lock("split_leg:" + invoice_id):
-            invoice = get_invoice_or_402(state.invoices_db, invoice_id)
+            invoice = get_invoice_or_402(state.invoices_db, invoice_id, load_invoices_fn=_load_invoices)
             hydrate_payment_schema(invoice)
             if invoice.get("status") == "paid":
                 return invoice_payment_state_response(
@@ -1410,7 +1416,7 @@ def verify_payment(invoice_id, proof=None):
                     fetch_gateway_balance_fn=fetch_gateway_balance,
                 )
         except HTTPException as exc:
-            if exc.status_code == 503:
+            if exc.status_code in (409, 503):
                 return invoice_payment_state_response(
                     invoice_id, invoice, include_access_token=False, include_seller_balance=False,
                     fetch_gateway_balance_fn=fetch_gateway_balance,

@@ -263,13 +263,32 @@ export class QmaAgent extends EventEmitter {
                   amount_usdc: firstSettlement?.amount_usdc ?? createdInvoice.amount,
                 }),
           });
-          if (verified?.status === "verification_rejected" || verified?.genlayer?.verdict === "INVALID") {
-            throw new Error(`GenLayer rejected report: ${verified?.genlayer?.reasoning || "Data divergence"}. Report access blocked.`);
+          let currentVerified = verified;
+          if (currentVerified?.status === "verification_pending" && !paidInvoiceState(currentVerified)) {
+            for (let poll = 1; poll <= 15; poll += 1) {
+              await new Promise((resolve) => setTimeout(resolve, 3000));
+              try {
+                const refreshed = await this.client.getAgentInvoiceStatus(createdInvoice.invoice_id, createdInvoice.invoice_secret);
+                if (refreshed?.status === "verification_rejected" || refreshed?.genlayer?.verdict === "INVALID") {
+                  currentVerified = refreshed;
+                  break;
+                }
+                if (paidInvoiceState(refreshed)) {
+                  currentVerified = refreshed;
+                  break;
+                }
+              } catch {
+                // Transient error / lock contention while polling; continue polling
+              }
+            }
           }
-          if (!paidInvoiceState(verified)) {
-            throw new Error(`Invoice verification returned status ${String(verified?.status || "unknown")} without paid access.`);
+          if (currentVerified?.status === "verification_rejected" || currentVerified?.genlayer?.verdict === "INVALID") {
+            throw new Error(`GenLayer rejected report: ${currentVerified?.genlayer?.reasoning || "Data divergence"}. Report access blocked.`);
           }
-          const delivery = await deliverAfterPayment(createdInvoice.invoice_id, verified.access_token);
+          if (!paidInvoiceState(currentVerified)) {
+            throw new Error(`Invoice verification returned status ${String(currentVerified?.status || "unknown")} without paid access.`);
+          }
+          const delivery = await deliverAfterPayment(createdInvoice.invoice_id, currentVerified.access_token);
           return {
             status: "completed",
             invoice_id: createdInvoice.invoice_id,
@@ -277,32 +296,54 @@ export class QmaAgent extends EventEmitter {
             symbol: candidate.symbol,
             tier: candidate.upgrade ? "full" : candidate.tier as any,
             amount_usdc: invoiceAmount,
-            settlement_ids: settlementIds(verified, execution.settlements),
+            settlement_ids: settlementIds(currentVerified, execution.settlements),
             access_token_received: true,
-            genlayer: verified.genlayer,
+            genlayer: currentVerified.genlayer,
             ...delivery,
           };
         } catch (e) {
           if (paymentStarted && invoice?.invoice_id && invoice.invoice_secret) {
             try {
-              const reconciled = await this.client.getAgentInvoiceStatus(invoice.invoice_id, invoice.invoice_secret);
-              if (reconciled?.status === "verification_rejected" || reconciled?.genlayer?.verdict === "INVALID") {
-                throw new Error(`GenLayer rejected report: ${reconciled?.genlayer?.reasoning || "Data divergence"}. Report access blocked.`);
+              let reconciled: any = null;
+              let lastReconcileError: any = null;
+              for (let attempt = 1; attempt <= 15; attempt += 1) {
+                try {
+                  reconciled = await this.client.getAgentInvoiceStatus(invoice.invoice_id, invoice.invoice_secret);
+                  if (reconciled?.status === "verification_rejected" || reconciled?.genlayer?.verdict === "INVALID") {
+                    throw new Error(`GenLayer rejected report: ${reconciled?.genlayer?.reasoning || "Data divergence"}. Report access blocked.`);
+                  }
+                  if (paidInvoiceState(reconciled)) {
+                    const delivery = await deliverAfterPayment(invoice.invoice_id, reconciled.access_token);
+                    return {
+                      status: "completed",
+                      invoice_id: invoice.invoice_id,
+                      provider_id: candidate.provider_id,
+                      symbol: candidate.symbol,
+                      tier: candidate.upgrade ? "full" : candidate.tier as any,
+                      amount_usdc: invoiceAmount,
+                      settlement_ids: settlementIds(reconciled, executionSettlements),
+                      access_token_received: true,
+                      genlayer: reconciled.genlayer,
+                      ...delivery,
+                    };
+                  }
+                  if (reconciled?.status === "verification_pending") {
+                    await new Promise((resolve) => setTimeout(resolve, 3000));
+                    continue;
+                  }
+                  break;
+                } catch (pollErr) {
+                  if (pollErr instanceof Error && pollErr.message.includes("GenLayer rejected report")) {
+                    throw pollErr;
+                  }
+                  lastReconcileError = pollErr;
+                  if (attempt < 15) {
+                    await new Promise((resolve) => setTimeout(resolve, 3000));
+                  }
+                }
               }
-              if (paidInvoiceState(reconciled)) {
-                const delivery = await deliverAfterPayment(invoice.invoice_id, reconciled.access_token);
-                return {
-                  status: "completed",
-                  invoice_id: invoice.invoice_id,
-                  provider_id: candidate.provider_id,
-                  symbol: candidate.symbol,
-                  tier: candidate.upgrade ? "full" : candidate.tier as any,
-                  amount_usdc: invoiceAmount,
-                  settlement_ids: settlementIds(reconciled, executionSettlements),
-                  access_token_received: true,
-                  genlayer: reconciled.genlayer,
-                  ...delivery,
-                };
+              if (lastReconcileError && !reconciled) {
+                throw lastReconcileError;
               }
               const uncertainMsg = `payment_outcome_uncertain: invoice ${invoice.invoice_id} is ${String(reconciled?.status || "unknown")}; `
                 + "session stopped to prevent a duplicate payment. Resume this invoice after reconciliation.";

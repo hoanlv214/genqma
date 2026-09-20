@@ -372,8 +372,16 @@ def paid_invoice_event(invoice: dict) -> dict:
 # Get invoice or 402
 # ---------------------------------------------------------------------------
 
-def get_invoice_or_402(invoices_db: dict, invoice_id: str) -> dict:
+def get_invoice_or_402(invoices_db: dict, invoice_id: str, load_invoices_fn=None) -> dict:
     invoice = invoices_db.get(invoice_id)
+    if not invoice and load_invoices_fn:
+        try:
+            persisted = load_invoices_fn()
+            if isinstance(persisted, dict) and invoice_id in persisted:
+                invoice = persisted[invoice_id]
+                invoices_db[invoice_id] = invoice
+        except Exception:
+            pass
     if not invoice:
         raise HTTPException(
             status_code=402,
@@ -384,20 +392,27 @@ def get_invoice_or_402(invoices_db: dict, invoice_id: str) -> dict:
             },
         )
     hydrate_payment_schema(invoice)
-    if time.time() > invoice["expires_at"]:
-        invoice["status"] = "expired"
-        raise HTTPException(
-            status_code=402,
-            detail={
-                "error": "invoice_expired",
-                "message": "Invoice expired. Create a fresh invoice.",
-                "payment": payment_requirement(
-                    symbol=invoice["symbol"],
-                    amount_usdc=invoice.get("amount"),
-                    tier=invoice.get("tier", "full"),
-                    resource_type=invoice.get("resource_type", PAYMENT_RESOURCE_TYPE),
-                    provider_id=invoice.get("provider_id", "funding_memory"),
-                ),
-            },
-        )
+    status = invoice.get("status")
+    if status not in {"paid", "verification_pending", "refunded"}:
+        expires_at = invoice.get("expires_at")
+        try:
+            exp = float(expires_at) if expires_at is not None else None
+        except (ValueError, TypeError):
+            exp = None
+        if exp is not None and time.time() > exp:
+            invoice["status"] = "expired"
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "invoice_expired",
+                    "message": "Invoice expired. Create a fresh invoice.",
+                    "payment": payment_requirement(
+                        symbol=invoice.get("symbol"),
+                        amount_usdc=invoice.get("amount"),
+                        tier=invoice.get("tier", "full"),
+                        resource_type=invoice.get("resource_type", PAYMENT_RESOURCE_TYPE),
+                        provider_id=invoice.get("provider_id", "funding_memory"),
+                    ),
+                },
+            )
     return invoice
