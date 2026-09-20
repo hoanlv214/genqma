@@ -717,9 +717,9 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
       const createdWalletAddress = sessionData.runtime_state?.agent_wallet_address;
 
-      // Fetch the latest wallet balance to check if it's funded now
+      // Fetch the latest wallet balance to check if it's funded now (on-chain or prepaid Gateway)
       const latestAgentWallet = await refreshAgentWallet();
-      const currentBal = latestAgentWallet?.balanceUsdc || 0;
+      const currentBal = (latestAgentWallet?.balanceUsdc || 0) + (latestAgentWallet?.gatewayBalanceUsdc || 0);
 
       if (currentBal < parsedBudget) {
         setStatus("idle");
