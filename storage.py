@@ -1,13 +1,16 @@
 import json
+import logging
 import os
+import tempfile
 from typing import Optional
 
 import requests
 
+logger = logging.getLogger("QMA-Storage")
+
 
 def normalize_address(value: Optional[str]) -> str:
     return str(value or "").strip().lower()
-
 
 def wallet_matches(record: dict, address: str) -> bool:
     normalized = normalize_address(address)
@@ -180,9 +183,18 @@ class JsonStorage:
             return fallback
 
     def _save_json(self, path: str, value) -> None:
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        with open(path, "w", encoding="utf-8") as file_obj:
-            json.dump(value, file_obj, indent=2)
+        directory = os.path.dirname(path) or "."
+        os.makedirs(directory, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(dir=directory, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as file_obj:
+                json.dump(value, file_obj, indent=2)
+                file_obj.flush()
+                os.fsync(file_obj.fileno())
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
 
     def load_payment_events(self) -> list:
         data = self._load_json(self.ledger_path, [])
@@ -200,7 +212,13 @@ class JsonStorage:
         return sorted(events, key=lambda item: item.get("paid_at") or 0, reverse=True)[:limit]
 
     def save_payment_events(self, events: list) -> None:
-        self._save_json(self.ledger_path, events[-500:])
+        self._save_json(self.ledger_path, events)
+
+    def load_wallet_spending_events(self, address: str) -> list:
+        normalized = normalize_address(address)
+        invoices = [row for row in self.load_invoices().values() if normalize_address(row.get("payer_address")) == normalized]
+        events = [row for row in self.load_payment_events() if normalize_address(row.get("payer_address")) == normalized]
+        return invoices + events
 
     def save_single_payment_event(self, event: dict) -> None:
         events = self.load_payment_events()
@@ -214,6 +232,20 @@ class JsonStorage:
         if not updated:
             events.append(event)
         self.save_payment_events(events)
+
+    def reserve_withdrawal(self, operation_id: str, operation: dict) -> dict:
+        withdrawals_path = os.path.join(os.path.dirname(self.invoices_path) or ".", "withdrawals.json")
+        withdrawals = self._load_json(withdrawals_path, {})
+        if operation_id not in withdrawals:
+            withdrawals[operation_id] = operation
+            self._save_json(withdrawals_path, withdrawals)
+        return withdrawals[operation_id]
+
+    def save_withdrawal(self, operation_id: str, operation: dict) -> None:
+        withdrawals_path = os.path.join(os.path.dirname(self.invoices_path) or ".", "withdrawals.json")
+        withdrawals = self._load_json(withdrawals_path, {})
+        withdrawals[operation_id] = operation
+        self._save_json(withdrawals_path, withdrawals)
 
     def load_paid_reports(self) -> dict:
         data = self._load_json(self.reports_path, {})
@@ -578,24 +610,22 @@ class SupabaseStorage:
     def is_settlement_id_claimed(self, settlement_id: str, exclude_invoice_id: Optional[str] = None) -> bool:
         if not settlement_id:
             return False
-        try:
-            params = {
-                "select": "invoice_id",
-                "settlement_id": f"eq.{settlement_id}",
-                "limit": "1"
-            }
+        for table, binding in (
+            ("qma_invoices", {"settlement_id": f"eq.{settlement_id}"}),
+            ("qma_invoices", {"invoice->split->legs": "cs." + json.dumps([{"settlement_id": settlement_id}])}),
+            ("qma_payment_events", {"settlement_id": f"eq.{settlement_id}"}),
+        ):
+            params = {"select": "invoice_id", "limit": "1", **binding}
             if exclude_invoice_id:
                 params["invoice_id"] = f"neq.{exclude_invoice_id}"
-            rows = self._request(
-                "GET",
-                "qma_payment_events",
-                params=params,
-            ) or []
-            for row in rows:
-                if row.get("invoice_id") != exclude_invoice_id:
-                    return True
-        except RuntimeError:
-            pass
+            try:
+                rows = self._request("GET", table, params=params) or []
+            except RuntimeError as exc:
+                if "400" in str(exc) or "PGRST100" in str(exc):
+                    continue
+                raise
+            if any(row.get("invoice_id") != exclude_invoice_id for row in rows):
+                return True
         return False
 
     def save_paid_reports(self, reports: dict) -> None:
@@ -633,6 +663,75 @@ class SupabaseStorage:
             "entitlement": record,
         }
         self._upsert("qma_paid_reports", [row], "entitlement_id")
+
+    def load_creator_claims(self) -> list:
+        records = []
+        offset = 0
+        while True:
+            try:
+                rows = self._request("GET", "qma_creator_claims", params={
+                    "select": "claim", "order": "claim_id.asc", "limit": "500", "offset": str(offset),
+                }) or []
+            except RuntimeError as exc:
+                if "404" in str(exc) or "PGRST205" in str(exc):
+                    return []
+                raise
+            records.extend(row["claim"] for row in rows)
+            if len(rows) < 500:
+                return records
+            offset += len(rows)
+
+    def load_wallet_spending_events(self, address: str) -> list:
+        result = []
+        for table, field in (("qma_invoices", "invoice"), ("qma_payment_events", "event")):
+            offset = 0
+            while True:
+                try:
+                    rows = self._request("GET", table, params={
+                        "payer_address": f"eq.{normalize_address(address)}", "select": field,
+                        "order": "invoice_id.asc", "limit": "500", "offset": str(offset),
+                    }) or []
+                except Exception as exc:
+                    logger.warning(f"Could not query {table} for wallet spending events: {exc}")
+                    break
+                result.extend(row[field] for row in rows if field in row)
+                if len(rows) < 500:
+                    break
+                offset += len(rows)
+        return result
+
+    def save_creator_claim(self, record: dict) -> None:
+        try:
+            self._upsert("qma_creator_claims", [{
+                "claim_id": record["claim_id"], "claim": record,
+            }], "claim_id")
+        except Exception as exc:
+            logger.warning(f"Could not save creator claim to Supabase: {exc}")
+
+    def reserve_withdrawal(self, operation_id: str, operation: dict) -> dict:
+        try:
+            self._request("POST", "qma_withdrawals", params={"on_conflict": "operation_id"},
+                          json_body=[{"operation_id": operation_id, "operation": operation}],
+                          prefer="resolution=ignore-duplicates,return=minimal")
+            rows = self._request("GET", "qma_withdrawals", params={
+                "operation_id": f"eq.{operation_id}", "select": "operation", "limit": "1",
+            })
+            if rows and "operation" in rows[0]:
+                return rows[0]["operation"]
+        except Exception as exc:
+            logger.warning(f"Supabase withdrawals table unavailable: {exc}")
+        if not hasattr(self, "_withdrawals"):
+            self._withdrawals = {}
+        return self._withdrawals.setdefault(operation_id, operation)
+
+    def save_withdrawal(self, operation_id: str, operation: dict) -> None:
+        try:
+            self._upsert("qma_withdrawals", [{"operation_id": operation_id, "operation": operation}], "operation_id")
+        except Exception as exc:
+            logger.warning(f"Supabase withdrawals table unavailable: {exc}")
+        if not hasattr(self, "_withdrawals"):
+            self._withdrawals = {}
+        self._withdrawals[operation_id] = operation
 
     def load_invoices(self) -> dict:
         rows = self._request(

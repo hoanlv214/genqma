@@ -15,8 +15,8 @@ flowchart LR
     Gate -->|no candidate| Wait[Record wait/skip and poll]
     Gate -->|dry-run| Sim[Record simulation only]
     Gate -->|live| Invoice[Create provider-bound invoice]
-    Invoice --> Split[Creator + platform x402 legs]
-    Split --> Verify[Verify settlement]
+    Invoice --> Treasury[Single treasury-bound x402 settlement]
+    Treasury --> Verify[Verify settlement and finalized GenLayer verdict]
     Verify --> Access[Entitlement + short-lived access token]
     Access --> Report[Fetch paid report]
     Sim --> Account[Update session accounting]
@@ -28,6 +28,12 @@ flowchart LR
 ```
 
 ## Decision boundary
+
+Agent job delivery uses the same persisted invoice and verified report as normal
+buyers. It cannot manufacture a settled job or consensus verdict. Read-only
+spending-policy evaluations do not reserve funds; session/payment executors
+enforce their configured budgets. Agent Wallet withdrawals persist an operation
+before submission and reuse its request ID across retries.
 
 The shared endpoint is:
 

@@ -30,13 +30,15 @@ def _invoice(invoice_id="inv_bound_report"):
         "status": "settlement_verified",
         "verification_required": True,
         "provider_id": "funding_memory",
-        "owner_wallet": "0xprovider",
-        "payer_address": "0xbuyer",
+        "owner_wallet": "0x1111111111111111111111111111111111111111",
+        "payer_address": "0x2222222222222222222222222222222222222222",
+        "platform_treasury_wallet": "0x3333333333333333333333333333333333333333",
         "symbol": "ETH-USDT",
         "query": {"symbol": "ETH-USDT", "fundingRate": -0.01},
         "query_hash": "query-hash",
         "tier": "full",
         "amount": 0.005,
+        "amount_raw": "5000",
         "settlement_id": "settlement-real",
         "gateway_status": "completed",
     }
@@ -146,6 +148,7 @@ def test_verify_payment_fast_non_blocking_resolution(monkeypatch, isolated_state
     state.invoices_db.clear()
     try:
         invoice = _invoice("inv_fast_verify")
+        invoice["settlement_id"] = None
         invoice["invoice_secret"] = "sec_1234567890abcdef"
         invoice["amount_raw"] = 5000
         invoice["platform_treasury_wallet"] = "0x1111111111111111111111111111111111111111"
@@ -217,4 +220,3 @@ def test_verify_payment_fast_non_blocking_resolution(monkeypatch, isolated_state
     finally:
         state.invoices_db.clear()
         state.invoices_db.update(old_invoices)
-

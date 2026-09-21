@@ -1,12 +1,13 @@
 """Shared agent decision and standard identity endpoints for AI agents and marketplace integrations."""
 
 import os
-import time
-import uuid
+import re
 from types import SimpleNamespace
-from typing import Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Security
+from backend.app.core.security_schemes import qma_access_token_header
+from backend.app.services.agent_jobs import create_job, deliver_job
+from backend.app.services.spending_policy import evaluate_spending
 
 from backend.app.schemas import AgentDecisionResponse
 from backend.app.schemas.agent import (
@@ -27,9 +28,6 @@ from backend.app.services.wallet_utils import normalize_address
 
 router = APIRouter(tags=["Agent decisioning"])
 
-# In-memory storage for ERC-8183 jobs and agent wallet spending tracking
-_ERC8183_JOBS: Dict[str, dict] = {}
-_WALLET_DAILY_SPEND: Dict[str, float] = {}
 
 
 def _get_agent_identity() -> dict:
@@ -191,95 +189,32 @@ def create_agent_router(deps: SimpleNamespace) -> APIRouter:
 
     @migrated.post(
         "/api/v1/agent/jobs",
-        summary="Dispatch an ERC-8183 escrowed intelligence task",
-        description="""Submits a standardized ERC-8183 escrowed intelligence job to QMA. External AI frameworks lock USDC into escrow via Circle Gateway x402, QMA executes analysis, and GenLayer consensus proof is bound to the job.
-
-**Authentication:** Public route.""",
+        summary="Deliver an invoice-backed intelligence job",
+        description="""ERC-8183-shaped adapter over QMA invoices, not an independent on-chain escrow. Without invoice_id, returns HTTP 402 with a real invoice and payment requirement. Pay and verify that invoice, then retry with the exact query, invoice_id and X-QMA-Access-Token. Completion includes only the finalized GenLayer receipt and cached report; no reputation points are fabricated.""",
         response_model=ERC8183JobResponse,
         response_model_exclude_unset=True,
-        responses=documented_errors(400, 404, 429, 500),
+        responses=documented_errors(400, 402, 403, 404, 409, 429, 500, 503),
     )
-    def create_erc8183_job(request: ERC8183JobRequest):
-        provider_id = request.provider_id
-        registry = getattr(deps, "provider_registry", None)
-        provider = None
-        if registry and hasattr(registry, "get"):
-            provider = registry.get(provider_id)
-        elif registry and hasattr(registry, "require"):
-            try:
-                provider = registry.require(provider_id)
-            except Exception:
-                provider = None
-
-        if not provider:
-            raise HTTPException(status_code=404, detail=f"Intelligence provider '{provider_id}' not found.")
-
-        # Score provider query to determine exact cost
-        context = {"query": request.query, "tier": request.tier}
-        try:
-            score_data = provider.score(context)
-            amount_usdc = float(score_data.get("amount_usdc", 0.002))
-        except Exception:
-            amount_usdc = 0.002 if request.tier == "preview" else 0.010
-
-        if amount_usdc > request.max_budget_usdc:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Job price ({amount_usdc} USDC) exceeds allocated max_budget_usdc ({request.max_budget_usdc} USDC).",
-            )
-
-        job_id = f"job_{uuid.uuid4().hex[:12]}"
-        invoice_id = f"inv_{uuid.uuid4().hex[:12]}"
-        shield_address = request.escrow_contract or os.getenv("QMA_SHIELD_CONTRACT_ADDRESS", "0x367728bf66Cf962Ce15fD2b65193b7a1466f087c")
-
-        # Deliver report payload
-        try:
-            delivery = provider.deliver(context, invoice_id=invoice_id)
-            report_payload = delivery.get("payload", {})
-        except Exception:
-            report_payload = {"status": "executed", "provider_id": provider_id, "tier": request.tier}
-
-        job_record = {
-            "job_id": job_id,
-            "standard": "ERC-8183",
-            "status": "settled",
-            "provider_id": provider_id,
-            "tier": request.tier,
-            "escrow_rail": "circle-gateway-x402",
-            "invoice_id": invoice_id,
-            "amount_usdc": amount_usdc,
-            "consensus_verification": {
-                "engine": "GenLayer Intelligent Contract",
-                "shield_address": shield_address,
-                "verdict": "ACCEPTED",
-                "consensus_network": "genlayer-testnet",
-                "round": 1420,
-            },
-            "report_payload": report_payload,
-            "reputation_points_accrued": 10,
-        }
-        _ERC8183_JOBS[job_id] = job_record
-        return job_record
+    def create_erc8183_job(request: ERC8183JobRequest, token: str | None = Security(qma_access_token_header)):
+        return create_job(deps, request, token)
 
     @migrated.get(
         "/api/v1/agent/jobs/{job_id}",
-        summary="Inspect an ERC-8183 escrowed task status and GenLayer proof",
-        description="""Retrieves the lifecycle state, settlement receipt, report payload, and GenLayer Intelligent Contract consensus proof for an ERC-8183 task.
-
-**Authentication:** Public route.""",
+        summary="Read an owned invoice-backed job",
+        description="""Requires X-QMA-Access-Token for the invoice encoded by job_id. Reconstructs the job from durable invoice state, with the real GenLayer receipt and verified report. Unpaid, rejected and mismatched-token jobs remain inaccessible.""",
         response_model=ERC8183JobResponse,
         response_model_exclude_unset=True,
-        responses=documented_errors(404, 429, 500),
+        responses=documented_errors(400, 402, 403, 404, 409, 429, 500, 503),
     )
-    def get_erc8183_job(job_id: str):
-        if job_id not in _ERC8183_JOBS:
-            raise HTTPException(status_code=404, detail=f"ERC-8183 job '{job_id}' not found.")
-        return _ERC8183_JOBS[job_id]
+    def get_erc8183_job(job_id: str, token: str | None = Security(qma_access_token_header)):
+        if not job_id.startswith("job_inv_"):
+            raise HTTPException(status_code=404, detail="Job not found.")
+        return deliver_job(deps, job_id.removeprefix("job_"), token)
 
     @migrated.get(
         "/api/v1/agent/spending-policy",
         summary="Read Circle agent wallet spending policy caps",
-        description="""Inspect active spending policy limits enforced for agent wallets under the Circle CLI standard (max per tx, daily cap, weekly cap).
+        description="""Inspect QMA advisory spending thresholds (per transaction, UTC calendar day and UTC calendar week). enforce_strict is false: this route does not configure Circle or authorize transfers; payment executors enforce wallet limits.
 
 **Authentication:** Public route.""",
         response_model=SpendingPolicyConfigResponse,
@@ -293,60 +228,28 @@ def create_agent_router(deps: SimpleNamespace) -> APIRouter:
             "daily_cap_usdc": 1.00,
             "weekly_cap_usdc": 5.00,
             "currency": "USDC",
-            "enforce_strict": True,
+            "enforce_strict": False,
         }
 
     @migrated.post(
         "/api/v1/agent/spending-policy/evaluate",
         summary="Evaluate proposed purchase against agent spending policy",
-        description="""Evaluates whether a planned intelligence purchase complies with configured Circle CLI spending policy limits. Enforces per-transaction caps and daily cumulative allowances.
+        description="""Read-only evaluation against authoritative settlement history using UTC calendar days and weeks. Evaluations never consume budget. Duplicate settlements count once, confirmed refunds are excluded, and storage failures return 503 rather than an approval. This does not reserve funds or configure Circle spending limits.
 
 **Authentication:** Public route.""",
         response_model=SpendingPolicyEvaluateResponse,
         response_model_exclude_unset=True,
-        responses=documented_errors(400, 429, 500),
+        responses=documented_errors(400, 429, 500, 503),
     )
     def evaluate_spending_policy(request: SpendingPolicyEvaluateRequest):
         wallet = normalize_address(request.wallet_address)
-        amount = request.amount_usdc
-        max_per_tx = 0.05
-        daily_cap = 1.00
-
-        current_spend = _WALLET_DAILY_SPEND.get(wallet, 0.0)
-
-        if amount > max_per_tx:
-            return {
-                "allowed": False,
-                "reason": f"Amount {amount} USDC exceeds single transaction cap of {max_per_tx} USDC.",
-                "amount_usdc": amount,
-                "max_per_tx_usdc": max_per_tx,
-                "daily_cap_usdc": daily_cap,
-                "current_spend_today_usdc": current_spend,
-                "remaining_daily_budget_usdc": max(0.0, daily_cap - current_spend),
-            }
-
-        if current_spend + amount > daily_cap:
-            return {
-                "allowed": False,
-                "reason": f"Proposed amount would cause daily spend ({round(current_spend + amount, 4)} USDC) to exceed daily cap ({daily_cap} USDC).",
-                "amount_usdc": amount,
-                "max_per_tx_usdc": max_per_tx,
-                "daily_cap_usdc": daily_cap,
-                "current_spend_today_usdc": current_spend,
-                "remaining_daily_budget_usdc": max(0.0, daily_cap - current_spend),
-            }
-
-        new_spend = round(current_spend + amount, 4)
-        _WALLET_DAILY_SPEND[wallet] = new_spend
-        return {
-            "allowed": True,
-            "reason": "Transaction approved under Circle Agent Wallet spending policy.",
-            "amount_usdc": amount,
-            "max_per_tx_usdc": max_per_tx,
-            "daily_cap_usdc": daily_cap,
-            "current_spend_today_usdc": new_spend,
-            "remaining_daily_budget_usdc": max(0.0, daily_cap - new_spend),
-        }
+        if not re.fullmatch(r"0x[0-9a-f]{40}", wallet):
+            raise HTTPException(status_code=400, detail="A valid EVM wallet address is required.")
+        try:
+            events = deps.load_spending_events(wallet)
+            return evaluate_spending(events, request.amount_usdc)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="Spending ledger is unavailable; no approval was issued.") from exc
 
     @migrated.get(
         "/api/v1/agent/wallet-config",

@@ -2,6 +2,19 @@
 
 This is the source of truth for new report purchases on `main`.
 
+402 challenges advertise only the configured payment network. Compact JSON and a
+short `WWW-Authenticate` header keep payment discovery within standard HTTP header
+limits; the full requirements remain in `PAYMENT-REQUIRED` and the response body.
+
+Raw `payment-signature`, `x-payment`, and `Authorization` headers sent to report
+routes are not settlement proof. Buyers must create an invoice, pay its Gateway
+resource, verify the settlement, then use `X-QMA-Access-Token` with that invoice.
+
+Historical records with `x402_settle_*` IDs came from the removed header bypass,
+not Circle. They are denied invoice access and excluded from report entitlements,
+creator earnings and spending summaries. Original records remain stored for
+reconciliation; they must never be treated as proof of funds received.
+
 1. The backend creates an invoice bound to provider, tier, canonical query hash,
    amount, and platform treasury. New invoices do not contain direct-split legs.
 2. Human, Agent SDK, hosted worker, and MCP buyers authorize one Circle Gateway
@@ -27,6 +40,28 @@ This is the source of truth for new report purchases on `main`.
    leaves the invoice `verification_pending` and returns no access token.
 
 ## Monetary settlement boundary
+
+Settlement IDs are reserved on invoices before report generation, including
+pending verification and rejected/refunded purchases. Supabase checks invoice
+bindings and historical payment events and enforces a unique settlement index.
+Database read/write failures stop authorization; they never mean "unclaimed".
+
+The automatic creator payout plan and distribution marker are persisted before
+the paid event is published. Manual claims exclude those funds even while the
+executor is pending or unavailable. Split accounting uses integer micro-USDC.
+`refunded` is terminal and survives every invoice save.
+
+Deploy `scripts/migrations/20260920_financial_integrity.sql` before this backend
+version. Supabase stores complete creator claim history in `qma_creator_claims`
+and withdrawal operations in `qma_withdrawals`, accessible only to service role.
+Import existing `creator_claims.json` with `scripts/migrate_creator_claims.py`
+before removing any legacy host data. History already truncated by older
+versions must be reconciled from payout receipts/backups; this patch cannot
+reconstruct missing records. Missing/unavailable claim storage fails closed.
+Local JSON ledgers use atomic replacement without claim-history truncation.
+
+For isolated integration runs, `QMA_DATA_DIR` selects the JSON data directory;
+Supabase remains authoritative when its URL and service-role key are configured.
 
 `GenQMAShield.py` is a GenLayer verifier. It does not custody Arc USDC or call
 Circle. After a final verdict, the backend creates an immutable operation with a

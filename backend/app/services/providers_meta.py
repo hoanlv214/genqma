@@ -14,6 +14,7 @@ from backend.app.core.config import (
 from backend.app.core import state
 from backend.app.services.wallet_utils import normalize_address, same_address
 from backend.app.services.payment_state_machine import (
+    has_fabricated_settlement,
     invoice_required_split_legs,
     invoice_split_mode,
     payment_event_is_final,
@@ -310,6 +311,8 @@ def payment_events_for_provider(
             })
     unique = {}
     for event in events:
+        if has_fabricated_settlement(event):
+            continue
         key = event.get("settlement_id") or event.get("invoice_id")
         if key:
             unique[key] = {**unique.get(key, {}), **event}
@@ -339,25 +342,36 @@ def build_provider_stats(
     auto_events = [
         event for event in events
         if (event.get("arc_settlement") or {}).get("action") == "creator_payout"
+        or (event.get("accounting") or {}).get("distribution_mode") == "automatic_genlayer_settlement"
+        or (state.invoices_db.get(event.get("invoice_id"), {}).get("genlayer") or {}).get("verdict") == "VALID"
     ]
+    def creator_amount(event):
+        plan = event.get("arc_settlement") or {}
+        if plan.get("transfer_amount_raw") is not None:
+            return int(plan["transfer_amount_raw"]) / 1_000_000
+        accounting = event.get("accounting") or {}
+        from decimal import Decimal
+        raw = int(event.get("amount_raw") or (Decimal(str(event.get("amount_usdc") or 0)) * 1_000_000))
+        return (raw * int(accounting.get("creator_share_bps", share_bps)) // 10000) / 1_000_000
+
     auto_reserved = sum(
-        float(event.get("amount_usdc") or 0) * share_bps / 10000
+        creator_amount(event)
         for event in auto_events
         if event in final_events
     )
     auto_paid = sum(
-        float(event.get("amount_usdc") or 0) * share_bps / 10000
+        creator_amount(event)
         for event in auto_events
         if (event.get("arc_settlement") or {}).get("status") == "confirmed"
     )
     auto_pending = sum(
-        float(event.get("amount_usdc") or 0) * share_bps / 10000
+        creator_amount(event)
         for event in auto_events
         if (event.get("arc_settlement") or {}).get("status") != "confirmed"
     )
     report_count = len({event.get("invoice_id") or payment_event_key(event) for event in events})
-    earned = creator_direct if direct_split else revenue * share_bps / 10000
-    earned_final = creator_direct_final if direct_split else final_revenue * share_bps / 10000
+    earned = creator_direct if direct_split else sum(creator_amount(event) for event in events)
+    earned_final = creator_direct_final if direct_split else sum(creator_amount(event) for event in final_events)
     claim_amounts_data = creator_claim_amounts(provider_id, provider.owner_wallet)
     claimable = 0.0 if direct_split else max(
         0.0,
@@ -394,9 +408,9 @@ def build_provider_stats(
         "creator_earned_usdc": round(earned, 6),
         "creator_final_earned_usdc": round(earned_final, 6),
         "creator_pending_batch_usdc": round(max(0.0, earned - earned_final), 6),
-        "platform_fee_usdc": round(platform_direct if direct_split else revenue * (10000 - share_bps) / 10000, 6),
-        "platform_final_fee_usdc": round(platform_direct_final if direct_split else final_revenue * (10000 - share_bps) / 10000, 6),
-        "platform_pending_batch_usdc": round(max(0.0, (platform_direct if direct_split else revenue * (10000 - share_bps) / 10000) - (platform_direct_final if direct_split else final_revenue * (10000 - share_bps) / 10000)), 6),
+        "platform_fee_usdc": round(platform_direct if direct_split else revenue - earned, 6),
+        "platform_final_fee_usdc": round(platform_direct_final if direct_split else final_revenue - earned_final, 6),
+        "platform_pending_batch_usdc": round(max(0.0, (platform_direct if direct_split else revenue - earned) - (platform_direct_final if direct_split else final_revenue - earned_final)), 6),
         "creator_claimable_usdc": round(claimable, 6),
         "creator_claimed_usdc": claim_amounts_data["paid_usdc"],
         "creator_claim_pending_usdc": claim_amounts_data["pending_usdc"],

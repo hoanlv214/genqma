@@ -137,19 +137,19 @@ def test_spending_policy_concurrency_state_isolation(client):
     wallet_a = "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
     wallet_b = "0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
 
-    # Wallet A spends 0.04 USDC
+    # Evaluating a purchase must never fabricate a debit for either wallet.
     res_a1 = client.post("/api/v1/agent/spending-policy/evaluate", json={"amount_usdc": 0.04, "wallet_address": wallet_a}).json()
     assert res_a1["allowed"] is True
 
-    # Wallet B spends 0.03 USDC (should not be affected by wallet A)
+    # Wallet B is unaffected by wallet A's evaluation.
     res_b1 = client.post("/api/v1/agent/spending-policy/evaluate", json={"amount_usdc": 0.03, "wallet_address": wallet_b}).json()
     assert res_b1["allowed"] is True
-    assert res_b1["current_spend_today_usdc"] == 0.03
+    assert res_b1["current_spend_today_usdc"] == 0
 
-    # Wallet A attempts another 0.02 (total 0.06 > max_per_tx? 0.02 is under max_per_tx, but total = 0.06 < 1.00 daily cap)
+    # Repeated evaluation is also read-only.
     res_a2 = client.post("/api/v1/agent/spending-policy/evaluate", json={"amount_usdc": 0.02, "wallet_address": wallet_a}).json()
     assert res_a2["allowed"] is True
-    assert res_a2["current_spend_today_usdc"] == 0.06
+    assert res_a2["current_spend_today_usdc"] == 0
 
 
 # ---------------------------------------------------------------------------

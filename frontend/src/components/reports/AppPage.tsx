@@ -23,7 +23,7 @@ import { usePayment } from "../../hooks/usePayment";
 import { useAgentBuyer } from "../../hooks/useAgentBuyer";
 import { useAgentWalletStore } from "../../state/agentWalletStore";
 import { buildGatewayWithdrawIntent, buildGatewayWithdrawTypedData, encodeGatewayMintCalldata } from "../../services/gatewayCrypto";
-import { requireWalletProfileHeaders } from "../../services/walletProfileSession";
+import { withdrawAgentFunds } from "../../services/agentWithdrawal";
 import {
   formatRawPercent,
   formatCompactMoney,
@@ -260,22 +260,8 @@ export function AppPage({
 
     try {
       setAgentOpLoading(true);
-      const walletHeaders = await requireWalletProfileHeaders(wallet);
-      const res = await fetch(`${API_BASE_URL}/api/v1/sessions/withdraw`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1", ...walletHeaders },
-        body: JSON.stringify({
-          owner_wallet: wallet,
-          amount_usdc: amount
-        })
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || "Withdrawal execution failed.");
-      }
-
-      showToast(`Successfully withdrew ${amount.toFixed(2)} USDC from Agent Wallet!`, "success");
+      await withdrawAgentFunds(wallet, amount);
+      showToast(`Withdrawal of ${amount.toFixed(2)} USDC submitted.`, "success");
       setAgentOpMode(null);
       setAgentOpAmount("");
       await refreshAgentWallet();

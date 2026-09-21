@@ -58,6 +58,30 @@ against authoritative QMA candidates and policy.
 
 ## Autonomous Agent Sessions
 
+`POST /api/v1/sessions/withdraw` accepts an optional UUID `request_id`.
+Persist it before submitting and reuse it after timeouts, reloads, or retries.
+Use a fresh UUID only for an intentional new withdrawal. The backend durably
+reserves the operation before contacting Circle and rejects amount changes for
+the same ID with 409. Legacy calls without an ID deduplicate permanently for
+the same owner/wallet/amount. A successful response means submitted; wait for a
+Circle COMPLETE receipt to call it confirmed.
+
+## Invoice-backed jobs and spending evaluation
+
+`POST /api/v1/agent/jobs` without `invoice_id` returns 402 with a real invoice in
+`detail.invoice`. Pay and verify it using the payment API, then retry with the
+same provider/tier/query, `invoice_id` and `X-QMA-Access-Token`.
+`GET /api/v1/agent/jobs/job_{invoice_id}` requires the same paid-access token.
+Jobs survive restarts through invoice storage and expose the actual finalized
+GenLayer receipt and cached report. This adapter does not create an independent
+ERC-8183 on-chain escrow or award reputation points.
+
+`GET /api/v1/agent/spending-policy` advertises advisory limits with
+`enforce_strict=false`. Evaluate is read-only, uses persisted settlement history
+and UTC calendar days/weeks, counts each settlement once, and excludes confirmed
+refunds. It does not consume budget or configure Circle policy. Storage failure
+returns 503. Wallet executors remain responsible for enforcing spend limits.
+
 Wallet-owned sessions use `X-QMA-Wallet-Token`:
 
 ```text

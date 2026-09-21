@@ -11,6 +11,7 @@ from backend.app.core.config import (
     PAYMENT_WALLET_ADDRESS,
     ARC_GATEWAY_WALLET,
     ARC_TESTNET_USDC,
+    PAYMENT_NETWORK,
 )
 
 SELLER_ADDRESS = PAYMENT_WALLET_ADDRESS or "0x23e7c029a287a83d80b2e084e008211658dda11d"
@@ -67,7 +68,7 @@ AGENT_GUIDANCE = """GenQMA is an AI agent marketplace for real-time quantitative
 
 ### How and When to Call
 - Call when autonomous trading agents or risk engines require verified market anomalies (e.g. extreme CEX funding rate disparities, sudden open-interest shifts, or Polymarket/Pyth divergences) before executing on-chain trades.
-- Endpoints accept direct pay-per-call nanopayments ($0.002000 - $0.005000 USDC per report) over x402 and MPP across Arc Testnet, Base Sepolia, Base, and Arbitrum.
+- Create an invoice, pay its Gateway resource on the configured payment network, then verify the settlement. Request the report with invoice_id and X-QMA-Access-Token. Raw payment headers do not authorize report access.
 
 ### Operations & Endpoints
 - `POST /api/v1/providers/{provider_id}/full-report`: Primary paid report endpoint. Provide a JSON query payload with `symbol` (e.g. 'BTC_USDT') and optional technical filters. Returns anomaly classifications, historical analogs, predictive regimes, and GenLayer SLA verdict proof.
@@ -77,7 +78,7 @@ AGENT_GUIDANCE = """GenQMA is an AI agent marketplace for real-time quantitative
 ### Inputs
 - Path param: `provider_id` (string, e.g. 'funding_memory', 'polymarket_orderbook', 'pyth_entropy').
 - Body (application/json): `symbol` (required, string, 1-32 chars, e.g. 'BTC_USDT'), optional technical parameters (`fundingRate`, `openInterest`, `volume24h`, `price`, `longShortRatio`).
-- Unpaid requests receive an HTTP 402 challenge containing payment requirements and accepted multi-chain networks.
+- Unpaid requests receive HTTP 402. The invoice contains the authoritative amount, network and payment resource.
 
 ### Outputs
 - JSON object containing `anomalies`, `historical_analogs`, `weighted_win_rate`, `regime_score`, and cryptographic `genlayer_sla` verdict."""
@@ -102,6 +103,8 @@ def build_x402_accepts(
 
     accepts = []
     for cfg in NETWORKS_CONFIG:
+        if cfg["network"] != PAYMENT_NETWORK:
+            continue
         # Standard CAIP-2 entry compliant with @circle-fin/x402-batching
         accepts.append({
             "scheme": "exact",
@@ -125,7 +128,7 @@ def build_x_payment_info(
 ) -> Dict[str, Any]:
     """Generate rich x-payment-info vendor extension with multi-network protocols and accepts list."""
     accepts_list = build_x402_accepts(amount_decimal, seller_address)
-    networks_list = [cfg["network"] for cfg in NETWORKS_CONFIG]
+    networks_list = [item["network"] for item in accepts_list]
     return {
         "price": {
             "mode": "dynamic",
@@ -260,7 +263,7 @@ def build_402_challenge_payload(
 ) -> Tuple[Dict[str, Any], Dict[str, str]]:
     """Construct standard HTTP 402 challenge response body and headers with Circle Bazaar schema extensions."""
     accepts = build_x402_accepts(amount_decimal, seller_address)
-    networks_list = [cfg["network"] for cfg in NETWORKS_CONFIG]
+    networks_list = [item["network"] for item in accepts]
     protocols_list = [
         {"x402": {"networks": networks_list, "accepts": accepts}},
         {"mpp": {"networks": networks_list}},
@@ -289,12 +292,12 @@ def build_402_challenge_payload(
         "extensions": extended_extensions,
     }
 
-    raw_json = json.dumps(payment_required_obj)
+    raw_json = json.dumps(payment_required_obj, separators=(",", ":"))
     b64_header = base64.b64encode(raw_json.encode("utf-8")).decode("utf-8")
 
     headers = {
         "PAYMENT-REQUIRED": b64_header,
-        "WWW-Authenticate": f'X402 requirements="{b64_header}", SIWX realm="siwx", Payment realm="x402", token="USDC", amount="{amount_decimal}", accepts="arc-testnet,base,base-sepolia,arbitrum,ethereum,polygon,optimism,avalanche"',
+        "WWW-Authenticate": f'X402 realm="x402", token="USDC", amount="{amount_decimal}"',
         "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, payment-required, WWW-Authenticate",
     }
 
@@ -315,4 +318,3 @@ def build_402_challenge_payload(
     }
 
     return body, headers
-

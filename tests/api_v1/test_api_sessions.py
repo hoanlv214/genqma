@@ -20,8 +20,13 @@ class InMemorySupabase(SupabaseStorage):
         self.sessions = {}
         self.events = []
         self.wallet_registry = {}
+        self.withdrawals = {}
 
     def _upsert(self, table, rows, conflict):
+        if table == "qma_withdrawals":
+            for row in rows:
+                self.withdrawals[row["operation_id"]] = dict(row["operation"])
+            return
         if table == "agent_wallets":
             for source in rows:
                 row = dict(source)
@@ -39,6 +44,13 @@ class InMemorySupabase(SupabaseStorage):
 
     def _request(self, method, table, params=None, json_body=None, prefer=""):
         params = params or {}
+        if table == "qma_withdrawals":
+            if method == "POST":
+                for row in json_body:
+                    self.withdrawals.setdefault(row["operation_id"], dict(row["operation"]))
+                return []
+            operation_id = params["operation_id"].removeprefix("eq.")
+            return [{"operation": dict(self.withdrawals[operation_id])}] if operation_id in self.withdrawals else []
         if table == "rpc/pick_queued_session" and method == "POST":
             queued = next((row for row in self.sessions.values() if row.get("status") == "queued"), None)
             if not queued:
@@ -390,12 +402,71 @@ def test_withdraw_sends_stable_idempotency_key(client):
         for url, kwargs in client.gateway_calls
         if url.endswith("/api/wallet/withdraw")
     ]
-    assert len(withdraw_calls) == 3
+    assert len(withdraw_calls) == 2
     keys = [body["idempotencyKey"] for body in withdraw_calls]
     # Retries of the same withdrawal reuse the key so the relayer cannot
     # double-send after a timed-out response; a different amount gets a new one.
-    assert keys[0] == keys[1]
-    assert keys[0] != keys[2]
+    assert keys[0] != keys[1]
+
+
+def test_withdraw_uuid_reuse_rejects_amount_change(client):
+    create_session(client)
+    request_id = "560eb12f-bf7e-42ef-b278-17ffccf5a551"
+    first = client.post("/api/v1/sessions/withdraw", json={
+        "owner_wallet": OWNER, "amount_usdc": 1, "request_id": request_id,
+    }, headers=wallet_token())
+    conflict = client.post("/api/v1/sessions/withdraw", json={
+        "owner_wallet": OWNER, "amount_usdc": 2, "request_id": request_id,
+    }, headers=wallet_token())
+    assert first.status_code == 200
+    assert conflict.status_code == 409
+    assert len([url for url, _ in client.gateway_calls if url.endswith("/api/wallet/withdraw")]) == 1
+
+
+def test_withdraw_storage_failure_submits_no_transfer(client, storage, monkeypatch):
+    create_session(client)
+    def unavailable(*args):
+        raise RuntimeError("database offline")
+    monkeypatch.setattr(storage, "reserve_withdrawal", unavailable)
+    response = client.post("/api/v1/sessions/withdraw", json={
+        "owner_wallet": OWNER, "amount_usdc": 1,
+    }, headers=wallet_token())
+    assert response.status_code == 503
+    assert not [url for url, _ in client.gateway_calls if url.endswith("/api/wallet/withdraw")]
+
+
+def test_withdraw_timeout_retry_keeps_key_across_day_boundary(client, monkeypatch):
+    import requests
+    create_session(client)
+    calls = []
+    def relayer(url, **kwargs):
+        calls.append(kwargs["json"])
+        if len(calls) == 1:
+            raise requests.Timeout("response lost after submission")
+        return FakeGatewayResponse({"status": "submitted", "transactionId": "same-transfer"})
+    monkeypatch.setattr(requests, "post", relayer)
+    payload = {"owner_wallet": OWNER, "amount_usdc": 1,
+               "request_id": "b43c50bb-b102-47a4-a663-2cb3c7d52ea3"}
+    first = client.post("/api/v1/sessions/withdraw", json=payload, headers=wallet_token())
+    assert first.status_code == 500
+    with monkeypatch.context() as later:
+        later.setattr("time.time", lambda: 2_000_000_000)
+        retry = client.post("/api/v1/sessions/withdraw", json=payload, headers=wallet_token())
+    assert retry.status_code == 200
+    assert calls[0]["idempotencyKey"] == calls[1]["idempotencyKey"]
+    cached = client.post("/api/v1/sessions/withdraw", json=payload, headers=wallet_token())
+    assert cached.json() == retry.json()
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("amount", [0.0000001, 1.0000001])
+def test_withdraw_rejects_fractional_micro_usdc(client, amount):
+    create_session(client)
+    response = client.post("/api/v1/sessions/withdraw", json={
+        "owner_wallet": OWNER, "amount_usdc": amount,
+    }, headers=wallet_token())
+    assert response.status_code == 400
+    assert not [url for url, _ in client.gateway_calls if url.endswith("/api/wallet/withdraw")]
 
 
 def test_delete_last_session_with_funded_agent_wallet_is_blocked(client, storage):

@@ -62,9 +62,9 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
 
             # Check that accepts[] and networks declare multi-chain compatibility in OpenAPI
             networks = payment_info.get("networks", [])
-            self.assertGreaterEqual(len(networks), 2, f"Expected multiple networks in x-payment-info for {path}")
+            self.assertEqual(networks, ["eip155:5042002"])
             accepts_spec = payment_info.get("accepts", [])
-            self.assertGreaterEqual(len(accepts_spec), 2, f"Expected multiple accepts entries in x-payment-info for {path}")
+            self.assertEqual(len(accepts_spec), 1)
 
     def test_security_schemes_include_wallet_auth_and_x402(self):
         schemes = self.schema["components"]["securitySchemes"]
@@ -114,13 +114,12 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
 
         # Multi-chain network accepts
         accepts = data.get("accepts", [])
-        self.assertGreaterEqual(len(accepts), 4)
+        self.assertEqual(len(accepts), 1)
 
         networks = {a["network"] for a in accepts}
         self.assertTrue(any("5042002" in n or "arc" in n for n in networks), "Arc Testnet missing")
-        self.assertTrue(any("84532" in n or "base-sepolia" in n for n in networks), "Base Sepolia missing")
-        self.assertTrue(any("8453" in n or "base" in n for n in networks), "Base Mainnet missing")
-        self.assertTrue(any("42161" in n or "arbitrum" in n for n in networks), "Arbitrum missing")
+        self.assertEqual(networks, {"eip155:5042002"})
+        self.assertLess(sum(len(k) + len(v) + 4 for k, v in response.headers.items()), 8192)
 
         # Verify Circle Gateway batching specification compliance
         for item in accepts:
@@ -137,7 +136,7 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
         self.assertIn("extensions", decoded_header)
         self.assertIn("bazaar", decoded_header["extensions"])
 
-    def test_direct_x402_payment_header_grants_access(self):
+    def test_unverified_x402_payment_header_never_grants_access(self):
         simulated_payment = {
             "accepted": {
                 "network": "eip155:5042002",
@@ -154,10 +153,8 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
             json={"symbol": "BTC_USDT"},
             headers={"payment-signature": b64_sig},
         )
-        self.assertEqual(response.status_code, 200)
-        report = response.json()
-        self.assertEqual(report.get("query_symbol"), "BTC_USDT")
-        self.assertIn("tier", report)
+        self.assertEqual(response.status_code, 402)
+        self.assertNotIn("tier", response.json())
 
 
 if __name__ == "__main__":

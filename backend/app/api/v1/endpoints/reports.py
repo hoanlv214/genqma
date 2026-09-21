@@ -72,12 +72,12 @@ def create_reports_router(deps: SimpleNamespace) -> APIRouter:
         ),
         invoice_id: Optional[str] = Query(
             None,
-            description="Optional settled invoice ID for pre-allocated invoice flows. Leave empty when paying directly via x402 / Circle Gateway.",
+            description="Verified invoice ID, required together with X-QMA-Access-Token. Pay the invoice's Gateway resource and verify the settlement first.",
             examples=["inv_79d896a28cd5"],
         ),
         qma_access_token: Optional[str] = Security(qma_access_token_header),
     ):
-        """Returns a paid provider preview for the exact query snapshot bound to the invoice."""
+        """Returns the verified preview for the invoice-bound query. Requires invoice_id and X-QMA-Access-Token after payment verification. Raw payment-signature, x-payment and Authorization headers do not grant access; pay the invoice's Gateway resource first."""
         try:
             resolved_query = query if query is not None else QueryModel(symbol="BTC_USDT")
             return deps.run_paid_provider_report(
@@ -114,12 +114,12 @@ def create_reports_router(deps: SimpleNamespace) -> APIRouter:
         ),
         invoice_id: Optional[str] = Query(
             None,
-            description="Optional settled invoice ID for pre-allocated invoice flows. Leave empty when paying directly via x402 / Circle Gateway.",
+            description="Verified invoice ID, required together with X-QMA-Access-Token after settlement verification.",
             examples=["inv_79d896a28cd5"],
         ),
         qma_access_token: Optional[str] = Security(qma_access_token_header),
     ):
-        """Returns a paid provider full report for the exact query snapshot bound to the invoice."""
+        """Returns the verified full report for the invoice-bound query. Requires invoice_id and X-QMA-Access-Token after payment verification. Raw payment headers never grant access or create a paid invoice."""
         try:
             resolved_query = query if query is not None else QueryModel(symbol="BTC_USDT")
             return deps.run_paid_provider_report(
@@ -149,7 +149,7 @@ def create_reports_router(deps: SimpleNamespace) -> APIRouter:
         query: Optional[QueryModel] = Body(None),
         invoice_id: Optional[str] = Query(
             None,
-            description="Optional settled invoice ID for pre-allocated invoice flows. Leave empty when paying directly via x402 / Circle Gateway.",
+            description="Verified invoice ID, required together with X-QMA-Access-Token after settlement verification.",
         ),
         qma_access_token: Optional[str] = Security(qma_access_token_header),
     ):
@@ -175,7 +175,7 @@ def create_reports_router(deps: SimpleNamespace) -> APIRouter:
         query: Optional[QueryModel] = Body(None),
         invoice_id: Optional[str] = Query(
             None,
-            description="Optional settled invoice ID for pre-allocated invoice flows. Leave empty when paying directly via x402 / Circle Gateway.",
+            description="Verified invoice ID, required together with X-QMA-Access-Token after settlement verification.",
         ),
         qma_access_token: Optional[str] = Security(qma_access_token_header),
     ):

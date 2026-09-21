@@ -11,13 +11,14 @@ import os
 from typing import Dict, Optional
 
 import paid_intelligence_kit as paid_kit
+from backend.app.services.payment_state_machine import has_fabricated_settlement
 
 logger = logging.getLogger("QMA-API")
 
 
 def wallet_matches(record: dict, address: str, normalize_address) -> bool:
     normalized = normalize_address(address)
-    if not normalized or not isinstance(record, dict):
+    if not normalized or not isinstance(record, dict) or has_fabricated_settlement(record):
         return False
     return any(
         normalize_address(record.get(field)) == normalized
@@ -31,7 +32,7 @@ def wallet_matches(record: dict, address: str, normalize_address) -> bool:
 
 def load_payment_ledger(storage_backend) -> list:
     try:
-        return storage_backend.load_payment_events()
+        return [row for row in storage_backend.load_payment_events() if not has_fabricated_settlement(row)]
     except Exception as exc:
         logger.warning(f"Could not load payment ledger: {exc}")
         return []
@@ -40,7 +41,7 @@ def load_payment_ledger(storage_backend) -> list:
 def load_payment_events_for_wallet(storage_backend, address: str, normalize_address) -> list:
     try:
         if hasattr(storage_backend, "load_payment_events_for_wallet"):
-            return storage_backend.load_payment_events_for_wallet(address)
+            return [row for row in storage_backend.load_payment_events_for_wallet(address) if not has_fabricated_settlement(row)]
     except Exception as exc:
         logger.warning(f"Could not load wallet payment events: {exc}")
     normalized = normalize_address(address)
@@ -53,7 +54,7 @@ def load_payment_events_for_wallet(storage_backend, address: str, normalize_addr
 def load_payment_event_summaries(storage_backend, limit: int = 5000) -> list:
     try:
         if hasattr(storage_backend, "load_payment_event_summaries"):
-            return storage_backend.load_payment_event_summaries(limit=limit)
+            return [row for row in storage_backend.load_payment_event_summaries(limit=limit) if not has_fabricated_settlement(row)]
     except Exception as exc:
         logger.warning(f"Could not load payment event summaries: {exc}")
     return sorted(
@@ -86,7 +87,7 @@ def save_single_payment_event(storage_backend, event: dict) -> None:
 
 def load_paid_reports(storage_backend) -> dict:
     try:
-        return storage_backend.load_paid_reports()
+        return {key: row for key, row in storage_backend.load_paid_reports().items() if not has_fabricated_settlement(row)}
     except Exception as exc:
         logger.warning(f"Could not load paid reports: {exc}")
         return {}
@@ -102,11 +103,12 @@ def load_paid_reports_for_wallet(
 ) -> dict:
     try:
         if hasattr(storage_backend, "load_paid_reports_for_wallet"):
-            return storage_backend.load_paid_reports_for_wallet(
+            records = storage_backend.load_paid_reports_for_wallet(
                 address,
                 symbol=symbol,
                 provider_id=provider_id,
             )
+            return {key: row for key, row in records.items() if not has_fabricated_settlement(row)}
     except Exception as exc:
         logger.warning(f"Could not load wallet paid reports: {exc}")
     normalized = normalize_address(address)
@@ -131,11 +133,12 @@ def load_paid_report_summaries_for_wallet(
 ) -> list:
     try:
         if hasattr(storage_backend, "load_paid_report_summaries_for_wallet"):
-            return storage_backend.load_paid_report_summaries_for_wallet(
+            records = storage_backend.load_paid_report_summaries_for_wallet(
                 address,
                 symbol=symbol,
                 provider_id=provider_id,
             )
+            return [row for row in records if not has_fabricated_settlement(row)]
     except Exception as exc:
         logger.warning(f"Could not load wallet report summaries: {exc}")
     return [
@@ -165,7 +168,7 @@ def load_paid_report_summaries_for_wallet(
 def load_paid_report_summaries(storage_backend, limit: int = 5000) -> list:
     try:
         if hasattr(storage_backend, "load_paid_report_summaries"):
-            return storage_backend.load_paid_report_summaries(limit=limit)
+            return [row for row in storage_backend.load_paid_report_summaries(limit=limit) if not has_fabricated_settlement(row)]
     except Exception as exc:
         logger.warning(f"Could not load paid report summaries: {exc}")
     return [
@@ -209,18 +212,18 @@ def load_paid_report_by_id(
     try:
         if hasattr(storage_backend, "load_paid_report_by_id"):
             record = storage_backend.load_paid_report_by_id(address, entitlement_id)
-            if record:
+            if record and not has_fabricated_settlement(record):
                 return record
             if entitlement_id != target_clean:
                 record = storage_backend.load_paid_report_by_id(address, target_clean)
-                if record:
+                if record and not has_fabricated_settlement(record):
                     return record
             else:
                 record = storage_backend.load_paid_report_by_id(address, f"funding_memory:{entitlement_id}")
-                if record:
+                if record and not has_fabricated_settlement(record):
                     return record
                 record = storage_backend.load_paid_report_by_id(address, f"oi_memory:{entitlement_id}")
-                if record:
+                if record and not has_fabricated_settlement(record):
                     return record
     except Exception as exc:
         logger.warning(f"Could not load paid report from backend: {exc}")
@@ -239,6 +242,10 @@ def load_paid_report_by_id(
 
 def save_paid_reports(storage_backend, reports: dict) -> None:
     try:
+        if getattr(storage_backend, "backend_name", None) == "json":
+            retained = {key: row for key, row in storage_backend.load_paid_reports().items()
+                        if has_fabricated_settlement(row)}
+            reports = {**retained, **reports}
         storage_backend.save_paid_reports(reports)
     except Exception as exc:
         logger.warning(f"Could not save paid reports: {exc}")
@@ -260,7 +267,11 @@ def save_single_paid_report(storage_backend, entitlement_id: str, record: dict) 
 
 def load_invoices(storage_backend) -> dict:
     try:
-        return storage_backend.load_invoices()
+        records = storage_backend.load_invoices()
+        for record in records.values():
+            if has_fabricated_settlement(record):
+                record["status"] = "disputed"
+        return records
     except Exception as exc:
         logger.warning(f"Could not load invoices: {exc}")
         return {}
@@ -269,7 +280,8 @@ def load_invoices(storage_backend) -> dict:
 def load_paid_invoices_for_wallet(storage_backend, address: str, normalize_address) -> dict:
     try:
         if hasattr(storage_backend, "load_paid_invoices_for_wallet"):
-            return storage_backend.load_paid_invoices_for_wallet(address)
+            return {key: row for key, row in storage_backend.load_paid_invoices_for_wallet(address).items()
+                    if not has_fabricated_settlement(row)}
     except Exception as exc:
         logger.warning(f"Could not load wallet paid invoices: {exc}")
     normalized = normalize_address(address)
@@ -286,12 +298,11 @@ from backend.app.services.payment_state_machine import refresh_split_invoice_sta
 
 
 def save_invoice(storage_backend, invoice: dict) -> None:
-    try:
-        if isinstance(invoice, dict):
-            refresh_split_invoice_status(invoice)
+    if isinstance(invoice, dict):
+        refresh_split_invoice_status(invoice)
+    # Financial state must be durable before callers can issue access or money.
+    if hasattr(storage_backend, "save_invoice"):
         storage_backend.save_invoice(invoice)
-    except Exception as exc:
-        logger.warning(f"Could not save invoice: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -343,49 +354,39 @@ def save_provider_control(storage_backend, provider_id: str, control: dict) -> b
 # ---------------------------------------------------------------------------
 
 def load_creator_claims(storage_backend, creator_claims_path: str) -> list:
-    try:
-        if hasattr(storage_backend, "load_creator_claims"):
-            records = storage_backend.load_creator_claims()
-            if isinstance(records, list):
-                return records
-    except Exception as exc:
-        logger.warning(f"Could not load creator claims from storage backend: {exc}")
-    try:
-        if os.path.exists(creator_claims_path):
-            with open(creator_claims_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return data if isinstance(data, list) else []
-    except Exception as exc:
-        logger.warning(f"Could not load local creator claims: {exc}")
-    return []
+    # Database errors cannot be interpreted as zero previously paid claims.
+    records = storage_backend.load_creator_claims() if hasattr(storage_backend, "load_creator_claims") else []
+    local_records = []
+    if os.path.exists(creator_claims_path):
+        with open(creator_claims_path, "r", encoding="utf-8") as file_obj:
+            local_records = json.load(file_obj)
+        if not isinstance(local_records, list):
+            raise RuntimeError("Creator claim ledger is malformed.")
+    # Preserve pre-migration history; persisted database updates take precedence.
+    merged = {row["claim_id"]: row for row in local_records if isinstance(row, dict) and "claim_id" in row}
+    merged.update({row["claim_id"]: row for row in records if isinstance(row, dict) and "claim_id" in row})
+    return list(merged.values())
 
 
 def save_creator_claim_record(storage_backend, creator_claims_path: str, record: dict) -> bool:
-    saved = False
-    try:
+    from backend.app.core.state import cross_process_lock
+
+    with cross_process_lock("creator_claim_ledger"):
+        remote_saved = False
         if hasattr(storage_backend, "save_creator_claim"):
-            storage_backend.save_creator_claim(record)
-            saved = True
-    except Exception as exc:
-        logger.warning(f"Could not save creator claim to storage backend: {exc}")
-    try:
-        records = []
-        if os.path.exists(creator_claims_path):
-            with open(creator_claims_path, "r", encoding="utf-8") as f:
-                existing = json.load(f)
-            records = existing if isinstance(existing, list) else []
-        claim_id = record.get("claim_id")
-        replaced = False
-        for idx, item in enumerate(records):
-            if item.get("claim_id") == claim_id:
-                records[idx] = record
-                replaced = True
-                break
-        if not replaced:
-            records.append(record)
-        with open(creator_claims_path, "w", encoding="utf-8") as f:
-            json.dump(records[-1000:], f, indent=2)
-        saved = True
-    except Exception as exc:
-        logger.warning(f"Could not save local creator claim: {exc}")
-    return saved
+            try:
+                storage_backend.save_creator_claim(record)
+                remote_saved = True
+            except Exception as exc:
+                logger.warning(f"Could not save creator claim to storage backend: {exc}")
+        try:
+            records = load_creator_claims(storage_backend, creator_claims_path)
+            by_id = {row["claim_id"]: row for row in records if isinstance(row, dict) and "claim_id" in row}
+            by_id[record["claim_id"]] = record
+            os.makedirs(os.path.dirname(creator_claims_path) or ".", exist_ok=True)
+            with open(creator_claims_path, "w", encoding="utf-8") as file_obj:
+                json.dump(list(by_id.values()), file_obj, indent=2)
+            return True
+        except Exception as exc:
+            logger.warning(f"Could not save local creator claim: {exc}")
+            return remote_saved

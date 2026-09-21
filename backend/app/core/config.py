@@ -24,6 +24,7 @@ def load_local_env(env_path: Path | None = None) -> None:
 
 # Load env FIRST so all os.getenv() calls below see .env values
 load_local_env()
+DATA_DIR = Path(os.getenv("QMA_DATA_DIR") or ROOT_DIR)
 
 
 # ---------------------------------------------------------------------------
@@ -47,12 +48,12 @@ INTERNAL_TREASURY_MODULE: str = "Vestiarion"  # Internal corporate treasury & li
 class Settings:
     root_dir: Path = ROOT_DIR
     public_dir: Path = ROOT_DIR / "public"
-    payment_ledger_path: Path = ROOT_DIR / "payment_ledger.json"
-    paid_reports_path: Path = ROOT_DIR / "paid_reports.json"
-    invoices_path: Path = ROOT_DIR / "invoices.json"
-    creator_applications_path: Path = ROOT_DIR / "creator_applications.json"
-    provider_controls_path: Path = ROOT_DIR / "provider_controls.json"
-    creator_claims_path: Path = ROOT_DIR / "creator_claims.json"
+    payment_ledger_path: Path = DATA_DIR / "payment_ledger.json"
+    paid_reports_path: Path = DATA_DIR / "paid_reports.json"
+    invoices_path: Path = DATA_DIR / "invoices.json"
+    creator_applications_path: Path = DATA_DIR / "creator_applications.json"
+    provider_controls_path: Path = DATA_DIR / "provider_controls.json"
+    creator_claims_path: Path = DATA_DIR / "creator_claims.json"
     brand_name: str = BRAND_NAME
     brand_codename: str = BRAND_CODENAME
     brand_tagline: str = BRAND_TAGLINE

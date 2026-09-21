@@ -49,6 +49,22 @@ Audience schemas are filtered using these extensions, not by tags alone.
 3. Use the returned short-lived token as `X-QMA-Access-Token`.
 4. The token must match invoice, provider, tier, query, and wallet bindings.
 
+Raw x402 headers never grant report or job access. HTTP 402 advertises the
+configured payment network only; clients must pay the resource on the invoice.
+`PAYMENT-REQUIRED` carries compact requirements and `WWW-Authenticate` is a short
+challenge so ordinary HTTP clients can parse the response. Consensus still
+pending returns resumable invoice state without an access token.
+Historical fabricated `x402_settle_*` invoices cannot authorize access; their
+cached reports are excluded from wallet snapshots and return the existing 404
+not-found response on direct retrieval.
+
+Agent job POST without an invoice returns 402 with an invoice; paid POST and GET
+require the invoice access token. Spending-policy evaluation is advisory and
+read-only, using persisted UTC daily/weekly payments. Wallet withdrawal accepts
+an optional UUID `request_id`: retries reuse the original transfer, and reuse
+with another amount returns 409. Clients should supply a new UUID for each
+intentional withdrawal; legacy requests without it deduplicate by wallet/amount.
+
 ### Wallet owner token
 
 1. Fetch a single-use nonce and server timestamp from
@@ -88,8 +104,8 @@ The Access column must match the operation's `x-qma-access` value in
 | GET | `/api/v1/admin/public-config` | `public` | Read public admin capability hints |
 | POST | `/api/v1/agent/decision` | `public` | Create a bounded purchase decision |
 | GET | `/api/v1/agent/identity` | `public` | Read QMA ERC-8004 on-chain agent identity and capabilities |
-| POST | `/api/v1/agent/jobs` | `public` | Dispatch an ERC-8183 escrowed intelligence task |
-| GET | `/api/v1/agent/jobs/{job_id}` | `public` | Inspect an ERC-8183 escrowed task status and GenLayer proof |
+| POST | `/api/v1/agent/jobs` | `paid-access` | Deliver an invoice-backed intelligence job |
+| GET | `/api/v1/agent/jobs/{job_id}` | `paid-access` | Read an owned invoice-backed job |
 | GET | `/api/v1/agent/recommendations` | `public` | Rank purchase candidates for an agent |
 | GET | `/api/v1/agent/spending-policy` | `public` | Read Circle agent wallet spending policy caps |
 | POST | `/api/v1/agent/spending-policy/evaluate` | `public` | Evaluate proposed purchase against agent spending policy |

@@ -12,6 +12,13 @@ QMA does not trust the frontend for paid access. The browser can improve UX, but
 - short-lived access token issuance
 - wallet-bound entitlement persistence
 
+Report headers containing an unverified x402 payload never grant access. The
+invoice-bound verification flow is mandatory, including for agent jobs. Job
+retrieval requires `X-QMA-Access-Token`; job identifiers alone grant no access.
+Settlement replay checks include pending/rejected invoices and fail closed on
+database errors. Creator payout reservations precede visible earnings, and
+withdrawals use durable request IDs rather than time-dependent idempotency keys.
+
 x402 verifies that a payment authorization/settlement exists. QMA still verifies that the payment unlocks the exact provider, tier, and query snapshot requested.
 
 For a comprehensive engineering deep-dive on verification algorithms, anti-tampering query hashing, rate limiting internals, and production lessons, see [`PRODUCTION_SECURITY_ARCHITECTURE.md`](PRODUCTION_SECURITY_ARCHITECTURE.md).
@@ -207,7 +214,7 @@ X-QMA-Access-Token: <access_token>
 Current implementation records revenue split in stats:
 
 ```text
-creator_earned_usdc = revenue_usdc * provider.revenue_share_bps / 10000
+creator_earned_usdc = sum(floor(invoice_amount_raw * invoice_creator_bps / 10000)) / 1000000
 platform_fee_usdc   = revenue_usdc - creator_earned_usdc
 ```
 
@@ -220,6 +227,10 @@ transaction remains locked.
 Creator/platform amounts may be shown as accounting allocations, but they are
 not payout proof. Creator payouts and buyer refunds must be performed by an
 idempotent Arc executor and recorded with their Arc transaction receipts.
+Automatic allocations are reserved before earnings become visible to manual
+claims. Confirmed refunds remain terminal across storage reloads. Claims are
+never truncated and require a readable durable ledger; database errors cannot
+be interpreted as zero past withdrawals.
 
 Recommended roadmap:
 

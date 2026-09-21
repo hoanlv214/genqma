@@ -33,6 +33,7 @@ from backend.app.core.config import ARC_GATEWAY_BASE_URL, ARC_GATEWAY_INTERNAL_S
 class WalletWithdrawRequest(BaseModel):
     owner_wallet: str
     amount_usdc: float = Field(..., gt=0, allow_inf_nan=False)
+    request_id: Optional[uuid.UUID] = Field(default=None, description="Stable UUID for one withdrawal. Reuse on retries; generate a new UUID for an intentional new withdrawal. Legacy requests without it are deduplicated permanently by owner, wallet and amount.")
 
     @field_validator("amount_usdc", mode="before")
     @classmethod
@@ -490,9 +491,10 @@ def create_sessions_router(deps) -> APIRouter:
         "/api/v1/sessions/withdraw",
         tags=["Agent sessions"],
         summary="Withdraw from an Agent Wallet",
+        description="Submit an owner-authenticated withdrawal. Reuse request_id on retries, including after timeouts or page reloads. Each operation is persisted before submission and bound to owner, wallet and amount. Reusing it with another amount returns 409. Without request_id, identical legacy requests are permanently deduplicated. A successful response means submitted, not necessarily on-chain confirmed.",
         responses={
             200: {"model": AgentWalletWithdrawResponse, "description": "Circle Agent Wallet withdrawal submitted."},
-            **documented_errors(400, 403, 404, 429, 500, 502, 503),
+            **documented_errors(400, 403, 404, 409, 429, 500, 502, 503),
         },
     )
     def withdraw_funds(
@@ -543,17 +545,26 @@ def create_sessions_router(deps) -> APIRouter:
                     detail="No Agent Wallet found for this owner wallet."
                 )
 
-            # Stable idempotency key for the relayer: retries of the same
-            # withdrawal (owner + wallet + amount) within the same 10-minute
-            # bucket reuse the key, so Circle returns the original transfer
-            # instead of executing a second one after a timed-out response.
-            # Intentional repeat withdrawals of the same amount must wait for
-            # the next bucket.
+            amount_text = f"{req.amount_usdc:.6f}"
+            if float(amount_text) <= 0 or float(amount_text) != req.amount_usdc:
+                raise HTTPException(status_code=400, detail="Withdrawal must be a positive whole number of micro-USDC (at most 6 decimals).")
+            # A retry is bound to an operation, never a wall-clock time bucket.
+            request_key = str(req.request_id) if req.request_id else f"legacy:{amount_text}"
             idempotency_key = str(uuid.uuid5(
                 uuid.NAMESPACE_URL,
                 "qma:agent-wallet-withdraw:"
-                f"{owner_wallet_lower}:{agent_wallet_id}:{req.amount_usdc:.6f}:{int(time.time() // 600)}",
+                f"{owner_wallet_lower}:{agent_wallet_id}:{request_key}",
             ))
+            proposed = {"owner_wallet": owner_wallet_lower, "wallet_id": agent_wallet_id,
+                        "amount_usdc": amount_text, "idempotency_key": idempotency_key, "status": "requested"}
+            try:
+                operation = storage.reserve_withdrawal(idempotency_key, proposed)
+            except Exception as exc:
+                raise HTTPException(status_code=503, detail="Could not persist withdrawal. No transfer was submitted.") from exc
+            if any(operation.get(key) != proposed[key] for key in ("owner_wallet", "wallet_id", "amount_usdc")):
+                raise HTTPException(status_code=409, detail="request_id is already bound to another withdrawal amount.")
+            if operation.get("response") is not None:
+                return operation["response"]
 
             # 3. Contact the Gateway to execute the withdraw request
             import requests
@@ -568,7 +579,7 @@ def create_sessions_router(deps) -> APIRouter:
                     json={
                         "walletId": agent_wallet_id,
                         "destinationAddress": owner_wallet_lower,
-                        "amountUsdc": f"{req.amount_usdc:.6f}",
+                        "amountUsdc": amount_text,
                         "idempotencyKey": idempotency_key,
                     },
                     timeout=30
@@ -578,7 +589,10 @@ def create_sessions_router(deps) -> APIRouter:
                         status_code=resp.status_code,
                         detail=f"Failed to execute withdraw on relayer: {resp.text[:300]}"
                     )
-                return resp.json()
+                result = resp.json()
+                operation.update(status="submitted", response=result)
+                storage.save_withdrawal(idempotency_key, operation)
+                return result
             except Exception as e:
                 if isinstance(e, HTTPException):
                     raise e

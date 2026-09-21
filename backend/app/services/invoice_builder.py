@@ -38,6 +38,7 @@ from backend.app.services.payment_state_machine import (
     invoice_access_status,
     invoice_split_mode,
     refresh_split_invoice_status,
+    has_fabricated_settlement,
     split_missing_legs,
     split_paid_legs,
 )
@@ -177,12 +178,21 @@ def settlement_id_already_claimed(
     *different* invoice."""
     if not settlement_id:
         return False
+    for other_id, other_invoice in (invoices_db or {}).items():
+        if other_id != exclude_invoice_id and (
+            other_invoice.get("settlement_id") == settlement_id
+            or any(leg.get("settlement_id") == settlement_id for leg in (other_invoice.get("split") or {}).get("legs") or [])
+        ):
+            return True
     if storage_backend and hasattr(storage_backend, "is_settlement_id_claimed"):
-        return storage_backend.is_settlement_id_claimed(settlement_id, exclude_invoice_id)
+        try:
+            return storage_backend.is_settlement_id_claimed(settlement_id, exclude_invoice_id)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="Settlement ownership could not be checked. Retry later.") from exc
     try:
         all_invoices = load_invoices_fn() if load_invoices_fn else (invoices_db or {})
-    except Exception:
-        all_invoices = invoices_db or {}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Settlement ownership could not be checked. Retry later.") from exc
     for other_id, other_invoice in (all_invoices or {}).items():
         if other_id == exclude_invoice_id:
             continue
@@ -391,6 +401,8 @@ def get_invoice_or_402(invoices_db: dict, invoice_id: str, load_invoices_fn=None
                 "payment": payment_requirement(invoice_id=invoice_id),
             },
         )
+    if has_fabricated_settlement(invoice):
+        raise HTTPException(status_code=402, detail="This legacy invoice has no verified Circle settlement. Create and pay a new invoice.")
     hydrate_payment_schema(invoice)
     status = invoice.get("status")
     if status not in {"paid", "verification_pending", "refunded"}:

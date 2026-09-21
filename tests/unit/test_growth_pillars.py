@@ -64,8 +64,8 @@ def test_circle_marketplace_service_card(client):
     assert res2.json()["service_id"] == "qma-market-intelligence"
 
 
-def test_erc8183_escrowed_job_lifecycle(client):
-    """Tests submitting and inspecting an ERC-8183 escrowed task job."""
+def test_erc8183_unpaid_job_requires_invoice_payment(client):
+    """An unpaid job must not fabricate a report, consensus, or reputation."""
     # Submit job for polymarket_divergence
     req = {
         "job_type": "prediction_divergence",
@@ -81,31 +81,24 @@ def test_erc8183_escrowed_job_lifecycle(client):
         "buyer_agent_id": "claude-autonomous-agent",
     }
     res = client.post("/api/v1/agent/jobs", json=req)
-    assert res.status_code == 200
-    job = res.json()
-    assert job["standard"] == "ERC-8183"
-    assert job["status"] == "settled"
-    assert job["provider_id"] == "polymarket_divergence"
-    assert job["escrow_rail"] == "circle-gateway-x402"
-    assert job["reputation_points_accrued"] == 10
-    assert job["consensus_verification"]["engine"] == "GenLayer Intelligent Contract"
-    assert job["consensus_verification"]["verdict"] == "ACCEPTED"
-    assert "arbitrage_bias" in job["report_payload"] or "status" in job["report_payload"]
-
-    # Inspect job
-    job_id = job["job_id"]
-    inspect_res = client.get(f"/api/v1/agent/jobs/{job_id}")
-    assert inspect_res.status_code == 200
-    assert inspect_res.json()["job_id"] == job_id
+    assert res.status_code == 402
+    invoice = res.json()["detail"]["invoice"]
+    assert invoice["provider_id"] == "polymarket_divergence"
+    assert invoice["invoice_id"].startswith("inv_")
+    assert "consensus_verification" not in res.json()
+    assert "reputation_points_accrued" not in res.json()
+    inspect_res = client.get(f"/api/v1/agent/jobs/job_{invoice['invoice_id']}")
+    assert inspect_res.status_code == 402
 
 
-def test_spending_policy_enforcement(client):
-    """Verifies that Circle wallet spending policy caps are strictly evaluated."""
+def test_spending_policy_advisory_evaluation(client):
+    """Evaluations read spending without reserving or moving funds."""
     # Check default policy caps
     cfg = client.get("/api/v1/agent/spending-policy").json()
     assert cfg["standard"] == "circle-wallet-policy-v1"
     assert cfg["max_per_tx_usdc"] == 0.05
     assert cfg["daily_cap_usdc"] == 1.00
+    assert cfg["enforce_strict"] is False
 
     test_wallet = "0x8888888888888888888888888888888888888888"
 
@@ -115,7 +108,7 @@ def test_spending_policy_enforcement(client):
         json={"amount_usdc": 0.01, "wallet_address": test_wallet},
     ).json()
     assert eval1["allowed"] is True
-    assert eval1["current_spend_today_usdc"] == 0.01
+    assert eval1["current_spend_today_usdc"] == 0
 
     # Transaction exceeding single tx cap (0.10 USDC > 0.05)
     eval2 = client.post(

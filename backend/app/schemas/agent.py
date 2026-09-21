@@ -41,15 +41,16 @@ class AgentIdentityResponse(BaseModel):
 
 
 class ERC8183JobRequest(BaseModel):
+    invoice_id: Optional[str] = Field(default=None, description="Previously created invoice bound to this provider, tier and query. Requires X-QMA-Access-Token after payment verification.")
     job_type: str = Field(default="intelligence_report", description="Requested task type", examples=["intelligence_report"])
     provider_id: str = Field(..., description="Intelligence provider identifier", examples=["polymarket_divergence"])
     query: dict = Field(..., description="Task input parameters query", examples=[{"symbol": "BTC"}])
     tier: Literal["preview", "full"] = Field(default="preview", description="Delivery tier", examples=["preview"])
-    max_budget_usdc: float = Field(default=0.01, ge=0.001, description="Maximum budget allocated in USDC", examples=[0.01])
+    max_budget_usdc: float = Field(default=0.01, ge=0.001, allow_inf_nan=False, description="Maximum budget allocated in USDC", examples=[0.01])
     buyer_agent_id: Optional[str] = Field(default=None, description="Requesting agent identifier", examples=["claude-external-agent"])
     escrow_contract: Optional[str] = Field(
-        default="0x367728bf66Cf962Ce15fD2b65193b7a1466f087c",
-        description="Escrowed job contract or consensus address",
+        default=None,
+        description="Deprecated client metadata; does not select or authenticate a settlement or verifier contract.",
         examples=["0x367728bf66Cf962Ce15fD2b65193b7a1466f087c"],
     )
 
@@ -65,7 +66,7 @@ class ERC8183JobResponse(BaseModel):
     amount_usdc: float = Field(..., description="Cost denominated in USDC")
     consensus_verification: dict = Field(..., description="GenLayer Intelligent Contract consensus proof")
     report_payload: Optional[dict] = Field(default=None, description="Delivered report payload once settled")
-    reputation_points_accrued: int = Field(default=10, description="On-chain reputation score accrued for completing job")
+    reputation_points_accrued: int = Field(default=0, description="No on-chain reputation accrual is performed by this adapter")
 
 
 class CircleServiceCardResponse(BaseModel):
@@ -87,16 +88,18 @@ class SpendingPolicyConfigResponse(BaseModel):
     daily_cap_usdc: float = Field(default=1.00, description="Daily cumulative spending cap in USDC")
     weekly_cap_usdc: float = Field(default=5.00, description="Weekly cumulative spending cap in USDC")
     currency: str = Field(default="USDC", description="Enforced currency")
-    enforce_strict: bool = Field(default=True, description="Whether policy strictly rejects out-of-budget calls")
+    enforce_strict: bool = Field(default=False, description="False: this endpoint is an advisory ledger evaluation; wallet executors enforce spending")
 
 
 class SpendingPolicyEvaluateRequest(BaseModel):
-    amount_usdc: float = Field(..., gt=0, description="Proposed transaction amount in USDC", examples=[0.005])
+    amount_usdc: float = Field(..., gt=0, allow_inf_nan=False, description="Proposed transaction amount in USDC", examples=[0.005])
     wallet_address: str = Field(..., max_length=80, description="Agent wallet address", examples=["0x4859d0d0babdcc8c4d8d2d116258fd0e5f7ff67d"])
     tx_type: Optional[str] = Field(default="report_purchase", description="Transaction category", examples=["report_purchase"])
 
 
 class SpendingPolicyEvaluateResponse(BaseModel):
+    weekly_cap_usdc: float = Field(default=5.0, description="Advisory UTC calendar-week spending cap in USDC")
+    current_spend_week_usdc: float = Field(default=0.0, description="Persisted spending during the current UTC calendar week")
     allowed: bool = Field(..., description="Whether proposed transaction is permitted under spending policy")
     reason: str = Field(..., description="Explanation of evaluation decision")
     amount_usdc: float = Field(..., description="Requested amount")

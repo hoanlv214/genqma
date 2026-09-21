@@ -14,6 +14,11 @@ GATEWAY_FAILED_STATUSES = {
 }
 
 
+def has_fabricated_settlement(record: dict) -> bool:
+    """Recognize records minted by the removed unverified-header bypass."""
+    return str(record.get("settlement_id") or "").startswith("x402_settle_")
+
+
 def split_leg_by_id(invoice: dict, leg_id: str) -> Optional[dict]:
     split = invoice.get("split") or {}
     for leg in split.get("legs") or []:
@@ -31,6 +36,11 @@ def invoice_split_mode(invoice: dict) -> str:
 
 
 def refresh_split_invoice_status(invoice: dict) -> str:
+    if has_fabricated_settlement(invoice):
+        invoice["status"] = "disputed"
+        return "disputed"
+    if invoice.get("status") == "refunded":
+        return "refunded"
     if invoice.get("status") == "verification_rejected" or (invoice.get("genlayer") or {}).get("verdict") == "INVALID":
         invoice["status"] = "verification_rejected"
         return "verification_rejected"
@@ -142,6 +152,8 @@ def aggregate_split_gateway_status(invoice: dict) -> str:
 
 
 def invoice_has_failed_settlement(invoice: dict) -> bool:
+    if has_fabricated_settlement(invoice):
+        return True
     if invoice.get("status") == "disputed":
         return True
     if invoice_split_mode(invoice) == "x402_direct_split":

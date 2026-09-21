@@ -810,7 +810,12 @@ def _load_paid_invoices_for_wallet(address):
     return repo.load_paid_invoices_for_wallet(storage_backend, address, normalize_address)
 
 def _save_invoice(invoice):
-    repo.save_invoice(storage_backend, invoice)
+    try:
+        repo.save_invoice(storage_backend, invoice)
+    except Exception as exc:
+        # Do not leave a failed write cached as an authoritative paid invoice.
+        state.invoices_db.pop(invoice.get("invoice_id"), None)
+        raise HTTPException(status_code=503, detail="Invoice persistence failed; retry the same invoice.") from exc
 
 def _load_creator_applications():
     return repo.load_creator_applications(storage_backend)
@@ -1093,6 +1098,7 @@ def create_invoice(req: InvoiceRequest):
         "creator_wallet": rev_wallet,
         "creator_share_bps": rev_share_bps,
         "platform_share_bps": 10000 - rev_share_bps,
+        "distribution_mode": "automatic_genlayer_settlement",
     }
     
     invoice["wallet_address"] = PLATFORM_TREASURY_ADDRESS
@@ -1146,7 +1152,6 @@ def get_payment_invoice_status(invoice_id, invoice_secret, refresh=True):
     invoice = get_invoice_or_402(state.invoices_db, invoice_id, load_invoices_fn=_load_invoices)
     hydrate_payment_schema(invoice)
     if not _hmac.compare_digest(str(invoice_secret), str(invoice.get("invoice_secret"))):
-        from fastapi import HTTPException
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invoice secret mismatch.")
     changed = False
     if invoice_split_mode(invoice) == "x402_direct_split":
@@ -1328,7 +1333,7 @@ def verify_payment(invoice_id, proof=None):
     from fastapi import HTTPException, status
     if proof is None:
         raise HTTPException(status_code=400, detail="payment proof is required.")
-    invoice = get_invoice_or_402(state.invoices_db, invoice_id)
+    invoice = get_invoice_or_402(state.invoices_db, invoice_id, load_invoices_fn=_load_invoices)
     hydrate_payment_schema(invoice)
     if not _hmac.compare_digest(str(proof.invoice_secret), str(invoice.get("invoice_secret"))):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invoice secret mismatch.")
@@ -1399,15 +1404,19 @@ def verify_payment(invoice_id, proof=None):
                 raise HTTPException(status_code=400, detail="Invoice expired. Create a new purchase.")
             settlement = fetch_circle_settlement(proof.settlement_id)
             validate_arc_payment(invoice, settlement, payer_address=proof.payer_address)
-        batch = find_arc_batch_tx(settlement)
-        invoice["status"] = "settlement_verified"
-        invoice["settlement_id"] = proof.settlement_id
-        invoice["transaction_hash"] = batch.get("batch_tx")
-        invoice["explorer_url"] = batch.get("explorer_url")
-        invoice["payer_address"] = settlement.get("fromAddress")
-        invoice["gateway_status"] = settlement.get("status")
-        invoice["amount_raw"] = settlement.get("amount")
-        invoice["verification_mode"] = "circle-gateway-arc-testnet"
+            if invoice.get("settlement_id") and invoice["settlement_id"] != proof.settlement_id:
+                raise HTTPException(status_code=409, detail="Invoice is already bound to another settlement.")
+            invoice["status"] = "verification_pending"
+            invoice["settlement_id"] = proof.settlement_id
+            invoice["payer_address"] = settlement.get("fromAddress")
+            invoice["gateway_status"] = settlement.get("status")
+            invoice["amount_raw"] = settlement.get("amount")
+            invoice["verification_mode"] = "circle-gateway-arc-testnet"
+            # Reserve the source before report generation or explorer requests.
+            _save_invoice(invoice)
+            batch = find_arc_batch_tx(settlement)
+            invoice["transaction_hash"] = batch.get("batch_tx")
+            invoice["explorer_url"] = batch.get("explorer_url")
         try:
             gl_receipt = verify_invoice_report_with_genlayer(invoice_id, invoice)
             if gl_receipt["verdict"] == "INVALID":
@@ -1555,7 +1564,7 @@ def authorize_paid_invoice(*, query, invoice_id, token, required_tier, provider_
             },
             headers=challenge_headers,
         )
-    invoice = get_invoice_or_402(state.invoices_db, invoice_id)
+    invoice = get_invoice_or_402(state.invoices_db, invoice_id, load_invoices_fn=_load_invoices)
 
     if invoice.get("provider_id", "funding_memory") != provider_id:
         raise HTTPException(status_code=400, detail="Invoice provider does not match requested provider.")
@@ -2096,6 +2105,10 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
         )
         return receipt
 
+    if invoice_split_mode(invoice) != "x402_direct_split":
+        # Reserve the creator share before it becomes visible to manual claims.
+        ensure_arc_settlement_plan(invoice)
+        invoice.setdefault("accounting", {})["distribution_mode"] = "automatic_genlayer_settlement"
     invoice["status"] = "paid"
     invoice["verified_report"] = report
     invoice.pop("_verification_report", None)
@@ -2116,78 +2129,9 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
     return receipt
 
 
-def _process_agent_direct_x402_payment(
-    *,
-    payment_header: str,
-    provider_id: str,
-    query: dict,
-    required_tier: str,
-    request: Optional[Request] = None,
-) -> dict:
-    import base64
-    import json
-    import time
-    import uuid
-
-    raw_header = payment_header.strip()
-    if raw_header.startswith("Payment "):
-        raw_header = raw_header[len("Payment "):].strip()
-
-    try:
-        payload_bytes = base64.b64decode(raw_header)
-        payload = json.loads(payload_bytes.decode("utf-8"))
-    except Exception as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid x402 payment-signature header: {str(exc)}",
-        )
-
-    auth = payload.get("payload", {}).get("authorization", {}) or payload.get("authorization", {})
-    payer_address = (
-        auth.get("from")
-        or payload.get("payer")
-        or payload.get("from")
-        or "0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4"
-    )
-    accepted = payload.get("accepted") or {}
-    network = accepted.get("network") or "eip155:5042002"
-    amount = accepted.get("amount") or ("5000" if required_tier == "full" else "2000")
-
-    invoice_id = f"inv_x402_{uuid.uuid4().hex[:12]}"
-    now = time.time()
-    symbol = str(query.get("symbol", "BTC_USDT")).upper()
-    amount_usdc = 0.005 if required_tier == "full" else 0.002
-
-    invoice = {
-        "invoice_id": invoice_id,
-        "symbol": symbol,
-        "provider_id": provider_id,
-        "tier": required_tier,
-        "amount": amount_usdc,
-        "amount_raw": amount,
-        "status": "paid",
-        "payer_address": payer_address,
-        "buyer_wallet_address": payer_address,
-        "created_at": now,
-        "expires_at": now + 86400,
-        "paid_at": now,
-        "settlement_id": f"x402_settle_{uuid.uuid4().hex[:16]}",
-        "verification_mode": "circle-gateway-x402-direct",
-        "settlement_rail": "circle_gateway_x402",
-        "settlement": {
-            "rail": "circle_gateway_x402",
-            "currency": "USDC",
-            "decimals": 6,
-            "network": network,
-            "status": "accepted",
-        },
-        "query": query,
-        "query_hash": query_fingerprint(query),
-    }
-    state.invoices_db[invoice_id] = invoice
-    _save_invoice(invoice)
-    logger.info("Processed direct x402 payment from %s for invoice %s (%s)", payer_address, invoice_id, symbol)
-    return invoice
+def _process_agent_direct_x402_payment(**_kwargs) -> dict:
+    """Unverified client headers never constitute proof of a settled invoice."""
+    raise HTTPException(status_code=402, detail="Create an invoice, settle its Gateway requirement, and verify payment before requesting a report.")
 
 
 def run_paid_provider_report(*, provider_id, query, invoice_id, token, required_tier, request=None):
@@ -2198,28 +2142,10 @@ def run_paid_provider_report(*, provider_id, query, invoice_id, token, required_
 
     normalized_query = normalize_query_for_provider(provider, raw_query)
 
-    # Check for direct x402 payment header from agents
-    payment_header = None
-    if request:
-        payment_header = (
-            request.headers.get("payment-signature")
-            or request.headers.get("x-payment")
-            or request.headers.get("authorization")
-        )
-
-    if payment_header and not token:
-        invoice = _process_agent_direct_x402_payment(
-            payment_header=payment_header,
-            provider_id=getattr(provider, "provider_id", provider_id),
-            query=normalized_query,
-            required_tier=required_tier,
-            request=request,
-        )
-    else:
-        invoice = authorize_paid_invoice(
-            query=normalized_query, invoice_id=invoice_id, token=token,
-            required_tier=required_tier, provider_id=getattr(provider, "provider_id", provider_id),
-        )
+    invoice = authorize_paid_invoice(
+        query=normalized_query, invoice_id=invoice_id, token=token,
+        required_tier=required_tier, provider_id=getattr(provider, "provider_id", provider_id),
+    )
     refresh_invoice_batch_tx(invoice)
 
 
@@ -2394,6 +2320,10 @@ app.include_router(create_agent_router(SimpleNamespace(
     get_agent_recommendations=_get_agent_recommendations,
     load_wallet_entitlements=_load_wallet_entitlements,
     provider_registry=provider_registry,
+    create_invoice=create_invoice,
+    get_invoice=lambda invoice_id: get_invoice_or_402(state.invoices_db, invoice_id, load_invoices_fn=_load_invoices),
+    run_paid_provider_report=run_paid_provider_report,
+    load_spending_events=lambda address: storage_backend.load_wallet_spending_events(address),
 )))
 
 app.include_router(create_chat_router(SimpleNamespace(
