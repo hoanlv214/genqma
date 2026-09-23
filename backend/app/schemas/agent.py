@@ -16,6 +16,7 @@ class AgentDecisionRequest(BaseModel):
     allowed_tiers: Optional[List[Literal["preview", "full"]]] = Field(default=None, max_length=2, examples=[["preview", "full"]])
     minimum_score: Optional[float] = Field(default=None, ge=0, le=100, examples=[70])
     use_llm: bool = Field(default=True, examples=[True])
+    use_laya: Optional[bool] = Field(default=None, description="Enable local Laya System 1 decision engine", examples=[True])
 
     @field_validator("budget_usdc", "max_price_usdc", mode="before")
     @classmethod
@@ -38,6 +39,11 @@ class AgentIdentityResponse(BaseModel):
     supported_protocols: List[str] = Field(..., description="On-chain & off-chain communication protocols")
     pricing_model: dict = Field(..., description="Micropayment fee and currency metadata")
     verification: dict = Field(..., description="Consensus and verification parameters")
+    arc_rfb_alignment: Optional[dict] = Field(
+        default=None,
+        description="Declared architectural alignment with Arc Request for Builders frontiers",
+    )
+
 
 
 class ERC8183JobRequest(BaseModel):

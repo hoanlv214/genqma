@@ -15,6 +15,7 @@ from backend.app.api.v1.endpoints import (
     platform,
     providers,
     reports,
+    stablefx,
     wallets,
 )
 
@@ -30,7 +31,9 @@ for router in (
     internal.router,
     reports.router,
     chat.router,
+    stablefx.router,
 ):
     api_router.include_router(router)
+
 
 __all__ = ["api_router"]

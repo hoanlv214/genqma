@@ -45,3 +45,5 @@ export type {
   PaymentSignature,
   WalletMode,
 } from "./wallets/signer.js";
+export { CircleAppKitManager, circleAppKitManager } from "./wallets/circleAppKitManager.js";
+export type { AppKitBridgeParams, AppKitBridgeResult } from "./wallets/circleAppKitManager.js";

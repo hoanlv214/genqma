@@ -120,7 +120,9 @@ The Access column must match the operation's `x-qma-access` value in
 | GET | `/api/v1/entitlements/wallet/{address}` | `public-optional-auth` | List redacted or private wallet entitlements |
 | GET | `/api/v1/gateway/info` | `public` | Read Circle Gateway capabilities |
 | GET | `/api/v1/health` | `public` | Check API health |
+| GET | `/api/v1/market/credit-risk-score` | `public` | Compute collateral haircut & risk rating for Onchain Credit (Frontier 3) |
 | GET | `/api/v1/marketplace/service-card` | `public` | Read Circle Agent Marketplace service card |
+
 | GET | `/api/v1/metrics` | `public` | Read landing-page traction metrics |
 | GET | `/api/v1/metrics/wallet/{address}` | `public-optional-auth` | Deprecated wallet metrics alias |
 | POST | `/api/v1/oauth/approve` | `wallet-owner` | Consent-page callback binding an MCP client to the approving wallet (returns single-use code) |
@@ -161,7 +163,10 @@ The Access column must match the operation's `x-qma-access` value in
 | POST | `/api/v1/sessions/{session_id}/resume` | `wallet-owner` | Resume a stopped session |
 | POST | `/api/v1/sessions/{session_id}/start` | `wallet-owner` | Queue a session |
 | POST | `/api/v1/sessions/{session_id}/stop` | `wallet-owner` | Stop a session |
+| GET | `/api/v1/stablefx/pairs` | `public` | List supported Circle StableFX pairs on Arc |
+| GET | `/api/v1/stablefx/quote` | `public` | Get institutional StableFX conversion quote |
 | GET | `/api/v1/traction` | `public` | Read the public traction snapshot |
+
 | GET | `/api/v1/treasury/audit/euthyna` | `public` | Retrieve immutable audit records for regulatory and board examination |
 | POST | `/api/v1/treasury/audit/verify` | `public` | Recompute SHA-256 integrity digests across all audit entries to verify no records were tampered |
 | GET | `/api/v1/treasury/usyc/forecast` | `public` | Predictive cash-flow forecasting and APY earnings projection for autonomous agents |

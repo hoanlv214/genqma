@@ -875,6 +875,14 @@ def create_storage_backend(
     creators_path: str,
     provider_controls_path: str,
 ):
+    if os.getenv("QMA_STORAGE_BACKEND") == "json":
+        return JsonStorage(
+            ledger_path=ledger_path,
+            reports_path=reports_path,
+            invoices_path=invoices_path,
+            creators_path=creators_path,
+            provider_controls_path=provider_controls_path,
+        )
     supabase_url = os.getenv("SUPABASE_URL") or os.getenv("QMA_SUPABASE_URL")
     service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("QMA_SUPABASE_SERVICE_ROLE_KEY")
     schema = os.getenv("SUPABASE_SCHEMA", "public")

@@ -5,9 +5,14 @@ from typing import Optional
 
 from fastapi import APIRouter, Query
 
-from backend.app.schemas import AgentRecommendationsResponse, LiveAnomaliesResponse
+from backend.app.schemas import (
+    AgentRecommendationsResponse,
+    CollateralRiskScoreResponse,
+    LiveAnomaliesResponse,
+)
 from backend.app.core.openapi_responses import documented_errors
 from backend.app.services.agent_recommendations import build_agent_recommendations
+
 
 router = APIRouter(tags=["Market data"])
 
@@ -86,4 +91,44 @@ def create_market_router(deps: SimpleNamespace) -> APIRouter:
         """Ranks live anomalies as user-confirmed paid report candidates."""
         return build_agent_recommendations(deps, limit)
 
+    @migrated.get(
+        "/api/v1/market/credit-risk-score",
+        tags=["Market data"],
+        summary="Compute collateral haircut & risk rating for Onchain Credit (Frontier 3)",
+        description="""Evaluates a token symbol against historical anomaly regimes and analog drawdowns to calculate an institutional collateral haircut, maximum Loan-to-Value (LTV), and liquidation risk tier for Arc Onchain Credit and lending protocols.
+        
+**Authentication:** This is a public route and does not require an access token.
+**Arc RFB Frontier:** Frontier 3 — Onchain Credit and Collateral.""",
+        response_model=CollateralRiskScoreResponse,
+        response_model_exclude_unset=True,
+        responses=documented_errors(400, 429, 500, 503),
+        openapi_extra={"x-qma-access": "public", "x-qma-audiences": ["public", "agent"]},
+    )
+
+    def get_credit_risk_score(
+        symbol: str = Query(default="BTC", min_length=2, max_length=30, description="Asset symbol"),
+        funding_rate: Optional[float] = Query(default=None, description="Current 8h funding rate"),
+        market_cap: Optional[float] = Query(default=None, gt=0, description="Circulating market cap in USD"),
+        fdv: Optional[float] = Query(default=None, gt=0, description="Fully diluted valuation in USD"),
+        circ_ratio: Optional[float] = Query(default=None, gt=0, le=1.5, description="Circulating supply ratio"),
+        from_ath_pct: Optional[float] = Query(default=None, le=0, description="Drawdown from ATH percentage"),
+        volume_24h: Optional[float] = Query(default=None, gt=0, description="24h trading volume in USD"),
+    ):
+        engine = getattr(deps, "engine", None)
+        if engine is None:
+            from qma_engine import QMAEngine
+            engine = QMAEngine()
+
+        query_payload = {
+            "symbol": symbol.upper().replace("-", "_").replace("/", "_"),
+            "fundingRate": funding_rate if funding_rate is not None else -0.0005,
+            "marketCap": market_cap if market_cap is not None else 1000000000.0,
+            "FDV": fdv if fdv is not None else 1200000000.0,
+            "circRatio": circ_ratio if circ_ratio is not None else 0.85,
+            "fromATH": from_ath_pct if from_ath_pct is not None else -25.0,
+            "volume24h": volume_24h if volume_24h is not None else 50000000.0,
+        }
+        return engine.compute_collateral_risk_score(query_payload)
+
     return migrated
+

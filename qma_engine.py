@@ -451,6 +451,73 @@ class QMAEngine:
         cum_wt = np.cumsum(sorted_wt)
         return float(np.interp(percentile / 100.0, cum_wt, sorted_val))
 
+    def compute_collateral_risk_score(self, query: dict) -> dict:
+        """Compute an institutional collateral haircut and risk rating for Arc Onchain Credit (Frontier 3).
+        
+        Leverages historical anomaly analogs, tail drawdown (P10/worst_case_max_loss),
+        and out-of-distribution (OOD) divergence to determine:
+        1. Required collateral haircut (15% - 75%)
+        2. Maximum Loan-To-Value (Max LTV)
+        3. Liquidation risk tier (LOW, MODERATE, ELEVATED, HIGH)
+        4. Credit underwriting eligibility
+        """
+        signal = self.analyze_signal(query)
+        p10 = signal["percentiles"]["P10"]
+        worst_loss = signal["percentiles"]["worst_case_max_loss"]
+        is_ood = signal["is_ood"]
+        ess = signal["effective_sample_size"]
+        win_rate = signal["weighted_win_rate"]
+
+        # Base haircut: 20%
+        base_haircut = 20.0
+        
+        # Downside tail risk penalty: if P10 < 0, add proportional haircut
+        if p10 < 0:
+            base_haircut += min(abs(p10) * 1.5, 20.0)
+            
+        # OOD or low sample size penalty
+        if is_ood:
+            base_haircut += 15.0
+        if ess < 10:
+            base_haircut += 10.0
+            
+        # Cap haircut between 15% and 75%
+        haircut_pct = float(round(min(max(base_haircut, 15.0), 75.0), 2))
+        max_ltv_pct = float(round(100.0 - haircut_pct, 2))
+        
+        if haircut_pct <= 25.0:
+            tier = "LOW"
+        elif haircut_pct <= 40.0:
+            tier = "MODERATE"
+        elif haircut_pct <= 55.0:
+            tier = "ELEVATED"
+        else:
+            tier = "HIGH"
+            
+        eligible = (not is_ood) and (ess >= 5) and (haircut_pct <= 60.0)
+
+        return {
+            "symbol": signal["query_symbol"],
+            "underwriting_eligible": bool(eligible),
+            "collateral_haircut_pct": haircut_pct,
+            "max_ltv_pct": max_ltv_pct,
+            "liquidation_risk_tier": tier,
+            "regime_cluster": signal["regime_cluster"],
+            "regime_description": signal["regime_description"],
+            "tail_risk": {
+                "p10_drawdown_pct": float(p10),
+                "worst_case_max_loss_pct": float(worst_loss),
+            },
+            "confidence": {
+                "is_out_of_distribution": bool(is_ood),
+                "effective_sample_size": float(ess),
+                "analog_win_rate": float(win_rate),
+            },
+            "arc_rfb_frontier": "onchain_credit_and_collateral",
+            "settlement_rail": "Arc USDC",
+        }
+
+
 if __name__ == "__main__":
     # Test query
     engine = QMAEngine()

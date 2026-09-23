@@ -1,18 +1,20 @@
 # Financial Intelligence Marketplace (Codename: GenQMA)
 
 [![live: genqma.vercel.app](https://img.shields.io/badge/live-genqma.vercel.app-1aa251)](https://genqma.vercel.app)
+[![Arc RFB: 4/4 Frontiers Aligned](https://img.shields.io/badge/Arc_RFB-4%2F4_Frontiers_Aligned-00D26A)](docs/arc/ARC_BUILDER_ALIGNMENT_AUDIT.md)
 [![marketplace: Two-Sided Intelligence](https://img.shields.io/badge/marketplace-Two--Sided_Intelligence-2563EB)](docs/business/POSITIONING_STRATEGY.md)
 [![API docs: onrender](https://img.shields.io/badge/API-qma--api.onrender.com-6E56CF)](https://qma-api.onrender.com/docs)
 [![settles on Arc testnet](https://img.shields.io/badge/settles_on-Arc_testnet-1f1f1f)](https://testnet.arcscan.app)
-[![payments: Circle x402](https://img.shields.io/badge/payments-Circle_x402-2775CA)](https://docs.arc.network)
+[![payments: Circle x402 & StableFX](https://img.shields.io/badge/payments-Circle_x402_%26_StableFX-2775CA)](https://docs.arc.network)
 [![yield: USYC ERC-4626](https://img.shields.io/badge/yield-USYC_ERC--4626_(5%25_APY)-F59E0B)](https://testnet.arcscan.app/address/0x934e7309d7fca371db946b0643f2136cc0a0fcb2)
 [![audit: Euthyna SHA-256](https://img.shields.io/badge/audit-Euthyna_Continuous_Proof-8B5CF6)](docs/audit/SECURITY_AND_AUDIT_REPORT.md)
-[![tests: 207 passing](https://img.shields.io/badge/tests-207%2F207_passing-success)](tests/)
+[![tests: 232+ passing](https://img.shields.io/badge/tests-232%2B_passing-success)](tests/)
 
-**A two-sided marketplace for financial intelligence where quant creators publish and monetize market signals, and autonomous AI agents or traders purchase verified reports per query via Circle x402 USDC micropayments with on-chain cryptographic proof.**
+**A zero-person autonomous business and two-sided outcome marketplace for financial intelligence on Arc, where quant creators monetize signals, autonomous AI agents purchase verified reports per query via Circle x402/Gateway USDC micropayments, and onchain credit protocols access real-time collateral risk underwriting.**
 
 🔗 Live Marketplace: **[genqma.vercel.app](https://genqma.vercel.app)** — interactive Signal Explorer & Treasury Radar  
 &nbsp;·&nbsp; ⚡ Backend: **[qma-api.onrender.com](https://qma-api.onrender.com)** — live API & OpenAPI docs at `/docs`  
+&nbsp;·&nbsp; 🏛️ **[Arc RFB Alignment Audit](docs/arc/ARC_BUILDER_ALIGNMENT_AUDIT.md)** — strategic mapping against Circle Arc's Request for Builders  
 &nbsp;·&nbsp; 📖 Strategy: **[Positioning & Business Strategy](docs/business/POSITIONING_STRATEGY.md)** — two-sided business constitution  
 &nbsp;·&nbsp; 🔎 **[public proof](https://testnet.arcscan.app/address/0x934e7309d7fca371db946b0643f2136cc0a0fcb2)** — USYC ERC-4626 Vault & on-chain tx hashes on Arcscan  
 &nbsp;·&nbsp; 🛡️ [Security & Audit Report](docs/audit/SECURITY_AND_AUDIT_REPORT.md) — formal threat model & verification report  

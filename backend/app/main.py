@@ -233,6 +233,8 @@ from backend.app.api.v1.endpoints.reports import create_reports_router
 from backend.app.api.v1.endpoints.sessions import create_sessions_router
 from backend.app.api.v1.endpoints.wallets import create_wallets_router
 from backend.app.api.v1.endpoints.treasury import create_treasury_router
+from backend.app.api.v1.endpoints.stablefx import create_stablefx_router
+
 
 from backend.app.schemas import InvoiceRequest, PaymentVerifyRequest
 
@@ -2314,7 +2316,9 @@ app.include_router(create_market_router(SimpleNamespace(
     pricing_config=paid_kit.pricing_config,
     provider_control=provider_control,
     provider_registry=provider_registry,
+    engine=engine,
 )))
+
 
 app.include_router(create_agent_router(SimpleNamespace(
     get_agent_recommendations=_get_agent_recommendations,
@@ -2428,6 +2432,8 @@ app.include_router(create_oauth_router(SimpleNamespace(
 )))
 
 app.include_router(create_treasury_router())
+app.include_router(create_stablefx_router())
+
 
 
 @app.get("/", include_in_schema=False)

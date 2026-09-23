@@ -41,6 +41,8 @@
     "agents"
   ],
   "dependencies": {
+    "@circle-fin/adapter-viem-v2": "^1.18.0",
+    "@circle-fin/app-kit": "^1.15.2",
     "@circle-fin/cli": "^1.1.1",
     "viem": "^2.48.11"
   },

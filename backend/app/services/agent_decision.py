@@ -628,6 +628,7 @@ def _fast_parse_decision(
             "rejected_candidate_ids": [c["candidate_id"] for c in candidates]
         }
 
+
     if objective == "highest_score":
         matched.sort(key=lambda item: (bool(item.get("agent_upgrade_from_preview")), _number(item.get("score"))), reverse=True)
     else:
@@ -657,6 +658,7 @@ def make_agent_decision(
     allowed_tiers: Optional[list[str]] = None,
     minimum_score: Optional[float] = None,
     use_llm: bool = True,
+    use_laya: Optional[bool] = None,
 ) -> dict:
     budget, max_price, provider_filter, tier_filter = _prompt_policy(prompt, budget_usdc, max_price_usdc)
     lowered_prompt = prompt.lower()
@@ -676,13 +678,41 @@ def make_agent_decision(
         minimum_score,
     )
 
-    # Try Fast Parser first
+    # Try Fast Parser first (Tier 0: <1ms regex)
     fast_plan = _fast_parse_decision(prompt, candidates, budget, max_price, provider_filter, tier_filter, objective)
     if fast_plan:
         validated = _validate_llm_plan(deps, fast_plan, candidates, entitlements, budget, max_price, objective, source="fast_parser")
         if validated is not None:
             return validated
 
+    # Try Laya System 1 Decision Engine (Tier 1: Local Non-autoregressive Neural Router, sub-35ms)
+    laya_active = use_laya is True or (
+        use_laya is None and (
+            os.getenv("QMA_USE_LAYA", "").lower() in ("1", "true", "yes")
+            or os.getenv("QMA_LLM_PROVIDER", "").lower() == "laya"
+        )
+    )
+    if laya_active:
+        try:
+            from backend.app.services.laya_decision import predict_laya_plan
+            laya_plan = predict_laya_plan(
+                prompt=prompt,
+                budget=budget,
+                max_price=max_price,
+                candidates=candidates,
+                entitlements=entitlements,
+                fallback_objective=objective,
+                provider_filter=provider_filter,
+                tier_filter=tier_filter,
+            )
+            if laya_plan:
+                validated = _validate_llm_plan(deps, laya_plan, candidates, entitlements, budget, max_price, objective, source="laya_system_one")
+                if validated is not None:
+                    return validated
+        except Exception as laya_err:
+            logger.warning("Laya decision router skipped: %s", laya_err)
+
+    # Try LLM Plan (Tier 2: Autoregressive Cloud LLM via OpenAI/Gemini/Groq)
     llm_plan = _llm_decision(prompt, budget, max_price, candidates, entitlements, objective) if use_llm else None
     if llm_plan:
         validated = _validate_llm_plan(deps, llm_plan, candidates, entitlements, budget, max_price, objective)

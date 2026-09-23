@@ -51,6 +51,8 @@ def _get_agent_identity() -> dict:
             "erc8183_escrow",
             "cctp_crosschain_bridging",
             "automated_eip712_hedging",
+            "collateral_risk_underwriting",
+            "stablefx_conversion",
         ],
         "supported_protocols": [
             "x402",
@@ -58,6 +60,7 @@ def _get_agent_identity() -> dict:
             "erc8004",
             "mcp",
             "genlayer-consensus",
+            "circle-stablefx",
         ],
         "pricing_model": {
             "currency": "USDC",
@@ -73,6 +76,20 @@ def _get_agent_identity() -> dict:
             "shield_address": shield_address,
             "consensus_network": "genlayer-testnet",
             "consensus_standard": "multi-validator subjective agreement",
+        },
+        "arc_rfb_alignment": {
+            "frontiers": [
+                "the_agentic_economy",
+                "the_intelligent_account",
+                "onchain_credit_and_collateral",
+                "global_money_and_embedded_finance",
+            ],
+            "archetype": "Autonomous Business (Zero-Person Company) & Two-Sided Outcome Marketplace",
+            "settlement_rail": "Arc L1 Deterministic Finality (USDC native gas)",
+            "treasury_management": "Vestiarion AI CFO with ERC-4626 USYC Yield Sweep",
+            "sla_verification": "GenLayer Optimistic Consensus Shield",
+            "spending_guardrails": "Deterministic Spending Policy Engine (Money with a Mandate)",
+            "stablefx_status": "Enabled (EURC/USDC corridor support)",
         },
     }
 
@@ -102,6 +119,8 @@ def _get_circle_service_card() -> dict:
             {"method": "POST", "path": "/api/v1/agent/jobs", "description": "ERC-8183 Escrowed Task Dispatch"},
             {"method": "GET", "path": "/api/v1/providers", "description": "List Verified Intelligence Providers"},
             {"method": "GET", "path": "/api/v1/agent/spending-policy", "description": "Circle Wallet Spending Policy"},
+            {"method": "GET", "path": "/api/v1/market/credit-risk-score", "description": "Collateral Risk & Analogs Underwriting (Frontier 3)"},
+            {"method": "GET", "path": "/api/v1/stablefx/quote", "description": "Institutional Stablecoin FX Quote (USDC/EURC)"},
         ],
     }
 
@@ -132,6 +151,7 @@ def create_agent_router(deps: SimpleNamespace) -> APIRouter:
             allowed_tiers=request.allowed_tiers,
             minimum_score=request.minimum_score,
             use_llm=request.use_llm,
+            use_laya=request.use_laya,
         )
         return decision
 

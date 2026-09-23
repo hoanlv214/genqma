@@ -61,6 +61,14 @@ from backend.app.schemas.phase3_responses import (
     ProviderReportResponse,
     ProviderStatsResponse,
 )
+from backend.app.schemas.market import CollateralRiskScoreResponse
+from backend.app.schemas.stablefx import (
+
+    StableFXPairInfo,
+    StableFXPairsResponse,
+    StableFXQuoteResponse,
+)
+
 
 __all__ = [
     "ChatMessage",
@@ -115,4 +123,10 @@ __all__ = [
     "ProviderListResponse",
     "ProviderReportResponse",
     "ProviderStatsResponse",
+    "CollateralRiskScoreResponse",
+    "StableFXPairInfo",
+
+    "StableFXPairsResponse",
+    "StableFXQuoteResponse",
 ]
+
