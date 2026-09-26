@@ -31,25 +31,6 @@ const policy = normalizeSessionPolicy({
   executionMode: "dry_run",
 });
 
-const mockDeps = {
-  observe: async () => ({
-    candidates: [{
-      candidate_id: "btc-cand-1",
-      provider_id: "funding_memory",
-      symbol: "BTC",
-      tier: "preview",
-      score: 95,
-      price_usdc: 0.5,
-    }],
-  }),
-  purchase: async () => ({
-    status: "completed",
-    amount_usdc: 0.5,
-    provider_id: "funding_memory",
-    symbol: "BTC",
-    tier: "preview",
-  }),
-};
 
 const agent = new QmaAgent({ apiUrl: "https://qma.test" });
 const tickResult = await agent.runTick({

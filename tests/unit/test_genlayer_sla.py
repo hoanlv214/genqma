@@ -122,3 +122,42 @@ def test_report_hash_is_canonical():
     left = json.dumps({"b": 2, "a": 1}, sort_keys=True, separators=(",", ":"))
     right = json.dumps({"a": 1, "b": 2}, sort_keys=True, separators=(",", ":"))
     assert hashlib.sha256(left.encode()).hexdigest() == hashlib.sha256(right.encode()).hexdigest()
+
+
+def test_verify_report_handles_empty_or_malformed_raw_order(monkeypatch):
+    class FakeRealGenLayerClient:
+        pass
+    client = FakeRealGenLayerClient()
+    client.__class__.__name__ = "GenLayerClient"
+
+    monkeypatch.setattr(genlayer_arbiter, "GENLAYER_CONTRACT_ADDRESS", "0xcontract")
+    monkeypatch.setattr(genlayer_arbiter, "GENLAYER_NETWORK", "studio-next")
+    monkeypatch.setattr(genlayer_arbiter, "_create_client", lambda: (client, "account"))
+    monkeypatch.setattr(genlayer_arbiter, "_read_order", lambda _client, _inv: None)
+
+    for empty_order_value in ["", "   ", None, "{bad json"]:
+        monkeypatch.setattr(
+            genlayer_arbiter,
+            "_submit_via_node",
+            lambda _payload, val=empty_order_value: {
+                "pending": True,
+                "order": val,
+                "transaction_hash": "0xpending_tx_123",
+            },
+        )
+        with pytest.raises(genlayer_arbiter.GenLayerVerificationError) as exc_info:
+            genlayer_arbiter.verify_report(
+                invoice_id="inv_test_empty_raw",
+                buyer="0xbuyer",
+                provider="0xprovider",
+                symbol="BTC",
+                expected_anomaly="anomaly",
+                query_hash="query-hash",
+                report_hash="report-hash",
+                verification_manifest="manifest",
+                evidence_url="http://evidence",
+                transaction_hash="0xpending_tx_123",
+            )
+        assert "pending on-chain" in str(exc_info.value)
+        assert exc_info.value.transaction_hash == "0xpending_tx_123"
+

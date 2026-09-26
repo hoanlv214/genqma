@@ -1,9 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FundArcWalletModal } from "../wallet/FundArcWalletModal";
+import { getInjectedWallet, ensureArcTestnet } from "../../services/wallet";
+import { ARC_CHAIN } from "../../config/network";
+import {
+  getCrossChainUsdcBalances,
+  executeCrossChainGatewayDeposit,
+  executeAddDelegate,
+  type UnifiedBalanceOverview,
+} from "../../services/circleAppKit";
 
 interface UnifiedDepositModalProps {
   open: boolean;
   onClose: () => void;
+  onNavigate?: (route: any) => void;
   agentWalletAddress: string;
   agentWalletBalance: number;
   agentOpAmount: string;
@@ -25,11 +34,29 @@ interface UnifiedDepositModalProps {
   fundProviderStatus: string;
   fundChainStatus: string;
   fundWalletUsdc: string;
+  refreshFundingReadiness?: () => void | Promise<void>;
 }
+
+const safeFormatUsdc = (val: string | number | null | undefined): string => {
+  if (typeof val === "number") return Number.isFinite(val) ? `$${val.toFixed(2)}` : "$0.00";
+  if (!val || val === "n/a") return "$0.00";
+  const cleaned = String(val).replace(/[^\d.]/g, "");
+  const num = parseFloat(cleaned);
+  return Number.isFinite(num) ? `$${num.toFixed(2)}` : "$0.00";
+};
+
+const safeParseUsdc = (val: string | number | null | undefined): number => {
+  if (typeof val === "number") return Number.isFinite(val) ? val : 0;
+  if (!val || val === "n/a") return 0;
+  const cleaned = String(val).replace(/[^\d.]/g, "");
+  const num = parseFloat(cleaned);
+  return Number.isFinite(num) ? num : 0;
+};
 
 export function UnifiedDepositModal({
   open,
   onClose,
+  onNavigate,
   agentWalletAddress,
   agentWalletBalance,
   agentOpAmount,
@@ -51,54 +78,169 @@ export function UnifiedDepositModal({
   fundProviderStatus,
   fundChainStatus,
   fundWalletUsdc,
+  refreshFundingReadiness,
 }: UnifiedDepositModalProps) {
   const [depositTab, setDepositTab] = useState<"gateway" | "agent">("gateway");
   const [copied, setCopied] = useState(false);
+  const [switchingNetwork, setSwitchingNetwork] = useState(false);
+  const [currentChainId, setCurrentChainId] = useState<number | null>(null);
+
+  // Cross-chain Unified Balance Auto-Detection
+  const [multiChainOverview, setMultiChainOverview] = useState<UnifiedBalanceOverview | null>(null);
+  const [selectedSourceChainId, setSelectedSourceChainId] = useState<number>(ARC_CHAIN.chainId);
+  const [crossChainLoading, setCrossChainLoading] = useState(false);
+  const [crossChainStatus, setCrossChainStatus] = useState("");
+  const [delegateLoading, setDelegateLoading] = useState(false);
+  const [delegateStatus, setDelegateStatus] = useState("");
+
+  // Check connected network
+  useEffect(() => {
+    if (!open) return;
+    const provider = getInjectedWallet();
+    if (!provider) return;
+
+    provider.request<string>({ method: "eth_chainId" }).then((hexId) => {
+      if (hexId) setCurrentChainId(parseInt(hexId, 16));
+    }).catch(() => {});
+
+    const handleChainChanged = (hexId: any) => {
+      if (typeof hexId === "string") setCurrentChainId(parseInt(hexId, 16));
+    };
+
+    provider.on?.("chainChanged", handleChainChanged as any);
+    return () => {
+      provider.removeListener?.("chainChanged", handleChainChanged as any);
+    };
+  }, [open, wallet]);
+
+  // Scan cross-chain balances when modal is opened
+  useEffect(() => {
+    if (!open || !wallet) return;
+    getCrossChainUsdcBalances(wallet)
+      .then((overview) => {
+        setMultiChainOverview(overview);
+        if (overview.detectedExternalBalance && overview.bestExternalChain) {
+          setSelectedSourceChainId(overview.bestExternalChain.chainId);
+        }
+      })
+      .catch(() => {});
+  }, [open, wallet]);
+
+  const targetArcChainId = ARC_CHAIN.chainId;
+  const isArcChain = currentChainId === targetArcChainId;
+
+  const handleSwitchToArc = async () => {
+    const provider = getInjectedWallet();
+    if (!provider) return;
+    setSwitchingNetwork(true);
+    try {
+      await ensureArcTestnet(provider);
+      const hexId = await provider.request<string>({ method: "eth_chainId" });
+      if (hexId) setCurrentChainId(parseInt(hexId, 16));
+    } catch {
+      // Ignored
+    } finally {
+      setSwitchingNetwork(false);
+    }
+  };
+
+  const handleFastExternalDeposit = async (chainId: number, amount: string = "1.0") => {
+    const provider = getInjectedWallet();
+    if (!provider || !wallet) return;
+    setCrossChainLoading(true);
+    setCrossChainStatus(`Initiating Gateway deposit from chain ${chainId}...`);
+    try {
+      const res = await executeCrossChainGatewayDeposit({
+        sourceChainId: chainId,
+        amountUsdc: amount,
+        address: wallet,
+        provider,
+        onProgress: (evt) => setCrossChainStatus(evt.message),
+      });
+      if (res.success) {
+        setCrossChainStatus("Deposit successful! Refreshing Gateway balance...");
+        if (refreshFundingReadiness) await refreshFundingReadiness();
+        const updated = await getCrossChainUsdcBalances(wallet);
+        setMultiChainOverview(updated);
+      } else {
+        setCrossChainStatus(res.error || "Deposit failed");
+      }
+    } catch (err: any) {
+      setCrossChainStatus(err?.message || "Failed");
+    } finally {
+      setCrossChainLoading(false);
+    }
+  };
+
+  const handleAuthorizeDelegate = async () => {
+    const provider = getInjectedWallet();
+    if (!provider || !wallet || !agentWalletAddress) return;
+    setDelegateLoading(true);
+    setDelegateStatus("Authorizing Agent...");
+    try {
+      const res = await executeAddDelegate({
+        delegateAddress: agentWalletAddress,
+        address: wallet,
+        provider,
+        onProgress: (evt) => setDelegateStatus(evt.message),
+      });
+      if (res.success) {
+        setDelegateStatus("✓ Agent Authorized");
+      } else {
+        setDelegateStatus(res.error || "Auth Failed");
+      }
+    } catch (err: any) {
+      setDelegateStatus("Auth failed");
+    } finally {
+      setDelegateLoading(false);
+    }
+  };
 
   const handleCopy = () => {
-    if (agentWalletAddress) {
-      navigator.clipboard.writeText(agentWalletAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    if (!agentWalletAddress) return;
+    navigator.clipboard.writeText(agentWalletAddress);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const onChainBalance = safeParseUsdc(fundWalletUsdc);
+  const gatewayBalanceNum = safeParseUsdc(fundGatewayBalance);
+  const requiredAmountNum = safeParseUsdc(fundRequiredAmount);
+
+  // Auto preset calculation for Gateway
+  const handleDeficitPreset = () => {
+    const deficit = Math.max(0, requiredAmountNum - gatewayBalanceNum);
+    const amount = deficit > 0 ? deficit : 0.05;
+    setGatewayDepositAmount(amount.toFixed(4));
+  };
+
+  const handleGatewayMaxPreset = () => {
+    if (onChainBalance > 0) {
+      const safeMax = Math.max(0, onChainBalance - 0.005);
+      setGatewayDepositAmount(safeMax.toFixed(4));
     }
   };
 
   const handleAgentMaxPreset = () => {
-    if (fundWalletUsdc) {
-      const match = fundWalletUsdc.match(/[\d.]+/);
-      if (match) {
-        setAgentOpAmount(match[0]);
-      }
+    if (onChainBalance > 0) {
+      const safeMax = Math.max(0, onChainBalance - 0.005);
+      setAgentOpAmount(safeMax.toFixed(4));
     }
-  };
-
-  const onChainBalance = Number.parseFloat(fundWalletUsdc || "");
-  const parsedGatewayAmount = Number.parseFloat(gatewayDepositAmount);
-  const gatewayAmountInvalid = (
-    !Number.isFinite(parsedGatewayAmount)
-    || parsedGatewayAmount < 0.000001
-    || (Number.isFinite(onChainBalance) && parsedGatewayAmount > onChainBalance)
-  );
-
-  const handleGatewayMaxPreset = () => {
-    if (!Number.isFinite(onChainBalance)) return;
-    const amountWithGasReserve = Math.max(0, onChainBalance - 0.01);
-    setGatewayDepositAmount(amountWithGasReserve.toFixed(6));
   };
 
   return (
     <FundArcWalletModal open={open} onClose={onClose}>
       <>
-        {/* Top Header */}
+        {/* Modal Header */}
         <div className="funding-modal-header">
-          <div className="funding-header-left">
-            <div className="funding-header-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
+          <div className="funding-header-title-row">
+            <div className="funding-header-icon-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
             </div>
             <div>
-              <div className="modal-title">Deposit</div>
-              <div className="modal-subtitle">
-                Add <span className="accent-text" style={{ fontWeight: 700 }}>USDC</span> to your agent wallet
+              <h2 className="funding-header-title">Deposit</h2>
+              <div className="funding-header-subtitle">
+                Add USDC to your Gateway Prepaid balance or Agent Wallet
               </div>
             </div>
           </div>
@@ -114,11 +256,14 @@ export function UnifiedDepositModal({
             {depositTab === "gateway" ? (
               <div className="funding-sidebar-wallet-card">
                 <div className="funding-sidebar-wallet-icon-wrapper" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V9z" /><path d="M22 9V8a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v1" /><path d="M7 15h0M11 15h0M15 15h0" /></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V9z" /><path d="M22 9V8a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v1" /><path d="M7 15h0M11 15h0M15 15h0" /></svg>
                 </div>
                 <div className="funding-sidebar-wallet-details">
-                  <span className="funding-sidebar-wallet-name">Gateway Prepaid</span>
-                  <span className="funding-sidebar-wallet-desc">This is your pre-funded account balance on Circle Gateway contract.</span>
+                  <div className="funding-sidebar-wallet-title-row">
+                    <span className="funding-sidebar-wallet-name">Gateway Prepaid</span>
+                    <span className="funding-sidebar-wallet-badge" style={{ background: "rgba(59, 130, 246, 0.2)", color: "#60a5fa" }}>Circle Gateway</span>
+                  </div>
+                  <span className="funding-sidebar-wallet-desc">Zero-gas nanopayments pre-funded on Circle Gateway contract.</span>
                 </div>
               </div>
             ) : (
@@ -129,9 +274,9 @@ export function UnifiedDepositModal({
                 <div className="funding-sidebar-wallet-details">
                   <div className="funding-sidebar-wallet-title-row">
                     <span className="funding-sidebar-wallet-name">Agent Wallet</span>
-                    <span className="funding-sidebar-wallet-badge">SCA</span>
+                    <span className="funding-sidebar-wallet-badge">Circle SCA</span>
                   </div>
-                  <span className="funding-sidebar-wallet-desc">This is the wallet used by your agent to purchase reports.</span>
+                  <span className="funding-sidebar-wallet-desc">Smart Contract Account used by your agent to purchase reports.</span>
                 </div>
               </div>
             )}
@@ -142,9 +287,9 @@ export function UnifiedDepositModal({
               <span className="funding-sidebar-balance-title">Current Balance</span>
               <div className="funding-sidebar-balance-amount-row">
                 <span className="funding-sidebar-balance-amount">
-                  {depositTab === "gateway"
-                    ? `$${parseFloat(fundGatewayBalance || "0").toFixed(2)}`
-                    : `$${agentWalletBalance.toFixed(2)}`
+                  {depositTab === "agent"
+                    ? `$${agentWalletBalance.toFixed(2)}`
+                    : safeFormatUsdc(fundGatewayBalance)
                   }
                 </span>
                 <div className="funding-sidebar-usdc-badge">
@@ -173,16 +318,105 @@ export function UnifiedDepositModal({
 
           {/* Right Main Panel */}
           <div className="funding-modal-main-panel">
-            {/* Section 1: Choose Deposit Source */}
+            {/* Wrong Network Notice Banner */}
+            {!isArcChain && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+                background: "rgba(245, 158, 11, 0.1)",
+                border: "1px solid rgba(245, 158, 11, 0.25)",
+                borderRadius: "8px",
+                marginBottom: "14px",
+                gap: "10px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "16px" }}>⚠️</span>
+                  <span style={{ fontSize: "12px", color: "#fbbf24" }}>
+                    Connected to <strong>{fundChainStatus}</strong>. Switch to {ARC_CHAIN.name} to deposit.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSwitchToArc}
+                  disabled={switchingNetwork}
+                  style={{
+                    padding: "6px 12px",
+                    background: "#f59e0b",
+                    color: "#000",
+                    fontWeight: 700,
+                    fontSize: "11px",
+                    borderRadius: "6px",
+                    border: "none",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {switchingNetwork ? "Switching..." : `Switch to ${ARC_CHAIN.name}`}
+                </button>
+              </div>
+            )}
+
+            {/* Cross-chain Unified Balance Auto-Detection Banner */}
+            {multiChainOverview?.detectedExternalBalance && multiChainOverview?.bestExternalChain && (
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                padding: "12px 14px",
+                background: "linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(99, 102, 241, 0.16))",
+                border: "1px solid rgba(99, 102, 241, 0.35)",
+                borderRadius: "8px",
+                marginBottom: "14px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "16px" }}>⚡</span>
+                    <span style={{ fontSize: "12px", color: "#93c5fd", fontWeight: 700 }}>
+                      Unified Balance Cross-Chain Auto-Detect
+                    </span>
+                  </div>
+                  <span style={{ fontSize: "10px", color: "#60a5fa", background: "rgba(59, 130, 246, 0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: 600 }}>
+                    Circle Gateway
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: "11px", color: "#cbd5e1", lineHeight: 1.4 }}>
+                  Arc wallet balance is 0, but we detected <strong>{multiChainOverview.bestExternalChain.balanceUsdc} USDC</strong> on <strong>{multiChainOverview.bestExternalChain.name}</strong>. You can deposit directly into your Unified Gateway Balance without bridging!
+                </p>
+                <button
+                  type="button"
+                  disabled={crossChainLoading}
+                  onClick={() => handleFastExternalDeposit(multiChainOverview.bestExternalChain!.chainId, "1.0")}
+                  style={{
+                    alignSelf: "flex-start",
+                    marginTop: "4px",
+                    padding: "6px 14px",
+                    background: "#3b82f6",
+                    color: "#ffffff",
+                    fontWeight: 700,
+                    fontSize: "11px",
+                    borderRadius: "6px",
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
+                  }}
+                >
+                  {crossChainLoading ? "Processing Deposit..." : `Deposit 1.0 USDC from ${multiChainOverview.bestExternalChain.name} →`}
+                </button>
+              </div>
+            )}
+
+            {/* Section 1: Choose Deposit Method */}
             <div className="funding-main-section">
-              <span className="funding-section-header">1. Choose Deposit Source</span>
-              <div className="funding-source-cards">
+              <span className="funding-section-header">1. Choose Deposit Target</span>
+              <div className="funding-source-cards" style={{ gridTemplateColumns: agentWalletAddress ? "1fr 1fr" : "1fr" }}>
                 <div
                   className={`funding-source-card ${depositTab === "gateway" ? "active" : ""}`}
                   onClick={() => setDepositTab("gateway")}
                 >
-                  <span className="funding-source-title">Gateway Prepaid</span>
-                  <span className="funding-source-sub">Recommended</span>
+                  <span className="funding-source-title">Circle Gateway</span>
+                  <span className="funding-source-sub">Arc Nanopayments (Prepaid)</span>
                 </div>
                 {agentWalletAddress && (
                   <div
@@ -190,21 +424,28 @@ export function UnifiedDepositModal({
                     onClick={() => setDepositTab("agent")}
                   >
                     <span className="funding-source-title">Agent Wallet</span>
-                    <span className="funding-source-sub">Direct to agent wallet</span>
+                    <span className="funding-source-sub">Circle Smart Account (SCA)</span>
                   </div>
                 )}
               </div>
               <p className="funding-source-desc">
                 {depositTab === "gateway"
-                  ? "Pre-fund the Circle Gateway contract directly to pay for reports using your MetaMask address."
-                  : "Deposit directly to your Circle Smart Account (agent wallet) to fund autonomous transactions."
+                  ? "Pre-fund Circle Gateway contract across supported chains for zero-gas, high-speed report unlocking."
+                  : "Deposit directly to your Circle Smart Account (agent wallet) to fund autonomous research sessions."
                 }
               </p>
             </div>
 
-            {/* Form Fields depend on selected Tab */}
-            {depositTab === "gateway" || !agentWalletAddress ? (
-              <form onSubmit={handleGatewayDeposit}>
+            {/* Tab 1: Circle Gateway Prepaid Deposit */}
+            {depositTab === "gateway" && (
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (selectedSourceChainId !== ARC_CHAIN.chainId) {
+                  handleFastExternalDeposit(selectedSourceChainId, gatewayDepositAmount);
+                } else {
+                  handleGatewayDeposit(e);
+                }
+              }}>
                 <div className="funding-main-section">
                   <div className="funding-balance-head">
                     <span className="funding-section-header">2. Gateway Balance</span>
@@ -213,14 +454,14 @@ export function UnifiedDepositModal({
                     </span>
                   </div>
                   <div className="funding-balance-values">
-                    <strong>{fundGatewayBalance}</strong>
-                    <span>target balance {fundRequiredAmount}</span>
+                    <strong>{fundGatewayBalance || "0.000 USDC"}</strong>
+                    <span>target balance {fundRequiredAmount || "0.005 USDC"}</span>
                   </div>
                   <div className={`funding-progress ${fundReadinessTone}`}>
                     <span
                       style={{
-                        width: fundGatewayBalance !== "n/a" && fundRequiredAmount !== "n/a"
-                          ? `${Math.min((Number.parseFloat(fundGatewayBalance) / Number.parseFloat(fundRequiredAmount)) * 100, 100)}%`
+                        width: requiredAmountNum > 0
+                          ? `${Math.min((gatewayBalanceNum / requiredAmountNum) * 100, 100)}%`
                           : "0%",
                       }}
                     />
@@ -229,13 +470,56 @@ export function UnifiedDepositModal({
 
                 <div className="funding-main-section">
                   <span className="funding-section-header">3. Deposit from Connected Wallet</span>
+
+                  {/* Multi-Chain Source Network Selector */}
+                  <div style={{ marginBottom: "12px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", display: "block", marginBottom: "6px", letterSpacing: "0.05em" }}>
+                      Source Network For Gateway Funding
+                    </span>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      {multiChainOverview?.chains?.map((chain) => {
+                        const isSelected = selectedSourceChainId === chain.chainId;
+                        return (
+                          <button
+                            key={chain.chainId}
+                            type="button"
+                            onClick={() => setSelectedSourceChainId(chain.chainId)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              padding: "6px 12px",
+                              borderRadius: "6px",
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              background: isSelected ? "rgba(59, 130, 246, 0.25)" : "rgba(255, 255, 255, 0.05)",
+                              border: isSelected ? "1px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.12)",
+                              color: isSelected ? "#60a5fa" : "#cbd5e1",
+                              transition: "all 0.15s ease",
+                            }}
+                          >
+                            <span>{chain.name}</span>
+                            <span style={{ opacity: 0.8, fontFamily: "monospace" }}>({chain.balanceUsdc} USDC)</span>
+                          </button>
+                        );
+                      }) || (
+                        <span style={{ fontSize: "12px", color: "#94a3b8" }}>{ARC_CHAIN.name} ({fundWalletUsdc})</span>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="funding-wallet-identity">
-                    <span className="funding-wallet-icon">◈</span>
+                    <img src={selectedSourceChainId === ARC_CHAIN.chainId ? "/arc-logo.svg" : "/usdc-logo.svg"} alt="Chain" style={{ width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0, display: 'inline-block' }} />
                     <div>
                       <strong title={wallet}>{fundWalletStatus}</strong>
-                      <span>{fundProviderStatus} · {fundChainStatus}</span>
+                      <span>{fundProviderStatus} · {selectedSourceChainId === ARC_CHAIN.chainId ? fundChainStatus : multiChainOverview?.chains.find(c => c.chainId === selectedSourceChainId)?.name || fundChainStatus}</span>
                     </div>
-                    <strong className="funding-wallet-usdc">{fundWalletUsdc}</strong>
+                    <strong className="funding-wallet-usdc">
+                      {selectedSourceChainId === ARC_CHAIN.chainId
+                        ? fundWalletUsdc
+                        : `${multiChainOverview?.chains.find(c => c.chainId === selectedSourceChainId)?.balanceUsdc || "0.00"} USDC`}
+                    </strong>
                   </div>
 
                   <div className="funding-amount-field-group">
@@ -246,49 +530,73 @@ export function UnifiedDepositModal({
                         min="0.000001"
                         placeholder="e.g. 5.00"
                         value={gatewayDepositAmount}
-                        onChange={(event) => setGatewayDepositAmount(event.target.value)}
-                        aria-label="Gateway deposit amount in USDC"
+                        onChange={(e) => setGatewayDepositAmount(e.target.value)}
                         required
                       />
                       <div className="funding-amount-input-badge-wrapper">
-                        <img src="/usdc-logo.svg" style={{ width: "16px", height: "16px" }} alt="USDC" />
+                        <img src="/usdc-logo.svg" style={{ width: '16px', height: '16px' }} alt="USDC" />
                         <span className="funding-token-select">USDC</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleGatewayMaxPreset}
-                      className="funding-input-max-btn"
-                      disabled={!Number.isFinite(onChainBalance) || onChainBalance <= 0.01}
-                    >
-                      MAX
-                    </button>
+                    <button type="button" onClick={handleGatewayMaxPreset} className="funding-input-max-btn">MAX</button>
                   </div>
 
+                  {/* Preset amounts */}
                   <div className="funding-presets-row">
-                    {["0.001", "0.005", "0.01", "0.1"].map((amount) => (
-                      <button
-                        key={amount}
-                        type="button"
-                        onClick={() => setGatewayDepositAmount(amount)}
-                        className="funding-preset-btn"
-                      >
-                        {amount} USDC
-                      </button>
-                    ))}
+                    <button type="button" onClick={handleDeficitPreset} className="funding-preset-btn highlight">Deficit</button>
+                    <button type="button" onClick={() => setGatewayDepositAmount("0.05")} className="funding-preset-btn">0.05 USDC</button>
+                    <button type="button" onClick={() => setGatewayDepositAmount("0.1")} className="funding-preset-btn">0.1 USDC</button>
+                    <button type="button" onClick={() => setGatewayDepositAmount("1.0")} className="funding-preset-btn">1.0 USDC</button>
                   </div>
 
                   <div className="funding-sparkle-alert">
                     <span className="funding-sparkle-icon">✦</span>
                     <span className="funding-sparkle-text">
-                      This calls Circle Gateway deposit on Arc Testnet. MAX keeps 0.01 USDC available for gas.
+                      Funds deposited into Circle Gateway are held in escrow and spent off-chain with sub-second finality (&lt;500ms) across supported chains.
                     </span>
                   </div>
 
-                  {gatewayDepositStatus && (
-                    <div className="funding-next-step" aria-live="polite">
-                      <span className="funding-item-label">Status</span>
-                      <strong className="funding-item-value">{gatewayDepositStatus}</strong>
+                  {(gatewayDepositStatus || crossChainStatus) && (
+                    <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--accent, #60a5fa)' }}>
+                      {crossChainStatus || gatewayDepositStatus}
+                    </div>
+                  )}
+
+                  {/* Autonomous Agent Auto-Pay Delegation */}
+                  {agentWalletAddress && (
+                    <div style={{
+                      marginTop: "14px",
+                      padding: "10px 14px",
+                      background: "rgba(59, 130, 246, 0.06)",
+                      border: "1px dashed rgba(99, 102, 241, 0.35)",
+                      borderRadius: "8px",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                        <div>
+                          <div style={{ fontSize: "12px", fontWeight: 700, color: "#e2e8f0" }}>Agent Auto-Pay Delegation</div>
+                          <div style={{ fontSize: "11px", color: "#94a3b8", lineHeight: 1.3 }}>
+                            Authorize your Agent to spend from Unified Balance (&lt;500ms) without popups.
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAuthorizeDelegate}
+                          disabled={delegateLoading}
+                          style={{
+                            padding: "6px 12px",
+                            background: "rgba(59, 130, 246, 0.2)",
+                            border: "1px solid rgba(59, 130, 246, 0.4)",
+                            color: "#60a5fa",
+                            fontWeight: 700,
+                            borderRadius: "6px",
+                            fontSize: "11px",
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {delegateLoading ? "Authorizing..." : delegateStatus || "Authorize Agent"}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -301,16 +609,22 @@ export function UnifiedDepositModal({
                     <button
                       type="submit"
                       className="funding-btn-submit"
-                      disabled={gatewayDepositLoading || !wallet || gatewayAmountInvalid}
+                      disabled={gatewayDepositLoading || crossChainLoading || !gatewayDepositAmount || parseFloat(gatewayDepositAmount) <= 0}
                     >
-                      {gatewayDepositLoading ? "Depositing..." : "Deposit to Gateway"}
+                      {gatewayDepositLoading || crossChainLoading
+                        ? "Depositing..."
+                        : selectedSourceChainId !== ARC_CHAIN.chainId
+                        ? `Deposit from ${multiChainOverview?.chains.find(c => c.chainId === selectedSourceChainId)?.name || "External Chain"}`
+                        : "Deposit to Gateway"}
                     </button>
                   </div>
                 </div>
               </form>
-            ) : (
+            )}
+
+            {/* Tab 2: Agent Wallet Direct Funding */}
+            {depositTab === "agent" && agentWalletAddress && (
               <form onSubmit={handleFundAgent}>
-                {/* Section 2: Agent Wallet Address */}
                 <div className="funding-main-section">
                   <span className="funding-section-header">2. Agent Wallet Address</span>
                   <div className="funding-address-input-wrapper">
@@ -334,7 +648,6 @@ export function UnifiedDepositModal({
                   </div>
                 </div>
 
-                {/* Section 3: Amount to Fund */}
                 <div className="funding-main-section">
                   <span className="funding-section-header">3. Amount to Fund (USDC)</span>
                   <div className="funding-amount-field-group">
@@ -350,16 +663,12 @@ export function UnifiedDepositModal({
                       />
                       <div className="funding-amount-input-badge-wrapper">
                         <img src="/usdc-logo.svg" style={{ width: '16px', height: '16px' }} alt="USDC" />
-                        <select className="funding-token-select" defaultValue="USDC">
-                          <option value="USDC">USDC</option>
-                          <option value="EURC" disabled>EURC (Soon)</option>
-                        </select>
+                        <span className="funding-token-select">USDC</span>
                       </div>
                     </div>
                     <button type="button" onClick={handleAgentMaxPreset} className="funding-input-max-btn">MAX</button>
                   </div>
 
-                  {/* Quick Preset buttons */}
                   <div className="funding-presets-row">
                     <button type="button" onClick={() => setAgentOpAmount("10")} className="funding-preset-btn">$10</button>
                     <button type="button" onClick={() => setAgentOpAmount("25")} className="funding-preset-btn">$25</button>
@@ -367,18 +676,14 @@ export function UnifiedDepositModal({
                     <button type="button" onClick={() => setAgentOpAmount("100")} className="funding-preset-btn">$100</button>
                   </div>
 
-                  {/* Sparkle info box */}
                   <div className="funding-sparkle-alert">
-                    <span className="funding-sparkle-icon">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5.5z" /></svg>
-                    </span>
+                    <span className="funding-sparkle-icon">✦</span>
                     <span className="funding-sparkle-text">
                       Your funds will be available in your agent wallet once the transaction is confirmed on Arc.
                     </span>
                   </div>
                 </div>
 
-                {/* Bottom Footer Actions inside right main panel container */}
                 <div className="funding-modal-footer">
                   <div className="funding-modal-footer-buttons">
                     <button type="button" onClick={onClose} className="funding-btn-cancel">
@@ -395,6 +700,49 @@ export function UnifiedDepositModal({
                 </div>
               </form>
             )}
+
+            {/* Shortcut Banner to dedicated Swap & Bridge page */}
+            <div style={{
+              marginTop: "20px",
+              padding: "12px 16px",
+              background: "rgba(124, 111, 255, 0.08)",
+              border: "1px solid rgba(124, 111, 255, 0.2)",
+              borderRadius: "10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+            }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "#ffffff" }}>
+                  Need to exchange EURC or bridge from another chain?
+                </span>
+                <span style={{ fontSize: "11px", color: "var(--t2, #94a3b8)" }}>
+                  Visit the Arc StableFX &amp; CCTP V2 Bridge Desk.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onNavigate?.("swap");
+                }}
+                style={{
+                  padding: "6px 14px",
+                  background: "rgba(124, 111, 255, 0.2)",
+                  border: "1px solid rgba(124, 111, 255, 0.4)",
+                  borderRadius: "6px",
+                  color: "#c7d2fe",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                Open Swap &amp; Bridge →
+              </button>
+            </div>
           </div>
         </div>
       </>

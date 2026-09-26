@@ -1,6 +1,7 @@
 import React from "react";
 import type { QmaRoute } from "../../app/routes";
 import { QmaLogo } from "./QmaLogo";
+import { NetworkBadge } from "./NetworkBadge";
 import "../../styles/landing-header.css";
 
 interface LandingHeaderProps {
@@ -14,6 +15,20 @@ export function LandingHeader({ onNavigate }: LandingHeaderProps) {
         <QmaLogo size={24} />
       </a>
       <div className="landing-nav-links">
+        <button type="button" className="landing-nav-link text-btn" onClick={() => onNavigate("swap")}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+            <path d="M7 10h14l-4-4" />
+            <path d="M17 14H3l4 4" />
+          </svg>
+          Swap & StableFX
+        </button>
+        <button type="button" className="landing-nav-link text-btn" onClick={() => onNavigate("traction")}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+            <polyline points="17 6 23 6 23 12"></polyline>
+          </svg>
+          Euthyna Audit
+        </button>
         <a className="landing-nav-link" href="/docs" target="_blank" rel="noopener noreferrer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -30,12 +45,14 @@ export function LandingHeader({ onNavigate }: LandingHeaderProps) {
           </svg>
           GitHub
         </a>
+        <NetworkBadge />
         <button type="button" className="landing-nav-link btn-green nav-cta text-btn" onClick={() => onNavigate("app")}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
           </svg>
-          Run Free Scan
+          Launch CFO Terminal
         </button>
       </div>
     </nav>

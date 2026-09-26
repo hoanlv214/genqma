@@ -10,6 +10,7 @@ from typing import Any, Dict
 import requests
 
 from backend.app.core.provider_registry import ProviderPlugin
+from backend.app.core.config import ARC_CHAIN_ID, ARC_HEDGE_RELAYER_CONTRACT
 import paid_intelligence_kit as paid_kit
 
 PYTH_FEED_IDS: Dict[str, str] = {
@@ -225,8 +226,8 @@ class PythStressBandProviderV2(ProviderPlugin):
                 "domain": {
                     "name": "QMA Arc Hedge Relayer",
                     "version": "1.0",
-                    "chainId": 50,  # Arc Testnet
-                    "verifyingContract": "0x1111111111111111111111111111111111111111",
+                    "chainId": ARC_CHAIN_ID,
+                    "verifyingContract": ARC_HEDGE_RELAYER_CONTRACT,
                 },
                 "order_type": "EIP-712 LimitHedgeOrder",
                 "message": {

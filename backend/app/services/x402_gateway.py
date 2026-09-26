@@ -4,12 +4,36 @@ import requests
 from fastapi import HTTPException
 
 
-def fetch_circle_settlement(settlement_id: str, *, gateway_api: str) -> dict:
+def extract_settlement_tx_hash(settlement: dict) -> str | None:
+    if not isinstance(settlement, dict):
+        return None
+    return (
+        settlement.get("transactionHash")
+        or settlement.get("txHash")
+        or settlement.get("batchTxHash")
+        or settlement.get("batchTransactionHash")
+        or settlement.get("batch_tx")
+        or settlement.get("destinationTransactionHash")
+        or settlement.get("onChainTxHash")
+        or (settlement.get("transaction", {}) if isinstance(settlement.get("transaction"), dict) else {}).get("hash")
+        or (settlement.get("receipt", {}) if isinstance(settlement.get("receipt"), dict) else {}).get("transactionHash")
+    )
+
+
+def fetch_circle_settlement(settlement_id: str, *, gateway_api: str, http_get=None) -> dict:
+    _get = http_get or requests.get
     try:
-        resp = requests.get(f"{gateway_api}/v1/x402/transfers/{settlement_id}", timeout=10)
+        resp = _get(f"{gateway_api}/v1/x402/transfers/{settlement_id}", timeout=10)
     except requests.RequestException as exc:
         raise HTTPException(status_code=502, detail=f"Circle Gateway lookup failed: {exc}")
     if resp.status_code == 404:
+        # Fallback to Circle Gateway settlements endpoint
+        try:
+            fallback = _get(f"{gateway_api}/v1/settlements/{settlement_id}", timeout=10)
+            if fallback.ok:
+                return fallback.json()
+        except requests.RequestException:
+            pass
         raise HTTPException(status_code=404, detail="Circle settlement not found")
     if not resp.ok:
         raise HTTPException(status_code=502, detail=f"Circle Gateway returned {resp.status_code}: {resp.text[:300]}")
@@ -19,9 +43,10 @@ def fetch_circle_settlement(settlement_id: str, *, gateway_api: str) -> dict:
 def find_arc_batch_tx(
     settlement: dict,
     *,
-    load_arc_gateway_transactions,
-    parse_iso_utc,
+    load_arc_gateway_transactions=None,
+    parse_iso_utc=None,
     arc_explorer: str,
+    match_type: str = "authoritative_receipt",
 ) -> dict:
     status_value = settlement.get("status")
     if status_value not in {"completed", "confirmed"}:
@@ -32,22 +57,24 @@ def find_arc_batch_tx(
             "message": "Circle accepted the payment authorization; on-chain batch tx is still pending.",
         }
 
-    direct_tx = (
-        settlement.get("transactionHash")
-        or settlement.get("txHash")
-        or settlement.get("batchTxHash")
-        or settlement.get("batchTransactionHash")
-        or settlement.get("batch_tx")
-    )
+    direct_tx = extract_settlement_tx_hash(settlement)
     if direct_tx:
         return {
             "batch_tx": direct_tx,
             "explorer_url": f"{arc_explorer}/tx/{direct_tx}" if arc_explorer else None,
             "status": status_value,
-            "match_type": "authoritative_receipt",
+            "match_type": match_type,
         }
 
-    transactions, error = load_arc_gateway_transactions()
+    if not load_arc_gateway_transactions or not parse_iso_utc:
+        return {
+            "batch_tx": None,
+            "explorer_url": None,
+            "status": status_value,
+            "message": "Settlement completed, but on-chain batch tx is pending finalization in Circle Gateway.",
+        }
+
+    transactions, error = load_arc_gateway_transactions(max_pages=1)
     if error:
         return {
             "batch_tx": None,
@@ -88,5 +115,5 @@ def find_arc_batch_tx(
         "batch_tx": None,
         "explorer_url": None,
         "status": status_value,
-        "message": "Settlement completed, but recent Arcscan index did not expose the matching submitBatch tx yet.",
+        "message": "Settlement completed, but on-chain batch tx is pending finalization in Circle Gateway.",
     }

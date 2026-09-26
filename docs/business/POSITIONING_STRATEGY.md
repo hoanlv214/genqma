@@ -12,7 +12,7 @@
 The platform is positioned as:
 > **A two-sided marketplace for financial intelligence where quant creators publish and monetize market signals, and autonomous AI agents or human traders purchase verified reports per query via x402 USDC micropayments with cryptographic proof.**
 
-This project is an independent commercial enterprise with its own self-sustaining economic model. It is **not** a hackathon demo, not an empty wallet prototype, and not a single proprietary trading bot.
+This project is an independent commercial enterprise with its own self-sustaining economic model, distinct from toy prototypes, empty wallet scripts, or single proprietary trading bots.
 
 ### Structural Clarification & Naming Architecture
 

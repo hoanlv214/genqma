@@ -234,6 +234,8 @@ from backend.app.api.v1.endpoints.sessions import create_sessions_router
 from backend.app.api.v1.endpoints.wallets import create_wallets_router
 from backend.app.api.v1.endpoints.treasury import create_treasury_router
 from backend.app.api.v1.endpoints.stablefx import create_stablefx_router
+from backend.app.api.v1.endpoints.onramp import create_onramp_router
+from backend.app.api.v1.endpoints.incidents import create_incidents_router
 
 
 from backend.app.schemas import InvoiceRequest, PaymentVerifyRequest
@@ -1010,6 +1012,8 @@ def create_invoice(req: InvoiceRequest):
     run_source = req_data.pop("run_source", None)
     buyer_wallet_address = req_data.pop("buyer_wallet_address", None)
     buyer_wallet_address = normalize_address(buyer_wallet_address) if buyer_wallet_address else None
+    req_data.pop("candidate_id", None)
+    req_data.pop("expected_price_usdc", None)
     provider = get_provider_or_404(provider_registry, provider_id)
     req_data = normalize_query_for_provider(provider, req_data)
     
@@ -1043,19 +1047,26 @@ def create_invoice(req: InvoiceRequest):
             
         if is_uuid:
             session_rows = storage_backend._request("GET", "agent_sessions", params={"id": f"eq.{session_id}", "limit": "1"})
-            if session_rows and session_rows[0].get("budget_usdc") is not None:
-                budget = float(session_rows[0]["budget_usdc"])
-                invoices = _load_invoices()
-                total_spent = sum(
-                    float(inv.get("amount") or 0)
-                    for inv in invoices.values()
-                    if inv.get("run_source") == run_source and inv.get("status") in ("paid", "pending")
-                )
-                if total_spent + float(amount_usdc) > budget:
+            if session_rows:
+                sess_status = str(session_rows[0].get("status") or "").lower()
+                if sess_status in ("paused", "stopped", "completed", "failed"):
                     raise HTTPException(
-                        status_code=402,
-                        detail=f"Session budget exceeded. Limit: {budget} USDC. Spent/Pending: {total_spent} USDC. Requested: {amount_usdc} USDC."
+                        status_code=403,
+                        detail=f"Agent session {session_id} is in status '{sess_status}'. Zero-spend invariant prevents creating invoices."
                     )
+                if session_rows[0].get("budget_usdc") is not None:
+                    budget = float(session_rows[0]["budget_usdc"])
+                    invoices = _load_invoices()
+                    total_spent = sum(
+                        float(inv.get("amount") or 0)
+                        for inv in invoices.values()
+                        if inv.get("run_source") == run_source and inv.get("status") in ("paid", "pending")
+                    )
+                    if total_spent + float(amount_usdc) > budget:
+                        raise HTTPException(
+                            status_code=402,
+                            detail=f"Session budget exceeded. Limit: {budget} USDC. Spent/Pending: {total_spent} USDC. Requested: {amount_usdc} USDC."
+                        )
 
     invoice, requirement = paid_kit.create_invoice(
         query=req_data,
@@ -1613,8 +1624,19 @@ def authorize_paid_invoice(*, query, invoice_id, token, required_tier, provider_
     if invoice["symbol"].upper() != str(query.get("symbol", "")).upper():
         raise HTTPException(status_code=400, detail="Invoice symbol does not match query symbol.")
     current_query_hash = query_fingerprint(query)
-    if invoice.get("query_hash") != current_query_hash:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Paid invoice is bound to a different query snapshot. Create a fresh invoice for changed signal data.")
+    stored_query_hash = invoice.get("query_hash")
+    if stored_query_hash != current_query_hash:
+        non_query_fields = {
+            "provider_id", "tier", "buyer_type", "buyer_wallet_address",
+            "synthetic", "agent_label", "run_source", "resource_type",
+            "candidate_id", "expected_price_usdc",
+        }
+        inv_q_clean = {k: v for k, v in (invoice.get("query") or {}).items() if k not in non_query_fields}
+        client_q_clean = {k: v for k, v in query.items() if k not in non_query_fields}
+        clean_inv_hash = query_fingerprint(inv_q_clean) if inv_q_clean else None
+        clean_client_hash = query_fingerprint(client_q_clean)
+        if not (clean_inv_hash and clean_client_hash == clean_inv_hash) and clean_client_hash != stored_query_hash:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Paid invoice is bound to a different query snapshot. Create a fresh invoice for changed signal data.")
     token_payload = verify_access_token(token or "")
     try:
         paid_kit.require_access(token_payload, invoice, required_tier=required_tier)
@@ -1952,6 +1974,28 @@ def settle_genlayer_verdict_on_arc(invoice_id: str, invoice: dict) -> dict | Non
         logger.error("Cannot create Arc verdict settlement for invoice %s: %s", invoice_id, exc)
         return None
     _sync_arc_settlement_to_payment_events(invoice)
+    try:
+        from backend.app.services.euthyna_audit import euthyna_audit_engine
+        from backend.app.services.usyc_treasury import usyc_treasury_service
+        liquid_bal = usyc_treasury_service.get_liquid_usdc_balance()
+        pos = usyc_treasury_service.query_onchain_position()
+        arc_tx = invoice.get("transaction_hash") or (invoice.get("arc_settlement") or {}).get("transaction_hash")
+        amount_val = float(invoice.get("amount") or 0.0)
+        euthyna_audit_engine.record_action(
+            action="VENDOR_PAYOUT",
+            actor=invoice.get("buyer_wallet_address") or "0xAutonomousBuyer",
+            amount_usdc=amount_val,
+            balance_before=liquid_bal,
+            balance_after=max(0.0, round(liquid_bal - amount_val, 6)),
+            usyc_shares=pos.get("usyc_shares", 0.0),
+            policy_rule="RULE_ARBITER_VERIFIED_SETTLEMENT",
+            reasoning=f"GenLayer validated deliverable for invoice {invoice_id}. Settlement executed on Arc.",
+            tx_hash=arc_tx,
+            provider_id=invoice.get("provider_id"),
+            genlayer_consensus=(invoice.get("genlayer") or {}).get("verdict"),
+        )
+    except Exception as exc:
+        logger.debug("Could not record Arc verdict settlement in Euthyna audit: %s", exc)
     return plan
 
 
@@ -1966,7 +2010,7 @@ def reconcile_arc_verdict_settlements_once(max_invoices: int = 20) -> int:
         try:
             inv_id = str(invoice.get("invoice_id") or "")
             verify_invoice_report_with_genlayer(inv_id, invoice)
-        except HTTPException:
+        except (HTTPException, genlayer_arbiter.GenLayerVerificationError):
             pass
         except Exception:
             logger.exception("GenLayer background reconciliation failed for invoice %s", invoice.get("invoice_id"))
@@ -2105,6 +2149,34 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
             "GenLayer rejected invoice %s; report locked and the evidence-bound Arc refund was scheduled.",
             invoice_id,
         )
+        target_session_id = invoice.get("session_id")
+        run_source = invoice.get("run_source")
+        if not target_session_id and run_source and str(run_source).startswith("agent_session_"):
+            target_session_id = str(run_source).replace("agent_session_", "")
+        if target_session_id:
+            try:
+                from backend.app.services.incident_engine import record_incident, execute_session_control
+                record_incident(
+                    session_id=str(target_session_id),
+                    severity="P1_CRITICAL",
+                    category="GENLAYER_SLA_VIOLATION",
+                    rule="FAIL_CLOSED_VERIFIER",
+                    details=f"GenLayer SLA verdict INVALID on invoice {invoice_id}. Automatic circuit breaker triggered.",
+                    actor_type="SYSTEM_CIRCUIT_BREAKER",
+                    trace_id=receipt.get("transaction_hash") or invoice.get("settlement_id"),
+                    financial_context={
+                        "attempted_amount_usdc": float(invoice.get("amount") or 0.0),
+                        "provider_id": invoice.get("provider_id"),
+                    },
+                )
+                execute_session_control(
+                    session_id=str(target_session_id),
+                    action="pause",
+                    reason=f"Auto-pause: GenLayer SLA rejected report for invoice {invoice_id}",
+                    storage=storage_backend,
+                )
+            except Exception as auto_err:
+                logger.error("Failed to auto-pause session %s on GenLayer SLA rejection: %s", target_session_id, auto_err)
         return receipt
 
     if invoice_split_mode(invoice) != "x402_direct_split":
@@ -2139,7 +2211,11 @@ def _process_agent_direct_x402_payment(**_kwargs) -> dict:
 def run_paid_provider_report(*, provider_id, query, invoice_id, token, required_tier, request=None):
     provider = get_provider_or_404(provider_registry, provider_id)
     raw_query = model_to_dict(query)
-    for key in ["provider_id", "tier", "buyer_type", "buyer_wallet_address", "synthetic", "agent_label", "run_source", "resource_type"]:
+    for key in [
+        "provider_id", "tier", "buyer_type", "buyer_wallet_address",
+        "synthetic", "agent_label", "run_source", "resource_type",
+        "candidate_id", "expected_price_usdc",
+    ]:
         raw_query.pop(key, None)
 
     normalized_query = normalize_query_for_provider(provider, raw_query)
@@ -2433,6 +2509,8 @@ app.include_router(create_oauth_router(SimpleNamespace(
 
 app.include_router(create_treasury_router())
 app.include_router(create_stablefx_router())
+app.include_router(create_onramp_router())
+app.include_router(create_incidents_router())
 
 
 

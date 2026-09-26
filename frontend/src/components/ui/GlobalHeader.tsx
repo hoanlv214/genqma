@@ -3,6 +3,8 @@ import { shortAddress } from "../../services/wallet";
 import type { QmaRoute } from "../../app/routes";
 import { useAgentWalletStore } from "../../state/agentWalletStore";
 import { QmaLogo } from "./QmaLogo";
+import { NotificationDropdown } from "./NotificationDropdown";
+import { NetworkBadge } from "./NetworkBadge";
 
 interface GlobalHeaderProps {
   activePage: QmaRoute;
@@ -70,17 +72,22 @@ export function GlobalHeader({
   const navLinks = [
     {
       id: "app",
-      label: "App (Classic)",
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+      label: "Market Workspace",
+      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+    },
+    {
+      id: "swap",
+      label: "Swap & StableFX",
+      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><path d="M7 10h14l-4-4" /><path d="M17 14H3l4 4" /></svg>
     },
     {
       id: "traction",
-      label: "Traction",
+      label: "Traction & Ledger",
       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
     },
     {
       id: "marketplace",
-      label: "Marketplace",
+      label: "Creator Marketplace",
       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
     }
   ];
@@ -115,6 +122,14 @@ export function GlobalHeader({
       {/* 3. Right - Context Controls & Wallet */}
       <div className="global-nav-right">
         {rightControls && <div className="global-nav-context">{rightControls}</div>}
+
+        <NetworkBadge />
+
+        <NotificationDropdown
+          walletAddress={walletAddress}
+          onNavigate={onNavigate}
+          isAdmin={userRole === "admin"}
+        />
 
         {!walletAddress ? (
           <button type="button" className="connect-btn-primary" onClick={onConnect}>

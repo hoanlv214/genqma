@@ -79,7 +79,20 @@ def create_reports_router(deps: SimpleNamespace) -> APIRouter:
     ):
         """Returns the verified preview for the invoice-bound query. Requires invoice_id and X-QMA-Access-Token after payment verification. Raw payment-signature, x-payment and Authorization headers do not grant access; pay the invoice's Gateway resource first."""
         try:
-            resolved_query = query if query is not None else QueryModel(symbol="BTC_USDT")
+            if query is not None:
+                resolved_query = query
+            elif invoice_id:
+                inv = deps.get_invoice(invoice_id) if hasattr(deps, "get_invoice") else None
+                if not inv and hasattr(deps, "invoices_db"):
+                    inv = deps.invoices_db.get(invoice_id)
+                if inv and inv.get("query"):
+                    resolved_query = QueryModel(**inv["query"])
+                elif inv and inv.get("symbol"):
+                    resolved_query = QueryModel(symbol=inv["symbol"])
+                else:
+                    resolved_query = QueryModel(symbol="BTC_USDT")
+            else:
+                resolved_query = QueryModel(symbol="BTC_USDT")
             return deps.run_paid_provider_report(
                 provider_id=provider_id,
                 query=resolved_query,
@@ -121,7 +134,20 @@ def create_reports_router(deps: SimpleNamespace) -> APIRouter:
     ):
         """Returns the verified full report for the invoice-bound query. Requires invoice_id and X-QMA-Access-Token after payment verification. Raw payment headers never grant access or create a paid invoice."""
         try:
-            resolved_query = query if query is not None else QueryModel(symbol="BTC_USDT")
+            if query is not None:
+                resolved_query = query
+            elif invoice_id:
+                inv = deps.get_invoice(invoice_id) if hasattr(deps, "get_invoice") else None
+                if not inv and hasattr(deps, "invoices_db"):
+                    inv = deps.invoices_db.get(invoice_id)
+                if inv and inv.get("query"):
+                    resolved_query = QueryModel(**inv["query"])
+                elif inv and inv.get("symbol"):
+                    resolved_query = QueryModel(symbol=inv["symbol"])
+                else:
+                    resolved_query = QueryModel(symbol="BTC_USDT")
+            else:
+                resolved_query = QueryModel(symbol="BTC_USDT")
             return deps.run_paid_provider_report(
                 provider_id=provider_id,
                 query=resolved_query,

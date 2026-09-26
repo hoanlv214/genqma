@@ -2,6 +2,8 @@ import { useState } from "react";
 import { FundArcWalletModal } from "../wallet/FundArcWalletModal";
 import { Loader } from "../ui/Loader";
 import { formatUsdc } from "../../utils/format";
+import { ensureArcTestnet } from "../../services/wallet";
+import { ARC_CHAIN } from "../../config/network";
 
 interface UnifiedWithdrawModalProps {
   open: boolean;
@@ -15,6 +17,7 @@ interface UnifiedWithdrawModalProps {
 
   wallet: string;
   fundGatewayBalance: string;
+  fundChainStatus?: string;
   gatewayWithdrawAmount: string;
   setGatewayWithdrawAmount: (val: string) => void;
   gatewayWithdrawLoading: boolean;
@@ -42,7 +45,24 @@ interface UnifiedWithdrawModalProps {
   refreshProviderEarningsModal: () => void;
   submitProviderGatewayWithdraw: () => void;
   submitCreatorClaim: () => void;
+  refreshFundingReadiness?: () => void | Promise<void>;
 }
+
+const safeFormatUsdc = (val: string | number | null | undefined): string => {
+  if (typeof val === "number") return Number.isFinite(val) ? `$${val.toFixed(2)}` : "$0.00";
+  if (!val || val === "n/a") return "$0.00";
+  const cleaned = String(val).replace(/[^\d.]/g, "");
+  const num = parseFloat(cleaned);
+  return Number.isFinite(num) ? `$${num.toFixed(2)}` : "$0.00";
+};
+
+const safeParseUsdc = (val: string | number | null | undefined): number => {
+  if (typeof val === "number") return Number.isFinite(val) ? val : 0;
+  if (!val || val === "n/a") return 0;
+  const cleaned = String(val).replace(/[^\d.]/g, "");
+  const num = parseFloat(cleaned);
+  return Number.isFinite(num) ? num : 0;
+};
 
 export function UnifiedWithdrawModal({
   open,
@@ -56,6 +76,7 @@ export function UnifiedWithdrawModal({
 
   wallet,
   fundGatewayBalance,
+  fundChainStatus,
   gatewayWithdrawAmount,
   setGatewayWithdrawAmount,
   gatewayWithdrawLoading,
@@ -79,20 +100,32 @@ export function UnifiedWithdrawModal({
   refreshProviderEarningsModal,
   submitProviderGatewayWithdraw,
   submitCreatorClaim,
+  refreshFundingReadiness,
 }: UnifiedWithdrawModalProps) {
   const [withdrawTab, setWithdrawTab] = useState<"gateway" | "agent" | "creator">((() => {
     return (walletRole.label?.toLowerCase() === "creator" || walletRole.label?.toLowerCase() === "provider") && ownedProviders.length > 0
       ? "creator"
       : "gateway";
   }));
+  const [switchingNetwork, setSwitchingNetwork] = useState(false);
+
+  const handleSwitchToArc = async () => {
+    setSwitchingNetwork(true);
+    try {
+      await ensureArcTestnet();
+      await refreshFundingReadiness?.();
+    } catch (err: any) {
+      console.error("Failed to switch network:", err);
+    } finally {
+      setSwitchingNetwork(false);
+    }
+  };
 
   const handleMaxGateway = () => {
-    if (fundGatewayBalance) {
-      const match = fundGatewayBalance.match(/[\d.]+/);
-      if (match) {
-        setGatewayWithdrawAmount(match[0]);
-        return;
-      }
+    const bal = safeParseUsdc(fundGatewayBalance);
+    if (bal > 0) {
+      setGatewayWithdrawAmount(bal.toString());
+      return;
     }
     setGatewayWithdrawAmount("");
   };
@@ -172,7 +205,7 @@ export function UnifiedWithdrawModal({
               <div className="funding-sidebar-balance-amount-row">
                 <span className="funding-sidebar-balance-amount">
                   {withdrawTab === "gateway"
-                    ? `$${parseFloat(fundGatewayBalance || "0").toFixed(2)}`
+                    ? safeFormatUsdc(fundGatewayBalance)
                     : withdrawTab === "agent"
                       ? `$${agentWalletBalance.toFixed(2)}`
                       : `$${(providerEarningsTotals.totalClaimable + providerEarningsTotals.gatewayAvailable).toFixed(2)}`
@@ -204,6 +237,46 @@ export function UnifiedWithdrawModal({
 
           {/* Right Main Panel */}
           <div className="funding-modal-main-panel">
+            {/* Wrong Network Notice Banner */}
+            {fundChainStatus && fundChainStatus !== ARC_CHAIN.name && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+                background: "rgba(245, 158, 11, 0.1)",
+                border: "1px solid rgba(245, 158, 11, 0.25)",
+                borderRadius: "8px",
+                marginBottom: "14px",
+                gap: "10px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "16px" }}>⚠️</span>
+                  <span style={{ fontSize: "12px", color: "#fbbf24" }}>
+                    Connected to <strong>{fundChainStatus}</strong>. Switch to {ARC_CHAIN.name} to process Gateway refund.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSwitchToArc}
+                  disabled={switchingNetwork}
+                  style={{
+                    padding: "6px 12px",
+                    background: "#f59e0b",
+                    color: "#000",
+                    fontWeight: 700,
+                    fontSize: "11px",
+                    borderRadius: "6px",
+                    border: "none",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {switchingNetwork ? "Switching..." : `Switch to ${ARC_CHAIN.name}`}
+                </button>
+              </div>
+            )}
+
             {/* Section 1: Choose Withdraw Source */}
             <div className="funding-main-section">
               <span className="funding-section-header">1. Choose Withdraw Source</span>
@@ -271,7 +344,7 @@ export function UnifiedWithdrawModal({
                         type="number"
                         step="0.000001"
                         min="0.000001"
-                        max={parseFloat(fundGatewayBalance || "0")}
+                        max={safeParseUsdc(fundGatewayBalance)}
                         placeholder="0.00"
                         value={gatewayWithdrawAmount}
                         onChange={(e) => setGatewayWithdrawAmount(e.target.value)}
@@ -298,7 +371,7 @@ export function UnifiedWithdrawModal({
                     <button
                       type="submit"
                       className="funding-btn-submit"
-                      disabled={gatewayWithdrawLoading || !gatewayWithdrawAmount || parseFloat(gatewayWithdrawAmount) <= 0}
+                      disabled={gatewayWithdrawLoading || !gatewayWithdrawAmount || safeParseUsdc(gatewayWithdrawAmount) <= 0 || safeParseUsdc(gatewayWithdrawAmount) > safeParseUsdc(fundGatewayBalance)}
                     >
                       {gatewayWithdrawLoading ? "Refunding..." : "Confirm Refund"}
                     </button>

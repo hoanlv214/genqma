@@ -1,30 +1,47 @@
 # QMA Documentation Map
 
-Use this map to find the owner of a behavior. Not every directory needs a
-separate README: a README belongs at a reusable boundary, while cross-cutting
-contracts belong under `docs/`.
+Use this map to find the owner of a behavior. Not every directory needs a separate README: a README belongs at a reusable boundary, while cross-cutting contracts belong under `docs/`.
 
-## Where the detailed flow lives
+---
 
-| Area | Primary documentation | What it owns |
+## 1. Canonical System Contracts
+
+| Area | Primary Documentation | Purpose & Scope |
 | --- | --- | --- |
-| Repository/system | [`../README.md`](../README.md) | product story, branch split, high-level architecture |
-| Product Positioning | [`business/POSITIONING_STRATEGY.md`](business/POSITIONING_STRATEGY.md) | market-memory positioning, JTBD, Keryx benchmark, GTM roadmap |
-| Backend/API | [`../backend/README.md`](../backend/README.md) | FastAPI composition, route groups, service/repository flow, payment invariants |
-| API reference/access | [`api/README.md`](api/README.md) | complete endpoint inventory, public/private/auth classification, documentation update gate |
-| React frontend | [`../frontend/README.md`](../frontend/README.md) | routes, state/services, API base, browser agent flow |
-| Typed agent package | [`../agents/README.md`](../agents/README.md) | contracts, policy, session loop, bounds, signer boundary |
-| External CLI buyer | [`../examples/README.md`](../examples/README.md) | commands and live/dry-run buyer execution |
-| MCP server / AI connectors | [`mcp/README.md`](mcp/README.md) | hosted MCP endpoint, OAuth connector flow, tools, local stdio bridge |
-| Agent HTTP contract | [`specs/AGENT_API.md`](specs/AGENT_API.md) | decision endpoint and purchase sequence |
-| Autonomous session | [`architecture/AUTONOMOUS_AGENT.md`](architecture/AUTONOMOUS_AGENT.md) | bounded session policy, accounting, stop conditions |
-| Payment lifecycle | [`../PAYMENT_FLOW.md`](../PAYMENT_FLOW.md) | invoice, x402, split legs, verify, entitlement, unlock |
-| Deployment | [`infrastructure/DEPLOYMENT_SETUP.md`](infrastructure/DEPLOYMENT_SETUP.md) | Render/Vercel branch and environment setup |
-| Security & Auth | [`architecture/API_SECURITY.md`](architecture/API_SECURITY.md), [`architecture/PRODUCTION_SECURITY_ARCHITECTURE.md`](architecture/PRODUCTION_SECURITY_ARCHITECTURE.md) | auth, rate limits, verification deep-dive, production hardening |
-| Persistence | [`infrastructure/SUPABASE.md`](infrastructure/SUPABASE.md) | JSON/Supabase schema and migration operations |
-| Legacy cutover | [`legacy_v1/`](legacy_v1/) | read-only parity, gap, and deletion evidence |
+| **System Architecture** | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Authoritative definitive system architecture, component topology, module boundaries, SSOT matrix |
+| **System & Flows** | [`FLOWS.md`](FLOWS.md) | Canonical end-to-end execution flows (FL-01 to FL-10), sequence diagrams, state invariants |
+| **Security & Attack Surface** | [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) | 3-axis risk assessment, cryptographic gates, HMAC tokens, ingress perimeter defense |
+| **Refactoring Protocol** | [`architecture/CONTROLLED_REFACTORING_PROTOCOL.md`](architecture/CONTROLLED_REFACTORING_PROTOCOL.md) | Controlled Refactoring & Codebase Intelligence Protocol (CRCIP, Phases 0–10) |
+| **Audit & Cleanup Registry** | [`CLEANUP_LOG.md`](CLEANUP_LOG.md) | Historical dead code, docs, and duplication audit ledger |
+| **Final Verification Gate** | [`AUDIT_FINAL.md`](AUDIT_FINAL.md) | Definitive closure report, quantitative Before vs After metrics, technical debt catalog |
+| **Payment Lifecycle** | [`agent/PAYMENT_FLOW.md`](agent/PAYMENT_FLOW.md) | Source of truth for invoice creation, Circle Gateway x402 settlement, GenLayer verification |
+| **API Inventory & Gate** | [`api/README.md`](api/README.md) | Complete OpenAPI endpoint inventory, access classes, documentation maintenance gate |
+| **Autonomous Agent** | [`architecture/AUTONOMOUS_AGENT.md`](architecture/AUTONOMOUS_AGENT.md) | Bounded session policy, deterministic execution boundary, budget gates |
+| **Agent API Contract** | [`specs/AGENT_API.md`](specs/AGENT_API.md) | `POST /api/v1/agent/decision` contract, request/response models |
+| **Package Management** | [`package-managers.md`](package-managers.md) | Monorepo runtime tooling (`bun` for TypeScript/Node workspaces, `uv` for Python) |
+| **Environment Tiers** | [`environments.md`](environments.md) | Parameter matrix across Local (`dev`), Staging, and Production tiers |
+| **Database Architecture** | [`database.md`](database.md) | Schema definitions, table relationships, PostgreSQL/Supabase setup |
+| **NPM CLI Packaging** | [`infrastructure/NPM_PUBLISHING.md`](infrastructure/NPM_PUBLISHING.md) | Packaging, testing, SemVer, and publishing flow for `@hoanlv214/qma-cli` |
+| **Deployment Setup** | [`infrastructure/DEPLOYMENT_SETUP.md`](infrastructure/DEPLOYMENT_SETUP.md) | Render/Vercel branch configuration, environment secrets, and deploy steps |
+| **CLI Deployment** | [`infrastructure/CLI_DEPLOYMENT.md`](infrastructure/CLI_DEPLOYMENT.md) | Zero-UI deployment via Supabase, Vercel, and Render CLIs |
+| **MCP Server** | [`mcp/README.md`](mcp/README.md) | Hosted MCP endpoint, OAuth 2.1 PKCE connector, Claude/ChatGPT integration |
+| **Marketplace Listing** | [`marketplace/CIRCLE_AGENT_MARKETPLACE_LISTING.md`](marketplace/CIRCLE_AGENT_MARKETPLACE_LISTING.md) | Official Circle Agent Services Marketplace listing package and service descriptors |
 
-## Runtime ownership map
+---
+
+## 2. Component READMEs
+
+| Component | Path | Responsibility |
+| --- | --- | --- |
+| **Repository Root** | [`../README.md`](../README.md) | Project story, system architecture, core capabilities |
+| **Backend API** | [`../backend/README.md`](../backend/README.md) | FastAPI router composition, service layer, repository pattern |
+| **React Frontend** | [`../frontend/README.md`](../frontend/README.md) | Vite + React rebuild, Tailwind/vanilla CSS tokens, state services |
+| **Agent CLI & SDK** | [`../agents/README.md`](../agents/README.md) | TypeScript autonomous agent package (`qma-cli`), session loop |
+| **Autonomous Examples** | [`../examples/README.md`](../examples/README.md) | Standalone agent runner examples and CLI smoke invocation |
+
+---
+
+## 3. Runtime Flow Diagram
 
 ```mermaid
 flowchart LR
@@ -35,34 +52,31 @@ flowchart LR
     Frontend --> Contract[docs/specs/AGENT_API.md]
     Agents --> Contract
     Examples --> Contract
-    Contract --> Payment[PAYMENT_FLOW.md]
+    Contract --> Payment[docs/agent/PAYMENT_FLOW.md]
     Payment --> Deploy[docs/infrastructure/DEPLOYMENT_SETUP.md]
-    Deploy --> Audit[docs/legacy_v1/* read-only evidence]
+    Deploy --> Audit[docs/SECURITY_AUDIT.md]
 ```
 
-## Documentation rules
+---
 
-- Backend README documents the active implementation, not the legacy
-  `main_ref.py` snapshot.
-- Frontend README documents `frontend/src`; it does not document legacy CSS or
-  root HTML behavior except where deployment/cutover requires the distinction.
-- Agent README documents policy/session boundaries. It must not imply that
-  dry-run spent funds or that an LLM is trusted with payment authority.
-- `PAYMENT_FLOW.md` is currently at repository root. The historical audit
-  references an intended `docs/legacy_v1/PAYMENT_FLOW.md` path; no file move is
-  performed by this documentation update.
-- `docs/legacy_v1/LEGACY_*` and `CUTOVER_REPORT.md` are audit evidence. Update them
-  only when creating a new audit result; do not rewrite historical findings to
-  make current architecture look cleaner.
+## 4. Documentation Invariants
 
-## Verification commands
+- **Single Source of Truth**: All API endpoints must match [`api/README.md`](api/README.md) and pass `pytest tests/api_v1/test_api_openapi_docs.py`.
+- **Payment Invariants**: Before altering any payment state machine or invoice logic, [`agent/PAYMENT_FLOW.md`](agent/PAYMENT_FLOW.md) must be consulted.
+- **Independence Rule**: All documentation adheres strictly to `AGENTS.md` Rule 144 (independent production identity, zero mention of hackathons or competitions).
+- **Historical Archives**: Superseded audit logs and early architectural reviews are preserved in `docs/archive/` to keep the active documentation directory clean and authoritative.
+
+---
+
+## 5. Verification Commands
 
 ```powershell
-python -m pytest -q
-cd frontend; npm run typecheck; npm run build
-cd ..\agents; npm run test
-cd ..; node --check examples/agent_session.mjs
-```
+# Verify OpenAPI documentation gate
+python -m pytest tests/api_v1/test_api_openapi_docs.py -q
 
-The commands verify source/build contracts. They do not constitute a browser
-run, a live Circle settlement, or a production deployment check.
+# Verify Frontend build
+cd frontend; bun run typecheck; bun run build
+
+# Verify Agent CLI & SDK
+cd ..\agents; bun run test
+```

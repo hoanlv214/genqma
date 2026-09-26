@@ -2,6 +2,8 @@ import json
 import logging
 import os
 import tempfile
+import threading
+import time
 from typing import Optional
 
 import requests
@@ -9,12 +11,12 @@ import requests
 logger = logging.getLogger("QMA-Storage")
 
 
-def normalize_address(value: Optional[str]) -> str:
-    return str(value or "").strip().lower()
+from backend.app.services.payment_state_machine import has_fabricated_settlement
+from backend.app.services.wallet_utils import normalize_address
 
 def wallet_matches(record: dict, address: str) -> bool:
     normalized = normalize_address(address)
-    if not normalized or not isinstance(record, dict):
+    if not normalized or not isinstance(record, dict) or has_fabricated_settlement(record):
         return False
     return any(
         normalize_address(record.get(field)) == normalized
@@ -171,6 +173,11 @@ class JsonStorage:
         self.invoices_path = invoices_path
         self.creators_path = creators_path
         self.provider_controls_path = provider_controls_path
+        base_dir = os.path.dirname(self.invoices_path) or "."
+        self.sessions_path = os.path.join(base_dir, "agent_sessions.json")
+        self.wallets_path = os.path.join(base_dir, "agent_wallets.json")
+        self.session_events_path = os.path.join(base_dir, "agent_session_events.json")
+        self._rpc_lock = threading.Lock()
 
     def _load_json(self, path: str, fallback):
         if not os.path.exists(path):
@@ -191,10 +198,20 @@ class JsonStorage:
                 json.dump(value, file_obj, indent=2)
                 file_obj.flush()
                 os.fsync(file_obj.fileno())
-            os.replace(temporary, path)
+            for attempt in range(5):
+                try:
+                    os.replace(temporary, path)
+                    break
+                except PermissionError:
+                    if attempt == 4:
+                        raise
+                    time.sleep(0.05 * (attempt + 1))
         finally:
             if os.path.exists(temporary):
-                os.unlink(temporary)
+                try:
+                    os.unlink(temporary)
+                except OSError:
+                    pass
 
     def load_payment_events(self) -> list:
         data = self._load_json(self.ledger_path, [])
@@ -387,11 +404,231 @@ class JsonStorage:
         data = self._load_json(self.provider_controls_path, {})
         return data if isinstance(data, dict) else {}
 
-    def save_provider_control(self, provider_id: str, control: dict) -> None:
-        controls = self.load_provider_controls()
-        if provider_id:
-            controls[provider_id] = control
-            self._save_json(self.provider_controls_path, controls)
+    def _request(self, method: str, table: str, *, params: Optional[dict] = None, json_body=None, prefer: str = ""):
+        table_clean = table.split("?")[0].strip("/")
+        params = params or {}
+
+        if table_clean.startswith("rpc/"):
+            fn = table_clean.split("/", 1)[1]
+            return self.rpc(fn, json_body)
+
+        if table_clean == "agent_sessions":
+            sessions = self._load_json(self.sessions_path, [])
+            if not isinstance(sessions, list):
+                sessions = []
+            if method == "GET":
+                filtered = sessions
+                for key, val in params.items():
+                    if key == "id" and str(val).startswith("eq."):
+                        target_id = str(val)[3:]
+                        filtered = [s for s in filtered if str(s.get("id")) == target_id]
+                    elif key == "runtime_state->>owner_wallet" and str(val).startswith("eq."):
+                        target_owner = str(val)[3:].lower()
+                        filtered = [s for s in filtered if str((s.get("runtime_state") or {}).get("owner_wallet") or "").lower() == target_owner]
+                    elif key == "status" and str(val).startswith("eq."):
+                        target_st = str(val)[3:]
+                        filtered = [s for s in filtered if str(s.get("status")) == target_st]
+                limit_val = params.get("limit")
+                limit = int(limit_val) if limit_val and str(limit_val).isdigit() else 100
+                return filtered[:limit]
+            elif method == "POST":
+                row = json_body if isinstance(json_body, dict) else (json_body[0] if isinstance(json_body, list) and json_body else {})
+                from datetime import datetime, timezone
+                now_iso = datetime.now(timezone.utc).isoformat()
+                row.setdefault("created_at", now_iso)
+                row.setdefault("updated_at", now_iso)
+                sessions.append(row)
+                self._save_json(self.sessions_path, sessions)
+                return [row]
+            elif method == "PATCH":
+                target_id = None
+                if "id" in params and str(params["id"]).startswith("eq."):
+                    target_id = str(params["id"])[3:]
+                elif "id=eq." in table:
+                    target_id = table.split("id=eq.")[1].split("&")[0]
+
+                updated_rows = []
+                for s in sessions:
+                    if not target_id or str(s.get("id")) == target_id:
+                        if isinstance(json_body, dict):
+                            s.update(json_body)
+                        updated_rows.append(s)
+                self._save_json(self.sessions_path, sessions)
+                return updated_rows
+            elif method == "DELETE":
+                target_id = None
+                if "id" in params and str(params["id"]).startswith("eq."):
+                    target_id = str(params["id"])[3:]
+                elif "id=eq." in table:
+                    target_id = table.split("id=eq.")[1].split("&")[0]
+                if target_id:
+                    sessions = [s for s in sessions if str(s.get("id")) != target_id]
+                    self._save_json(self.sessions_path, sessions)
+                return []
+
+        elif table_clean == "agent_wallets":
+            wallets = self._load_json(self.wallets_path, [])
+            if not isinstance(wallets, list):
+                wallets = []
+            if method == "GET":
+                filtered = wallets
+                for key, val in params.items():
+                    if key == "owner_wallet" and str(val).startswith("eq."):
+                        target_owner = str(val)[3:].lower()
+                        filtered = [w for w in filtered if str(w.get("owner_wallet") or "").lower() == target_owner]
+                return filtered
+            elif method in ("POST", "PATCH"):
+                row = json_body if isinstance(json_body, dict) else (json_body[0] if isinstance(json_body, list) and json_body else {})
+                wallets.append(row)
+                self._save_json(self.wallets_path, wallets)
+                return [row]
+
+        elif table_clean == "agent_session_events":
+            events = self._load_json(self.session_events_path, [])
+            if not isinstance(events, list):
+                events = []
+            if method == "GET":
+                filtered = events
+                if "session_id" in params and str(params["session_id"]).startswith("eq."):
+                    sid = str(params["session_id"])[3:]
+                    filtered = [e for e in filtered if str(e.get("session_id")) == sid]
+                if params.get("order") == "id.desc":
+                    filtered = sorted(filtered, key=lambda e: int(e.get("id") or 0), reverse=True)
+                limit_val = params.get("limit")
+                if limit_val and str(limit_val).isdigit():
+                    filtered = filtered[:int(limit_val)]
+                return filtered
+            elif method == "POST":
+                row = json_body if isinstance(json_body, dict) else {}
+                from datetime import datetime, timezone
+                max_id = max([int(e.get("id") or 0) for e in events if str(e.get("id", "")).isdigit()], default=0)
+                row.setdefault("id", max_id + 1)
+                row.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+                events.append(row)
+                self._save_json(self.session_events_path, events)
+                return [row]
+
+        return []
+
+    def _upsert(self, table: str, rows: list[dict], conflict: str) -> None:
+        table_clean = table.split("?")[0].strip("/")
+        if not rows:
+            return
+        if table_clean == "agent_wallets":
+            wallets = self._load_json(self.wallets_path, [])
+            if not isinstance(wallets, list):
+                wallets = []
+            by_owner = {str(w.get("owner_wallet", "")).lower(): w for w in wallets if isinstance(w, dict)}
+            for r in rows:
+                if isinstance(r, dict):
+                    by_owner[str(r.get("owner_wallet", "")).lower()] = r
+            self._save_json(self.wallets_path, list(by_owner.values()))
+        elif table_clean == "agent_sessions":
+            sessions = self._load_json(self.sessions_path, [])
+            if not isinstance(sessions, list):
+                sessions = []
+            by_id = {str(s.get("id", "")): s for s in sessions if isinstance(s, dict)}
+            from datetime import datetime, timezone
+            now_iso = datetime.now(timezone.utc).isoformat()
+            for r in rows:
+                if isinstance(r, dict):
+                    sid = str(r.get("id", ""))
+                    if sid:
+                        existing = by_id.get(sid, {})
+                        r.setdefault("created_at", existing.get("created_at") or now_iso)
+                        r["updated_at"] = r.get("updated_at") or now_iso
+                        by_id[sid] = {**existing, **r}
+            self._save_json(self.sessions_path, list(by_id.values()))
+
+    def _parse_ts(self, val) -> int:
+        if not val:
+            return 0
+        if isinstance(val, (int, float)):
+            return int(val)
+        val_str = str(val).strip()
+        if val_str.isdigit():
+            return int(val_str)
+        try:
+            from datetime import datetime
+            return int(datetime.fromisoformat(val_str).timestamp())
+        except Exception:
+            try:
+                return int(float(val_str))
+            except Exception:
+                return 0
+
+    def rpc(self, fn_name: str, payload: Optional[dict] = None):
+        payload = payload or {}
+        try:
+            from backend.app.core.state import cross_process_lock
+            lock_cm = cross_process_lock("agent_sessions_rpc")
+        except Exception:
+            lock_cm = self._rpc_lock
+
+        with lock_cm:
+            import time as _time
+            now = int(_time.time())
+            sessions = self._load_json(self.sessions_path, [])
+            if not isinstance(sessions, list):
+                sessions = []
+
+            if fn_name in ("acquire_session_tick_lease", "pick_queued_session"):
+                worker_id = payload.get("p_worker_id")
+                lease_duration = int(payload.get("p_lease_duration_sec", 60))
+                for s in sessions:
+                    st = str(s.get("status") or "")
+                    leased_until = self._parse_ts(s.get("lease_expires_at"))
+                    next_run_at = self._parse_ts(s.get("next_run_at"))
+                    if st in ("running", "active", "queued") and (leased_until < now) and (next_run_at <= now):
+                        s["leased_worker_id"] = worker_id
+                        s["lease_expires_at"] = now + lease_duration
+                        s["run_generation"] = int(s.get("run_generation") or 0) + 1
+                        self._save_json(self.sessions_path, sessions)
+                        return [s]
+                return []
+
+            elif fn_name == "reclaim_expired_leases":
+                reclaimed = 0
+                for s in sessions:
+                    exp = self._parse_ts(s.get("lease_expires_at"))
+                    if exp and exp < now:
+                        s["lease_expires_at"] = None
+                        s["leased_worker_id"] = None
+                        reclaimed += 1
+                if reclaimed:
+                    self._save_json(self.sessions_path, sessions)
+                return reclaimed
+
+            elif fn_name == "checkpoint_session_tick":
+                sid = payload.get("p_session_id") or payload.get("session_id")
+                for s in sessions:
+                    if str(s.get("id")) == str(sid):
+                        rs = payload.get("p_runtime_state") if "p_runtime_state" in payload else payload.get("runtime_state")
+                        if rs is not None:
+                            s["runtime_state"] = rs
+                        st = payload.get("p_status") if "p_status" in payload else payload.get("status")
+                        if st is not None:
+                            s["status"] = st
+                        next_sec = payload.get("p_next_run_in_sec") if "p_next_run_in_sec" in payload else payload.get("next_run_in_sec", 15)
+                        s["next_run_at"] = now + int(next_sec or 15)
+                        s["lease_expires_at"] = None
+                        s["leased_worker_id"] = None
+                        self._save_json(self.sessions_path, sessions)
+                        return True
+                return False
+
+            elif fn_name == "heartbeat_session_lease":
+                sid = payload.get("p_session_id") or payload.get("session_id")
+                lease_duration = int(payload.get("p_lease_duration_sec") or payload.get("lease_duration_sec", 60))
+                for s in sessions:
+                    if str(s.get("id")) == str(sid):
+                        s["lease_expires_at"] = now + lease_duration
+                        self._save_json(self.sessions_path, sessions)
+                        return True
+                return False
+
+            return None
+
 
 
 class SupabaseStorage:

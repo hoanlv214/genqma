@@ -8,6 +8,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from backend.app.core.config import (
+    ARC_GATEWAY_DOMAIN,
     ARC_GATEWAY_MINTER,
     ARC_GATEWAY_WALLET,
     ARC_TESTNET_USDC,
@@ -101,8 +102,8 @@ def validate_withdraw_intent(burn_intent: dict, *, expected_depositor: str) -> d
         destination_domain = int(spec.get("destinationDomain"))
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="Withdraw intent domain is invalid")
-    if source_domain != 26 or destination_domain != 26:
-        raise HTTPException(status_code=400, detail="Withdraw intent must target Arc Testnet Gateway domain 26")
+    if source_domain != ARC_GATEWAY_DOMAIN or destination_domain != ARC_GATEWAY_DOMAIN:
+        raise HTTPException(status_code=400, detail=f"Withdraw intent must target {PAYMENT_NETWORK_NAME} Gateway domain {ARC_GATEWAY_DOMAIN}")
     if not same_address(source_contract, ARC_GATEWAY_WALLET) or not same_address(destination_contract, ARC_GATEWAY_MINTER):
         raise HTTPException(status_code=400, detail="Withdraw intent targets an unexpected Gateway contract")
     if not same_address(source_token, ARC_TESTNET_USDC) or not same_address(destination_token, ARC_TESTNET_USDC):

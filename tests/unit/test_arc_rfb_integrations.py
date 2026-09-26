@@ -1,6 +1,7 @@
 """Unit tests for Arc RFB integrations: Agent Identity, StableFX, and Credit Risk Scoring."""
 
 import pytest
+from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
@@ -81,6 +82,47 @@ class TestCircleStableFXService:
         with pytest.raises(ValueError, match="strictly positive"):
             get_stablefx_quote("USDC", "EURC", -5.0)
 
+    @patch("backend.app.services.stablefx_service.Web3")
+    def test_settle_stablefx_swap_onchain(self, mock_web3_cls):
+        mock_w3 = MagicMock()
+        mock_web3_cls.return_value = mock_w3
+        mock_web3_cls.to_checksum_address = lambda x: x
+        mock_w3.is_connected.return_value = True
+        mock_w3.eth.get_transaction_receipt.return_value = {"status": 1}
+        mock_w3.eth.get_transaction_count.return_value = 1
+        mock_w3.eth.gas_price = 1000000000
+        mock_contract = MagicMock()
+        mock_w3.eth.contract.return_value = mock_contract
+        mock_contract.functions.transfer.return_value.build_transaction.side_effect = lambda params: {
+            "from": params.get("from"),
+            "nonce": params.get("nonce", 1),
+            "gas": 100000,
+            "gasPrice": 1000000000,
+            "to": "0x3600000000000000000000000000000000000000",
+            "data": "0x",
+            "chainId": 5042002,
+        }
+        raw_hash_mock = MagicMock()
+        raw_hash_mock.hex.return_value = "0x789abcdef01234567890abcdef01234567890abcdef01234567890abcdef0123"
+        mock_w3.eth.send_raw_transaction.return_value = raw_hash_mock
+
+        from backend.app.services.stablefx_service import settle_stablefx_swap
+        res = settle_stablefx_swap(
+            quote_id="sfx_quote_test123",
+            user_tx_hash="0x2e3ddaa710fd5ac2366d95c6228c2908fe96af50b8fe8bb9650e6f2eb72825ba",
+            recipient_address="0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4",
+            from_currency="EURC",
+            to_currency="USDC",
+            amount=5.0,
+        )
+        assert res["success"] is True
+        assert res["from_currency"] == "EURC"
+        assert res["to_currency"] == "USDC"
+        assert res["from_amount"] == 5.0
+        assert res["to_amount"] > 5.0
+        assert res["settlement_tx_hash"].startswith("0x789abc")
+        assert "arcscan.app" in res["explorer_url"]
+
 
 class TestCollateralRiskScoring:
     @pytest.fixture
@@ -126,6 +168,48 @@ class TestApiEndpoints:
     def test_api_stablefx_quote_validation(self, client):
         res = client.get("/api/v1/stablefx/quote?from_currency=USDC&to_currency=USDC&amount=250")
         assert res.status_code == 400
+
+    @patch("backend.app.services.stablefx_service.Web3")
+    def test_api_stablefx_settle(self, mock_web3_cls, client):
+        mock_w3 = MagicMock()
+        mock_web3_cls.return_value = mock_w3
+        mock_web3_cls.to_checksum_address = lambda x: x
+        mock_w3.is_connected.return_value = True
+        mock_w3.eth.get_transaction_receipt.return_value = {"status": 1}
+        mock_w3.eth.get_transaction_count.return_value = 1
+        mock_w3.eth.gas_price = 1000000000
+        mock_contract = MagicMock()
+        mock_w3.eth.contract.return_value = mock_contract
+        mock_contract.functions.transfer.return_value.build_transaction.side_effect = lambda params: {
+            "from": params.get("from"),
+            "nonce": params.get("nonce", 1),
+            "gas": 100000,
+            "gasPrice": 1000000000,
+            "to": "0x3600000000000000000000000000000000000000",
+            "data": "0x",
+            "chainId": 5042002,
+        }
+        raw_hash_mock = MagicMock()
+        raw_hash_mock.hex.return_value = "0x789abcdef01234567890abcdef01234567890abcdef01234567890abcdef0123"
+        mock_w3.eth.send_raw_transaction.return_value = raw_hash_mock
+
+        res = client.post(
+            "/api/v1/stablefx/settle",
+            json={
+                "quote_id": "sfx_quote_unit_test",
+                "user_tx_hash": "0x2e3ddaa710fd5ac2366d95c6228c2908fe96af50b8fe8bb9650e6f2eb72825ba",
+                "recipient_address": "0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4",
+                "from_currency": "EURC",
+                "to_currency": "USDC",
+                "amount": 10.0,
+            },
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is True
+        assert data["to_currency"] == "USDC"
+        assert data["settlement_tx_hash"].startswith("0x789abc")
+        assert data["recipient_address"] == "0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4"
 
     def test_api_credit_risk_score(self, client):
         res = client.get("/api/v1/market/credit-risk-score?symbol=ETH&funding_rate=-0.001")

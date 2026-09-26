@@ -8,7 +8,7 @@ Usage:
   # List all workspaces and their services
   python scripts/render_sync.py --api-key <KEY> --list
 
-  # Sync env vars to a specific workspace (e.g. 'penn' or "Hoàn Lại Văn's Workspace")
+  # Sync env vars to a specific workspace (e.g. 'penn' or "Hoan Lai Van's Workspace")
   python scripts/render_sync.py --api-key <KEY> --workspace penn --sync-env
 
   # Sync env vars, resume any suspended service, and trigger deploy on workspace 'penn'

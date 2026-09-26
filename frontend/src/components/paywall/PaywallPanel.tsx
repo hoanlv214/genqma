@@ -1,5 +1,6 @@
 import { shortAddress } from "../../services/wallet";
 import { Loader } from "../ui/Loader";
+import { ARC_CHAIN } from "../../config/network";
 import { GENLAYER_CONTRACT_ADDRESS, GENLAYER_EXPLORER_URL } from "../../services/genlayer";
 
 interface PaywallPanelProps {
@@ -101,7 +102,7 @@ export function PaywallPanel(props: PaywallPanelProps) {
                   </div>
                   <div className="invoice-row">
                     <span className="invoice-label">Network</span>
-                    <span className="invoice-val">Arc Testnet + GenLayer</span>
+                    <span className="invoice-val">{ARC_CHAIN.name} + GenLayer</span>
                   </div>
                 </div>
 
@@ -300,12 +301,12 @@ export function PaywallPanel(props: PaywallPanelProps) {
             </div>
 
             {paymentSuccess ? (
-              <button className="simulate-pay-btn" onClick={handleOpenUnlockedReport}>
+              <button className="settle-pay-btn" onClick={handleOpenUnlockedReport}>
                 <span>Open Verified Report</span>
               </button>
             ) : (
               <button
-                className="simulate-pay-btn"
+                className="settle-pay-btn"
                 onClick={signAndSettleX402}
                 disabled={
                   paymentStepStatus.gateway?.status !== "completed" ||
@@ -322,7 +323,7 @@ export function PaywallPanel(props: PaywallPanelProps) {
                   ) : paymentStepStatus.settlement?.status === "active" ? (
                     "Sign Settlement"
                   ) : (
-                    "Pay on Arc Testnet with GenLayer Shield"
+                    `Pay on ${ARC_CHAIN.name} with GenLayer Shield`
                   )}
                 </span>
               </button>

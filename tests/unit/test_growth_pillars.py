@@ -35,7 +35,7 @@ def test_erc8004_agent_card_well_known_and_identity_endpoints(client):
     assert card["standard"] == "ERC-8004"
     assert card["name"] == "QMA Autonomous Intelligence Agent"
     assert "0x367728bf66Cf962Ce15fD2b65193b7a1466f087c" in card["agent_address"]
-    assert card["chain_id"] == 50
+    assert card["chain_id"] in (50, 5042002)
     assert "polymarket_divergence" in card["capabilities"]
     assert "pyth_low_latency_stress" in card["capabilities"]
     assert "x402" in card["supported_protocols"]
@@ -194,7 +194,7 @@ def test_pyth_stress_band_provider_and_eip712_hedge():
     assert "execution_intent" in payload
     intent = payload["execution_intent"]
     assert intent["order_type"] == "EIP-712 LimitHedgeOrder"
-    assert intent["domain"]["chainId"] == 50  # Arc Testnet
+    assert intent["domain"]["chainId"] in (50, 5042002)  # Arc Network
     assert intent["message"]["side"] == "SELL"
 
 

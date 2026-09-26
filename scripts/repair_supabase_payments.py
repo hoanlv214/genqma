@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +11,8 @@ import requests
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 TIER_PRICE_USDC = {
     "preview": 0.001,
@@ -65,18 +68,10 @@ def load_env_file(path: Path) -> None:
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
-def normalize_address(value) -> str:
-    return str(value or "").strip().lower()
-
-
-def project_ref(url: str) -> str:
-    host = urlparse(url).hostname or url
-    return host.split(".")[0]
-
-
-def mask_ref(url: str) -> str:
-    ref = project_ref(url)
-    return ref if len(ref) <= 8 else f"{ref[:4]}...{ref[-4:]}"
+from backend.app.services.circle_client import parse_iso_utc
+from backend.app.services.payment_signing import raw_usdc_to_float
+from backend.app.services.wallet_utils import normalize_address
+from scripts.migrate_supabase_to_supabase import mask_ref, project_ref
 
 
 def parse_jsonb(value):
@@ -122,34 +117,12 @@ def invoice_needs_update(before: dict, after: dict) -> bool:
     )
 
 
-def parse_iso_utc(value: str) -> float:
-    if not value:
-        return 0.0
-    normalized = value.replace("Z", "+00:00")
-    try:
-        parsed = datetime.fromisoformat(normalized)
-    except ValueError:
-        return 0.0
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.timestamp()
-
-
 def paid_at_from_settlement(settlement: dict):
     for key in ("updatedAt", "completedAt", "createdAt"):
         ts = parse_iso_utc(settlement.get(key, ""))
         if ts:
             return ts
     return None
-
-
-def raw_usdc_to_float(raw_amount):
-    if raw_amount is None or raw_amount == "":
-        return None
-    try:
-        return int(str(raw_amount)) / 1_000_000
-    except (TypeError, ValueError):
-        return None
 
 
 class SupabaseRest:

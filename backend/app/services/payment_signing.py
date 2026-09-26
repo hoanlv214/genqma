@@ -3,6 +3,8 @@
 import hashlib
 import hmac
 
+from typing import Optional
+
 from fastapi import HTTPException, status
 
 import paid_intelligence_kit as paid_kit
@@ -32,8 +34,13 @@ def raw_usdc_to_decimal_string(raw_amount: int | str) -> str:
     return f"{int(raw_amount) / 1_000_000:.6f}".rstrip("0").rstrip(".")
 
 
-def raw_usdc_to_float(raw_amount: str) -> float:
-    return int(raw_amount) / 1_000_000
+def raw_usdc_to_float(raw_amount: Optional[int | str]) -> Optional[float]:
+    if raw_amount is None or raw_amount == "":
+        return None
+    try:
+        return int(str(raw_amount)) / 1_000_000
+    except (TypeError, ValueError):
+        return None
 
 
 def raw_token_to_float(raw_amount: str, decimals: int = 6) -> float:

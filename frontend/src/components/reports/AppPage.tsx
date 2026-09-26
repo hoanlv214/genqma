@@ -10,6 +10,7 @@ import { ReportWorkspace } from "./ReportWorkspace";
 import { ProfileModal } from "../modals/ProfileModal";
 import { UnifiedDepositModal } from "../modals/UnifiedDepositModal";
 import { UnifiedWithdrawModal } from "../modals/UnifiedWithdrawModal";
+import { WalletAppKitModal } from "../modals/WalletAppKitModal";
 import { PaywallPanel } from "../paywall/PaywallPanel";
 import { usePendingInvoiceCache } from "../../hooks/usePendingInvoiceCache";
 import { useWalletConnection } from "../../hooks/useWalletConnection";
@@ -20,9 +21,13 @@ import { useFundArcWallet } from "../../hooks/useFundArcWallet";
 import { useQuickProfile } from "../../hooks/useQuickProfile";
 import { useProviderEarnings } from "../../hooks/useProviderEarnings";
 import { usePayment } from "../../hooks/usePayment";
-import { useAgentBuyer } from "../../hooks/useAgentBuyer";
 import { useAgentWalletStore } from "../../state/agentWalletStore";
-import { buildGatewayWithdrawIntent, buildGatewayWithdrawTypedData, encodeGatewayMintCalldata } from "../../services/gatewayCrypto";
+import {
+  buildGatewayWithdrawIntent,
+  buildGatewayWithdrawTypedData,
+  encodeGatewayMintCalldata,
+  encodeErc20TransferCalldata,
+} from "../../services/gatewayCrypto";
 import { withdrawAgentFunds } from "../../services/agentWithdrawal";
 import {
   formatRawPercent,
@@ -35,6 +40,8 @@ import {
 import type {
   Anomaly,
 } from "../../types/qma";
+
+import { ARC_CHAIN } from "../../config/network";
 
 const DEFAULT_ARC_USDC_ADDRESS = "0x3600000000000000000000000000000000000000";
 const DEFAULT_GATEWAY_MINTER_ADDRESS = "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
@@ -83,7 +90,7 @@ export function AppPage({
   const [gatewayContractAddress, setGatewayContractAddress] = useState("");
   const [gatewayMinterAddress, setGatewayMinterAddress] = useState(DEFAULT_GATEWAY_MINTER_ADDRESS);
   const [arcUsdcAddress, setArcUsdcAddress] = useState(DEFAULT_ARC_USDC_ADDRESS);
-  const [paymentNetworkName, setPaymentNetworkName] = useState("Arc Testnet");
+  const [paymentNetworkName, setPaymentNetworkName] = useState(ARC_CHAIN.name);
   const [creatorClaimConfig, setCreatorClaimConfig] = useState<any>({ configured: false });
   const [withdrawMode, setWithdrawMode] = useState("seller_wallet");
 
@@ -110,7 +117,7 @@ export function AppPage({
         setSellerAddress(data.seller_wallet || "");
         setAdminAddress(data.roles?.admin_wallet || data.admin_wallet || data.seller_wallet || "");
         setArcGatewayUrl(String(data.arc_gateway || "").replace(/\/$/, ""));
-        setPaymentNetworkName(data.payment_network_name || "Arc Testnet");
+        setPaymentNetworkName(data.payment_network_name || ARC_CHAIN.name);
         setCreatorClaimConfig(data.creator_claim || { configured: false });
         setWithdrawMode(data.withdraw?.mode || "seller_wallet");
         setGatewayMinterAddress(data.withdraw?.gateway_minter || DEFAULT_GATEWAY_MINTER_ADDRESS);
@@ -153,6 +160,9 @@ export function AppPage({
     walletRole,
     ownedProviders,
     activeProvider,
+    showAppKitModal,
+    setShowAppKitModal,
+    handleWalletConnected,
   } = useWalletConnection({
     providers,
     selectedProviderId,
@@ -171,14 +181,6 @@ export function AppPage({
 
   const [gatewayWithdrawAmount, setGatewayWithdrawAmount] = useState<string>("");
   const [gatewayWithdrawLoading, setGatewayWithdrawLoading] = useState(false);
-
-  const getErc20TransferData = (recipient: string, amountDecimal: number): string => {
-    const cleanRecipient = recipient.toLowerCase().replace("0x", "");
-    const paddedRecipient = cleanRecipient.padStart(64, "0");
-    const rawAmount = BigInt(Math.round(amountDecimal * 1_000_000));
-    const hexAmount = rawAmount.toString(16).padStart(64, "0");
-    return `0xa9059cbb${paddedRecipient}${hexAmount}`;
-  };
 
   const handleFundAgent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,18 +203,18 @@ export function AppPage({
       try {
         await provider.request({
           method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x4cef52" }],
+          params: [{ chainId: ARC_CHAIN.chainIdHex }],
         });
       } catch (switchError: any) {
         if (switchError.code === 4902) {
           await provider.request({
             method: "wallet_addEthereumChain",
             params: [{
-              chainId: "0x4cef52",
-              chainName: "Arc Testnet",
-              nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-              rpcUrls: ["https://rpc.testnet.arc.network"],
-              blockExplorerUrls: ["https://testnet.arcscan.app"]
+              chainId: ARC_CHAIN.chainIdHex,
+              chainName: ARC_CHAIN.name,
+              nativeCurrency: ARC_CHAIN.nativeCurrency,
+              rpcUrls: [ARC_CHAIN.rpcUrl],
+              blockExplorerUrls: [ARC_CHAIN.explorerUrl]
             }]
           });
         } else {
@@ -226,7 +228,7 @@ export function AppPage({
           {
             from: wallet,
             to: "0x3600000000000000000000000000000000000000",
-            data: getErc20TransferData(agentWalletAddress, amount),
+            data: encodeErc20TransferCalldata(agentWalletAddress, amount),
             gas: "0x186a0"
           }
         ]
@@ -280,7 +282,8 @@ export function AppPage({
       showToast("Please enter a valid amount.", "error");
       return;
     }
-    const gatewayBal = parseFloat(fundGatewayBalance || "0");
+    const match = (fundGatewayBalance || "").match(/[\d.]+/);
+    const gatewayBal = match ? parseFloat(match[0]) : 0;
     if (amount > gatewayBal) {
       showToast(`Insufficient balance. Available: $${gatewayBal.toFixed(2)} USDC`, "error");
       return;
@@ -445,64 +448,17 @@ export function AppPage({
     setShowFundArcModal(false);
   };
 
-  const {
-    agentPrompt,
-    setAgentPrompt,
-    agentTrace,
-    clearAgentTrace,
-    agentChatLogRef,
-    agentRunning,
-    showAgentBuyerModal,
-    setShowAgentBuyerModal,
-    agentSessionStage,
-    agentSelectedPick,
-    agentSessionInvoice,
-    agentVerifyResult,
-    agentStartTime,
-    agentElapsed,
-    agentDecisionLatency,
-    agentSelectReason,
-    agentRejectedReasons,
-    agentProviderComparison,
-    firstDotRef,
-    lastDotRef,
-    stageContainerRef,
-    progressBarStyle,
-    handleAgentRetry,
-    handleAgentCancelSession,
-    handleAgentRun,
-  } = useAgentBuyer({
-    wallet,
-    setActiveQuery,
-    selectedProviderId,
-    setSelectedProviderId,
-    currentInvoice,
-    setCurrentInvoice,
-    clearUnlockedReport: () => setUnlockedReport(null),
-    setReportCollapsed,
-    fetchReportContent,
-    recommendationTier,
-    recommendationTierPrice,
-    refreshPendingInvoice,
-    rememberPendingInvoice,
-    clearPendingInvoice,
-    getCachedReport,
-    getCachedReportsForSymbol,
-  });
+  const [showAgentBuyerModal, setShowAgentBuyerModal] = useState(false);
 
   const {
-    showProviderEarningsModal,
-    setShowProviderEarningsModal,
     providerEarningsLoading,
     providerEarningsError,
     providerEarningsStats,
     selectedProviderEarningsIds,
     creatorClaimSubmitting,
     providerWithdrawSubmitting,
-    selectedProviderEarningsStats,
     providerEarningsTotals,
     providerGatewayWithdrawMax,
-    providerWithdrawDisplayAmount,
     toggleProviderEarningsSelection,
     openProviderEarningsModal,
     refreshProviderEarningsModal,
@@ -582,6 +538,7 @@ export function AppPage({
       openInterestChange24h: anom.openInterestChange24h,
       longShortRatio: anom.longShortRatio,
       price: anom.price,
+      exchange: anom.exchange,
     });
     setActiveQuery(signal);
 
@@ -854,9 +811,6 @@ export function AppPage({
                 id="open-copilot-btn"
                 onClick={() => {
                   setShowAgentBuyerModal(true);
-                  if (!agentRunning) {
-                    clearAgentTrace();
-                  }
                 }}
               >
                 <span>Run Agent</span>
@@ -961,6 +915,7 @@ export function AppPage({
       <UnifiedDepositModal
         open={showFundArcModal}
         onClose={() => setShowFundArcModal(false)}
+        onNavigate={onNavigate}
         agentWalletAddress={agentWalletAddress}
         agentWalletBalance={agentWalletBalance}
         agentOpAmount={agentOpAmount}
@@ -981,6 +936,7 @@ export function AppPage({
         fundProviderStatus={fundProviderStatus}
         fundChainStatus={fundChainStatus}
         fundWalletUsdc={fundWalletUsdc}
+        refreshFundingReadiness={refreshFundingReadiness}
       />
 
       <UnifiedWithdrawModal
@@ -994,6 +950,8 @@ export function AppPage({
         handleWithdrawAgent={handleWithdrawAgent}
         wallet={wallet}
         fundGatewayBalance={fundGatewayBalance}
+        fundChainStatus={fundChainStatus}
+        refreshFundingReadiness={refreshFundingReadiness}
         gatewayWithdrawAmount={gatewayWithdrawAmount}
         setGatewayWithdrawAmount={setGatewayWithdrawAmount}
         gatewayWithdrawLoading={gatewayWithdrawLoading}
@@ -1014,6 +972,15 @@ export function AppPage({
         refreshProviderEarningsModal={refreshProviderEarningsModal}
         submitProviderGatewayWithdraw={submitProviderGatewayWithdraw}
         submitCreatorClaim={submitCreatorClaim}
+      />
+
+      <WalletAppKitModal
+        open={showAppKitModal}
+        onClose={() => setShowAppKitModal(false)}
+        onConnected={(addr) => {
+          handleWalletConnected(addr);
+          refreshFundingReadiness();
+        }}
       />
     </div >
   );

@@ -15,13 +15,14 @@ echo.
 cd /d "%~dp0"
 
 :: Ensure explicit local environment defaults
+set QMA_STORAGE_BACKEND=json
 set QMA_API_URL=http://localhost:8000
 set QMA_ARC_GATEWAY_URL=http://localhost:3000
 set QMA_ARC_GATEWAY_INTERNAL_SECRET=123a
 
 :: 1. Launch FastAPI Backend
 echo [1/4] Starting FastAPI Backend on port 8000...
-start "GenQMA [1/4] FastAPI Backend" cmd /k "python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+start "GenQMA [1/4] FastAPI Backend" cmd /k "set QMA_STORAGE_BACKEND=json&& python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 
 :: 2. Launch Arc Gateway
 echo [2/4] Starting Arc Gateway on port 3000...

@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import type { QmaRoute } from "../../app/routes";
 import { fetchTraction, type TractionSnapshot } from "../../services/traction";
 import { PlatformAnalyticsPanel } from "./PlatformAnalyticsPanel";
+import { AutonomousCfoTreasuryRadar } from "./AutonomousCfoTreasuryRadar";
+import { AgentRiskGovernancePanel } from "./AgentRiskGovernancePanel";
 import { GlobalHeader } from "../ui/GlobalHeader";
 import { useWalletStore } from "../../state/walletStore";
 import { Loader } from "../ui/Loader";
+import { ARC_CHAIN } from "../../config/network";
 import "../../styles/traction.css";
 
 interface TractionPageProps {
@@ -84,7 +87,7 @@ export function TractionPage({ onNavigate }: TractionPageProps) {
             Real report purchases and final settlement evidence from QMA&apos;s market-intelligence network.
           </p>
         </div>
-        <div className="traction-live-badge"><span /> Settling on Arc Testnet</div>
+        <div className="traction-live-badge"><span /> Settling on {ARC_CHAIN.name}</div>
       </section>
 
       {error ? <div className="traction-error" role="alert">{error}</div> : null}
@@ -144,6 +147,10 @@ export function TractionPage({ onNavigate }: TractionPageProps) {
             </div>
             <div className="traction-chart-axis"><span>14 days ago</span><span>Today</span></div>
           </section>
+
+          <AutonomousCfoTreasuryRadar />
+
+          <AgentRiskGovernancePanel />
 
           <PlatformAnalyticsPanel />
 

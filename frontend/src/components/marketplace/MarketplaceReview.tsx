@@ -9,9 +9,11 @@ import {
   toggleProvider,
 } from "../../services/providers";
 import { clearAllWalletProfileSessions } from "../../services/walletProfileSession";
-import { formatDateTime } from "../../utils/format";
+import { formatDateTime, shortAddress } from "../../utils/format";
 import { GlobalHeader } from "../ui/GlobalHeader";
 import { Loader } from "../ui/Loader";
+import { WalletAppKitModal } from "../modals/WalletAppKitModal";
+import { ARC_CHAIN } from "../../config/network";
 
 interface Provider {
   provider_id: string;
@@ -75,6 +77,7 @@ export function MarketplaceReview({
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [showAppsModal, setShowAppsModal] = useState(false);
   const [walletDropdownOpen, setWalletDropdownOpen] = useState(false);
+  const [showAppKitModal, setShowAppKitModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [walletStatus, setWalletStatus] = useState("");
 
@@ -163,22 +166,8 @@ export function MarketplaceReview({
     }
   }, [wallet, adminConfig, adminToken]);
 
-  const connect = async () => {
-    if (!window.ethereum?.request) {
-      setWalletStatus("EVM wallet is required to connect.");
-      return;
-    }
-    try {
-      const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as any;
-      const next = accounts && accounts[0] ? String(accounts[0]) : "";
-      setWallet(next);
-      if (next) {
-        localStorage.setItem("qma_connected_wallet", next);
-        setWalletStatus("Wallet connected.");
-      }
-    } catch (err: any) {
-      setWalletStatus(err?.code === 4001 ? "Wallet connection cancelled." : err.message || "Failed to connect wallet");
-    }
+  const connect = () => {
+    setShowAppKitModal(true);
   };
 
   const handleCopyAddress = () => {
@@ -374,11 +363,6 @@ export function MarketplaceReview({
     }
   };
 
-  const shortAddress = (val?: string) => {
-    if (!val) return "n/a";
-    return val.length > 12 ? `${val.slice(0, 6)}...${val.slice(-4)}` : val;
-  };
-
   const formatMoney = (val?: number) => {
     if (val == null) return "— USDC";
     return `${Number(val).toFixed(3)} USDC`;
@@ -413,11 +397,11 @@ export function MarketplaceReview({
               </div>
               <div className="marketplace-summary-item">
                 <span className="marketplace-summary-label">Network</span>
-                <strong className="marketplace-summary-value">Arc Testnet USDC</strong>
+                <strong className="marketplace-summary-value">{ARC_CHAIN.name} USDC</strong>
               </div>
               <div className="marketplace-summary-item">
                 <span className="marketplace-summary-label">Default accounting</span>
-                <strong className="marketplace-summary-value">80% creator / 20% platform · payout receipt required</strong>
+                <strong className="marketplace-summary-value">80% creator / 20% platform · On-demand claim (&ge;0.05 USDC)</strong>
               </div>
               <div className="marketplace-summary-item">
                 <span className="marketplace-summary-label">Review mode</span>
@@ -447,7 +431,7 @@ export function MarketplaceReview({
                       className="landing-secondary text-btn"
                       onClick={() => setShowAppsModal(true)}
                     >
-                      Check Applications
+                      Check Applications {applications.length > 0 ? `(${applications.length})` : ""}
                     </button>
                   </div>
                 </div>
@@ -455,6 +439,104 @@ export function MarketplaceReview({
             </div>
           </div>
         </section>
+
+        {/* IN-APP CREATOR APPLICATION NOTIFICATION TRACKER */}
+        {wallet && applications.length > 0 && (
+          <div style={{
+            margin: "0 0 24px 0",
+            padding: "16px 20px",
+            borderRadius: "12px",
+            background: applications[0].status === "approved"
+              ? "rgba(16, 185, 129, 0.08)"
+              : applications[0].status === "rejected"
+              ? "rgba(239, 68, 68, 0.08)"
+              : "rgba(245, 158, 11, 0.08)",
+            border: `1px solid ${
+              applications[0].status === "approved"
+                ? "rgba(16, 185, 129, 0.35)"
+                : applications[0].status === "rejected"
+                ? "rgba(239, 68, 68, 0.35)"
+                : "rgba(245, 158, 11, 0.35)"
+            }`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "12px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span style={{
+                fontSize: "18px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                background: applications[0].status === "approved" ? "rgba(16,185,129,0.2)" : applications[0].status === "rejected" ? "rgba(239,68,68,0.2)" : "rgba(245,158,11,0.2)",
+                color: applications[0].status === "approved" ? "#10b981" : applications[0].status === "rejected" ? "#ef4444" : "#f59e0b",
+              }}>
+                {applications[0].status === "approved" ? "✓" : applications[0].status === "rejected" ? "✕" : "⏳"}
+              </span>
+              <div>
+                <strong style={{ color: "#fff", fontSize: "14px", display: "block" }}>
+                  {applications[0].status === "approved"
+                    ? `Provider Approved: ${applications[0].provider_name || applications[0].provider_id}`
+                    : applications[0].status === "rejected"
+                    ? `Provider Application Declined: ${applications[0].provider_name || applications[0].provider_id}`
+                    : `Application In Review: ${applications[0].provider_name || applications[0].provider_id}`}
+                </strong>
+                <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "12.5px" }}>
+                  {applications[0].status === "approved"
+                    ? "Your feed is active on Arc. You earn an 80% revenue share per buyer query."
+                    : applications[0].status === "rejected"
+                    ? (applications[0].admin_note ? `Admin feedback: "${applications[0].admin_note}"` : "Submission did not pass review criteria.")
+                    : "Submitted and queued for admin review. Check back here for approval status."}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="landing-secondary text-btn"
+              onClick={() => setShowAppsModal(true)}
+              style={{ fontSize: "12px", padding: "6px 14px" }}
+            >
+              View Application Details
+            </button>
+          </div>
+        )}
+
+        {/* ADMIN NOTIFICATION BADGE */}
+        {isConnectedAdmin() && adminApplications.filter(a => a.status === "pending").length > 0 && (
+          <div style={{
+            margin: "0 0 24px 0",
+            padding: "14px 20px",
+            borderRadius: "12px",
+            background: "rgba(99, 102, 241, 0.12)",
+            border: "1px solid rgba(99, 102, 241, 0.4)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ color: "#818cf8", fontSize: "16px" }}>⚡</span>
+              <span style={{ color: "#e0e7ff", fontSize: "13.5px", fontWeight: 600 }}>
+                {adminApplications.filter(a => a.status === "pending").length} new Creator Application(s) pending your review in Admin Console.
+              </span>
+            </div>
+            <button
+              type="button"
+              className="submit-btn compact-submit"
+              onClick={() => {
+                const el = document.getElementById("admin-review-console");
+                el?.scrollIntoView({ behavior: "smooth" });
+              }}
+              style={{ fontSize: "12px", padding: "6px 14px" }}
+            >
+              Review Now
+            </button>
+          </div>
+        )}
 
         <section className="marketplace-layout">
           <div className="marketplace-section marketplace-provider-section">
@@ -792,7 +874,7 @@ export function MarketplaceReview({
 
         {/* ADMIN CONTROLS PANEL */}
         {isConnectedAdmin() && (
-          <section className="marketplace-section marketplace-admin-section">
+          <section className="marketplace-section marketplace-admin-section" id="admin-review-console">
             <div className="marketplace-section-head">
               <div>
                 <span className="sidebar-title">Seller Admin Review</span>
@@ -966,6 +1048,16 @@ export function MarketplaceReview({
           </section>
         )}
       </main>
+      <WalletAppKitModal
+        open={showAppKitModal}
+        onClose={() => setShowAppKitModal(false)}
+        onConnected={(next) => {
+          setWallet(next);
+          localStorage.setItem("qma_connected_wallet", next);
+          setWalletStatus("Wallet connected.");
+          setShowAppKitModal(false);
+        }}
+      />
     </div>
   );
 }

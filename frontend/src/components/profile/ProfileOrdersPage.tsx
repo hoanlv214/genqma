@@ -10,6 +10,8 @@ import {
 import { getWalletReport } from "../../services/reports";
 import { Loader } from "../ui/Loader";
 import { GlobalHeader } from "../ui/GlobalHeader";
+import { WalletAppKitModal } from "../modals/WalletAppKitModal";
+import { shortAddress } from "../../services/wallet";
 import type { QmaRoute } from "../../app/routes";
 
 interface ProfileOrdersPageProps {
@@ -80,6 +82,7 @@ export function ProfileOrdersPage({ onNavigate }: ProfileOrdersPageProps) {
   const [privateProfileUnlocked, setPrivateProfileUnlocked] = useState(false);
   const [unlockingProfile, setUnlockingProfile] = useState(false);
   const [privacyNotice, setPrivacyNotice] = useState("");
+  const [showAppKitModal, setShowAppKitModal] = useState(false);
   const tokenRequestRef = useRef<Promise<string> | null>(null);
 
   const [arcGatewayBaseUrl, setArcGatewayBaseUrl] = useState("");
@@ -151,26 +154,7 @@ export function ProfileOrdersPage({ onNavigate }: ProfileOrdersPageProps) {
       window.location.href = "/profile";
       return;
     }
-    if (!window.ethereum?.request) {
-      setPrivacyNotice("EVM wallet is required to connect.");
-      return;
-    }
-    try {
-      const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as any;
-      const next = accounts && accounts[0] ? String(accounts[0]) : "";
-      if (next) {
-        setWalletToken("");
-        setPrivateProfileUnlocked(false);
-        setWallet(next);
-        localStorage.setItem("qma_connected_wallet", next);
-        const url = new URL(window.location.href);
-        url.searchParams.set("wallet", next);
-        window.history.replaceState({}, "", url.toString());
-        setPrivacyNotice("Wallet connected. Unlock private reports once to view every owned snapshot.");
-      }
-    } catch (err: any) {
-      setPrivacyNotice(err.message || "Failed to connect wallet");
-    }
+    setShowAppKitModal(true);
   };
 
   const disconnect = () => {
@@ -578,11 +562,6 @@ export function ProfileOrdersPage({ onNavigate }: ProfileOrdersPageProps) {
   const formatReportPercent = (value?: number) => {
     if (value == null || !Number.isFinite(Number(value))) return "n/a";
     return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
-  };
-
-  const shortAddress = (val?: string) => {
-    if (!val) return "n/a";
-    return val.length > 12 ? `${val.slice(0, 6)}...${val.slice(-4)}` : val;
   };
 
   const gatewayStatusBadge = (status?: string) => {
@@ -1122,6 +1101,21 @@ export function ProfileOrdersPage({ onNavigate }: ProfileOrdersPageProps) {
         </section>
         )}
       </main>
+      <WalletAppKitModal
+        open={showAppKitModal}
+        onClose={() => setShowAppKitModal(false)}
+        onConnected={(next) => {
+          setWalletToken("");
+          setPrivateProfileUnlocked(false);
+          setWallet(next);
+          localStorage.setItem("qma_connected_wallet", next);
+          const url = new URL(window.location.href);
+          url.searchParams.set("wallet", next);
+          window.history.replaceState({}, "", url.toString());
+          setPrivacyNotice("Wallet connected. Unlock private reports once to view every owned snapshot.");
+          setShowAppKitModal(false);
+        }}
+      />
     </div>
   );
 }

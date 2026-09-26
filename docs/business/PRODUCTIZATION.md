@@ -1,6 +1,6 @@
 # QMA Productization Plan
 
-QMA is moving from a hackathon demo into a creator/provider marketplace for paid market intelligence. The next version should be built like a product, not a pile of features: every payment path, provider type, dashboard metric, and agent decision should support one clear story.
+QMA operates as a creator/provider marketplace for paid market intelligence. The platform is engineered like a production product, not an ad-hoc prototype: every payment path, provider type, dashboard metric, and agent decision supports one clear story.
 
 ## Product Thesis
 

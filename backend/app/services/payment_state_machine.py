@@ -16,7 +16,10 @@ GATEWAY_FAILED_STATUSES = {
 
 def has_fabricated_settlement(record: dict) -> bool:
     """Recognize records minted by the removed unverified-header bypass."""
-    return str(record.get("settlement_id") or "").startswith("x402_settle_")
+    if not isinstance(record, dict):
+        return False
+    settlement_id = str(record.get("settlement_id") or record.get("id") or "")
+    return settlement_id.startswith("x402_settle_")
 
 
 def split_leg_by_id(invoice: dict, leg_id: str) -> Optional[dict]:

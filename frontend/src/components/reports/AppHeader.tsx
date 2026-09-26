@@ -38,6 +38,7 @@ export function AppHeader({ wallet, viewMode, metrics, walletRole, ownedProvider
       <span className="logo-tag">v1.0.0</span>
     </div>
       <div className="status-indicators">
+      <button type="button" className="header-nav-link" onClick={() => onNavigate("swap")} title="Arc StableFX & CCTP Bridge">Swap / FX</button>
       <button type="button" className="header-nav-link" onClick={() => onNavigate("traction")} title="View public traction ledger">Traction</button>
       <div className="indicator" id="clock">{timeStr}</div>
       <div className="view-toggle" role="group" aria-label="View mode">

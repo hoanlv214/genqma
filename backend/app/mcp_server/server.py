@@ -128,7 +128,7 @@ def create_mcp_http_app(deps):
 
     @mcp.tool(
         title="Check QMA budget and wallet",
-        description="Report the connection's spend caps, how much it has spent, the owner's Agent Wallet balances, and whether further purchases are authorized.",
+        description="Report the connection's spend caps, how much it has spent, the owner's Agent Wallet balances, Circle Gateway delegation status, and whether further purchases are authorized.",
     )
     async def qma_check_budget() -> dict:
         connection = await require_connection()
@@ -140,6 +140,24 @@ def create_mcp_http_app(deps):
         wallet_info = (data or {}).get("wallet") or None
         spent = mcp_oauth.spent_for_connection(storage, connection["client_id"])
         budget = float(caps.get("budget_usdc") or 0)
+
+        # Query Circle Gateway Unified Balance delegation status for owner
+        del_info = None
+        try:
+            del_status, del_data = await deps.call_api(
+                "GET", f"/api/v1/agent/delegate-status?owner_address={connection['wallet']}", headers=headers
+            )
+            if del_status == 200 and isinstance(del_data, dict):
+                del_info = {
+                    "is_authorized": del_data.get("is_authorized", False),
+                    "delegate_address": del_data.get("delegate_address"),
+                    "gateway_wallet_contract": del_data.get("gateway_wallet_contract"),
+                    "spending_policy": del_data.get("spending_policy"),
+                    "instructions": del_data.get("instructions"),
+                }
+        except Exception:
+            pass
+
         return {
             "client_name": connection["client_name"],
             "caps": caps,
@@ -147,6 +165,7 @@ def create_mcp_http_app(deps):
             "budget_remaining_usdc": round(max(budget - spent, 0.0), 6),
             "authorization": "authorized" if budget - spent > 0 else "budget_exhausted",
             "agent_wallet": wallet_info,
+            "gateway_delegation": del_info,
         }
 
     @mcp.tool(

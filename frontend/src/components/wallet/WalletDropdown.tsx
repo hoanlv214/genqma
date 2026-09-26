@@ -1,20 +1,16 @@
 import { useState } from "react";
-import { connectWallet, shortAddress } from "../../services/wallet";
+import { shortAddress } from "../../services/wallet";
 import { clearAllWalletProfileSessions } from "../../services/walletProfileSession";
+import { WalletAppKitModal } from "../modals/WalletAppKitModal";
 
 export function WalletDropdown({ onFundArc }: { onFundArc: () => void }) {
   const [address, setAddress] = useState(() => localStorage.getItem("qma_connected_wallet") || "");
   const [open, setOpen] = useState(false);
-
-  const connect = async () => {
-    const next = await connectWallet();
-    setAddress(next);
-    localStorage.setItem("qma_connected_wallet", next);
-  };
+  const [showAppKit, setShowAppKit] = useState(false);
 
   return (
     <div className="wallet-control">
-      <button type="button" className="wallet-button" onClick={address ? () => setOpen(!open) : connect}>
+      <button type="button" className="wallet-button" onClick={address ? () => setOpen(!open) : () => setShowAppKit(true)}>
         {address ? shortAddress(address) : "Connect Wallet"}
       </button>
       {open ? (
@@ -27,6 +23,15 @@ export function WalletDropdown({ onFundArc }: { onFundArc: () => void }) {
           </button>
         </div>
       ) : null}
+      <WalletAppKitModal
+        open={showAppKit}
+        onClose={() => setShowAppKit(false)}
+        onConnected={(next) => {
+          setAddress(next);
+          localStorage.setItem("qma_connected_wallet", next);
+          setShowAppKit(false);
+        }}
+      />
     </div>
   );
 }

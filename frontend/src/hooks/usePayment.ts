@@ -1,6 +1,7 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { API_BASE_URL, ApiError } from "../services/api";
 import { ensureArcTestnet, getInjectedWallet, shortAddress } from "../services/wallet";
+import { ARC_CHAIN } from "../config/network";
 import { payX402Resource, prepareX402Payment, submitX402Payment, X402PaymentError, type PreparedX402Payment } from "../services/x402";
 import { createInvoice, verifyPayment } from "../services/invoices";
 import { getProviderReport } from "../services/reports";
@@ -130,34 +131,9 @@ export function usePayment({
       const provider = getInjectedWallet();
       if (!provider) throw new Error("Wallet not found.");
       const chainId = await provider.request<string>({ method: "eth_chainId" });
-      const ARC_TESTNET_HEX = "0x4cef52";
-      if (String(chainId).toLowerCase() !== ARC_TESTNET_HEX) {
-        setPayStatusText("Switching network to Arc Testnet...");
-        try {
-          await provider.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: ARC_TESTNET_HEX }],
-          });
-        } catch (switchErr: any) {
-          if (switchErr.code === 4902 || String(switchErr.message).toLowerCase().includes("unrecognized")) {
-            await provider.request({
-              method: "wallet_addEthereumChain",
-              params: [{
-                chainId: ARC_TESTNET_HEX,
-                chainName: "Arc Testnet",
-                nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-                rpcUrls: ["https://rpc.testnet.arc.network"],
-                blockExplorerUrls: ["https://testnet.arcscan.app"],
-              }],
-            });
-            await provider.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: ARC_TESTNET_HEX }],
-            });
-          } else {
-            throw switchErr;
-          }
-        }
+      if (String(chainId).toLowerCase() !== ARC_CHAIN.chainIdHex.toLowerCase()) {
+        setPayStatusText(`Switching network to ${ARC_CHAIN.name}...`);
+        await ensureArcTestnet(provider);
       }
 
       setPaymentStepStatus((prev) => ({

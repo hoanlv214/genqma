@@ -711,6 +711,8 @@
     flex: 1;
 }
 
+.payment-flow-panel[style*="display:none"]+.settle-pay-btn,
+.payment-flow-panel[style*="display: none"]+.settle-pay-btn,
 .payment-flow-panel[style*="display:none"]+.simulate-pay-btn,
 .payment-flow-panel[style*="display: none"]+.simulate-pay-btn {
     margin-top: 0;
@@ -975,6 +977,7 @@
 }
 
 /* Pay CTA — bold green action button */
+.settle-pay-btn,
 .simulate-pay-btn {
     background: linear-gradient(135deg, #22d3a0 0%, #1ab887 100%);
     border: none;
@@ -997,12 +1000,14 @@
     margin-top: auto;
 }
 
+.settle-pay-btn:hover,
 .simulate-pay-btn:hover {
     background: linear-gradient(135deg, #2ee8b0 0%, #22d3a0 100%);
     box-shadow: 0 6px 24px rgba(34, 211, 160, 0.4), 0 0 0 1px rgba(34, 211, 160, 0.25);
     transform: translateY(-1px);
 }
 
+.settle-pay-btn:active,
 .simulate-pay-btn:active {
     transform: translateY(0);
     box-shadow: 0 2px 8px rgba(34, 211, 160, 0.3);
@@ -1915,6 +1920,7 @@
     font-size: 0.64rem;
 }
 
+.settle-pay-btn,
 .simulate-pay-btn {
     position: sticky;
     bottom: 0;
@@ -5069,6 +5075,12 @@ body.basic-view .platform-stats-section {
     background: rgba(255, 107, 122, 0.08);
 }
 
+.agent-live-pill.warning {
+    color: #ffb300;
+    border-color: rgba(255, 179, 0, 0.28);
+    background: rgba(255, 179, 0, 0.08);
+}
+
 .agent-chat-wallet {
     color: var(--t3);
     font-family: var(--mono);
@@ -5747,6 +5759,12 @@ body.basic-view .platform-stats-section {
     color: var(--t3);
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.agent-funding-status.warning {
+    color: #ffb300;
+    background: rgba(255, 179, 0, 0.1);
+    border: 1px solid rgba(255, 179, 0, 0.25);
 }
 
 /* ── INPUT LABEL ── */

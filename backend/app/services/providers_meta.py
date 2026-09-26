@@ -21,7 +21,11 @@ from backend.app.services.payment_state_machine import (
     split_paid_legs,
 )
 from backend.app.services.payment_ledger import payment_event_key, payment_event_tier
-from backend.app.services.payment_signing import raw_usdc_to_decimal_string
+from backend.app.services.payment_signing import (
+    raw_usdc_to_decimal_string,
+    raw_usdc_to_float,
+    usdc_to_raw,
+)
 from backend.app.services.circle_client import fetch_gateway_balance_cached
 
 logger = logging.getLogger("QMA-API")
@@ -348,10 +352,9 @@ def build_provider_stats(
     def creator_amount(event):
         plan = event.get("arc_settlement") or {}
         if plan.get("transfer_amount_raw") is not None:
-            return int(plan["transfer_amount_raw"]) / 1_000_000
+            return raw_usdc_to_float(plan["transfer_amount_raw"]) or 0.0
         accounting = event.get("accounting") or {}
-        from decimal import Decimal
-        raw = int(event.get("amount_raw") or (Decimal(str(event.get("amount_usdc") or 0)) * 1_000_000))
+        raw = int(event.get("amount_raw") or usdc_to_raw(event.get("amount_usdc") or 0))
         return (raw * int(accounting.get("creator_share_bps", share_bps)) // 10000) / 1_000_000
 
     auto_reserved = sum(

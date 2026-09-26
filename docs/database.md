@@ -9,7 +9,7 @@ This document outlines the database schema, setup process, and data invariants f
 To initialize a clean QMA database in **Supabase** or **PostgreSQL**:
 
 1. Open your **Supabase Dashboard** → **SQL Editor**.
-2. Copy and run the consolidated schema file: [`scripts/schema.sql`](file:///c:/Users/Admin/Downloads/code/buy/qma/scripts/schema.sql).
+2. Copy and run the consolidated schema file: [`scripts/schema.sql`](../scripts/schema.sql).
 3. Copy your project URL and Service Role Key into your `.env`:
    ```bash
    SUPABASE_URL=https://your-project.supabase.co
@@ -54,7 +54,7 @@ To initialize a clean QMA database in **Supabase** or **PostgreSQL**:
 
 ## 4. Local vs Production Storage
 
-QMA supports dual-storage backends via [`backend/app/repositories/storage.py`](file:///c:/Users/Admin/Downloads/code/buy/qma/backend/app/repositories/storage.py):
+QMA supports dual-storage backends via [`backend/app/repositories/storage.py`](../backend/app/repositories/storage.py):
 
 * **Local / Test Mode (`JsonStorage`)**: When `SUPABASE_URL` is omitted, the platform stores state in local JSON files (`paid_reports.json`, `payment_ledger.json`).
 * **Production Mode (`SupabaseStorage`)**: When `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are provided, the backend connects directly to PostgreSQL via PostgREST with connection pooling.

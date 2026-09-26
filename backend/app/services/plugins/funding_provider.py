@@ -21,7 +21,7 @@ class FundingProviderV2(ProviderPlugin):
         self._owner_wallet = owner_wallet
         # The provider creates its own connection to MEXC. 
         # The platform no longer imports market_data_adapter.
-        self.market_data_adapter = create_market_data_adapter(os.getenv("QMA_MARKET_DATA_SOURCE", "mexc_futures"))
+        self.market_data_adapter = create_market_data_adapter(os.getenv("QMA_MARKET_DATA_SOURCE", "multi_exchange"))
         self.engine = QMAEngine()
         
     @property

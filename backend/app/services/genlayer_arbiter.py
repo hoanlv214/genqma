@@ -225,7 +225,12 @@ def _read_via_node(invoice_id: str) -> Optional[dict[str, Any]]:
         raw_order = data.get("order")
         if not raw_order:
             return None
-        return json.loads(raw_order) if isinstance(raw_order, str) else dict(raw_order)
+        if isinstance(raw_order, str):
+            clean_str = raw_order.strip()
+            if not clean_str:
+                return None
+            return json.loads(clean_str)
+        return dict(raw_order)
     except Exception as exc:
         raise GenLayerVerificationError(f"Could not parse GenLayer reader JSON: {exc}") from exc
 
@@ -380,12 +385,22 @@ def verify_report(
         res = _submit_via_node(payload)
         tx_hash = res.get("transaction_hash") or transaction_hash
         raw_order = res.get("order")
-        order = (
-            json.loads(raw_order)
-            if isinstance(raw_order, str)
-            else (raw_order or _read_order(client, invoice_id))
-        )
-        if not order and res.get("pending"):
+        order = None
+        if isinstance(raw_order, str):
+            clean_raw = raw_order.strip()
+            if clean_raw:
+                try:
+                    order = json.loads(clean_raw)
+                except (ValueError, TypeError, json.JSONDecodeError) as exc:
+                    logger.warning("Failed to decode raw_order JSON: %s (content: %r)", exc, clean_raw)
+                    order = None
+        elif isinstance(raw_order, dict):
+            order = raw_order
+
+        if not order:
+            order = _read_order(client, invoice_id)
+
+        if not order and (res.get("pending") or not res.get("execution_result") or res.get("status") == "VERIFICATION_PENDING"):
             raise GenLayerVerificationError(
                 "GenLayer consensus verification is pending on-chain",
                 transaction_hash=tx_hash,

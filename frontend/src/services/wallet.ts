@@ -29,10 +29,15 @@ declare global {
   }
 }
 
-export const ARC_TESTNET_CHAIN_ID = "0x4cef52";
-export const ARC_TESTNET_CHAIN_ID_DEC = 5042002;
-export const ARC_RPC_URL = "https://rpc.testnet.arc.network";
-export const ARC_EXPLORER_URL = "https://testnet.arcscan.app";
+import { ARC_CHAIN } from "../config/network";
+
+export const ARC_CHAIN_ID_DEC = ARC_CHAIN.chainId;
+export const ARC_TESTNET_CHAIN_ID_DEC = ARC_CHAIN.chainId;
+export const ARC_CHAIN_ID_HEX = ARC_CHAIN.chainIdHex;
+export const ARC_TESTNET_CHAIN_ID = ARC_CHAIN.chainIdHex;
+export const ARC_RPC_URL = ARC_CHAIN.rpcUrl;
+export const ARC_EXPLORER_URL = ARC_CHAIN.explorerUrl;
+export const ARC_CHAIN_NAME = ARC_CHAIN.name;
 
 // EIP-6963 Discovered Wallets Registry
 const discoveredProviders: Map<string, EIP6963ProviderDetail> = new Map();
@@ -76,26 +81,22 @@ export async function ensureArcTestnet(providerOrRdns?: Eip1193Provider | string
   const provider = typeof providerOrRdns === "string" ? getInjectedWallet(providerOrRdns) : (providerOrRdns || getInjectedWallet());
   if (!provider) throw new Error("No EVM wallet provider found.");
   const chainId = await provider.request<string>({ method: "eth_chainId" });
-  if (String(chainId).toLowerCase() === ARC_TESTNET_CHAIN_ID) return;
+  if (String(chainId).toLowerCase() === ARC_CHAIN.chainIdHex.toLowerCase()) return;
   try {
     await provider.request({
       method: "wallet_switchEthereumChain",
-      params: [{ chainId: ARC_TESTNET_CHAIN_ID }],
+      params: [{ chainId: ARC_CHAIN.chainIdHex }],
     });
   } catch (switchError: any) {
     if (switchError.code === 4902 || switchError.message?.includes("Unrecognized chain ID") || switchError.message?.includes("not added")) {
       await provider.request({
         method: "wallet_addEthereumChain",
         params: [{
-          chainId: ARC_TESTNET_CHAIN_ID,
-          chainName: "Arc Testnet",
-          nativeCurrency: {
-            name: "USDC",
-            symbol: "USDC",
-            decimals: 6,
-          },
-          rpcUrls: [ARC_RPC_URL],
-          blockExplorerUrls: [ARC_EXPLORER_URL],
+          chainId: ARC_CHAIN.chainIdHex,
+          chainName: ARC_CHAIN.name,
+          nativeCurrency: ARC_CHAIN.nativeCurrency,
+          rpcUrls: [ARC_CHAIN.rpcUrl],
+          blockExplorerUrls: [ARC_CHAIN.explorerUrl],
         }],
       });
     } else {
@@ -103,6 +104,8 @@ export async function ensureArcTestnet(providerOrRdns?: Eip1193Provider | string
     }
   }
 }
+
+export const ensureArcNetwork = ensureArcTestnet;
 
 /**
  * On Arc Testnet, USDC is the native gas token (6 decimals).
@@ -154,7 +157,5 @@ export function subscribeWalletEvents(
   };
 }
 
-export function shortAddress(value?: string) {
-  if (!value) return "n/a";
-  return value.length > 12 ? `${value.slice(0, 5)}...${value.slice(-4)}` : value;
-}
+export { shortAddress } from "../utils/format";
+

@@ -26,6 +26,18 @@ Object.assign(globalThis, {
   Node: window.Node,
   localStorage: mockStorage,
   sessionStorage: mockStorage,
+  CSSStyleSheet: (window as any).CSSStyleSheet || class CSSStyleSheet {},
+  ResizeObserver: class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+  IntersectionObserver: class IntersectionObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+  getComputedStyle: window.getComputedStyle ? window.getComputedStyle.bind(window) : (() => ({ getPropertyValue: () => "" })),
   requestAnimationFrame: (cb: (time: number) => void) => setTimeout(() => cb(Date.now()), 0),
   cancelAnimationFrame: (id: any) => clearTimeout(id),
 });

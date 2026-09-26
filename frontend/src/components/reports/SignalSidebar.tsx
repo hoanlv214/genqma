@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getLiveAnomalies, getAgentRecommendations } from "../../services/providers";
 import { Loader } from "../ui/Loader";
+import { ExchangeBadge } from "../ui/ExchangeBadge";
 import "../../styles/SignalSidebar.css";
 
 interface SignalSidebarProps {
@@ -21,6 +22,7 @@ export function SignalSidebar({ visible, activeQuery, normalizeSignal, entitleme
   const [error, setError] = useState("");
   const [refreshTone, setRefreshTone] = useState<"" | "refreshing" | "error">("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [exchangeFilter, setExchangeFilter] = useState<string>("ALL");
 
   const loadAnomalies = async (silent = false) => {
     setRefreshTone("refreshing");
@@ -72,29 +74,138 @@ export function SignalSidebar({ visible, activeQuery, normalizeSignal, entitleme
       .catch(() => null);
   };
 
+  const filteredAnomalies = anomalies.filter((item) => {
+    if (exchangeFilter === "ALL") return true;
+    if (String(item.exchange).toUpperCase() === exchangeFilter) return true;
+    if (item.venues?.some((v: any) => String(v.exchange).toUpperCase() === exchangeFilter)) return true;
+    return false;
+  });
+
   return <aside className={`live-feed-sidebar ${visible ? "mobile-visible" : ""}`}>
-    <div className="sidebar-header"><span className="sidebar-title">Live Signals</span><button className="refresh-btn" onClick={handleManualRefresh}>↻ Refresh</button></div>
+    <div className="sidebar-header">
+      <span className="sidebar-title">Live Signals</span>
+      <button className="refresh-btn" onClick={handleManualRefresh}>↻ Refresh</button>
+    </div>
+
+    {/* Quick filter by exchange */}
+    <div className="sidebar-filter-bar">
+      {["ALL", "BINANCE", "BYBIT", "OKX", "MEXC"].map((ex) => (
+        <button
+          key={ex}
+          className={`filter-pill-btn ${exchangeFilter === ex ? "active" : ""}`}
+          onClick={() => setExchangeFilter(ex)}
+        >
+          {ex !== "ALL" && <ExchangeBadge exchange={ex} size="xs" showText={false} />}
+          <span>{ex === "ALL" ? "All" : ex}</span>
+        </button>
+      ))}
+    </div>
+
     <div className="agent-picks-panel sidebar-panel">
-      <div className="sidebar-header agent-picks-header"><span className="sidebar-title">Ranked Opportunities</span><span className="agent-mode-pill">Human review</span></div>
+      <div className="sidebar-header agent-picks-header">
+        <span className="sidebar-title">Ranked Opportunities</span>
+        <span className="agent-mode-pill">Human review</span>
+      </div>
       <div className="agent-picks-list">{recommendationsLoading ? <Loader label="Ranking live signals..." compact size="sm" /> : recommendations.length === 0 ? <div className="agent-empty">No opportunities ranked yet.</div> : recommendations.map((item, index) => {
         const providerId = item.provider_id || "funding_memory";
         const signal = normalizeSignal(item.query || { symbol: item.symbol });
         const entitlement = entitlementBadgeForSignal(signal, providerId);
+        const exchange = item.exchange || item.live?.exchange || item.query?.exchange || "MEXC";
         return <div className="agent-pick-card" key={index} onClick={() => onSelectRecommendation(item)}>
-          <div className="card-header"><span className="card-symbol">{item.symbol}</span><span className="card-score">Score: {item.score}</span></div>
+          <div className="card-header">
+            <div className="card-symbol-wrap">
+              <span className="card-symbol">{item.symbol}</span>
+              <ExchangeBadge exchange={exchange} size="xs" />
+            </div>
+            <span className="card-score">Score: {item.score}</span>
+          </div>
           {item.reason && <p className="pick-reason pick-reason-muted">{item.reason}</p>}
-          <div className="card-meta-row mt-6"><span>{entitlement.meta || `Tier: ${recommendationTier(item)}`}</span><span className={`signal-badge ${entitlement.className}`}>{entitlement.className === "unpaid" ? `Tier: ${recommendationTier(item)}` : entitlement.text}</span></div>
+          <div className="card-meta-row mt-6">
+            <span>{entitlement.meta || `Tier: ${recommendationTier(item)}`}</span>
+            <span className={`signal-badge ${entitlement.className}`}>
+              {entitlement.className === "unpaid" ? `Tier: ${recommendationTier(item)}` : entitlement.text}
+            </span>
+          </div>
         </div>;
       })}</div>
     </div>
-    <div className="sidebar-header anomalies-header"><span className="sidebar-title">All Live Signals</span><span className={`anomalies-count-pill${refreshTone ? ` is-${refreshTone}` : ""}`} title={lastUpdated?.toLocaleString()}>{refreshLabel}</span></div>
-    <div className="anomalies-list">{loading ? <Loader label="Scanning MEXC..." variant="progress" /> : error ? <div className="error-centered anomalies-error">{error}</div> : anomalies.length === 0 ? <div className="agent-empty">No anomalies found.</div> : anomalies.map((item, index) => {
-      const signal = normalizeSignal({ symbol: item.symbol, fundingRate: item.fundingRate, marketCap: item.marketCap, FDV: item.fromATH ? item.marketCap / (1 + item.fromATH / 100) : item.marketCap, circRatio: item.circRatio, fromATH: item.fromATH, volume24h: item.volume24h, amount: item.amount || item.openInterest, openInterest: item.openInterest || item.amount, openInterestChange24h: item.openInterestChange24h, longShortRatio: item.longShortRatio, price: item.price });
+
+    <div className="sidebar-header anomalies-header">
+      <span className="sidebar-title">
+        {exchangeFilter === "ALL" ? "All Live Signals" : `${exchangeFilter} Signals`}
+      </span>
+      <span className={`anomalies-count-pill${refreshTone ? ` is-${refreshTone}` : ""}`} title={lastUpdated?.toLocaleString()}>
+        {refreshLabel}
+      </span>
+    </div>
+
+    <div className="anomalies-list">{loading ? <Loader label="Scanning live exchanges..." variant="progress" /> : error ? <div className="error-centered anomalies-error">{error}</div> : filteredAnomalies.length === 0 ? <div className="agent-empty">No anomalies found for {exchangeFilter}.</div> : filteredAnomalies.map((item, index) => {
+      const signal = normalizeSignal({
+        symbol: item.symbol,
+        fundingRate: item.fundingRate,
+        marketCap: item.marketCap,
+        FDV: item.fromATH ? item.marketCap / (1 + item.fromATH / 100) : item.marketCap,
+        circRatio: item.circRatio,
+        fromATH: item.fromATH,
+        volume24h: item.volume24h,
+        amount: item.amount || item.openInterest,
+        openInterest: item.openInterest || item.amount,
+        openInterestChange24h: item.openInterestChange24h,
+        longShortRatio: item.longShortRatio,
+        price: item.price,
+        exchange: item.exchange,
+      });
       const entitlement = entitlementBadgeForSignal(signal);
-      return <div className={`anomaly-card ${activeQuery?.symbol === item.symbol ? "active" : ""}`} key={index} onClick={() => onSelectSignal(item)}>
-        <div className="card-header"><span className="card-symbol">{item.symbol}</span><span className="card-funding">{(item.fundingRate * 100).toFixed(3)}%</span></div>
-        <div className="card-stats"><div>Mkt Cap: <span className="card-stat-val">${(item.marketCap / 1000000).toFixed(1)}M</span></div><div>Circ Ratio: <span className="card-stat-val">{item.circRatio.toFixed(2)}</span></div><div>24h Vol: <span className="card-stat-val">${(item.volume24h / 1000000).toFixed(1)}M</span></div><div>ATH Dist: <span className="card-stat-val">{item.fromATH.toFixed(2)}%</span></div></div>
-        <div className="card-meta-row"><span>{entitlement.meta}</span><span className={`signal-badge ${entitlement.className}`}>{entitlement.text}</span></div>
+      const isCardActive = activeQuery?.symbol === item.symbol;
+      const hasMultipleVenues = item.venues && item.venues.length > 1;
+
+      return <div className={`anomaly-card ${isCardActive ? "active" : ""}`} key={index} onClick={() => onSelectSignal(item)}>
+        <div className="card-header">
+          <div className="card-symbol-wrap">
+            <span className="card-symbol">{item.symbol}</span>
+            <ExchangeBadge exchange={item.exchange || "MEXC"} size="xs" />
+          </div>
+          <span className="card-funding">{(item.fundingRate * 100).toFixed(3)}%</span>
+        </div>
+        <div className="card-stats">
+          <div>Mkt Cap: <span className="card-stat-val">${(item.marketCap / 1000000).toFixed(1)}M</span></div>
+          <div>Circ Ratio: <span className="card-stat-val">{item.circRatio.toFixed(2)}</span></div>
+          <div>24h Vol: <span className="card-stat-val">${(item.volume24h / 1000000).toFixed(1)}M</span></div>
+          <div>ATH Dist: <span className="card-stat-val">{item.fromATH.toFixed(2)}%</span></div>
+        </div>
+
+        {/* Cross-exchange multi-venue comparison */}
+        {hasMultipleVenues && (
+          <div className="card-venues-row">
+            <span className="venues-label">{item.venues.length} venues:</span>
+            <div className="venues-list-tags">
+              {item.venues.map((v: any, vIdx: number) => (
+                <span
+                  key={vIdx}
+                  className={`venue-tag ${v.exchange === item.exchange ? "is-primary" : ""}`}
+                  title={`${v.exchange}: ${(v.fundingRate * 100).toFixed(3)}%`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectSignal({ ...item, exchange: v.exchange, fundingRate: v.fundingRate, price: v.price || item.price });
+                  }}
+                >
+                  <ExchangeBadge exchange={v.exchange} size="xs" showText={false} />
+                  <span className="venue-funding">{(v.fundingRate * 100).toFixed(2)}%</span>
+                </span>
+              ))}
+            </div>
+            {item.funding_spread > 0 && (
+              <span className="spread-pill" title={`Funding spread across venues: ${(item.funding_spread * 100).toFixed(3)}%`}>
+                Δ {(item.funding_spread * 100).toFixed(2)}%
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="card-meta-row">
+          <span>{entitlement.meta}</span>
+          <span className={`signal-badge ${entitlement.className}`}>{entitlement.text}</span>
+        </div>
       </div>;
     })}</div>
   </aside>;

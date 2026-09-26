@@ -1,4 +1,5 @@
 import { Loader } from "../ui/Loader";
+import { shortAddress } from "../../utils/format";
 
 interface ProfileModalProps {
   open: boolean;
@@ -38,11 +39,6 @@ export function ProfileModal({
   onOpenReport,
 }: ProfileModalProps) {
   if (!open) return null;
-
-  const shortAddress = (value?: string) => {
-    if (!value) return "n/a";
-    return value.length > 12 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
-  };
 
   return (
     <div className="modal-backdrop open" style={{ display: "flex" }}>

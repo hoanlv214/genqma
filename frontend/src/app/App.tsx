@@ -5,6 +5,7 @@ import { AuthorizePage } from "../components/connect/AuthorizePage";
 import { MarketplaceReview } from "../components/marketplace/MarketplaceReview";
 import { ProfileOrdersPage } from "../components/profile/ProfileOrdersPage";
 import { TractionPage } from "../components/traction/TractionPage";
+import { SwapPage } from "../components/swap/SwapPage";
 import { NotFoundPage } from "../components/ui/NotFoundPage";
 import { pathForRoute, routeFromPath, type QmaRoute } from "./routes";
 import { WalletProvider } from "../state/walletStore";
@@ -30,7 +31,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    document.body.classList.remove("landing-body", "body", "marketplace-body", "profile-body", "traction-body", "notfound-body");
+    document.body.classList.remove("landing-body", "body", "marketplace-body", "profile-body", "traction-body", "notfound-body", "swap-body");
 
     if (route === "landing") {
       document.body.classList.add("landing-body");
@@ -42,6 +43,8 @@ export function App() {
       document.body.classList.add("profile-body");
     } else if (route === "traction") {
       document.body.classList.add("traction-body");
+    } else if (route === "swap") {
+      document.body.classList.add("swap-body");
     } else if (route === "not_found") {
       document.body.classList.add("notfound-body");
     }
@@ -49,13 +52,14 @@ export function App() {
 
   return (
     <WalletProvider>
-      <AgentWalletProvider enabled={["app", "marketplace", "profile", "traction"].includes(route)}>
+      <AgentWalletProvider enabled={["app", "marketplace", "profile", "traction", "swap"].includes(route)}>
         {route === "landing" && <LandingPage onNavigate={navigate} />}
         {route === "app" && <AppPage onNavigate={navigate} />}
         {route === "connect" && <AuthorizePage />}
         {route === "marketplace" && <MarketplaceReview onNavigate={navigate} />}
         {route === "profile" && <ProfileOrdersPage onNavigate={navigate} />}
         {route === "traction" && <TractionPage onNavigate={navigate} />}
+        {route === "swap" && <SwapPage onNavigate={navigate} />}
         {route === "not_found" && <NotFoundPage onNavigate={navigate} />}
         {route === "docs" && (
           <Suspense fallback={null}>

@@ -294,11 +294,11 @@ The frontend bootstrap configuration lives at `/api/v1/config`.
 - Never expose `SUPABASE_SERVICE_ROLE_KEY` in Vercel/frontend.
 - Keep report snapshots in `qma_paid_reports.entitlement` so old paid reports survive live market changes.
 - Keep full private CSV data outside the public repo. Supabase stores purchases and report snapshots, not necessarily the full market dataset.
-- JSON fallback is still useful for local development and judging demos without a configured Supabase project.
+- JSON fallback is still useful for local development and offline test environments without a configured Supabase project.
 
-## 9. Later upgrades
+## 9. Planned platform extensions
 
-After the hackathon, the next clean steps are:
+Planned enhancements for future releases include:
 
 - add Supabase Auth or Web3 Auth for wallet sign-in
 - add a `wallets` table to link multiple wallets to one user

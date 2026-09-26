@@ -4,7 +4,8 @@ import {
   getCachedWalletProfileToken,
   requestWalletProfileSession,
 } from "../../services/walletProfileSession";
-import { getInjectedWallet } from "../../services/wallet";
+import { getInjectedWallet, shortAddress } from "../../services/wallet";
+import { NetworkBadge } from "../ui/NetworkBadge";
 import "../../styles/connect.css";
 
 // Deep links point to public HTTPS MCP URL.
@@ -298,7 +299,7 @@ export function AuthorizePage() {
                 </div>
 
                 <p className="connect-card-desc">
-                  Copy your MCP endpoint URL and open ChatGPT's Connector settings. In the dialog, select the <strong>"URL máy chủ" (Server URL)</strong> tab and paste the link.
+                  Copy your MCP endpoint URL and open ChatGPT's Connector settings. In the dialog, select the <strong>"Server URL"</strong> tab and paste the link.
                 </p>
               </div>
 
@@ -340,7 +341,7 @@ export function AuthorizePage() {
                 {account ? (
                   <div className="connect-wallet-pill">
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 6px #10b981" }}></span>
-                    <span>{account.slice(0, 6)}…{account.slice(-4)}</span>
+                    <span>{shortAddress(account)}</span>
                   </div>
                 ) : (
                   <button
@@ -437,10 +438,7 @@ export function AuthorizePage() {
             <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 6 }}>OAuth 2.1 Consent</span>
           </div>
         </div>
-        <div className="connect-wallet-pill">
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981" }}></span>
-          <span>Arc Testnet</span>
-        </div>
+        <NetworkBadge />
       </nav>
 
       <div className="connect-container">
@@ -477,7 +475,7 @@ export function AuthorizePage() {
           {account && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "rgba(0,0,0,0.25)", borderRadius: 8, fontSize: 12, marginBottom: 14 }}>
               <span style={{ color: "#94a3b8" }}>Payer Wallet:</span>
-              <strong style={{ fontFamily: "monospace", color: "#38bdf8" }}>{account.slice(0, 6)}…{account.slice(-4)}</strong>
+              <strong style={{ fontFamily: "monospace", color: "#38bdf8" }}>{shortAddress(account)}</strong>
             </div>
           )}
 
@@ -562,7 +560,7 @@ export function AuthorizePage() {
               {busy ? (
                 <span>Authorizing & Signing Session...</span>
               ) : account ? (
-                <span>✓ Authorize as {account.slice(0, 6)}…{account.slice(-4)}</span>
+                <span>✓ Authorize as {shortAddress(account)}</span>
               ) : (
                 <span>Connect Wallet & Authorize</span>
               )}

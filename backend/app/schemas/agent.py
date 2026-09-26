@@ -86,6 +86,9 @@ class CircleServiceCardResponse(BaseModel):
     pricing: dict = Field(..., description="Price breakdown per endpoint/call in USDC")
     networks: List[str] = Field(..., description="Supported blockchain networks")
     endpoints: List[dict] = Field(..., description="Exported agent endpoints")
+    provider: Optional[dict] = Field(default=None, description="Provider and support contact details")
+    example_prompts: Optional[List[str]] = Field(default=None, description="Recommended agent prompts for Circle CLI discovery")
+    x402_specification: Optional[dict] = Field(default=None, description="Detailed x402 payment and settlement specification")
 
 
 class SpendingPolicyConfigResponse(BaseModel):
@@ -93,19 +96,27 @@ class SpendingPolicyConfigResponse(BaseModel):
     max_per_tx_usdc: float = Field(default=0.05, description="Maximum USDC allowed per single transaction")
     daily_cap_usdc: float = Field(default=1.00, description="Daily cumulative spending cap in USDC")
     weekly_cap_usdc: float = Field(default=5.00, description="Weekly cumulative spending cap in USDC")
+    monthly_cap_usdc: float = Field(default=20.00, description="Monthly cumulative spending cap in USDC")
     currency: str = Field(default="USDC", description="Enforced currency")
     enforce_strict: bool = Field(default=False, description="False: this endpoint is an advisory ledger evaluation; wallet executors enforce spending")
+    source: Optional[str] = Field(default="default_policy", description="Source of limits: circle_cli or default_policy")
 
 
 class SpendingPolicyEvaluateRequest(BaseModel):
     amount_usdc: float = Field(..., gt=0, allow_inf_nan=False, description="Proposed transaction amount in USDC", examples=[0.005])
     wallet_address: str = Field(..., max_length=80, description="Agent wallet address", examples=["0x4859d0d0babdcc8c4d8d2d116258fd0e5f7ff67d"])
     tx_type: Optional[str] = Field(default="report_purchase", description="Transaction category", examples=["report_purchase"])
+    max_per_tx_usdc: Optional[float] = Field(default=None, gt=0, description="Optional override for per-transaction cap in USDC")
+    daily_cap_usdc: Optional[float] = Field(default=None, gt=0, description="Optional override for daily cap in USDC")
+    weekly_cap_usdc: Optional[float] = Field(default=None, gt=0, description="Optional override for weekly cap in USDC")
+    monthly_cap_usdc: Optional[float] = Field(default=None, gt=0, description="Optional override for monthly cap in USDC")
 
 
 class SpendingPolicyEvaluateResponse(BaseModel):
     weekly_cap_usdc: float = Field(default=5.0, description="Advisory UTC calendar-week spending cap in USDC")
+    monthly_cap_usdc: float = Field(default=20.0, description="Advisory UTC calendar-month spending cap in USDC")
     current_spend_week_usdc: float = Field(default=0.0, description="Persisted spending during the current UTC calendar week")
+    current_spend_month_usdc: float = Field(default=0.0, description="Persisted spending during the current UTC calendar month")
     allowed: bool = Field(..., description="Whether proposed transaction is permitted under spending policy")
     reason: str = Field(..., description="Explanation of evaluation decision")
     amount_usdc: float = Field(..., description="Requested amount")
@@ -113,6 +124,32 @@ class SpendingPolicyEvaluateResponse(BaseModel):
     daily_cap_usdc: float = Field(..., description="Daily cap")
     current_spend_today_usdc: float = Field(..., description="Current spend today in USDC")
     remaining_daily_budget_usdc: float = Field(..., description="Remaining daily budget in USDC")
+    remaining_monthly_budget_usdc: float = Field(..., description="Remaining monthly budget in USDC")
+
+
+class SpendingPolicyCommandResponse(BaseModel):
+    command: str = Field(..., description="Verbatim Circle CLI command to set spending limits")
+    reset_command: Optional[str] = Field(default=None, description="Verbatim Circle CLI command to reset spending limits to default")
+    address: str = Field(..., description="Target wallet address")
+    chain: str = Field(default="BASE", description="EVM chain")
+    per_tx_usdc: float = Field(..., description="Per-transaction cap in USDC")
+    daily_usdc: float = Field(..., description="Daily cumulative cap in USDC")
+    weekly_usdc: float = Field(..., description="Weekly cumulative cap in USDC")
+    monthly_usdc: float = Field(..., description="Monthly cumulative cap in USDC")
+    is_monotonic: bool = Field(default=True, description="Whether limits satisfy per-tx <= daily <= weekly <= monthly")
+    otp_notice: str = Field(..., description="Security notice regarding human OTP confirmation in user terminal")
+
+
+
+class AgentDelegateStatusResponse(BaseModel):
+    owner_address: Optional[str] = Field(default=None, description="Account owner wallet address")
+    delegate_address: str = Field(..., description="Autonomous agent delegate address")
+    status: Literal["none", "pending", "ready"] = Field(default="ready", description="Delegation status on Circle Gateway")
+    is_authorized: bool = Field(default=True, description="Whether delegate has spending rights")
+    gateway_wallet_contract: str = Field(..., description="Circle Gateway Wallet contract address")
+    supported_chains: List[str] = Field(default_factory=list, description="Supported Gateway chains for delegation")
+    spending_policy: SpendingPolicyConfigResponse = Field(..., description="Active spending policy for this delegate")
+    instructions: str = Field(..., description="Guidance on executing or verifying addDelegate")
 
 
 class WalletConfigResponse(BaseModel):

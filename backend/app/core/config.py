@@ -54,6 +54,7 @@ class Settings:
     creator_applications_path: Path = DATA_DIR / "creator_applications.json"
     provider_controls_path: Path = DATA_DIR / "provider_controls.json"
     creator_claims_path: Path = DATA_DIR / "creator_claims.json"
+    euthyna_audit_path: Path = DATA_DIR / "euthyna_audit_trail.json"
     brand_name: str = BRAND_NAME
     brand_codename: str = BRAND_CODENAME
     brand_tagline: str = BRAND_TAGLINE
@@ -89,22 +90,96 @@ settings = Settings()
 # ---------------------------------------------------------------------------
 # Payment / pricing constants
 # ---------------------------------------------------------------------------
+import json
+
+# Load shared network configuration from Single Source of Truth: config/networks.json
+NETWORKS_CONFIG_PATH = ROOT_DIR / "config" / "networks.json"
+NETWORKS_DATA: dict = {}
+if NETWORKS_CONFIG_PATH.exists():
+    try:
+        with NETWORKS_CONFIG_PATH.open("r", encoding="utf-8") as _net_file:
+            NETWORKS_DATA = json.load(_net_file)
+    except Exception:
+        NETWORKS_DATA = {}
+
+# ---------------------------------------------------------------------------
+# Network Mode & Profiles (Testnet vs Mainnet)
+# ---------------------------------------------------------------------------
+# Set QMA_NETWORK_MODE="testnet" or "mainnet" to automatically switch all canonical defaults
+NETWORK_MODE: str = os.getenv("QMA_NETWORK_MODE", "testnet").strip().lower()
+IS_TESTNET: bool = NETWORK_MODE != "mainnet"
+
+_active_profile = NETWORKS_DATA.get("testnet" if IS_TESTNET else "mainnet", {})
+_arc_preset = _active_profile.get("arc", {})
+_contracts_preset = _active_profile.get("contracts", {})
+
+# Canonical default presets sourced directly from config/networks.json
+_DEFAULT_ARC_CHAIN_ID = _arc_preset.get("chainId", 5042002 if IS_TESTNET else 5042)
+_DEFAULT_ARC_RPC = _arc_preset.get("rpcUrl", "https://rpc.testnet.arc.network" if IS_TESTNET else "https://rpc.arc.network")
+_DEFAULT_ARC_EXPLORER = _arc_preset.get("explorerUrl", "https://testnet.arcscan.app" if IS_TESTNET else "https://arcscan.app")
+_DEFAULT_GATEWAY_API = _contracts_preset.get("gatewayApiUrl", "https://gateway-api-testnet.circle.com" if IS_TESTNET else "https://gateway-api.circle.com")
+_DEFAULT_GATEWAY_WALLET = _contracts_preset.get("gatewayWallet", "0x0077777d7EBA4688BDeF3E311b846F25870A19B9" if IS_TESTNET else "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE")
+_DEFAULT_GATEWAY_MINTER = _contracts_preset.get("gatewayMinter", "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B" if IS_TESTNET else "0x2222222d7164433c4C09B0b0D809a9b52C04C205")
+_DEFAULT_CCTP_TOKEN_MESSENGER = _contracts_preset.get("cctpTokenMessenger", "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5" if IS_TESTNET else "0xbd3fa81b58ba92a82136038b25adec7066af3155")
+_DEFAULT_NETWORK_NAME = _arc_preset.get("name", "Arc Testnet" if IS_TESTNET else "Arc Mainnet")
+
+# ---------------------------------------------------------------------------
+# Arc Network & Smart Contracts (Configurable for Testnet or Mainnet)
+# ---------------------------------------------------------------------------
+_raw_chain = os.getenv("QMA_ARC_CHAIN_ID") or os.getenv("ARC_CHAIN_ID")
+ARC_CHAIN_ID: int = _DEFAULT_ARC_CHAIN_ID if (not _raw_chain or (not IS_TESTNET and _raw_chain == "5042002")) else int(_raw_chain)
+
+_raw_rpc = os.getenv("QMA_ARC_RPC_URL") or os.getenv("ARC_RPC_URL")
+ARC_RPC_URL: str = _DEFAULT_ARC_RPC if (not _raw_rpc or (not IS_TESTNET and "testnet" in _raw_rpc)) else _raw_rpc
+
+_raw_explorer = os.getenv("QMA_ARC_EXPLORER") or os.getenv("ARC_EXPLORER")
+ARC_EXPLORER: str = _DEFAULT_ARC_EXPLORER if (not _raw_explorer or (not IS_TESTNET and "testnet" in _raw_explorer)) else _raw_explorer
+ARC_EXPLORER_URL: str = ARC_EXPLORER  # Backward-compatible alias
+
+ARC_USDC_ADDRESS: str = os.getenv("QMA_ARC_USDC_ADDRESS", "0x3600000000000000000000000000000000000000")
+ARC_TESTNET_USDC: str = ARC_USDC_ADDRESS  # Backward-compatible alias
+ARC_EURC_ADDRESS: str = os.getenv("QMA_ARC_EURC_ADDRESS", "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a")
+
+# USYC Vault Address
+ARC_USYC_VAULT_ADDRESS: str = os.getenv(
+    "ARC_USYC_VAULT_ADDRESS",
+    os.getenv("QMA_ARC_USYC_VAULT_ADDRESS", "0x934e7309d7fca371db946b0643f2136cc0a0fcb2"),
+)
+
+# StableFX Configuration
+STABLEFX_EURC_USD_RATE: float = float(os.getenv("QMA_STABLEFX_EURC_USD_RATE", "1.0850"))
+STABLEFX_SPREAD_BPS: int = int(os.getenv("QMA_STABLEFX_SPREAD_BPS", "5"))
+STABLEFX_QUOTE_TTL_SECONDS: int = int(os.getenv("QMA_STABLEFX_QUOTE_TTL_SECONDS", "60"))
+
 PAYMENT_AMOUNT_USDC = float(os.getenv("QMA_PAYMENT_AMOUNT_USDC", os.getenv("QMA_PRICE_FULL_USDC", "0.005")))
 PAYMENT_RESOURCE_TYPE = os.getenv("QMA_PAYMENT_RESOURCE_TYPE", "qma_signal_report")
-PAYMENT_NETWORK = os.getenv("QMA_PAYMENT_NETWORK", "eip155:5042002")
-PAYMENT_NETWORK_NAME = os.getenv("QMA_PAYMENT_NETWORK_NAME", "Arc Testnet")
+_raw_pay_net = os.getenv("QMA_PAYMENT_NETWORK")
+PAYMENT_NETWORK = f"eip155:{ARC_CHAIN_ID}" if (not _raw_pay_net or (not IS_TESTNET and _raw_pay_net == "eip155:5042002")) else _raw_pay_net
+
+_raw_pay_name = os.getenv("QMA_PAYMENT_NETWORK_NAME")
+PAYMENT_NETWORK_NAME = _DEFAULT_NETWORK_NAME if (not _raw_pay_name or (not IS_TESTNET and _raw_pay_name == "Arc Testnet")) else _raw_pay_name
+
 PAYMENT_WALLET_ADDRESS = os.getenv("QMA_ARC_SELLER_ADDRESS", "0x23e7c029a287a83d80b2e084e008211658dda11d")
 PLATFORM_TREASURY_ADDRESS = os.getenv("QMA_PLATFORM_TREASURY_ADDRESS", PAYMENT_WALLET_ADDRESS)
 
 # ---------------------------------------------------------------------------
-# Arc / Circle Gateway
+# Arc / Circle Gateway & Contracts
 # ---------------------------------------------------------------------------
 ARC_GATEWAY_BASE_URL = os.getenv("QMA_ARC_GATEWAY_URL", "http://127.0.0.1:3000")
-ARC_GATEWAY_API = os.getenv("QMA_CIRCLE_GATEWAY_API", "https://gateway-api-testnet.circle.com")
-ARC_EXPLORER = os.getenv("QMA_ARC_EXPLORER", "https://testnet.arcscan.app")
-ARC_GATEWAY_WALLET = os.getenv("QMA_ARC_GATEWAY_WALLET", "0x0077777d7EBA4688BDeF3E311b846F25870A19B9")
-ARC_TESTNET_USDC = os.getenv("QMA_ARC_USDC_ADDRESS", "0x3600000000000000000000000000000000000000")
-ARC_GATEWAY_MINTER = os.getenv("QMA_ARC_GATEWAY_MINTER", "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B")
+
+_raw_gw_api = os.getenv("QMA_CIRCLE_GATEWAY_API")
+ARC_GATEWAY_API = _DEFAULT_GATEWAY_API if (not _raw_gw_api or (not IS_TESTNET and "testnet" in _raw_gw_api)) else _raw_gw_api
+
+_raw_gw_wallet = os.getenv("QMA_ARC_GATEWAY_WALLET")
+ARC_GATEWAY_WALLET = _DEFAULT_GATEWAY_WALLET if (not _raw_gw_wallet or (not IS_TESTNET and _raw_gw_wallet == "0x0077777d7EBA4688BDeF3E311b846F25870A19B9")) else _raw_gw_wallet
+
+_raw_gw_minter = os.getenv("QMA_ARC_GATEWAY_MINTER")
+ARC_GATEWAY_MINTER = _DEFAULT_GATEWAY_MINTER if (not _raw_gw_minter or (not IS_TESTNET and _raw_gw_minter == "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B")) else _raw_gw_minter
+
+ARC_GATEWAY_DOMAIN: int = int(os.getenv("QMA_ARC_GATEWAY_DOMAIN", "26"))
+MAINNET_GATEWAY_WALLET = os.getenv("QMA_MAINNET_GATEWAY_WALLET", "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE")
+SHIELD_CONTRACT_ADDRESS = os.getenv("QMA_SHIELD_CONTRACT_ADDRESS", "0x367728bf66Cf962Ce15fD2b65193b7a1466f087c")
+ARC_HEDGE_RELAYER_CONTRACT = os.getenv("QMA_ARC_HEDGE_RELAYER_CONTRACT", ARC_GATEWAY_WALLET)
 ARC_GATEWAY_INTERNAL_SECRET = os.getenv("QMA_ARC_GATEWAY_INTERNAL_SECRET", "")
 
 # ---------------------------------------------------------------------------
@@ -118,7 +193,7 @@ WITHDRAW_RELAY_DAILY_LIMIT = int(os.getenv("QMA_PROVIDER_WITHDRAW_DAILY_LIMIT", 
 # ---------------------------------------------------------------------------
 # Creator claims
 # ---------------------------------------------------------------------------
-CREATOR_CLAIM_MIN_USDC = float(os.getenv("QMA_CREATOR_CLAIM_MIN_USDC", "0"))
+CREATOR_CLAIM_MIN_USDC = float(os.getenv("QMA_CREATOR_CLAIM_MIN_USDC", "0.05"))
 CREATOR_CLAIM_INTENT_TTL_SECONDS = int(os.getenv("QMA_CREATOR_CLAIM_INTENT_TTL_SECONDS", "600"))
 
 # ---------------------------------------------------------------------------
@@ -175,6 +250,14 @@ GATEWAY_DEFAULT_DEPOSIT_USDC = float(os.getenv("QMA_ARC_DEFAULT_DEPOSIT_USDC", "
 GATEWAY_DEFAULT_APPROVE_USDC = float(os.getenv("QMA_ARC_DEFAULT_APPROVE_USDC", "10.00"))
 ARC_BATCH_TX_CACHE_TTL_SECONDS = int(os.getenv("QMA_ARC_BATCH_TX_CACHE_TTL_SECONDS", "60"))
 PAYMENT_EVENT_REFRESH_TTL_SECONDS = int(os.getenv("QMA_PAYMENT_EVENT_REFRESH_TTL_SECONDS", "90"))
+
+# ---------------------------------------------------------------------------
+# Circle Onramp Kit (Fiat-to-USDC)
+# ---------------------------------------------------------------------------
+CIRCLE_ONRAMP_API_KEY = os.getenv("CIRCLE_ONRAMP_API_KEY") or os.getenv("CIRCLE_CONSOLE_API_KEY") or ""
+CIRCLE_ONRAMP_BASE_URL = os.getenv("CIRCLE_ONRAMP_BASE_URL", "https://api.circle.com")
+CIRCLE_ONRAMP_WIDGET_BASE_URL = os.getenv("CIRCLE_ONRAMP_WIDGET_BASE_URL", "https://onramp.arc.io")
+CIRCLE_ONRAMP_REFERRER_DOMAIN = os.getenv("CIRCLE_ONRAMP_REFERRER_DOMAIN", "")
 
 # ---------------------------------------------------------------------------
 # Cache

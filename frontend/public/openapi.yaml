@@ -73,8 +73,9 @@ info:
     anomalies (e.g. extreme CEX funding rate disparities, sudden open-interest shifts,
     or Polymarket/Pyth divergences) before executing on-chain trades.
 
-    - Endpoints accept direct pay-per-call nanopayments ($0.002000 - $0.005000 USDC
-    per report) over x402 and MPP across Arc Testnet, Base Sepolia, Base, and Arbitrum.
+    - Create an invoice, pay its Gateway resource on the configured payment network,
+    then verify the settlement. Request the report with invoice_id and X-QMA-Access-Token.
+    Raw payment headers do not authorize report access.
 
 
     ### Operations & Endpoints
@@ -100,8 +101,8 @@ info:
     optional technical parameters (`fundingRate`, `openInterest`, `volume24h`, `price`,
     `longShortRatio`).
 
-    - Unpaid requests receive an HTTP 402 challenge containing payment requirements
-    and accepted multi-chain networks.
+    - Unpaid requests receive HTTP 402. The invoice contains the authoritative amount,
+    network and payment resource.
 
 
     ### Outputs
@@ -1234,6 +1235,138 @@ paths:
       x-qma-audiences:
       - agent
       - public
+  /api/v1/market/credit-risk-score:
+    get:
+      tags:
+      - Market data
+      summary: Compute collateral haircut & risk rating for Onchain Credit (Frontier
+        3)
+      description: "Evaluates a token symbol against historical anomaly regimes and\
+        \ analog drawdowns to calculate an institutional collateral haircut, maximum\
+        \ Loan-to-Value (LTV), and liquidation risk tier for Arc Onchain Credit and\
+        \ lending protocols.\n        \n**Authentication:** This is a public route\
+        \ and does not require an access token.\n**Arc RFB Frontier:** Frontier 3\
+        \ \u2014 Onchain Credit and Collateral."
+      operationId: get_credit_risk_score_api_v1_market_credit_risk_score_get
+      parameters:
+      - name: symbol
+        in: query
+        required: false
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 30
+          description: Asset symbol
+          default: BTC
+          title: Symbol
+        description: Asset symbol
+      - name: funding_rate
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+          - type: 'null'
+          description: Current 8h funding rate
+          title: Funding Rate
+        description: Current 8h funding rate
+      - name: market_cap
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0
+          - type: 'null'
+          description: Circulating market cap in USD
+          title: Market Cap
+        description: Circulating market cap in USD
+      - name: fdv
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0
+          - type: 'null'
+          description: Fully diluted valuation in USD
+          title: Fdv
+        description: Fully diluted valuation in USD
+      - name: circ_ratio
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+            maximum: 1.5
+            exclusiveMinimum: 0
+          - type: 'null'
+          description: Circulating supply ratio
+          title: Circ Ratio
+        description: Circulating supply ratio
+      - name: from_ath_pct
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+            maximum: 0
+          - type: 'null'
+          description: Drawdown from ATH percentage
+          title: From Ath Pct
+        description: Drawdown from ATH percentage
+      - name: volume_24h
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0
+          - type: 'null'
+          description: 24h trading volume in USD
+          title: Volume 24H
+        description: 24h trading volume in USD
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollateralRiskScoreResponse'
+        '400':
+          description: The request is invalid or violates a business rule.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: The request was rate limited. Retry after the indicated delay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitErrorResponse'
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: A required service or configuration is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-qma-access: public
+      x-qma-audiences:
+      - agent
+      - public
   /api/v1/agent/decision:
     post:
       tags:
@@ -1301,6 +1434,41 @@ paths:
 
         **Authentication:** Public route.'
       operationId: get_agent_card_well_known__well_known_agent_json_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentIdentityResponse'
+        '429':
+          description: The request was rate limited. Retry after the indicated delay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitErrorResponse'
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-qma-access: public
+      x-qma-audiences:
+      - agent
+      - public
+  /.well-known/agent-card.json:
+    get:
+      tags:
+      - Agent decisioning
+      summary: Standard Agent Card metadata for external AI agent discovery
+      description: 'Standard agent discovery metadata card. Enables external AI agents
+        (Circle CLI, Claude, ChatGPT, LangChain) to inspect QMA identity, capabilities,
+        on-chain verification contracts, and pricing models on Arc.
+
+
+        **Authentication:** Public route.'
+      operationId: get_agent_card_json_well_known__well_known_agent_card_json_get
       responses:
         '200':
           description: Successful Response
@@ -1433,13 +1601,12 @@ paths:
     post:
       tags:
       - Agent decisioning
-      summary: Dispatch an ERC-8183 escrowed intelligence task
-      description: 'Submits a standardized ERC-8183 escrowed intelligence job to QMA.
-        External AI frameworks lock USDC into escrow via Circle Gateway x402, QMA
-        executes analysis, and GenLayer consensus proof is bound to the job.
-
-
-        **Authentication:** Public route.'
+      summary: Deliver an invoice-backed intelligence job
+      description: ERC-8183-shaped adapter over QMA invoices, not an independent on-chain
+        escrow. Without invoice_id, returns HTTP 402 with a real invoice and payment
+        requirement. Pay and verify that invoice, then retry with the exact query,
+        invoice_id and X-QMA-Access-Token. Completion includes only the finalized
+        GenLayer receipt and cached report; no reputation points are fabricated.
       operationId: create_erc8183_job_api_v1_agent_jobs_post
       requestBody:
         content:
@@ -1460,8 +1627,142 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '402':
+          description: Payment Required. Returns an x402 challenge with accepts[]
+            containing supported multi-chain networks and Bazaar schema.
+          headers:
+            PAYMENT-REQUIRED:
+              description: Base64-encoded x402 payment challenge JSON with multi-network
+                accepts[] array and Bazaar schema
+              schema:
+                type: string
+            WWW-Authenticate:
+              description: Payment challenge realm, requirements, and supported schemes
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: payment_required
+                message: 'Payment required: $0.005000 USDC over x402 / Circle Gateway
+                  to access report.'
+                status_code: 402
+                price:
+                  mode: fixed
+                  currency: USDC
+                  amount: '0.005000'
+                x402Version: 2
+                accepts: &id001
+                - scheme: exact
+                  network: eip155:5042002
+                  asset: '0x3600000000000000000000000000000000000000'
+                  amount: '5000'
+                  payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
+                  maxTimeoutSeconds: 604900
+                  extra:
+                    name: GatewayWalletBatched
+                    version: '1'
+                    verifyingContract: '0x0077777d7EBA4688BDeF3E311b846F25870A19B9'
+                extensions: &id003
+                  bazaar:
+                    schema:
+                      type: object
+                      properties:
+                        input:
+                          type: object
+                          properties:
+                            body:
+                              type: object
+                              required:
+                              - symbol
+                              properties:
+                                symbol:
+                                  type: string
+                                  description: Trading pair symbol, e.g. BTC_USDT,
+                                    ETH_USDC
+                                fundingRate:
+                                  type: number
+                                  description: Current annualized or period funding
+                                    rate (optional)
+                                openInterest:
+                                  type: number
+                                  description: Aggregate open interest in quote currency
+                                    (optional)
+                                volume24h:
+                                  type: number
+                                  description: 24-hour volume in quote currency (optional)
+                                price:
+                                  type: number
+                                  description: Current reference spot or index price
+                                    (optional)
+                                longShortRatio:
+                                  type: number
+                                  description: Long-to-short positioning ratio across
+                                    venues (optional)
+                        output:
+                          type: object
+                          properties:
+                            example:
+                              type: object
+                              properties:
+                                query_symbol:
+                                  type: string
+                                tier:
+                                  type: string
+                                anomalies:
+                                  type: array
+                                historical_analogs:
+                                  type: array
+                                weighted_win_rate:
+                                  type: number
+                                regime_score:
+                                  type: number
+                                genlayer_sla:
+                                  type: object
+                    info:
+                      input:
+                        type: http
+                        method: POST
+                        discoverable: true
+                        bodyFields:
+                          symbol:
+                            type: string
+                            description: Trading pair symbol, e.g. BTC_USDT, ETH_USDC
+                          fundingRate:
+                            type: number
+                            description: Current annualized or period funding rate
+                              (optional)
+                          openInterest:
+                            type: number
+                            description: Aggregate open interest in quote currency
+                              (optional)
+                          volume24h:
+                            type: number
+                            description: 24-hour volume in quote currency (optional)
+                          price:
+                            type: number
+                            description: Current reference spot or index price (optional)
+                          longShortRatio:
+                            type: number
+                            description: Long-to-short positioning ratio across venues
+                              (optional)
+                      output: null
+        '403':
+          description: The caller is not authorized for this resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: The requested resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The request conflicts with the current resource state.
           content:
             application/json:
               schema:
@@ -1478,27 +1779,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: A required service or configuration is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-      x-qma-access: public
+      security:
+      - X-QMA-Access-Token: []
+      x-qma-access: paid-access
       x-qma-audiences:
       - agent
-      - public
+      - private
+      x-payment-info: &id004
+        price:
+          mode: dynamic
+          currency: USDC
+          amount: '0.005000'
+          min: '0.002000'
+          max: '0.005000'
+        protocols:
+        - x402:
+            networks: &id002
+            - eip155:5042002
+            accepts: *id001
+        - mpp:
+            networks: *id002
+        networks: *id002
+        accepts: *id001
   /api/v1/agent/jobs/{job_id}:
     get:
       tags:
       - Agent decisioning
-      summary: Inspect an ERC-8183 escrowed task status and GenLayer proof
-      description: 'Retrieves the lifecycle state, settlement receipt, report payload,
-        and GenLayer Intelligent Contract consensus proof for an ERC-8183 task.
-
-
-        **Authentication:** Public route.'
+      summary: Read an owned invoice-backed job
+      description: Requires X-QMA-Access-Token for the invoice encoded by job_id.
+        Reconstructs the job from durable invoice state, with the real GenLayer receipt
+        and verified report. Unpaid, rejected and mismatched-token jobs remain inaccessible.
       operationId: get_erc8183_job_api_v1_agent_jobs__job_id__get
+      security:
+      - X-QMA-Access-Token: []
       parameters:
       - name: job_id
         in: path
@@ -1513,8 +1838,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ERC8183JobResponse'
+        '400':
+          description: The request is invalid or violates a business rule.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '402':
+          description: Payment Required. Returns an x402 challenge with accepts[]
+            containing supported multi-chain networks and Bazaar schema.
+          headers:
+            PAYMENT-REQUIRED:
+              description: Base64-encoded x402 payment challenge JSON with multi-network
+                accepts[] array and Bazaar schema
+              schema:
+                type: string
+            WWW-Authenticate:
+              description: Payment challenge realm, requirements, and supported schemes
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: payment_required
+                message: 'Payment required: $0.005000 USDC over x402 / Circle Gateway
+                  to access report.'
+                status_code: 402
+                price:
+                  mode: fixed
+                  currency: USDC
+                  amount: '0.005000'
+                x402Version: 2
+                accepts: *id001
+                extensions: *id003
+        '403':
+          description: The caller is not authorized for this resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: The requested resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The request conflicts with the current resource state.
           content:
             application/json:
               schema:
@@ -1531,23 +1903,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: A required service or configuration is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-      x-qma-access: public
+      x-qma-access: paid-access
       x-qma-audiences:
       - agent
-      - public
+      - private
+      x-payment-info: *id004
   /api/v1/agent/spending-policy:
     get:
       tags:
       - Agent decisioning
       summary: Read Circle agent wallet spending policy caps
-      description: 'Inspect active spending policy limits enforced for agent wallets
-        under the Circle CLI standard (max per tx, daily cap, weekly cap).
+      description: 'Inspect QMA advisory spending thresholds (per transaction, UTC
+        calendar day, week, and month). enforce_strict is false: this route does not
+        configure Circle or authorize transfers; payment executors enforce wallet
+        limits.
 
 
         **Authentication:** Public route.'
@@ -1580,9 +1961,11 @@ paths:
       tags:
       - Agent decisioning
       summary: Evaluate proposed purchase against agent spending policy
-      description: 'Evaluates whether a planned intelligence purchase complies with
-        configured Circle CLI spending policy limits. Enforces per-transaction caps
-        and daily cumulative allowances.
+      description: 'Read-only evaluation against authoritative settlement history
+        using UTC calendar days, weeks, and months. Evaluations never consume budget.
+        Duplicate settlements count once, confirmed refunds are excluded, and storage
+        failures return 503 rather than an approval. This does not reserve funds or
+        configure Circle spending limits.
 
 
         **Authentication:** Public route.'
@@ -1606,6 +1989,162 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: The request was rate limited. Retry after the indicated delay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitErrorResponse'
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: A required service or configuration is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-qma-access: public
+      x-qma-audiences:
+      - agent
+      - public
+  /api/v1/agent/spending-policy/command:
+    get:
+      tags:
+      - Agent decisioning
+      summary: Generate Circle CLI wallet limit command with OTP instructions
+      description: 'Generates verbatim `circle wallet limit set` CLI command for user
+        terminal execution. Mainnet agent spending limits require email OTP confirmation
+        in an interactive terminal session and must never be handled or stored by
+        the agent server.
+
+
+        **Authentication:** Public route.'
+      operationId: get_spending_policy_command_api_v1_agent_spending_policy_command_get
+      parameters:
+      - name: wallet_address
+        in: query
+        required: true
+        schema:
+          type: string
+          description: EVM wallet address of the agent
+          title: Wallet Address
+        description: EVM wallet address of the agent
+      - name: max_per_tx
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+          - type: 'null'
+          description: Per-transaction cap in USDC
+          title: Max Per Tx
+        description: Per-transaction cap in USDC
+      - name: daily
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+          - type: 'null'
+          description: Daily cap in USDC
+          title: Daily
+        description: Daily cap in USDC
+      - name: weekly
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+          - type: 'null'
+          description: Weekly cap in USDC
+          title: Weekly
+        description: Weekly cap in USDC
+      - name: monthly
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: number
+          - type: 'null'
+          description: Monthly cap in USDC
+          title: Monthly
+        description: Monthly cap in USDC
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpendingPolicyCommandResponse'
+        '400':
+          description: The request is invalid or violates a business rule.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: The request was rate limited. Retry after the indicated delay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitErrorResponse'
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-qma-access: public
+      x-qma-audiences:
+      - agent
+      - public
+  /api/v1/agent/delegate-status:
+    get:
+      tags:
+      - Agent decisioning
+      summary: Read Circle Gateway Unified Balance delegation status
+      description: 'Returns the active Gateway Wallet contract and supported chains
+        for Circle Gateway Unified Balance addDelegate authorization. Allows the autonomous
+        agent to spend unified balances across chains without per-action popups once
+        authorized by the user.
+
+
+        **Authentication:** Public route.'
+      operationId: get_delegate_status_api_v1_agent_delegate_status_get
+      parameters:
+      - name: owner_address
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Optional account owner wallet address
+          title: Owner Address
+        description: Optional account owner wallet address
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentDelegateStatusResponse'
         '429':
           description: The request was rate limited. Retry after the indicated delay.
           content:
@@ -1712,151 +2251,8 @@ paths:
                   currency: USDC
                   amount: '0.005000'
                 x402Version: 2
-                accepts: &id001
-                - scheme: exact
-                  network: eip155:5042002
-                  asset: '0x3600000000000000000000000000000000000000'
-                  amount: '5000'
-                  payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
-                  maxTimeoutSeconds: 604900
-                  extra:
-                    name: GatewayWalletBatched
-                    version: '1'
-                    verifyingContract: '0x0077777d7EBA4688BDeF3E311b846F25870A19B9'
-                - scheme: exact
-                  network: eip155:84532
-                  asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e'
-                  amount: '5000'
-                  payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
-                  maxTimeoutSeconds: 604900
-                  extra:
-                    name: GatewayWalletBatched
-                    version: '1'
-                    verifyingContract: '0x0077777d7EBA4688BDeF3E311b846F25870A19B9'
-                - scheme: exact
-                  network: eip155:8453
-                  asset: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
-                  amount: '5000'
-                  payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
-                  maxTimeoutSeconds: 604900
-                  extra:
-                    name: GatewayWalletBatched
-                    version: '1'
-                    verifyingContract: '0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE'
-                - scheme: exact
-                  network: eip155:42161
-                  asset: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'
-                  amount: '5000'
-                  payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
-                  maxTimeoutSeconds: 604900
-                  extra:
-                    name: GatewayWalletBatched
-                    version: '1'
-                    verifyingContract: '0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE'
-                - scheme: exact
-                  network: eip155:421614
-                  asset: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d'
-                  amount: '5000'
-                  payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
-                  maxTimeoutSeconds: 604900
-                  extra:
-                    name: GatewayWalletBatched
-                    version: '1'
-                    verifyingContract: '0x0077777d7EBA4688BDeF3E311b846F25870A19B9'
-                - scheme: exact
-                  network: eip155:11155111
-                  asset: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238'
-                  amount: '5000'
-                  payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
-                  maxTimeoutSeconds: 604900
-                  extra:
-                    name: GatewayWalletBatched
-                    version: '1'
-                    verifyingContract: '0x0077777d7EBA4688BDeF3E311b846F25870A19B9'
-                extensions: &id003
-                  bazaar:
-                    schema:
-                      type: object
-                      properties:
-                        input:
-                          type: object
-                          properties:
-                            body:
-                              type: object
-                              required:
-                              - symbol
-                              properties:
-                                symbol:
-                                  type: string
-                                  description: Trading pair symbol, e.g. BTC_USDT,
-                                    ETH_USDC
-                                fundingRate:
-                                  type: number
-                                  description: Current annualized or period funding
-                                    rate (optional)
-                                openInterest:
-                                  type: number
-                                  description: Aggregate open interest in quote currency
-                                    (optional)
-                                volume24h:
-                                  type: number
-                                  description: 24-hour volume in quote currency (optional)
-                                price:
-                                  type: number
-                                  description: Current reference spot or index price
-                                    (optional)
-                                longShortRatio:
-                                  type: number
-                                  description: Long-to-short positioning ratio across
-                                    venues (optional)
-                        output:
-                          type: object
-                          properties:
-                            example:
-                              type: object
-                              properties:
-                                query_symbol:
-                                  type: string
-                                tier:
-                                  type: string
-                                anomalies:
-                                  type: array
-                                historical_analogs:
-                                  type: array
-                                weighted_win_rate:
-                                  type: number
-                                regime_score:
-                                  type: number
-                                genlayer_sla:
-                                  type: object
-                    info:
-                      input:
-                        type: http
-                        method: POST
-                        discoverable: true
-                        bodyFields:
-                          symbol:
-                            type: string
-                            description: Trading pair symbol, e.g. BTC_USDT, ETH_USDC
-                          fundingRate:
-                            type: number
-                            description: Current annualized or period funding rate
-                              (optional)
-                          openInterest:
-                            type: number
-                            description: Aggregate open interest in quote currency
-                              (optional)
-                          volume24h:
-                            type: number
-                            description: 24-hour volume in quote currency (optional)
-                          price:
-                            type: number
-                            description: Current reference spot or index price (optional)
-                          longShortRatio:
-                            type: number
-                            description: Long-to-short positioning ratio across venues
-                              (optional)
-                      output: null
+                accepts: *id001
+                extensions: *id003
         '404':
           description: The requested resource was not found.
           content:
@@ -1887,27 +2283,7 @@ paths:
       x-qma-audiences:
       - private
       - wallet
-      x-payment-info: &id004
-        price:
-          mode: dynamic
-          currency: USDC
-          amount: '0.005000'
-          min: '0.002000'
-          max: '0.005000'
-        protocols:
-        - x402:
-            networks: &id002
-            - eip155:5042002
-            - eip155:84532
-            - eip155:8453
-            - eip155:42161
-            - eip155:421614
-            - eip155:11155111
-            accepts: *id001
-        - mpp:
-            networks: *id002
-        networks: *id002
-        accepts: *id001
+      x-payment-info: *id004
   /api/v1/metrics/wallet/{address}:
     get:
       tags:
@@ -2896,8 +3272,10 @@ paths:
       tags:
       - Reports
       summary: Provider Preview Signal
-      description: Returns a paid provider preview for the exact query snapshot bound
-        to the invoice.
+      description: Returns the verified preview for the invoice-bound query. Requires
+        invoice_id and X-QMA-Access-Token after payment verification. Raw payment-signature,
+        x-payment and Authorization headers do not grant access; pay the invoice's
+        Gateway resource first.
       operationId: provider_preview_signal_api_v1_providers__provider_id__preview_post
       security:
       - X-QMA-Access-Token: []
@@ -2921,13 +3299,13 @@ paths:
           anyOf:
           - type: string
           - type: 'null'
-          description: Optional settled invoice ID for pre-allocated invoice flows.
-            Leave empty when paying directly via x402 / Circle Gateway.
+          description: Verified invoice ID, required together with X-QMA-Access-Token.
+            Pay the invoice's Gateway resource and verify the settlement first.
           examples:
           - inv_79d896a28cd5
           title: Invoice Id
-        description: Optional settled invoice ID for pre-allocated invoice flows.
-          Leave empty when paying directly via x402 / Circle Gateway.
+        description: Verified invoice ID, required together with X-QMA-Access-Token.
+          Pay the invoice's Gateway resource and verify the settlement first.
       requestBody:
         content:
           application/json:
@@ -3021,8 +3399,9 @@ paths:
       tags:
       - Reports
       summary: Provider Full Report
-      description: Returns a paid provider full report for the exact query snapshot
-        bound to the invoice.
+      description: Returns the verified full report for the invoice-bound query. Requires
+        invoice_id and X-QMA-Access-Token after payment verification. Raw payment
+        headers never grant access or create a paid invoice.
       operationId: provider_full_report_api_v1_providers__provider_id__full_report_post
       security:
       - X-QMA-Access-Token: []
@@ -3046,13 +3425,13 @@ paths:
           anyOf:
           - type: string
           - type: 'null'
-          description: Optional settled invoice ID for pre-allocated invoice flows.
-            Leave empty when paying directly via x402 / Circle Gateway.
+          description: Verified invoice ID, required together with X-QMA-Access-Token
+            after settlement verification.
           examples:
           - inv_79d896a28cd5
           title: Invoice Id
-        description: Optional settled invoice ID for pre-allocated invoice flows.
-          Leave empty when paying directly via x402 / Circle Gateway.
+        description: Verified invoice ID, required together with X-QMA-Access-Token
+          after settlement verification.
       requestBody:
         content:
           application/json:
@@ -3159,11 +3538,11 @@ paths:
           anyOf:
           - type: string
           - type: 'null'
-          description: Optional settled invoice ID for pre-allocated invoice flows.
-            Leave empty when paying directly via x402 / Circle Gateway.
+          description: Verified invoice ID, required together with X-QMA-Access-Token
+            after settlement verification.
           title: Invoice Id
-        description: Optional settled invoice ID for pre-allocated invoice flows.
-          Leave empty when paying directly via x402 / Circle Gateway.
+        description: Verified invoice ID, required together with X-QMA-Access-Token
+          after settlement verification.
       requestBody:
         content:
           application/json:
@@ -3266,11 +3645,11 @@ paths:
           anyOf:
           - type: string
           - type: 'null'
-          description: Optional settled invoice ID for pre-allocated invoice flows.
-            Leave empty when paying directly via x402 / Circle Gateway.
+          description: Verified invoice ID, required together with X-QMA-Access-Token
+            after settlement verification.
           title: Invoice Id
-        description: Optional settled invoice ID for pre-allocated invoice flows.
-          Leave empty when paying directly via x402 / Circle Gateway.
+        description: Verified invoice ID, required together with X-QMA-Access-Token
+          after settlement verification.
       requestBody:
         content:
           application/json:
@@ -3582,8 +3961,12 @@ paths:
       tags:
       - Agent sessions
       summary: Withdraw from an Agent Wallet
-      description: Withdraws USDC to the verified owner wallet when none of its sessions
-        are active.
+      description: Submit an owner-authenticated withdrawal. Reuse request_id on retries,
+        including after timeouts or page reloads. Each operation is persisted before
+        submission and bound to owner, wallet and amount. Reusing it with another
+        amount returns 409. Without request_id, identical legacy requests are permanently
+        deduplicated. A successful response means submitted, not necessarily on-chain
+        confirmed.
       operationId: withdraw_funds_api_v1_sessions_withdraw_post
       requestBody:
         content:
@@ -3612,6 +3995,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: The requested resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The request conflicts with the current resource state.
           content:
             application/json:
               schema:
@@ -4944,6 +5333,192 @@ paths:
       x-qma-audiences:
       - agent
       - public
+  /api/v1/stablefx/pairs:
+    get:
+      tags:
+      - Circle StableFX
+      summary: List supported Circle StableFX pairs on Arc
+      description: "Lists all available institutional stablecoin foreign exchange\
+        \ corridors on Arc (such as USDC/EURC).\n        \n**Authentication:** This\
+        \ is a public route and does not require an access token.\n**Arc RFB Frontier:**\
+        \ Frontier 1 \u2014 Global Money and Embedded Finance."
+      operationId: list_stablefx_pairs_api_v1_stablefx_pairs_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StableFXPairsResponse'
+        '429':
+          description: The request was rate limited. Retry after the indicated delay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitErrorResponse'
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: A required service or configuration is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-qma-access: public
+      x-qma-audiences:
+      - public
+  /api/v1/stablefx/quote:
+    get:
+      tags:
+      - Circle StableFX
+      summary: Get institutional StableFX conversion quote
+      description: "Calculates an institutional conversion quote between Circle stablecoins\
+        \ (USDC and EURC) on Arc with guaranteed price lock duration.\n        \n\
+        **Authentication:** This is a public route and does not require an access\
+        \ token.\n**Arc RFB Frontier:** Frontier 1 \u2014 Global Money and Embedded\
+        \ Finance."
+      operationId: get_quote_api_v1_stablefx_quote_get
+      parameters:
+      - name: from_currency
+        in: query
+        required: false
+        schema:
+          enum:
+          - USDC
+          - EURC
+          type: string
+          description: Currency to convert from
+          default: USDC
+          title: From Currency
+        description: Currency to convert from
+      - name: to_currency
+        in: query
+        required: false
+        schema:
+          enum:
+          - USDC
+          - EURC
+          type: string
+          description: Currency to convert to
+          default: EURC
+          title: To Currency
+        description: Currency to convert to
+      - name: amount
+        in: query
+        required: false
+        schema:
+          type: number
+          exclusiveMinimum: 0
+          description: Amount to convert
+          default: 10.0
+          title: Amount
+        description: Amount to convert
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StableFXQuoteResponse'
+        '400':
+          description: The request is invalid or violates a business rule.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: The request was rate limited. Retry after the indicated delay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitErrorResponse'
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: A required service or configuration is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-qma-access: public
+      x-qma-audiences:
+      - public
+  /api/v1/stablefx/settle:
+    post:
+      tags:
+      - Circle StableFX
+      summary: Execute institutional Circle StableFX atomic settlement
+      description: "Verifies user deposit leg on Arc Testnet and executes reciprocal\
+        \ atomic payout leg for Circle StableFX foreign exchange.\n\n**Authentication:**\
+        \ This is a public route and does not require an access token.\n**Arc RFB\
+        \ Frontier:** Frontier 1 \u2014 Global Money and Embedded Finance."
+      operationId: settle_swap_api_v1_stablefx_settle_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StableFXSettleRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StableFXSettleResponse'
+        '400':
+          description: The request is invalid or violates a business rule.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: The request was rate limited. Retry after the indicated delay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitErrorResponse'
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: An upstream Gateway or relayer request failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: A required service or configuration is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-qma-access: public
+      x-qma-audiences:
+      - public
 components:
   schemas:
     AcquireLeaseRequest:
@@ -5077,6 +5652,14 @@ components:
           default: true
           examples:
           - true
+        use_laya:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Use Laya
+          description: Enable local Laya System 1 decision engine
+          examples:
+          - true
       type: object
       required:
       - prompt
@@ -5137,6 +5720,56 @@ components:
       - candidate_count
       - decision_source
       title: AgentDecisionResponse
+    AgentDelegateStatusResponse:
+      properties:
+        owner_address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Owner Address
+          description: Account owner wallet address
+        delegate_address:
+          type: string
+          title: Delegate Address
+          description: Autonomous agent delegate address
+        status:
+          type: string
+          enum:
+          - none
+          - pending
+          - ready
+          title: Status
+          description: Delegation status on Circle Gateway
+          default: ready
+        is_authorized:
+          type: boolean
+          title: Is Authorized
+          description: Whether delegate has spending rights
+          default: true
+        gateway_wallet_contract:
+          type: string
+          title: Gateway Wallet Contract
+          description: Circle Gateway Wallet contract address
+        supported_chains:
+          items:
+            type: string
+          type: array
+          title: Supported Chains
+          description: Supported Gateway chains for delegation
+        spending_policy:
+          $ref: '#/components/schemas/SpendingPolicyConfigResponse'
+          description: Active spending policy for this delegate
+        instructions:
+          type: string
+          title: Instructions
+          description: Guidance on executing or verifying addDelegate
+      type: object
+      required:
+      - delegate_address
+      - gateway_wallet_contract
+      - spending_policy
+      - instructions
+      title: AgentDelegateStatusResponse
     AgentIdentityResponse:
       properties:
         standard:
@@ -5187,6 +5820,14 @@ components:
           type: object
           title: Verification
           description: Consensus and verification parameters
+        arc_rfb_alignment:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Arc Rfb Alignment
+          description: Declared architectural alignment with Arc Request for Builders
+            frontiers
       type: object
       required:
       - name
@@ -5724,6 +6365,28 @@ components:
           type: array
           title: Endpoints
           description: Exported agent endpoints
+        provider:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Provider
+          description: Provider and support contact details
+        example_prompts:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Example Prompts
+          description: Recommended agent prompts for Circle CLI discovery
+        x402_specification:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: X402 Specification
+          description: Detailed x402 payment and settlement specification
       type: object
       required:
       - service_id
@@ -5834,6 +6497,81 @@ components:
       - providers
       - require_completed_settlement
       title: ClientConfigResponse
+    CollateralRiskScoreResponse:
+      properties:
+        symbol:
+          type: string
+          title: Symbol
+          description: Target market symbol
+          examples:
+          - BTC_USDT
+        underwriting_eligible:
+          type: boolean
+          title: Underwriting Eligible
+          description: Whether the asset is eligible for onchain credit underwriting
+        collateral_haircut_pct:
+          type: number
+          maximum: 75.0
+          minimum: 15.0
+          title: Collateral Haircut Pct
+          description: Mandatory collateral haircut percentage
+          examples:
+          - 25.0
+        max_ltv_pct:
+          type: number
+          maximum: 85.0
+          minimum: 25.0
+          title: Max Ltv Pct
+          description: Maximum Loan-To-Value permitted
+          examples:
+          - 75.0
+        liquidation_risk_tier:
+          type: string
+          title: Liquidation Risk Tier
+          description: 'Risk tier: LOW, MODERATE, ELEVATED, HIGH'
+          examples:
+          - LOW
+        regime_cluster:
+          type: string
+          title: Regime Cluster
+          description: Historical analog regime cluster name
+        regime_description:
+          type: string
+          title: Regime Description
+          description: Detailed description of market regime
+        tail_risk:
+          additionalProperties:
+            type: number
+          type: object
+          title: Tail Risk
+          description: Downside analog tail risk metrics (p10, worst_case_max_loss)
+        confidence:
+          additionalProperties: true
+          type: object
+          title: Confidence
+          description: Model retrieval confidence (sample size, OOD)
+        arc_rfb_frontier:
+          type: string
+          title: Arc Rfb Frontier
+          description: Arc RFB Frontier category
+          default: onchain_credit_and_collateral
+        settlement_rail:
+          type: string
+          title: Settlement Rail
+          description: Settlement asset for loans/collateral
+          default: Arc USDC
+      type: object
+      required:
+      - symbol
+      - underwriting_eligible
+      - collateral_haircut_pct
+      - max_ltv_pct
+      - liquidation_risk_tier
+      - regime_cluster
+      - regime_description
+      - tail_risk
+      - confidence
+      title: CollateralRiskScoreResponse
     CreatorApplicationRequest:
       properties:
         creator_wallet:
@@ -6032,6 +6770,13 @@ components:
       title: CreatorReviewRequest
     ERC8183JobRequest:
       properties:
+        invoice_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Invoice Id
+          description: Previously created invoice bound to this provider, tier and
+            query. Requires X-QMA-Access-Token after payment verification.
         job_type:
           type: string
           title: Job Type
@@ -6083,8 +6828,8 @@ components:
           - type: string
           - type: 'null'
           title: Escrow Contract
-          description: Escrowed job contract or consensus address
-          default: '0x367728bf66Cf962Ce15fD2b65193b7a1466f087c'
+          description: Deprecated client metadata; does not select or authenticate
+            a settlement or verifier contract.
           examples:
           - '0x367728bf66Cf962Ce15fD2b65193b7a1466f087c'
       type: object
@@ -6144,8 +6889,8 @@ components:
         reputation_points_accrued:
           type: integer
           title: Reputation Points Accrued
-          description: On-chain reputation score accrued for completing job
-          default: 10
+          description: No on-chain reputation accrual is performed by this adapter
+          default: 0
       type: object
       required:
       - job_id
@@ -6433,7 +7178,6 @@ components:
           type: string
           title: Settlement Chain
           description: Blockchain settlement anchor
-          default: Arc Testnet (5042002)
         treasury_anchor:
           type: string
           title: Treasury Anchor
@@ -8651,6 +9395,62 @@ components:
       additionalProperties: true
       type: object
       title: SettlementBatchResponse
+    SpendingPolicyCommandResponse:
+      properties:
+        command:
+          type: string
+          title: Command
+          description: Verbatim Circle CLI command to set spending limits
+        reset_command:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reset Command
+          description: Verbatim Circle CLI command to reset spending limits to default
+        address:
+          type: string
+          title: Address
+          description: Target wallet address
+        chain:
+          type: string
+          title: Chain
+          description: EVM chain
+          default: BASE
+        per_tx_usdc:
+          type: number
+          title: Per Tx Usdc
+          description: Per-transaction cap in USDC
+        daily_usdc:
+          type: number
+          title: Daily Usdc
+          description: Daily cumulative cap in USDC
+        weekly_usdc:
+          type: number
+          title: Weekly Usdc
+          description: Weekly cumulative cap in USDC
+        monthly_usdc:
+          type: number
+          title: Monthly Usdc
+          description: Monthly cumulative cap in USDC
+        is_monotonic:
+          type: boolean
+          title: Is Monotonic
+          description: Whether limits satisfy per-tx <= daily <= weekly <= monthly
+          default: true
+        otp_notice:
+          type: string
+          title: Otp Notice
+          description: Security notice regarding human OTP confirmation in user terminal
+      type: object
+      required:
+      - command
+      - address
+      - per_tx_usdc
+      - daily_usdc
+      - weekly_usdc
+      - monthly_usdc
+      - otp_notice
+      title: SpendingPolicyCommandResponse
     SpendingPolicyConfigResponse:
       properties:
         standard:
@@ -8673,6 +9473,11 @@ components:
           title: Weekly Cap Usdc
           description: Weekly cumulative spending cap in USDC
           default: 5.0
+        monthly_cap_usdc:
+          type: number
+          title: Monthly Cap Usdc
+          description: Monthly cumulative spending cap in USDC
+          default: 20.0
         currency:
           type: string
           title: Currency
@@ -8681,8 +9486,9 @@ components:
         enforce_strict:
           type: boolean
           title: Enforce Strict
-          description: Whether policy strictly rejects out-of-budget calls
-          default: true
+          description: 'False: this endpoint is an advisory ledger evaluation; wallet
+            executors enforce spending'
+          default: false
       type: object
       title: SpendingPolicyConfigResponse
     SpendingPolicyEvaluateRequest:
@@ -8710,6 +9516,34 @@ components:
           default: report_purchase
           examples:
           - report_purchase
+        max_per_tx_usdc:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Max Per Tx Usdc
+          description: Optional override for per-transaction cap in USDC
+        daily_cap_usdc:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Daily Cap Usdc
+          description: Optional override for daily cap in USDC
+        weekly_cap_usdc:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Weekly Cap Usdc
+          description: Optional override for weekly cap in USDC
+        monthly_cap_usdc:
+          anyOf:
+          - type: number
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Monthly Cap Usdc
+          description: Optional override for monthly cap in USDC
       type: object
       required:
       - amount_usdc
@@ -8717,6 +9551,26 @@ components:
       title: SpendingPolicyEvaluateRequest
     SpendingPolicyEvaluateResponse:
       properties:
+        weekly_cap_usdc:
+          type: number
+          title: Weekly Cap Usdc
+          description: Advisory UTC calendar-week spending cap in USDC
+          default: 5.0
+        monthly_cap_usdc:
+          type: number
+          title: Monthly Cap Usdc
+          description: Advisory UTC calendar-month spending cap in USDC
+          default: 20.0
+        current_spend_week_usdc:
+          type: number
+          title: Current Spend Week Usdc
+          description: Persisted spending during the current UTC calendar week
+          default: 0.0
+        current_spend_month_usdc:
+          type: number
+          title: Current Spend Month Usdc
+          description: Persisted spending during the current UTC calendar month
+          default: 0.0
         allowed:
           type: boolean
           title: Allowed
@@ -8745,6 +9599,10 @@ components:
           type: number
           title: Remaining Daily Budget Usdc
           description: Remaining daily budget in USDC
+        remaining_monthly_budget_usdc:
+          type: number
+          title: Remaining Monthly Budget Usdc
+          description: Remaining monthly budget in USDC
       type: object
       required:
       - allowed
@@ -8754,6 +9612,7 @@ components:
       - daily_cap_usdc
       - current_spend_today_usdc
       - remaining_daily_budget_usdc
+      - remaining_monthly_budget_usdc
       title: SpendingPolicyEvaluateResponse
     SplitSettlementProof:
       properties:
@@ -8817,6 +9676,292 @@ components:
       - amount_raw
       - sidecar_receipt
       title: SplitSettlementProof
+    StableFXPairInfo:
+      properties:
+        pair:
+          type: string
+          title: Pair
+          description: Currency pair symbol
+          examples:
+          - USDC/EURC
+        base_currency:
+          type: string
+          title: Base Currency
+          description: Base currency
+          examples:
+          - USDC
+        quote_currency:
+          type: string
+          title: Quote Currency
+          description: Quote currency
+          examples:
+          - EURC
+        rate:
+          type: number
+          title: Rate
+          description: Current institutional exchange rate
+          examples:
+          - 0.9216
+        inverted_rate:
+          type: number
+          title: Inverted Rate
+          description: Inverted exchange rate
+          examples:
+          - 1.085
+        spread_bps:
+          type: integer
+          title: Spread Bps
+          description: Institutional spread in basis points
+          default: 5
+          examples:
+          - 5
+        settlement_chain:
+          type: string
+          title: Settlement Chain
+          description: Underlying settlement blockchain
+          default: Arc Testnet
+        min_amount:
+          type: number
+          title: Min Amount
+          description: Minimum exchange volume
+          default: 0.01
+        max_amount:
+          type: number
+          title: Max Amount
+          description: Maximum single-quote volume
+          default: 100000.0
+      type: object
+      required:
+      - pair
+      - base_currency
+      - quote_currency
+      - rate
+      - inverted_rate
+      title: StableFXPairInfo
+    StableFXPairsResponse:
+      properties:
+        supported_pairs:
+          items:
+            $ref: '#/components/schemas/StableFXPairInfo'
+          type: array
+          title: Supported Pairs
+          description: Available stablecoin FX corridors
+        active_network:
+          type: string
+          title: Active Network
+          description: Active network identifier
+          default: Arc Testnet
+      type: object
+      required:
+      - supported_pairs
+      title: StableFXPairsResponse
+    StableFXQuoteResponse:
+      properties:
+        quote_id:
+          type: string
+          title: Quote Id
+          description: Unique deterministic StableFX quote identifier
+          examples:
+          - sfx_quote_01JKMA79B
+        from_currency:
+          type: string
+          enum:
+          - USDC
+          - EURC
+          title: From Currency
+          description: Sold asset
+          examples:
+          - USDC
+        to_currency:
+          type: string
+          enum:
+          - USDC
+          - EURC
+          title: To Currency
+          description: Purchased asset
+          examples:
+          - EURC
+        from_amount:
+          type: number
+          exclusiveMinimum: 0.0
+          title: From Amount
+          description: Amount to convert
+          examples:
+          - 100.0
+        to_amount:
+          type: number
+          exclusiveMinimum: 0.0
+          title: To Amount
+          description: Converted net amount received
+          examples:
+          - 92.114
+        effective_rate:
+          type: number
+          title: Effective Rate
+          description: Net conversion rate including spread
+          examples:
+          - 0.92114
+        fee_amount:
+          type: number
+          title: Fee Amount
+          description: Liquidity provider fee
+          examples:
+          - 0.046
+        fee_currency:
+          type: string
+          title: Fee Currency
+          description: Fee denomination asset
+          examples:
+          - EURC
+        expires_at:
+          type: integer
+          title: Expires At
+          description: Unix timestamp expiration of guaranteed quote
+          examples:
+          - 1784371260
+        guaranteed_duration_seconds:
+          type: integer
+          title: Guaranteed Duration Seconds
+          description: Price lock duration in seconds
+          default: 60
+        settlement_rail:
+          type: string
+          title: Settlement Rail
+          description: Underlying settlement mechanism
+          default: Circle StableFX (Arc native USDC gas)
+        settlement_counterparty:
+          type: string
+          title: Settlement Counterparty
+          description: Counterparty settlement liquidity address on Arc
+          default: '0xe29d54cf74b3a3b0be7d2e2274e68539daab651b'
+      type: object
+      required:
+      - quote_id
+      - from_currency
+      - to_currency
+      - from_amount
+      - to_amount
+      - effective_rate
+      - fee_amount
+      - fee_currency
+      - expires_at
+      title: StableFXQuoteResponse
+    StableFXSettleRequest:
+      properties:
+        quote_id:
+          type: string
+          title: Quote Id
+          description: Unique deterministic StableFX quote identifier
+          examples:
+          - sfx_quote_01JKMA79B
+        user_tx_hash:
+          type: string
+          title: User Tx Hash
+          description: Transaction hash of user's payment to the settlement counterparty
+            on Arc
+          examples:
+          - '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+        recipient_address:
+          type: string
+          title: Recipient Address
+          description: Destination address to receive counterparty tokens on Arc
+          examples:
+          - '0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4'
+        from_currency:
+          type: string
+          enum:
+          - USDC
+          - EURC
+          title: From Currency
+          description: Sold asset
+          examples:
+          - EURC
+        to_currency:
+          type: string
+          enum:
+          - USDC
+          - EURC
+          title: To Currency
+          description: Purchased asset
+          examples:
+          - USDC
+        amount:
+          type: number
+          exclusiveMinimum: 0.0
+          title: Amount
+          description: Amount converted
+          examples:
+          - 1.0
+      type: object
+      required:
+      - quote_id
+      - user_tx_hash
+      - recipient_address
+      - from_currency
+      - to_currency
+      - amount
+      title: StableFXSettleRequest
+    StableFXSettleResponse:
+      properties:
+        success:
+          type: boolean
+          title: Success
+          description: Settlement execution status
+        quote_id:
+          type: string
+          title: Quote Id
+          description: Settled quote identifier
+        user_tx_hash:
+          type: string
+          title: User Tx Hash
+          description: User source payment transaction hash
+        settlement_tx_hash:
+          type: string
+          title: Settlement Tx Hash
+          description: Counterparty delivery transaction hash on Arc
+        from_currency:
+          type: string
+          enum:
+          - USDC
+          - EURC
+          title: From Currency
+          description: Asset sold by user
+        to_currency:
+          type: string
+          enum:
+          - USDC
+          - EURC
+          title: To Currency
+          description: Asset received by user
+        from_amount:
+          type: number
+          title: From Amount
+          description: Input amount
+        to_amount:
+          type: number
+          title: To Amount
+          description: Output amount delivered to user
+        recipient_address:
+          type: string
+          title: Recipient Address
+          description: Recipient wallet address
+        explorer_url:
+          type: string
+          title: Explorer Url
+          description: ArcScan explorer link for settlement transaction
+      type: object
+      required:
+      - success
+      - quote_id
+      - user_tx_hash
+      - settlement_tx_hash
+      - from_currency
+      - to_currency
+      - from_amount
+      - to_amount
+      - recipient_address
+      - explorer_url
+      title: StableFXSettleResponse
     SweepRequest:
       properties:
         amount_usdc:
@@ -9034,21 +10179,19 @@ components:
         vault_contract:
           type: string
           title: Vault Contract
-          description: Deployed USYC vault contract on Arc Testnet
+          description: Deployed USYC vault contract on Arc
         underlying_asset:
           type: string
           title: Underlying Asset
-          description: Underlying Arc Testnet USDC ERC-20 address
+          description: Underlying Arc USDC ERC-20 address
         chain_id:
           type: integer
           title: Chain Id
-          description: Arc Testnet Chain ID
-          default: 5042002
+          description: Arc Chain ID
         network:
           type: string
           title: Network
           description: Network name
-          default: Arc Testnet
         is_live_onchain:
           type: boolean
           title: Is Live Onchain
@@ -9447,6 +10590,15 @@ components:
           type: number
           exclusiveMinimum: 0.0
           title: Amount Usdc
+        request_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Request Id
+          description: Stable UUID for one withdrawal. Reuse on retries; generate
+            a new UUID for an intentional new withdrawal. Legacy requests without
+            it are deduplicated permanently by owner, wallet and amount.
       type: object
       required:
       - owner_wallet

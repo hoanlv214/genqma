@@ -14,6 +14,9 @@ import {
   requestWalletProfileSession,
 } from "../../services/walletProfileSession";
 import { useAgentWalletStore } from "../../state/agentWalletStore";
+import { ARC_CHAIN } from "../../config/network";
+import { ensureArcTestnet, getInjectedWallet } from "../../services/wallet";
+import { encodeErc20TransferCalldata } from "../../services/gatewayCrypto";
 
 interface AutonomousAgentModalProps {
   open: boolean;
@@ -58,6 +61,7 @@ function stageIndex(status: string, purchases: number): number {
   switch (status) {
     case "queued": return 0;
     case "running": return purchases > 0 ? 2 : 1;
+    case "paused":
     case "stopped": return purchases > 0 ? 2 : 1;
     case "error":
     case "failed": return purchases > 0 ? 2 : 1;
@@ -69,7 +73,7 @@ function stageIndex(status: string, purchases: number): number {
 export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentModalProps) {
   const [prompt, setPrompt] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "creating" | "queued" | "running" | "completed" | "error" | "stopped" | "failed">("idle");
+  const [status, setStatus] = useState<"idle" | "creating" | "queued" | "running" | "completed" | "error" | "stopped" | "paused" | "failed">("idle");
   const [budget, setBudget] = useState<number>(0);
   const [spent, setSpent] = useState<number>(0);
   const [purchases, setPurchases] = useState<number>(0);
@@ -87,9 +91,54 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
   const [isRefreshingBal, setIsRefreshingBal] = useState(false);
   const [refreshCooldown, setRefreshCooldown] = useState(false);
 
+  // Spending Policy state
+  const [cliCopied, setCliCopied] = useState(false);
+  const [spendingPolicy, setSpendingPolicy] = useState<{
+    max_per_tx_usdc: number;
+    daily_cap_usdc: number;
+    weekly_cap_usdc: number;
+    monthly_cap_usdc: number;
+    source?: string;
+  } | null>(null);
+
+  const handleCopyCircleCliCommand = async () => {
+    if (!agentWalletAddress) return;
+    try {
+      const res = await requestJson<{ command: string }>(
+        `/api/v1/agent/spending-policy/command?wallet_address=${agentWalletAddress}`
+      );
+      if (res.command) {
+        await navigator.clipboard.writeText(res.command);
+        setCliCopied(true);
+        setTimeout(() => setCliCopied(false), 2500);
+      }
+    } catch {
+      const fallback = `circle wallet limit set --address ${agentWalletAddress} --chain BASE --policy-type stablecoin --per-tx 0.05 --daily 1 --weekly 5 --monthly 20`;
+      await navigator.clipboard.writeText(fallback);
+      setCliCopied(true);
+      setTimeout(() => setCliCopied(false), 2500);
+    }
+  };
+
   useEffect(() => {
     if (wallet && open) void refreshAgentWallet({ silent: true });
   }, [wallet, open, refreshAgentWallet]);
+
+  useEffect(() => {
+    if (open && agentWalletAddress) {
+      requestJson<{
+        max_per_tx_usdc: number;
+        daily_cap_usdc: number;
+        weekly_cap_usdc: number;
+        monthly_cap_usdc: number;
+        source?: string;
+      }>(`/api/v1/agent/spending-policy?wallet_address=${agentWalletAddress}`)
+        .then((res) => {
+          if (res) setSpendingPolicy(res);
+        })
+        .catch(() => {});
+    }
+  }, [open, agentWalletAddress]);
 
   // Auto-scroll messages
   useEffect(() => {
@@ -104,7 +153,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
       if (cachedWalletToken) {
         autoFetchedRef.current = true;
         sessionRequest<any[]>(wallet, `/api/v1/sessions?owner_wallet=${wallet}`, {}, false).then(sessions => {
-          const active = sessions.find(s => s.status === "running" || s.status === "queued" || s.status === "stopped");
+          const active = sessions.find(s => s.status === "running" || s.status === "queued" || s.status === "stopped" || s.status === "paused");
           if (active) {
             setSessionId(active.id);
             setStatus(active.status);
@@ -124,7 +173,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
     let interval: ReturnType<typeof setInterval>;
 
-    if (sessionId && (status === "queued" || status === "running")) {
+    if (sessionId && (status === "queued" || status === "running" || status === "paused")) {
       interval = setInterval(async () => {
         try {
           const data = await sessionRequest<any>(wallet, `/api/v1/sessions/${sessionId}`, {}, false);
@@ -225,6 +274,22 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                   </div>
                 );
               });
+
+              if (data.status === "paused") {
+                addIfUnique(`status-paused-${data.id}`, (
+                  <div style={{
+                    background: "rgba(255, 179, 0, 0.08)",
+                    border: "1px solid rgba(255, 179, 0, 0.25)",
+                    borderRadius: "6px",
+                    padding: "8px 10px",
+                    color: "#ffb300",
+                    fontSize: "12px",
+                    marginTop: "4px"
+                  }}>
+                    ⏸️ <strong>Session Auto-Paused</strong>: Risk Governance Circuit Breaker triggered. Zero-spend invariant active on Arc.
+                  </div>
+                ));
+              }
 
               if (data.status === "stopped") addIfUnique(`status-stopped-${data.id}`, "⚠️ Session has been stopped.");
 
@@ -373,7 +438,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               }}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              Deposit via Wallet (Arc Testnet)
+              Deposit via Wallet ({ARC_CHAIN.name})
             </button>
           </div>
 
@@ -460,21 +525,13 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               alt="QR Code"
               style={{ width: '120px', height: '120px', borderRadius: '4px', background: '#fff', padding: '6px', marginBottom: '10px' }}
             />
-            <span style={{ fontSize: '11px', color: '#fff', fontWeight: 600, marginBottom: '2px' }}>Arc Testnet (Chain: 5042002)</span>
+            <span style={{ fontSize: '11px', color: '#fff', fontWeight: 600, marginBottom: '2px' }}>{ARC_CHAIN.name} (Chain: {ARC_CHAIN.chainId})</span>
             <span style={{ fontSize: '10px', color: 'var(--t3)', marginBottom: '8px' }}>Scan with Mobile Wallet</span>
             <span className="mono" style={{ fontSize: '10px', color: 'var(--accent)', wordBreak: 'break-all', textAlign: 'center' }}>{targetAddress}</span>
           </div>
         </div>
       </div>
     );
-  };
-
-  const getErc20TransferData = (recipient: string, amountDecimal: number): string => {
-    const cleanRecipient = recipient.toLowerCase().replace("0x", "");
-    const paddedRecipient = cleanRecipient.padStart(64, "0");
-    const rawAmount = BigInt(Math.round(amountDecimal * 1_000_000));
-    const hexAmount = rawAmount.toString(16).padStart(64, "0");
-    return `0xa9059cbb${paddedRecipient}${hexAmount}`;
   };
 
   const handleManualRefreshBalance = async () => {
@@ -532,30 +589,10 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
       setMessages(prev => [...prev, {
         id: `sys-funding-switch-${Date.now()}`,
         role: "agent",
-        content: `⏳ Switching your wallet to Arc Testnet (Chain ID: 5042002)...`
+        content: `⏳ Switching your wallet to ${ARC_CHAIN.name} (Chain ID: ${ARC_CHAIN.chainId})...`
       }]);
 
-      try {
-        await provider.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x4cef52" }],
-        });
-      } catch (switchError: any) {
-        if (switchError.code === 4902) {
-          await provider.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: "0x4cef52",
-              chainName: "Arc Testnet",
-              nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-              rpcUrls: ["https://rpc.testnet.arc.network"],
-              blockExplorerUrls: ["https://testnet.arcscan.app"]
-            }]
-          });
-        } else {
-          throw switchError;
-        }
-      }
+      await ensureArcTestnet(provider);
 
 
 
@@ -571,7 +608,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
           {
             from: wallet,
             to: "0x3600000000000000000000000000000000000000",
-            data: getErc20TransferData(toAddress, amount),
+            data: encodeErc20TransferCalldata(toAddress, amount),
             gas: "0x186a0"
           }
         ]
@@ -614,9 +651,9 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
       return;
     }
 
-    // Queued sessions can be edited before claim. Stopped sessions are edited
+    // Queued sessions can be edited before claim. Stopped or paused sessions are edited
     // and then explicitly re-queued so the new instruction actually continues.
-    if (sessionId && (status === "queued" || status === "running" || status === "stopped")) {
+    if (sessionId && (status === "queued" || status === "running" || status === "stopped" || status === "paused")) {
       let newBudget: number | null = null;
       const budgetMatch = userText.toLowerCase().match(/(?:budget|under|limit|max|cap|price|of|to|up to)\s*(?:[\$]?)\s*([0-9\.]+)/i);
       const usdcMatch = userText.toLowerCase().match(/([0-9\.]+)\s*(?:usdc|usd)/i);
@@ -637,14 +674,14 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
           method: "PATCH",
           body: JSON.stringify(updatePayload)
         });
-        if (status === "stopped") {
+        if (status === "stopped" || status === "paused") {
           await sessionRequest(wallet, `/api/v1/sessions/${sessionId}/resume`, { method: "POST" });
           setStatus("queued");
         }
         setMessages(prev => [...prev, {
           id: `sys-${Date.now()}`,
           role: "agent",
-          content: `Got it! I've updated your instructions${newBudget !== null ? ` and set the budget to $${newBudget} USDC` : ''}${status === "stopped" ? " and re-queued the session" : ""}.`
+          content: `Got it! I've updated your instructions${newBudget !== null ? ` and set the budget to $${newBudget} USDC` : ''}${status === "stopped" || status === "paused" ? " and re-queued the session" : ""}.`
         }]);
       } catch (err: any) {
         setMessages(prev => [...prev, { id: `err-${Date.now()}`, role: "agent", content: `❌ Failed to update session: ${err.message}` }]);
@@ -803,24 +840,32 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
     }
   };
 
-  const handleStop = async () => {
+  const handleControl = async (action: "pause" | "resume" | "kill", reason?: string) => {
     if (!sessionId) return;
     try {
-      await sessionRequest<any>(wallet, `/api/v1/sessions/${sessionId}/stop`, { method: "POST" });
-      setStatus("stopped");
+      await sessionRequest<any>(
+        wallet,
+        `/api/v1/agent/sessions/${sessionId}/control`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, reason: reason || "User triggered via Agent Modal" }),
+        }
+      );
+      if (action === "pause") setStatus("paused");
+      else if (action === "resume") setStatus("running");
+      else if (action === "kill") setStatus("stopped");
     } catch (err: any) {
-      console.error(err);
+      console.error("Session control error:", err);
     }
   };
 
+  const handleStop = async () => {
+    await handleControl("pause", "User paused session via modal");
+  };
+
   const handleResume = async () => {
-    if (!sessionId) return;
-    try {
-      await sessionRequest<any>(wallet, `/api/v1/sessions/${sessionId}/resume`, { method: "POST" });
-      setStatus("queued");
-    } catch (err: any) {
-      console.error(err);
-    }
+    await handleControl("resume", "User resumed session via modal");
   };
 
   const currentWalletBalance = Math.max(0, globalBalance - spent);
@@ -839,6 +884,9 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
   } else if (remainingBudget <= 0) {
     statusText = "Budget Exhausted";
     statusClass = "failed";
+  } else if (status === "paused") {
+    statusText = "Auto-Paused";
+    statusClass = "warning";
   } else if (status === "stopped") {
     statusText = "User Paused";
     statusClass = "failed";
@@ -848,7 +896,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
   }
 
   const curStage = stageIndex(status, purchases);
-  const stageFailed = status === "error" || status === "stopped" || status === "failed";
+  const stageFailed = status === "error" || status === "stopped" || status === "failed" || status === "paused";
   const stageProgressPct = (curStage / (STAGE_LABELS.length - 1)) * 100;
 
   const renderMessage = (msg: ChatMessage) => {
@@ -908,11 +956,75 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
           {/* Chat log */}
           <div className="agent-chat-panel">
             <div className="agent-chat-topline">
-              <span className={`agent-live-pill${status === "running" ? " active" : ""}${status === "error" || status === "failed" ? " error" : ""}`}>
+              <span className={`agent-live-pill${status === "running" ? " active" : ""}${status === "paused" ? " warning" : ""}${status === "error" || status === "failed" ? " error" : ""}`}>
                 {status}
               </span>
               <span className="agent-chat-wallet">{shortWallet}</span>
             </div>
+
+            {status === "paused" && (
+              <div style={{
+                background: "linear-gradient(135deg, rgba(255, 179, 0, 0.12) 0%, rgba(255, 107, 122, 0.08) 100%)",
+                border: "1px solid rgba(255, 179, 0, 0.35)",
+                borderRadius: "8px",
+                padding: "10px 14px",
+                margin: "12px 16px 4px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#ffb300", fontWeight: 600, fontSize: "12px" }}>
+                    <i className="ti ti-alert-triangle" style={{ fontSize: "16px" }} />
+                    <span>Circuit Breaker Active · Auto-Paused</span>
+                  </div>
+                  <span style={{ fontSize: "10px", color: "var(--t3)", fontFamily: "var(--mono)" }}>Zero-Spend Enforced</span>
+                </div>
+                <p style={{ margin: 0, fontSize: "11px", color: "var(--t2)", lineHeight: 1.4 }}>
+                  Session has been halted by the Autonomous Risk Governance Engine. Any payment requests on Arc are rejected fast with HTTP 403.
+                </p>
+                <div style={{ display: "flex", gap: "8px", marginTop: "2px" }}>
+                  <button
+                    type="button"
+                    onClick={() => handleControl("resume", "Manual resume from Circuit Breaker banner")}
+                    style={{
+                      padding: "4px 10px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      borderRadius: "4px",
+                      background: "#ffb300",
+                      color: "#000",
+                      border: "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}
+                  >
+                    <i className="ti ti-player-play" /> Resume Execution
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleControl("kill", "Emergency Kill from Circuit Breaker banner")}
+                    style={{
+                      padding: "4px 10px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      borderRadius: "4px",
+                      background: "rgba(255, 92, 92, 0.15)",
+                      color: "#ff5c5c",
+                      border: "1px solid rgba(255, 92, 92, 0.3)",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}
+                  >
+                    <i className="ti ti-power" /> Emergency Terminate
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="agent-chat-log">
               {messages.map(renderMessage)}
@@ -971,6 +1083,96 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               </div>
             </div>
 
+            {/* Spending Policy & Limits */}
+            <div className="agent-dp-block">
+              <div className="agent-dp-block-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>Spending Policy & Limits</span>
+                <span style={{
+                  fontSize: "10px",
+                  color: spendingPolicy?.source === "circle_cli" ? "var(--accent)" : "var(--t3)",
+                  textTransform: "none",
+                  fontWeight: 600,
+                  background: spendingPolicy?.source === "circle_cli" ? "rgba(0, 255, 178, 0.12)" : "rgba(255, 255, 255, 0.05)",
+                  padding: "1px 6px",
+                  borderRadius: "4px",
+                }}>
+                  {spendingPolicy?.source === "circle_cli" ? "Circle MPC Policy" : "Default Caps"}
+                </span>
+              </div>
+              <div className="agent-funding-bar">
+                <div className="agent-funding-row">
+                  <span className="agent-funding-label">Per-Tx / Daily Cap</span>
+                  <span className="agent-funding-val">
+                    ${spendingPolicy?.max_per_tx_usdc?.toFixed(2) ?? "0.05"} / ${spendingPolicy?.daily_cap_usdc?.toFixed(2) ?? "1.00"} USDC
+                  </span>
+                </div>
+                <div className="agent-funding-row">
+                  <span className="agent-funding-label">Weekly / Monthly Cap</span>
+                  <span className="agent-funding-val">
+                    ${spendingPolicy?.weekly_cap_usdc?.toFixed(2) ?? "5.00"} / ${spendingPolicy?.monthly_cap_usdc?.toFixed(2) ?? "20.00"} USDC
+                  </span>
+                </div>
+                <div style={{ marginTop: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={handleCopyCircleCliCommand}
+                    disabled={!agentWalletAddress}
+                    style={{
+                      width: "100%",
+                      padding: "5px 8px",
+                      fontSize: "11px",
+                      fontWeight: 500,
+                      borderRadius: "4px",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      background: "rgba(255, 255, 255, 0.03)",
+                      color: "var(--t2)",
+                      cursor: !agentWalletAddress ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "5px",
+                    }}
+                    title="Copy verbatim Circle CLI command to inspect or configure wallet limits with OTP"
+                  >
+                    <i className={cliCopied ? "ti ti-check" : "ti ti-terminal"} style={{ color: cliCopied ? "var(--accent)" : "inherit" }} />
+                    {cliCopied ? "Circle CLI command copied!" : "Copy Circle CLI Limit Command"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Risk Governance & Invariants */}
+            <div className="agent-dp-block">
+              <div className="agent-dp-block-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>Risk Governance & Invariants</span>
+                <span style={{
+                  fontSize: "10px",
+                  color: "var(--green)",
+                  textTransform: "none",
+                  fontWeight: 600,
+                  background: "rgba(34, 211, 160, 0.12)",
+                  padding: "1px 6px",
+                  borderRadius: "4px",
+                }}>
+                  Circuit Breaker Active
+                </span>
+              </div>
+              <div className="agent-funding-bar">
+                <div className="agent-funding-row">
+                  <span className="agent-funding-label">Zero-Spend Guard</span>
+                  <span className="agent-funding-val" style={{ color: "var(--green)" }}>HTTP 403 on Arc</span>
+                </div>
+                <div className="agent-funding-row">
+                  <span className="agent-funding-label">GenLayer SLA Oracle</span>
+                  <span className="agent-funding-val" style={{ color: "var(--green)" }}>Fail-Closed</span>
+                </div>
+                <div className="agent-funding-row">
+                  <span className="agent-funding-label">Athenian Euthyna</span>
+                  <span className="agent-funding-val" style={{ color: "var(--accent)", fontFamily: "var(--mono)", fontSize: "10px" }}>SHA-256 Audit Trail</span>
+                </div>
+              </div>
+            </div>
+
             <div className="agent-dp-block" style={{ flex: 1, minHeight: 0 }}>
               <div className="agent-dp-block-label">Purchases ({purchases})</div>
               {purchasedItems.length === 0 ? (
@@ -987,12 +1189,26 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               )}
             </div>
 
-            {(status === "queued" || status === "running" || status === "stopped" || status === "error" || status === "failed" || status === "completed") && (
+            {(status === "queued" || status === "running" || status === "paused" || status === "stopped" || status === "error" || status === "failed" || status === "completed") && (
               <div className="agent-modal-actions">
                 {status === "queued" || status === "running" ? (
-                  <button className="agent-modal-cancel" onClick={handleStop}>
-                    Pause Agent
-                  </button>
+                  <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                    <button className="agent-modal-cancel" style={{ flex: 1 }} onClick={handleStop}>
+                      Pause Agent
+                    </button>
+                    <button className="agent-modal-cancel" style={{ flex: 1, borderColor: "rgba(255, 92, 92, 0.4)", color: "#ff5c5c" }} onClick={() => handleControl("kill", "Emergency Kill from modal")}>
+                      Emergency Kill
+                    </button>
+                  </div>
+                ) : status === "paused" ? (
+                  <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                    <button className="agent-modal-primary" style={{ flex: 1 }} onClick={handleResume}>
+                      Resume Agent
+                    </button>
+                    <button className="agent-modal-cancel" style={{ flex: 1, borderColor: "rgba(255, 92, 92, 0.4)", color: "#ff5c5c" }} onClick={() => handleControl("kill", "Emergency Kill from modal")}>
+                      Emergency Kill
+                    </button>
+                  </div>
                 ) : (
                   <div style={{ display: "flex", gap: "10px", width: "100%" }}>
                     {status === "stopped" && (

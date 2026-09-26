@@ -78,3 +78,9 @@ export const gatewayStatusBadge = (status: any) => {
       : "var(--t2)";
   return createElement("span", { className: "gateway-status-badge", style: { color } }, raw);
 };
+
+export const shortAddress = (value?: string, chars = 4): string => {
+  if (!value) return "n/a";
+  return value.length > (6 + chars + 2) ? `${value.slice(0, 6)}...${value.slice(-chars)}` : value;
+};
+

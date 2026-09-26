@@ -252,6 +252,17 @@ async function getWalletStatus(invoice, address) {
   return gatewayRequest(invoice, `/api/wallet-status/${address}`);
 }
 
+async function checkDelegateStatus(ownerWallet) {
+  if (!ownerWallet) return null;
+  try {
+    const data = await request(`/api/v1/agent/delegate-status?owner_address=${ownerWallet}`);
+    return data;
+  } catch (err) {
+    console.warn(`Could not check delegation status for ${short(ownerWallet)}: ${err.message}`);
+    return null;
+  }
+}
+
 async function loadWalletEntitlements(address) {
   if (!address) return [];
   try {
@@ -696,6 +707,8 @@ const CONFIG = {
   })(),
   expectedPrice: Number(argValue("expected-price") || "0"),
   candidateScore: Number(argValue("candidate-score") || "0"),
+  ownerWallet: argValue("owner") || process.env.QMA_OWNER_WALLET || null,
+  checkDelegateOnly: hasFlag("check-delegate") || hasFlag("delegate-status"),
 };
 
 async function main() {
@@ -719,6 +732,37 @@ async function main() {
     console.log(`Agent wallet: ${account.address}`);
   } else if (CONFIG.live) {
     throw new Error("Live mode requires AGENT_PRIVATE_KEY=0x... for a funded test wallet.");
+  }
+
+  // Direct delegation status inspection flag
+  if (CONFIG.checkDelegateOnly) {
+    const targetOwner = CONFIG.ownerWallet || account?.address || CONFIG.policyWallet;
+    if (!targetOwner) {
+      throw new Error("--check-delegate requires --owner <ADDRESS> or --wallet <ADDRESS>.");
+    }
+    console.log(`\nQuerying Circle Gateway delegation status for owner: ${targetOwner}`);
+    const status = await checkDelegateStatus(targetOwner);
+    console.log(JSON.stringify(status, null, 2));
+    return;
+  }
+
+  // If running with owner delegation context, verify on-chain authorization & spending policy
+  if (CONFIG.ownerWallet) {
+    console.log(`\nChecking Circle Gateway delegation for owner: ${CONFIG.ownerWallet}`);
+    const delStatus = await checkDelegateStatus(CONFIG.ownerWallet);
+    if (delStatus) {
+      console.log(`Delegation Status: ${delStatus.status || "ready"} | Authorized: ${delStatus.is_authorized ? "YES" : "NO"}`);
+      console.log(`Gateway Contract: ${short(delStatus.gateway_wallet_contract)} | Delegate: ${short(delStatus.delegate_address)}`);
+      if (delStatus.spending_policy) {
+        console.log(`Spending Policy: Max/tx=${delStatus.spending_policy.max_per_tx_usdc} USDC, Daily Cap=${delStatus.spending_policy.daily_cap_usdc} USDC`);
+      }
+      if (!delStatus.is_authorized) {
+        console.warn(`[NOTICE] Agent is not yet authorized by owner ${short(CONFIG.ownerWallet)}.`);
+        console.warn(`Instructions: ${delStatus.instructions}\n`);
+      } else {
+        console.log(`✓ Agent is authorized to spend from owner's Circle Unified Balance without interactive popups.\n`);
+      }
+    }
   }
 
   const policyWallet = account?.address || CONFIG.policyWallet;

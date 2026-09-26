@@ -8,44 +8,128 @@ Allows the AI CFO to:
 4. Provide cash-flow forecasts and audit-ready metrics for the Euthyna audit trail.
 """
 
-from __future__ import annotations
-
+import json
 import logging
 import os
+from pathlib import Path
 import time
 from typing import Any, Dict, Optional
 import urllib.request
-import json
 
 from backend.app.core.config import (
+    ARC_CHAIN_ID,
+    ARC_EXPLORER,
+    ARC_RPC_URL,
     ARC_TESTNET_USDC,
+    ARC_USYC_VAULT_ADDRESS,
     PAYMENT_WALLET_ADDRESS,
     PLATFORM_TREASURY_ADDRESS,
+    settings,
 )
+from backend.app.schemas.treasury import CorporateTreasuryPolicy
 from backend.app.services.wallet_utils import normalize_address
 
 logger = logging.getLogger("QMA-USYC-Treasury")
 
-# Arc Testnet constants
-ARC_CHAIN_ID = 5042002
-ARC_RPC_URL = os.getenv("ARC_RPC_URL", "https://rpc.testnet.arc.network")
-ARC_EXPLORER_URL = os.getenv("ARC_EXPLORER", "https://testnet.arcscan.app")
+# Arc network & contract constants (sourced from config.py / .env)
+ARC_EXPLORER_URL = ARC_EXPLORER
+USYC_VAULT_ADDRESS = ARC_USYC_VAULT_ADDRESS
 
-# Official / Deployed USYC Vault on Arc Testnet
-# Overridden via env ARC_USYC_VAULT_ADDRESS or set after deployment
-USYC_VAULT_ADDRESS = os.getenv(
-    "ARC_USYC_VAULT_ADDRESS",
-    "0x934e7309d7fca371db946b0643f2136cc0a0fcb2",  # Live deployed USYCVault on Arc Testnet
-)
+try:
+    from web3 import Web3
+except ImportError:  # pragma: no cover
+    Web3 = None
+
+try:
+    from eth_account import Account
+except ImportError:  # pragma: no cover
+    Account = None
+
+ERC20_APPROVE_ABI = [
+    {
+        "name": "allowance",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [{"name": "owner", "type": "address"}, {"name": "spender", "type": "address"}],
+        "outputs": [{"name": "", "type": "uint256"}],
+    },
+    {
+        "name": "approve",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [{"name": "spender", "type": "address"}, {"name": "amount", "type": "uint256"}],
+        "outputs": [{"name": "", "type": "bool"}],
+    },
+    {
+        "name": "balanceOf",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [{"name": "account", "type": "address"}],
+        "outputs": [{"name": "", "type": "uint256"}],
+    },
+]
+
+# Standard ERC-4626 Tokenized Vault ABI
+ERC4626_VAULT_ABI = [
+    {
+        "name": "totalAssets",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{"name": "", "type": "uint256"}],
+    },
+    {
+        "name": "balanceOf",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [{"name": "account", "type": "address"}],
+        "outputs": [{"name": "", "type": "uint256"}],
+    },
+    {
+        "name": "convertToAssets",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [{"name": "shares", "type": "uint256"}],
+        "outputs": [{"name": "", "type": "uint256"}],
+    },
+    {
+        "name": "convertToShares",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [{"name": "assets", "type": "uint256"}],
+        "outputs": [{"name": "", "type": "uint256"}],
+    },
+    {
+        "name": "decimals",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{"name": "", "type": "uint8"}],
+    },
+    {
+        "name": "deposit",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+            {"name": "assets", "type": "uint256"},
+            {"name": "receiver", "type": "address"},
+        ],
+        "outputs": [{"name": "", "type": "uint256"}],
+    },
+    {
+        "name": "redeem",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+            {"name": "shares", "type": "uint256"},
+            {"name": "receiver", "type": "address"},
+            {"name": "owner", "type": "address"},
+        ],
+        "outputs": [{"name": "", "type": "uint256"}],
+    },
+]
 
 # Standard ERC-4626 / ERC-20 Function Selectors (keccak256)
-# totalAssets() -> 0x01e8f299
-# convertToAssets(uint256) -> 0x07a2d13a
-# convertToShares(uint256) -> 0xc6e69e1b
-# balanceOf(address) -> 0x70a08231
-# deposit(uint256,address) -> 0x6e553f65
-# redeem(uint256,address,address) -> 0xba087652
-# fundYield(uint256) -> 0x...
 SELECTOR_TOTAL_ASSETS = "0x01e8f299"
 SELECTOR_CONVERT_TO_ASSETS = "0x07a2d13a"
 SELECTOR_CONVERT_TO_SHARES = "0xc6e69e1b"
@@ -55,12 +139,12 @@ SELECTOR_REDEEM = "0xba087652"
 SELECTOR_DECIMALS = "0x313ce567"
 
 
-def _rpc_eth_call(to_address: str, data: str) -> Optional[str]:
-    """Execute raw eth_call against Arc Testnet RPC."""
+def _rpc_generic(method: str, params: list) -> Optional[Any]:
+    """Execute raw JSON-RPC query against Arc Testnet RPC."""
     payload = {
         "jsonrpc": "2.0",
-        "method": "eth_call",
-        "params": [{"to": to_address, "data": data}, "latest"],
+        "method": method,
+        "params": params,
         "id": 1,
     }
     try:
@@ -77,22 +161,93 @@ def _rpc_eth_call(to_address: str, data: str) -> Optional[str]:
             if "result" in body and body["result"] != "0x":
                 return body["result"]
     except Exception as e:
-        logger.debug(f"Arc RPC eth_call to {to_address} failed: {e}")
+        logger.debug(f"Arc RPC {method} failed: {e}")
     return None
 
 
-class USYCTreasuryService:
-    """Enterprise AI Treasury & Yield Manager for USYC on Arc Testnet."""
+def _rpc_eth_call(to_address: str, data: str) -> Optional[str]:
+    """Execute raw eth_call against Arc Testnet RPC with Web3 or HTTP fallback."""
+    return _rpc_generic("eth_call", [{"to": to_address, "data": data}, "latest"])
 
-    def __init__(self, vault_address: Optional[str] = None):
+
+class USYCTreasuryService:
+    """Enterprise AI Treasury & Yield Manager for USYC on Arc Testnet (ERC-4626)."""
+
+    def __init__(self, vault_address: Optional[str] = None, policy_file: Optional[Path] = None):
         self.vault_address = normalize_address(vault_address or USYC_VAULT_ADDRESS)
         self.usdc_asset = normalize_address(ARC_TESTNET_USDC)
         self.target_apy = 0.05  # 5.0% APY baseline
+        self._w3 = None
+        self._contract = None
+        self._policy_file = policy_file if policy_file is not None else getattr(settings, "treasury_policy_path", Path("treasury_policy.json"))
+        self._policy: Optional[CorporateTreasuryPolicy] = None
+        self._last_rebalance_at: float = 0.0
+        if Web3:
+            try:
+                self._w3 = Web3(Web3.HTTPProvider(ARC_RPC_URL, request_kwargs={"headers": {"User-Agent": "Mozilla/5.0"}}))
+                if self.vault_address and self._w3.is_connected():
+                    self._contract = self._w3.eth.contract(
+                        address=Web3.to_checksum_address(self.vault_address),
+                        abi=ERC4626_VAULT_ABI,
+                    )
+            except Exception:
+                pass
+
+    def get_policy(self) -> CorporateTreasuryPolicy:
+        """Retrieve active Corporate Treasury Policy, loading from disk if available."""
+        if self._policy is not None:
+            return self._policy
+        if self._policy_file and self._policy_file.exists():
+            try:
+                with open(self._policy_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    self._policy = CorporateTreasuryPolicy(**data)
+                    return self._policy
+            except Exception as exc:
+                logger.warning(f"Could not load policy from {self._policy_file}: {exc}")
+        self._policy = CorporateTreasuryPolicy()
+        return self._policy
+
+    def set_policy(self, new_policy: CorporateTreasuryPolicy) -> CorporateTreasuryPolicy:
+        """Update and persist Corporate Treasury Policy."""
+        self._policy = new_policy
+        self.target_apy = new_policy.target_apy_baseline
+        if self._policy_file:
+            try:
+                self._policy_file.parent.mkdir(parents=True, exist_ok=True)
+                with open(self._policy_file, "w", encoding="utf-8") as f:
+                    json.dump(new_policy.model_dump(), f, indent=2)
+            except Exception as exc:
+                logger.warning(f"Could not persist policy to {self._policy_file}: {exc}")
+        logger.info(f"[CFO AGENT POLICY] Updated corporate treasury policy: {new_policy}")
+        return self._policy
 
     def set_vault_address(self, address: str) -> None:
         """Update deployed vault contract address."""
         self.vault_address = normalize_address(address)
         logger.info(f"USYC Vault address set to: {self.vault_address}")
+
+    def get_liquid_usdc_balance(self, account_address: Optional[str] = None) -> float:
+        """Query real liquid native USDC balance from Arc Testnet RPC (18 decimals native)."""
+        target = normalize_address(account_address or PLATFORM_TREASURY_ADDRESS or PAYMENT_WALLET_ADDRESS)
+        if not target:
+            return 0.0
+
+        if self._w3:
+            try:
+                bal_wei = self._w3.eth.get_balance(Web3.to_checksum_address(target))
+                return round(float(bal_wei) / 1e18, 6)
+            except Exception as exc:
+                logger.debug(f"w3.eth.get_balance failed: {exc}")
+
+        # Fallback to direct JSON-RPC eth_getBalance
+        res = _rpc_generic("eth_getBalance", [target, "latest"])
+        if res and res != "0x":
+            try:
+                return round(int(res, 16) / 1e18, 6)
+            except Exception:
+                pass
+        return 0.0
 
     def query_onchain_position(self, account_address: Optional[str] = None) -> Dict[str, Any]:
         """Query real on-chain USYC share balance and equivalent USDC assets."""
@@ -105,47 +260,61 @@ class USYCTreasuryService:
         total_vault_assets_raw = 0
         is_live_rpc = False
 
+        vault_decimals = 6
         if target_account and self.vault_address:
-            # 1. balanceOf(account) -> 0x70a08231 + 32-byte padded address
-            clean_addr = target_account.lower().replace("0x", "").zfill(64)
-            call_data = f"{SELECTOR_BALANCE_OF}{clean_addr}"
-            res = _rpc_eth_call(self.vault_address, call_data)
-            if res and res != "0x":
+            # 1. Primary: Typed contract call via Web3 if connected
+            if self._contract and Web3:
                 try:
-                    shares_raw = int(res, 16)
-                    is_live_rpc = True
-                except Exception:
-                    pass
-
-            # 2. totalAssets()
-            res_total = _rpc_eth_call(self.vault_address, SELECTOR_TOTAL_ASSETS)
-            if res_total and res_total != "0x":
-                try:
-                    total_vault_assets_raw = int(res_total, 16)
-                    is_live_rpc = True
-                except Exception:
-                    pass
-
-            # 3. convertToAssets(shares)
-            if shares_raw > 0:
-                shares_hex = hex(shares_raw)[2:].zfill(64)
-                call_assets = f"{SELECTOR_CONVERT_TO_ASSETS}{shares_hex}"
-                res_assets = _rpc_eth_call(self.vault_address, call_assets)
-                if res_assets and res_assets != "0x":
+                    c_addr = Web3.to_checksum_address(target_account)
+                    shares_raw = self._contract.functions.balanceOf(c_addr).call()
+                    total_vault_assets_raw = self._contract.functions.totalAssets().call()
+                    if shares_raw > 0:
+                        assets_raw = self._contract.functions.convertToAssets(shares_raw).call()
                     try:
-                        assets_raw = int(res_assets, 16)
+                        vault_decimals = self._contract.functions.decimals().call()
+                    except Exception:
+                        vault_decimals = 6
+                    is_live_rpc = True
+                except Exception:
+                    pass
+
+            # 2. Fallback: Raw eth_call RPC queries
+            if not is_live_rpc:
+                clean_addr = target_account.lower().replace("0x", "").zfill(64)
+                call_data = f"{SELECTOR_BALANCE_OF}{clean_addr}"
+                res = _rpc_eth_call(self.vault_address, call_data)
+                if res and res != "0x":
+                    try:
+                        shares_raw = int(res, 16)
+                        is_live_rpc = True
                     except Exception:
                         pass
-            # 4. decimals()
-            vault_decimals = 6
-            res_dec = _rpc_eth_call(self.vault_address, SELECTOR_DECIMALS)
-            if res_dec and res_dec != "0x":
-                try:
-                    vault_decimals = int(res_dec, 16)
-                except Exception:
-                    pass
 
-        # Fallback simulation if offline / testnet RPC cold
+                res_total = _rpc_eth_call(self.vault_address, SELECTOR_TOTAL_ASSETS)
+                if res_total and res_total != "0x":
+                    try:
+                        total_vault_assets_raw = int(res_total, 16)
+                        is_live_rpc = True
+                    except Exception:
+                        pass
+
+                if shares_raw > 0:
+                    shares_hex = hex(shares_raw)[2:].zfill(64)
+                    call_assets = f"{SELECTOR_CONVERT_TO_ASSETS}{shares_hex}"
+                    res_assets = _rpc_eth_call(self.vault_address, call_assets)
+                    if res_assets and res_assets != "0x":
+                        try:
+                            assets_raw = int(res_assets, 16)
+                        except Exception:
+                            pass
+
+                res_dec = _rpc_eth_call(self.vault_address, SELECTOR_DECIMALS)
+                if res_dec and res_dec != "0x":
+                    try:
+                        vault_decimals = int(res_dec, 16)
+                    except Exception:
+                        pass
+
         vault_dec_scale = 10 ** vault_decimals
         shares_usyc = shares_raw / vault_dec_scale
         assets_usdc = assets_raw / 1e6 if assets_raw > 0 else (shares_raw / 1e6)
@@ -157,7 +326,10 @@ class USYCTreasuryService:
             "underlying_asset": self.usdc_asset,
             "chain_id": ARC_CHAIN_ID,
             "network": "Arc Testnet",
+            "standard": "ERC-4626 Tokenized Vault",
+            "earn_protocol": "Circle Earn / Hashnote USYC",
             "is_live_onchain": is_live_rpc,
+            "treasury_liquid_usdc": self.get_liquid_usdc_balance(target_account),
             "usyc_shares": round(shares_usyc, 6),
             "usdc_equivalent": round(assets_usdc, 6),
             "total_vault_assets_usdc": round(total_vault_usdc, 6),
@@ -175,8 +347,17 @@ class USYCTreasuryService:
         clean_addr = depositor_norm.lower().replace("0x", "").zfill(64)
         amount_hex = hex(amount_raw)[2:].zfill(64)
 
-        # ERC-4626 deposit(uint256 assets, address receiver)
-        calldata = f"{SELECTOR_DEPOSIT}{amount_hex}{clean_addr}"
+        # Standard ERC-4626 deposit(uint256 assets, address receiver)
+        calldata = None
+        if self._contract and Web3:
+            try:
+                calldata = self._contract.encode_abi(
+                    "deposit", args=[amount_raw, Web3.to_checksum_address(depositor_norm)]
+                )
+            except Exception:
+                pass
+        if not calldata:
+            calldata = f"{SELECTOR_DEPOSIT}{amount_hex}{clean_addr}"
 
         return {
             "action": "USYC_DEPOSIT",
@@ -210,8 +391,22 @@ class USYCTreasuryService:
         rec_clean = receiver_norm.lower().replace("0x", "").zfill(64)
         own_clean = owner_norm.lower().replace("0x", "").zfill(64)
 
-        # ERC-4626 redeem(uint256 shares, address receiver, address owner)
-        calldata = f"{SELECTOR_REDEEM}{shares_hex}{rec_clean}{own_clean}"
+        # Standard ERC-4626 redeem(uint256 shares, address receiver, address owner)
+        calldata = None
+        if self._contract and Web3:
+            try:
+                calldata = self._contract.encode_abi(
+                    "redeem",
+                    args=[
+                        shares_needed_raw,
+                        Web3.to_checksum_address(receiver_norm),
+                        Web3.to_checksum_address(owner_norm),
+                    ],
+                )
+            except Exception:
+                pass
+        if not calldata:
+            calldata = f"{SELECTOR_REDEEM}{shares_hex}{rec_clean}{own_clean}"
 
         return {
             "action": "USYC_JIT_REDEMPTION",
@@ -225,6 +420,295 @@ class USYCTreasuryService:
             "purpose": "Just-in-time liquidity for autonomous x402 bill settlement",
         }
 
+    def execute_deposit(
+        self,
+        amount_usdc: float,
+        private_key: Optional[str] = None,
+        depositor: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Execute real on-chain deposit into USYCVault on Arc Testnet."""
+        if amount_usdc <= 0:
+            raise ValueError("Deposit amount must be strictly positive")
+        if not self._w3 or not Account:
+            raise RuntimeError("Web3 or eth_account is not available for on-chain execution")
+
+        key = private_key or os.getenv("AGENT_PRIVATE_KEY") or os.getenv("QMA_WITHDRAW_RELAYER_PRIVATE_KEY")
+        if not key:
+            raise RuntimeError("No private key configured for on-chain USYC execution")
+
+        acct = Account.from_key(key)
+        receiver = normalize_address(depositor or acct.address)
+        amount_raw = int(round(amount_usdc * 1e6))
+
+        c_vault = Web3.to_checksum_address(self.vault_address)
+        c_receiver = Web3.to_checksum_address(receiver)
+        c_usdc = Web3.to_checksum_address(self.usdc_asset)
+
+        # 1. Check & ensure USDC allowance
+        usdc_contract = self._w3.eth.contract(address=c_usdc, abi=ERC20_APPROVE_ABI)
+        allowance = usdc_contract.functions.allowance(acct.address, c_vault).call()
+        if allowance < amount_raw:
+            nonce = self._w3.eth.get_transaction_count(acct.address, "pending")
+            gas_price = self._w3.eth.gas_price
+            approve_tx = usdc_contract.functions.approve(c_vault, 2**256 - 1).build_transaction({
+                "from": acct.address,
+                "chainId": ARC_CHAIN_ID,
+                "gas": 100000,
+                "gasPrice": gas_price,
+                "nonce": nonce,
+            })
+            signed_app = acct.sign_transaction(approve_tx)
+            tx_app = self._w3.eth.send_raw_transaction(signed_app.raw_transaction)
+            self._w3.eth.wait_for_transaction_receipt(tx_app, timeout=15)
+
+        # 2. Execute deposit(assets, receiver)
+        vault_contract = self._w3.eth.contract(address=c_vault, abi=ERC4626_VAULT_ABI)
+        nonce = self._w3.eth.get_transaction_count(acct.address, "pending")
+        gas_price = self._w3.eth.gas_price
+        deposit_tx = vault_contract.functions.deposit(amount_raw, c_receiver).build_transaction({
+            "from": acct.address,
+            "chainId": ARC_CHAIN_ID,
+            "gas": 250000,
+            "gasPrice": gas_price,
+            "nonce": nonce,
+        })
+        signed_dep = acct.sign_transaction(deposit_tx)
+        raw_tx_hash = self._w3.eth.send_raw_transaction(signed_dep.raw_transaction)
+        tx_hash_hex = "0x" + raw_tx_hash.hex() if not raw_tx_hash.hex().startswith("0x") else raw_tx_hash.hex()
+
+        receipt = self._w3.eth.wait_for_transaction_receipt(raw_tx_hash, timeout=20)
+        if receipt.get("status") != 1:
+            raise RuntimeError(f"Deposit transaction reverted on Arc Testnet: {tx_hash_hex}")
+
+        return {
+            "success": True,
+            "action": "USYC_DEPOSIT",
+            "amount_usdc": amount_usdc,
+            "amount_raw": amount_raw,
+            "tx_hash": tx_hash_hex,
+            "block_number": receipt.get("blockNumber"),
+            "receiver": receiver,
+            "explorer_url": f"{ARC_EXPLORER}/tx/{tx_hash_hex}",
+        }
+
+    def execute_redeem(
+        self,
+        amount_usdc_needed: float,
+        private_key: Optional[str] = None,
+        owner: Optional[str] = None,
+        receiver: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Execute real on-chain redemption from USYCVault on Arc Testnet."""
+        if amount_usdc_needed <= 0:
+            raise ValueError("Redemption amount must be strictly positive")
+        if not self._w3 or not Account:
+            raise RuntimeError("Web3 or eth_account is not available for on-chain execution")
+
+        key = private_key or os.getenv("AGENT_PRIVATE_KEY") or os.getenv("QMA_WITHDRAW_RELAYER_PRIVATE_KEY")
+        if not key:
+            raise RuntimeError("No private key configured for on-chain USYC execution")
+
+        acct = Account.from_key(key)
+        owner_addr = normalize_address(owner or acct.address)
+        rec_addr = normalize_address(receiver or acct.address)
+        amount_raw = int(round(amount_usdc_needed * 1e6))
+
+        c_vault = Web3.to_checksum_address(self.vault_address)
+        c_owner = Web3.to_checksum_address(owner_addr)
+        c_receiver = Web3.to_checksum_address(rec_addr)
+
+        vault_contract = self._w3.eth.contract(address=c_vault, abi=ERC4626_VAULT_ABI)
+        try:
+            shares_needed = vault_contract.functions.convertToShares(amount_raw).call()
+        except Exception:
+            shares_needed = amount_raw
+
+        nonce = self._w3.eth.get_transaction_count(acct.address, "pending")
+        gas_price = self._w3.eth.gas_price
+        redeem_tx = vault_contract.functions.redeem(shares_needed, c_receiver, c_owner).build_transaction({
+            "from": acct.address,
+            "chainId": ARC_CHAIN_ID,
+            "gas": 250000,
+            "gasPrice": gas_price,
+            "nonce": nonce,
+        })
+        signed = acct.sign_transaction(redeem_tx)
+        raw_tx_hash = self._w3.eth.send_raw_transaction(signed.raw_transaction)
+        tx_hash_hex = "0x" + raw_tx_hash.hex() if not raw_tx_hash.hex().startswith("0x") else raw_tx_hash.hex()
+
+        receipt = self._w3.eth.wait_for_transaction_receipt(raw_tx_hash, timeout=20)
+        if receipt.get("status") != 1:
+            raise RuntimeError(f"Redemption transaction reverted on Arc Testnet: {tx_hash_hex}")
+
+        return {
+            "success": True,
+            "action": "USYC_REDEEM",
+            "amount_usdc_redeemed": amount_usdc_needed,
+            "shares_burned": round(shares_needed / 1e6, 6),
+            "tx_hash": tx_hash_hex,
+            "block_number": receipt.get("blockNumber"),
+            "receiver": rec_addr,
+            "explorer_url": f"{ARC_EXPLORER}/tx/{tx_hash_hex}",
+        }
+
+    def evaluate_cfo_decision(
+        self,
+        account: Optional[str] = None,
+        current_liquid_usdc: Optional[float] = None,
+        current_usyc_assets: Optional[float] = None,
+        upcoming_bills_usdc: Optional[float] = None,
+        horizon_days: int = 30,
+        execute_if_authorized: bool = False,
+    ) -> Dict[str, Any]:
+        """Autonomous CFO multi-factor capital allocation and yield decision engine.
+        
+        Evaluates liquidity runways, policy constraints, and yield optimization
+        to produce an intentional financial decision rather than simple heuristics.
+        """
+        target_account = normalize_address(
+            account or PLATFORM_TREASURY_ADDRESS or PAYMENT_WALLET_ADDRESS
+        )
+        policy = self.get_policy()
+        self.target_apy = policy.target_apy_baseline
+
+        # Ingest state
+        liquid = (
+            current_liquid_usdc
+            if current_liquid_usdc is not None
+            else self.get_liquid_usdc_balance(target_account)
+        )
+        if current_usyc_assets is not None:
+            usyc_assets = current_usyc_assets
+            usyc_shares = current_usyc_assets
+        else:
+            pos = self.query_onchain_position(target_account)
+            usyc_assets = pos.get("usdc_equivalent", 0.0)
+            usyc_shares = pos.get("usyc_shares", 0.0)
+
+        bills = upcoming_bills_usdc if upcoming_bills_usdc is not None else 5.0
+
+        total_assets = liquid + usyc_assets
+        daily_yield_rate = (1.0 + self.target_apy) ** (1.0 / 365.0) - 1.0
+        projected_yield_earned = usyc_assets * daily_yield_rate * horizon_days
+        safety_buffer_ratio = round(total_assets / max(bills, 0.001), 2)
+        required_reserve = max(policy.min_operating_reserve_usdc, bills * policy.target_safety_buffer_ratio)
+
+        decision = "HOLD_AND_EARN"
+        amount_usdc = 0.0
+        action_recommended = "HOLD_AND_EARN"
+        rationale = ""
+        execution_status = "NO_ACTION_REQUIRED"
+        tx_hash = None
+        audit_record_id = None
+
+        # 1. Solvency constraint check
+        if total_assets < bills:
+            decision = "INSOLVENCY_ALERT"
+            amount_usdc = 0.0
+            action_recommended = "ALERT: Insolvent treasury, top-up required"
+            rationale = (
+                f"Solvency breach detected: Total treasury reserves ({total_assets:.4f} USDC) are insufficient "
+                f"to satisfy projected obligations ({bills:.4f} USDC). Immediate capital replenishment required."
+            )
+            execution_status = "ALERT_EMITTED"
+        # 2. Immediate operational deficit constraint
+        elif liquid < bills:
+            net_needed = bills - liquid
+            amount_usdc = round(min(net_needed, policy.max_jit_redeem_per_epoch_usdc), 4)
+            decision = "JIT_REDEEM"
+            action_recommended = f"REDEEM_JIT: Redeem {amount_usdc:.4f} USDC from USYC"
+            rationale = (
+                f"Operating liquidity ({liquid:.4f} USDC) is below immediate obligations ({bills:.4f} USDC). "
+                f"Autonomous CFO initiates Just-In-Time redemption of {amount_usdc:.4f} USDC from USYC to satisfy liabilities "
+                f"without liquidating excess yield-bearing principal."
+            )
+            execution_status = "PREPARED"
+        # 3. Surplus idle cash sweep constraint
+        elif liquid > (required_reserve + policy.min_sweep_threshold_usdc):
+            surplus = liquid - required_reserve
+            amount_usdc = round(min(surplus, policy.max_sweep_per_epoch_usdc), 4)
+            decision = "SWEEP_IDLE"
+            action_recommended = f"SWEEP_IDLE: Deposit {amount_usdc:.4f} USDC into USYC for {round(self.target_apy * 100, 1)}% APY"
+            rationale = (
+                f"Liquid cash ({liquid:.4f} USDC) exceeds operational reserve requirements ({required_reserve:.4f} USDC) "
+                f"by {surplus:.4f} USDC while maintaining a {safety_buffer_ratio}x safety coverage ratio. "
+                f"Sweeping {amount_usdc:.4f} USDC into USYC generates ~${round(amount_usdc * self.target_apy, 4)} annual yield on idle capital."
+            )
+            execution_status = "PREPARED"
+        else:
+            decision = "HOLD_AND_EARN"
+            amount_usdc = 0.0
+            action_recommended = "HOLD_AND_EARN"
+            rationale = (
+                f"Treasury capital allocation is in optimal equilibrium. Liquid buffer of {liquid:.4f} USDC satisfies "
+                f"operating requirements ({required_reserve:.4f} USDC), and {usyc_assets:.4f} USDC actively compounds yield."
+            )
+            execution_status = "NO_ACTION_REQUIRED"
+
+        # 4. Policy Cooldown & Autonomous Execution Dispatch
+        now = time.time()
+        if decision in {"SWEEP_IDLE", "JIT_REDEEM"}:
+            if (now - self._last_rebalance_at) < policy.rebalance_cooldown_seconds:
+                cooldown_left = int(policy.rebalance_cooldown_seconds - (now - self._last_rebalance_at))
+                rationale += f" [Policy cooldown active: next autonomous rebalance permitted in {cooldown_left}s]"
+                execution_status = "COOLDOWN_HOLD"
+                decision = "COOLDOWN_ACTIVE"
+            elif execute_if_authorized and policy.autonomous_execution_enabled:
+                try:
+                    if decision == "SWEEP_IDLE":
+                        exec_res = self.execute_deposit(amount_usdc=amount_usdc, depositor=target_account)
+                        tx_hash = exec_res.get("tx_hash")
+                    elif decision == "JIT_REDEEM":
+                        exec_res = self.execute_redeem(amount_usdc_needed=amount_usdc, owner=target_account, receiver=target_account)
+                        tx_hash = exec_res.get("tx_hash")
+                    self._last_rebalance_at = now
+                    execution_status = "EXECUTED_ONCHAIN"
+                except Exception as exc:
+                    logger.error(f"[CFO AGENT] Execution failed: {exc}")
+                    execution_status = f"EXECUTION_FAILED: {exc}"
+            else:
+                execution_status = "PREPARED_INTENT"
+
+        # 5. Continuous Athenian Euthyna audit trail
+        try:
+            from backend.app.services.euthyna_audit import euthyna_audit_engine
+            audit_entry = euthyna_audit_engine.record_action(
+                action=decision,
+                actor=target_account or "0x0000000000000000000000000000000000000000",
+                amount_usdc=amount_usdc,
+                balance_before=liquid,
+                balance_after=max(0.0, liquid - amount_usdc) if decision == "SWEEP_IDLE" else liquid + amount_usdc,
+                usyc_shares=usyc_shares,
+                tx_hash=tx_hash,
+                policy_rule=f"CFO_POLICY_{decision}",
+                reasoning=rationale,
+            )
+            audit_record_id = audit_entry.get("record_id")
+        except Exception as audit_exc:
+            logger.debug(f"[CFO AGENT] Euthyna audit logging skipped: {audit_exc}")
+
+        return {
+            "decision": decision,
+            "amount_usdc": amount_usdc,
+            "action_recommended": action_recommended,
+            "rationale": rationale,
+            "policy_applied": policy.model_dump(),
+            "financial_metrics": {
+                "solvency_status": "INSOLVENT" if total_assets < bills else "SOLVENT",
+                "current_liquid_usdc": round(liquid, 4),
+                "current_usyc_assets_usdc": round(usyc_assets, 4),
+                "total_treasury_usdc": round(total_assets, 4),
+                "upcoming_obligations_usdc": round(bills, 4),
+                "required_operating_reserve_usdc": round(required_reserve, 4),
+                "safety_buffer_ratio": safety_buffer_ratio,
+                "projected_yield_earned_usdc": round(projected_yield_earned, 4),
+                "annualized_yield_apy": f"{round(self.target_apy * 100, 2)}%",
+            },
+            "execution_status": execution_status,
+            "tx_hash": tx_hash,
+            "audit_record_id": audit_record_id,
+        }
+
     def calculate_treasury_forecast(
         self,
         current_liquid_usdc: float,
@@ -232,34 +716,28 @@ class USYCTreasuryService:
         upcoming_bills_usdc: float,
         horizon_days: int = 30,
     ) -> Dict[str, Any]:
-        """CFO predictive cash-flow modeling and yield maximization advisory."""
-        daily_yield_rate = (1.0 + self.target_apy) ** (1.0 / 365.0) - 1.0
-        projected_yield_earned = current_usyc_assets * daily_yield_rate * horizon_days
-
-        net_liquidity_needed = upcoming_bills_usdc - current_liquid_usdc
-        action_recommended = "HOLD_AND_EARN"
-
-        if net_liquidity_needed > 0:
-            if current_usyc_assets >= net_liquidity_needed:
-                action_recommended = f"REDEEM_JIT: Redeem {round(net_liquidity_needed, 4)} USDC from USYC"
-            else:
-                action_recommended = "ALERT: Insolvent treasury, top-up required"
-        elif current_liquid_usdc > (upcoming_bills_usdc * 1.5 + 5.0):
-            excess_cash = current_liquid_usdc - (upcoming_bills_usdc + 2.0)
-            action_recommended = f"SWEEP_IDLE: Deposit {round(excess_cash, 4)} USDC into USYC for 5% APY"
-
+        """CFO predictive cash-flow modeling and yield maximization advisory driven by autonomous policy."""
+        eval_result = self.evaluate_cfo_decision(
+            current_liquid_usdc=current_liquid_usdc,
+            current_usyc_assets=current_usyc_assets,
+            upcoming_bills_usdc=upcoming_bills_usdc,
+            horizon_days=horizon_days,
+            execute_if_authorized=False,
+        )
+        metrics = eval_result["financial_metrics"]
         return {
             "horizon_days": horizon_days,
-            "current_liquid_usdc": round(current_liquid_usdc, 4),
-            "current_usyc_usdc": round(current_usyc_assets, 4),
-            "total_treasury_usdc": round(current_liquid_usdc + current_usyc_assets, 4),
-            "upcoming_bills_usdc": round(upcoming_bills_usdc, 4),
-            "projected_yield_earned_usdc": round(projected_yield_earned, 4),
-            "effective_apy": f"{round(self.target_apy * 100, 2)}%",
-            "action_recommended": action_recommended,
-            "safety_buffer_ratio": round(
-                (current_liquid_usdc + current_usyc_assets) / max(upcoming_bills_usdc, 0.001), 2
-            ),
+            "current_liquid_usdc": metrics["current_liquid_usdc"],
+            "current_usyc_usdc": metrics["current_usyc_assets_usdc"],
+            "total_treasury_usdc": metrics["total_treasury_usdc"],
+            "upcoming_bills_usdc": metrics["upcoming_obligations_usdc"],
+            "projected_yield_earned_usdc": metrics["projected_yield_earned_usdc"],
+            "effective_apy": metrics["annualized_yield_apy"],
+            "action_recommended": eval_result["action_recommended"],
+            "safety_buffer_ratio": metrics["safety_buffer_ratio"],
+            "decision": eval_result["decision"],
+            "rationale": eval_result["rationale"],
+            "policy_applied": eval_result["policy_applied"],
         }
 
 

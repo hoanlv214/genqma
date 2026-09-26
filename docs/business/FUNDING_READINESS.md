@@ -35,9 +35,9 @@ Circle Gateway is the payment balance QMA actually spends from during x402 check
 
 Arc Testnet is the settlement network used by the wallet and Gateway integration.
 
-## Browser Judge Mode Vs Autonomous Agent
+## Browser Evaluation Mode Vs Autonomous Agent
 
-Browser Judge Mode intentionally keeps private keys inside the connected wallet. QMA can rank live opportunities, choose an affordable report, and create an agent invoice, but the judge wallet confirms x402 signing.
+Browser Evaluation Mode intentionally keeps private keys inside the connected wallet. QMA can rank live opportunities, choose an affordable report, and create an agent invoice, but the user's connected wallet confirms x402 signing.
 
 Full autonomous payment runs outside the browser in the CLI/server agent with an isolated `AGENT_PRIVATE_KEY`.
 

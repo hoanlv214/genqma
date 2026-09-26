@@ -9,7 +9,7 @@ Provides:
 """
 
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, Security
 from pydantic import BaseModel, Field
 
 from backend.app.schemas.treasury import (
@@ -19,11 +19,16 @@ from backend.app.schemas.treasury import (
     USYCForecastResponse,
     EuthynaAuditRecordResponse,
     EuthynaIntegrityResponse,
+    CorporateTreasuryPolicy,
+    CFODecisionResult,
+    CFODecisionRequest,
 )
 from backend.app.services.usyc_treasury import usyc_treasury_service
 from backend.app.services.euthyna_audit import euthyna_audit_engine
 from backend.app.core.config import PLATFORM_TREASURY_ADDRESS
 from backend.app.services.wallet_utils import normalize_address
+from backend.app.core.security_schemes import qma_admin_token_header
+from backend.app.services.security import require_admin_token
 
 router = APIRouter(tags=["Agent decisioning"])
 
@@ -32,6 +37,7 @@ class SweepRequest(BaseModel):
     amount_usdc: float = Field(..., gt=0, description="Amount of idle USDC to sweep into USYC")
     depositor: Optional[str] = Field(None, description="Depositor address (defaults to platform treasury)")
     cfo_reasoning: Optional[str] = Field(None, description="Autonomous AI CFO rationale for this sweep")
+    execute_onchain: bool = Field(False, description="Whether to execute transaction on Arc Testnet via agent wallet")
 
 
 class JITRedeemRequest(BaseModel):
@@ -39,6 +45,7 @@ class JITRedeemRequest(BaseModel):
     receiver: Optional[str] = Field(None, description="Receiver of redeemed USDC")
     owner: Optional[str] = Field(None, description="Owner of USYC shares to redeem")
     cfo_reasoning: Optional[str] = Field(None, description="Autonomous AI CFO rationale for JIT redemption")
+    execute_onchain: bool = Field(False, description="Whether to execute transaction on Arc Testnet via agent wallet")
 
 
 @router.get(
@@ -66,11 +73,29 @@ def sweep_idle_cash(req: SweepRequest) -> USYCSweepResponse:
     depositor = req.depositor or PLATFORM_TREASURY_ADDRESS
     intent = usyc_treasury_service.prepare_deposit_intent(req.amount_usdc, depositor)
 
-    # Record in immutable Euthyna audit trail
+    # Query live on-chain state from Arc RPC
     pos = usyc_treasury_service.query_onchain_position(depositor)
-    liquid_before = 50.0
-    liquid_after = max(0.0, liquid_before - req.amount_usdc)
-    new_shares = pos.get("usyc_shares", 0.0) + req.amount_usdc
+    liquid_before = usyc_treasury_service.get_liquid_usdc_balance(depositor)
+
+    tx_hash = None
+    explorer_url = None
+    status = "PREPARED"
+
+    if req.execute_onchain:
+        if req.amount_usdc > liquid_before:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Insufficient liquid USDC on Arc. Available: {liquid_before:.4f}, Requested: {req.amount_usdc}",
+            )
+        exec_res = usyc_treasury_service.execute_deposit(amount_usdc=req.amount_usdc, depositor=depositor)
+        tx_hash = exec_res.get("tx_hash")
+        explorer_url = exec_res.get("explorer_url")
+        status = "CONFIRMED_ONCHAIN"
+        liquid_after = max(0.0, liquid_before - req.amount_usdc)
+        new_shares = pos.get("usyc_shares", 0.0) + req.amount_usdc
+    else:
+        liquid_after = liquid_before
+        new_shares = pos.get("usyc_shares", 0.0)
 
     audit_entry = euthyna_audit_engine.record_action(
         action="IDLE_SWEEP",
@@ -81,13 +106,15 @@ def sweep_idle_cash(req: SweepRequest) -> USYCSweepResponse:
         usyc_shares=new_shares,
         policy_rule="RULE_CFO_MAXIMIZE_YIELD_ABOVE_THRESHOLD",
         reasoning=req.cfo_reasoning or f"Swept {req.amount_usdc} USDC idle liquidity into USYC vault at 5% APY.",
-        tx_hash=intent.get("calldata")[:20] if intent.get("calldata") else None,
+        tx_hash=tx_hash,
     )
 
     return USYCSweepResponse(
-        status="PREPARED",
+        status=status,
         intent=intent,
         audit_record=EuthynaAuditRecordResponse(**audit_entry),
+        tx_hash=tx_hash,
+        explorer_url=explorer_url,
     )
 
 
@@ -104,9 +131,30 @@ def jit_redeem_usyc(req: JITRedeemRequest) -> USYCJITRedeemResponse:
     intent = usyc_treasury_service.prepare_jit_redemption(req.amount_usdc_needed, receiver, owner)
 
     pos = usyc_treasury_service.query_onchain_position(owner)
-    liquid_before = 1.0
-    liquid_after = liquid_before + req.amount_usdc_needed
-    remaining_shares = max(0.0, pos.get("usyc_shares", 0.0) - req.amount_usdc_needed)
+    liquid_before = usyc_treasury_service.get_liquid_usdc_balance(receiver)
+    current_shares = pos.get("usyc_shares", 0.0)
+
+    tx_hash = None
+    explorer_url = None
+    status = "PREPARED"
+
+    if req.execute_onchain:
+        if req.amount_usdc_needed > current_shares:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Insufficient USYC vault shares on Arc. Available: {current_shares:.4f}, Requested: {req.amount_usdc_needed}",
+            )
+        exec_res = usyc_treasury_service.execute_redeem(
+            amount_usdc_needed=req.amount_usdc_needed, owner=owner, receiver=receiver
+        )
+        tx_hash = exec_res.get("tx_hash")
+        explorer_url = exec_res.get("explorer_url")
+        status = "CONFIRMED_ONCHAIN"
+        liquid_after = liquid_before + req.amount_usdc_needed
+        remaining_shares = max(0.0, current_shares - req.amount_usdc_needed)
+    else:
+        liquid_after = liquid_before
+        remaining_shares = current_shares
 
     audit_entry = euthyna_audit_engine.record_action(
         action="JIT_REDEMPTION",
@@ -117,12 +165,15 @@ def jit_redeem_usyc(req: JITRedeemRequest) -> USYCJITRedeemResponse:
         usyc_shares=remaining_shares,
         policy_rule="RULE_CFO_JIT_LIQUIDITY_BUFFER",
         reasoning=req.cfo_reasoning or f"JIT redemption of {req.amount_usdc_needed} USDC to satisfy x402 invoice.",
+        tx_hash=tx_hash,
     )
 
     return USYCJITRedeemResponse(
-        status="PREPARED",
+        status=status,
         intent=intent,
         audit_record=EuthynaAuditRecordResponse(**audit_entry),
+        tx_hash=tx_hash,
+        explorer_url=explorer_url,
     )
 
 
@@ -175,6 +226,50 @@ def verify_audit_integrity() -> EuthynaIntegrityResponse:
     return EuthynaIntegrityResponse(**euthyna_audit_engine.verify_integrity())
 
 
+@router.get(
+    "/api/v1/treasury/policy",
+    response_model=CorporateTreasuryPolicy,
+    summary="Get corporate treasury CFO operating policy",
+    description="Retrieve active administrative policy bounds, risk limits, and liquidity thresholds governing autonomous corporate CFO agent decisioning.",
+)
+def get_treasury_policy() -> CorporateTreasuryPolicy:
+    """Retrieve active administrative policy bounds governing autonomous corporate CFO agent decisioning."""
+    return usyc_treasury_service.get_policy()
+
+
+@router.post(
+    "/api/v1/treasury/policy",
+    response_model=CorporateTreasuryPolicy,
+    summary="Update corporate treasury CFO operating policy",
+    description="Update administrative risk limits and autonomous CFO operating parameters. Requires platform administrator token.",
+)
+def update_treasury_policy(
+    policy: CorporateTreasuryPolicy,
+    x_qma_admin_token: Optional[str] = Security(qma_admin_token_header),
+) -> CorporateTreasuryPolicy:
+    """Update administrative risk limits and autonomous CFO operating parameters."""
+    require_admin_token(x_qma_admin_token)
+    return usyc_treasury_service.set_policy(policy)
+
+
+@router.post(
+    "/api/v1/treasury/agent/decide",
+    response_model=CFODecisionResult,
+    summary="Autonomous corporate CFO agent evaluation and execution",
+    description="Trigger comprehensive autonomous multi-factor CFO evaluation against active administrative policy bounds, liquidity runways, solvency constraints, and yield optimization targets.",
+)
+def trigger_cfo_decision(req: CFODecisionRequest) -> CFODecisionResult:
+    """Trigger comprehensive autonomous multi-factor CFO evaluation against active administrative policy bounds."""
+    target_account = req.account or PLATFORM_TREASURY_ADDRESS
+    result = usyc_treasury_service.evaluate_cfo_decision(
+        account=target_account,
+        upcoming_bills_usdc=req.upcoming_obligations_usdc,
+        execute_if_authorized=req.execute_if_authorized,
+    )
+    return CFODecisionResult(**result)
+
+
 def create_treasury_router(deps: Any = None) -> APIRouter:
     """Factory creating the treasury router for FastAPI app mounting."""
     return router
+

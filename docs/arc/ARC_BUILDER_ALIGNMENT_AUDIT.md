@@ -1,7 +1,7 @@
 # GenQMA vs Arc Request For Builders (RFB) Alignment Audit
 
 **Audit Date:** September 23, 2026  
-**Reference Document:** [The Unfinished Business of Finance, Machine Commerce, and Global Money: A Request For Builders](file:///c:/Users/Admin/Downloads/code/genqma/docs/arc/the-unfinished-business-of-finance-machine-commerce-and-global-money.md) (`https://www.arc.io/blog/the-unfinished-business-of-finance-machine-commerce-and-global-money`)  
+**Reference Document:** [The Unfinished Business of Finance, Machine Commerce, and Global Money: A Request For Builders](../archive/the-unfinished-business-of-finance-machine-commerce-and-global-money.md) (`https://www.arc.io/blog/the-unfinished-business-of-finance-machine-commerce-and-global-money`)  
 **Target Repository:** `genqma` (Active branch: `main`)  
 **Status:** High Alignment / Production-Grade Testnet Candidate for Circle Grants & Arc Builders Fund
 
@@ -16,7 +16,7 @@ Arc's official publication, *“The Unfinished Business of Finance, Machine Comm
 4. **The Intelligent Account**
 
 ### Overall Verdict: **88/100 (Tier-1 Match for "The Agentic Economy" & "The Intelligent Account")**
-GenQMA is **not** an abstract hackathon concept; it is an already running, test-covered (207/207 passing tests) implementation of the exact primitives Arc is requesting:
+GenQMA is an already running, test-covered (207/207 passing tests) implementation of the exact primitives Arc is requesting:
 - **Autonomous Business (Zero-Person Company):** The internal **Vestiarion Engine** operates as an autonomous AI CFO directly on Arc Testnet, holding corporate reserves, sweeping idle USDC into an ERC-4626 USYC Vault (~5.0% APY), JIT-redeeming micro-cents to pay oracle/data bills, and chaining every state transition into the Euthyna SHA-256 continuous audit ledger.
 - **Outcome Marketplace:** The **Two-Sided Market Intelligence Marketplace** enables quant creators to publish feeds and autonomous agents to query them via Circle x402 nanopayments, with **GenLayer Consensus Shield** acting as the decentralized SLA/outcome verifier before payment release.
 - **Money with a Mandate:** Hard spending bounds (`GET /api/v1/agent/spending-policy`), per-tx caps, daily caps, and provider filtering with Circle Agent Wallet execution.
@@ -68,7 +68,7 @@ GenQMA is **not** an abstract hackathon concept; it is an already running, test-
 
 The article lists 5 specific entry points into the Arc ecosystem. Here is GenQMA’s readiness for each:
 
-1. **DoraHacks Arc Microgrants** ([dorahacks.io/hackathon/arc-microgrants](http://dorahacks.io/hackathon/arc-microgrants)):  
+1. **DoraHacks Arc Microgrants** ([dorahacks.io/grant/arc-microgrants](http://dorahacks.io/grant/arc-microgrants)):  
    - **Fit:** 100% Ready.  
    - **Angle:** GenQMA Two-Sided Intelligence Marketplace & Vestiarion Autonomous AI CFO on Arc.
 2. **Circle Developer Grants** ([circle.com/grant](https://www.circle.com/grant)):  
@@ -77,7 +77,7 @@ The article lists 5 specific entry points into the Arc ecosystem. Here is GenQMA
 3. **Arc Builders Fund & Circle Ventures Investor Network** ([arc.io/builders-fund](https://www.arc.io/builders-fund)):  
    - **Fit:** Category-defining company candidate.  
    - **Angle:** Institutional positioning already drafted in `docs/business/POSITIONING_STRATEGY.md` and `docs/business/FUNDING_READINESS.md`.
-4. **Arc House (Events, Accelerators, Hackathons)** ([community.arc.io/public/events](https://community.arc.io/public/events)):  
+4. **Arc House (Events, Accelerators, Builder Programs)** ([community.arc.io/public/events](https://community.arc.io/public/events)):  
    - Active builder presence.
 5. **Arc Bug Bounty (HackerOne)** ([hackerone.com/arc-bbp](https://hackerone.com/arc-bbp)):  
    - Two formal security audit cycles already completed (`docs/audit/`).

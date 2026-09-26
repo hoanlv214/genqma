@@ -1,6 +1,6 @@
 # 100% Zero-UI Production Deployment Guide (CLI Only)
 
-[← Quay lại README.md](../../README.md) &nbsp;·&nbsp; [Hướng dẫn Quản lý Package (`uv` & `bun`)](../package-managers.md)
+[← Back to README.md](../../README.md) &nbsp;·&nbsp; [Package Management Guide (`uv` & `bun`)](../package-managers.md)
 
 QMA supports full deployment and configuration directly from your terminal using **Supabase CLI**, **Vercel CLI**, and **Render CLI / API**. You do **not** need to open any web dashboard.
 
@@ -113,9 +113,9 @@ bun run deploy:render:inspect
 ```
 
 ### C. Cross-Workspace Discovery
-If services are spread across different Render workspaces (e.g. `Hoàn Lại Văn's Workspace` and `penn`), `--distributed` automatically detects the live deployed instance of each target service:
-- `qma-api` (`srv-d9cp4r61a83c739i2h7g`) on `Hoàn Lại Văn's Workspace`
-- `qma-arc-gateway` (`srv-d9cp4re1a83c739i2h80`) on `Hoàn Lại Văn's Workspace`
+If services are spread across different Render workspaces (e.g. `Hoan Lai Van's Workspace` and `penn`), `--distributed` automatically detects the live deployed instance of each target service:
+- `qma-api` (`srv-d9cp4r61a83c739i2h7g`) on `Hoan Lai Van's Workspace`
+- `qma-arc-gateway` (`srv-d9cp4re1a83c739i2h80`) on `Hoan Lai Van's Workspace`
 - `qma-agent-worker` (`srv-d9ic5af41pts73b10s20`) on `penn`
 
 ---

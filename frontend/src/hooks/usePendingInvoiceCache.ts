@@ -41,6 +41,7 @@ export function usePendingInvoiceCache({
       openInterestChange24h: numberOrNull(source.openInterestChange24h ?? source.open_interest_change_24h),
       longShortRatio: numberOrNull(source.longShortRatio ?? source.long_short_ratio),
       price: numberOrNull(source.price),
+      exchange: source.exchange ? String(source.exchange).trim().toUpperCase() : undefined,
     };
   };
 

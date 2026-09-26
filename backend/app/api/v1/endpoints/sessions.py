@@ -11,6 +11,7 @@ import secrets
 import threading
 import time
 import uuid
+from datetime import datetime, timezone
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Security
 from pydantic import BaseModel, Field, field_validator
@@ -94,8 +95,6 @@ def owner_ops_lock(owner_wallet: str) -> threading.Lock:
 def get_storage(deps):
     if not hasattr(deps, "storage_backend"):
         raise HTTPException(status_code=500, detail="Storage backend not configured")
-    if not isinstance(deps.storage_backend, SupabaseStorage):
-        raise HTTPException(status_code=500, detail="Only Supabase is supported for agent sessions")
     return deps.storage_backend
 
 def create_sessions_router(deps) -> APIRouter:
@@ -210,6 +209,7 @@ def create_sessions_router(deps) -> APIRouter:
             row["budget_usdc"] = req.budget_usdc
 
         if row:
+            row["updated_at"] = datetime.now(timezone.utc).isoformat()
             storage._request("PATCH", "agent_sessions", params={"id": f"eq.{session_id}"}, json_body=row)
         return load_session(storage, session_id)
 
@@ -373,6 +373,7 @@ def create_sessions_router(deps) -> APIRouter:
         runtime_state["agent_wallet_id"] = agent_wallet_id
         upsert_owner_agent_wallet_row(storage, owner_wallet, agent_wallet_id, agent_wallet_address)
             
+        now_iso = datetime.now(timezone.utc).isoformat()
         row = {
             "id": session_id,
             "user_id": user_id,
@@ -381,6 +382,8 @@ def create_sessions_router(deps) -> APIRouter:
             "budget_usdc": req.budget_usdc,
             "status": "draft",
             "runtime_state": runtime_state if runtime_state else None,
+            "created_at": now_iso,
+            "updated_at": now_iso,
         }
         
         # Save to Supabase using _upsert wrapper
@@ -396,7 +399,12 @@ def create_sessions_router(deps) -> APIRouter:
         if not result:
             raise HTTPException(status_code=500, detail="Failed to retrieve created session")
             
-        return result[0]
+        session_data = dict(result[0])
+        if not session_data.get("created_at"):
+            session_data["created_at"] = now_iso
+        if not session_data.get("updated_at"):
+            session_data["updated_at"] = now_iso
+        return session_data
 
     @migrated.get(
         "/api/v1/sessions",
@@ -803,16 +811,18 @@ def create_sessions_router(deps) -> APIRouter:
         with owner_ops_lock(owner_wallet):
             guard_delete_preserves_last_wallet_binding(storage, session, owner_wallet)
             try:
-                # PostgREST DELETE
-                headers = dict(storage.headers)
-                import requests
-                resp = requests.delete(
-                    f"{storage.rest_url}/agent_sessions?id=eq.{session_id}",
-                    headers=headers,
-                    timeout=storage.timeout
-                )
-                if not resp.ok:
-                    raise RuntimeError(f"Failed to delete: {resp.text}")
+                if hasattr(storage, "rest_url"):
+                    headers = dict(storage.headers)
+                    import requests
+                    resp = requests.delete(
+                        f"{storage.rest_url}/agent_sessions?id=eq.{session_id}",
+                        headers=headers,
+                        timeout=storage.timeout
+                    )
+                    if not resp.ok:
+                        raise RuntimeError(f"Failed to delete: {resp.text}")
+                else:
+                    storage._request("DELETE", f"agent_sessions?id=eq.{session_id}")
             except Exception as e:
                 if "returned 40" in str(e):
                     raise HTTPException(status_code=400, detail=str(e))
@@ -912,7 +922,10 @@ def create_sessions_router(deps) -> APIRouter:
         })
         if not result:
             raise HTTPException(status_code=500, detail="Failed to retrieve created event")
-        return result[0]
+        event_dict = dict(result[0])
+        if "id" not in event_dict or event_dict["id"] is None:
+            event_dict["id"] = int(time.time() * 1000)
+        return event_dict
 
     @migrated.post(
         "/api/v1/sessions/{session_id}/start",

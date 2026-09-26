@@ -72,7 +72,8 @@ async function main() {
       functionName: "get_order",
       args: [invoiceId],
     });
-    console.log(JSON.stringify({ success: true, order: raw || "" }));
+    const hasOrder = raw && typeof raw === "string" && raw.trim() !== "";
+    console.log(JSON.stringify({ success: true, order: hasOrder ? raw : null }));
     return;
   }
 
@@ -103,7 +104,8 @@ async function main() {
       functionName: "get_order",
       args: [invoice_id],
     });
-    if (existingRaw) {
+    const hasExisting = existingRaw && typeof existingRaw === "string" && existingRaw.trim() !== "";
+    if (hasExisting) {
       console.log(JSON.stringify({ success: true, order: existingRaw, existing: true }));
       return;
     }
@@ -162,12 +164,13 @@ async function main() {
       args: [invoice_id],
     });
 
+    const hasOrder = finalOrder && typeof finalOrder === "string" && finalOrder.trim() !== "";
     console.log(JSON.stringify({
       success: true,
-      pending: false,
+      pending: !hasOrder,
       transaction_hash: txHash,
       execution_result: executionResult,
-      order: finalOrder,
+      order: hasOrder ? finalOrder : null,
     }, (k, v) => typeof v === "bigint" ? v.toString() : v));
     return;
   }
@@ -189,11 +192,12 @@ async function main() {
           args: [invoiceId],
         })
       : null;
+    const hasOrder = finalOrder && typeof finalOrder === "string" && finalOrder.trim() !== "";
     console.log(JSON.stringify({
       success: true,
       transaction_hash: txHash,
       execution_result: receipt?.txExecutionResultName || receipt?.tx_execution_result_name,
-      order: finalOrder,
+      order: hasOrder ? finalOrder : null,
     }, (k, v) => typeof v === "bigint" ? v.toString() : v));
     return;
   }

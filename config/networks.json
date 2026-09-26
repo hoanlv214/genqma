@@ -1,0 +1,146 @@
+{
+  "testnet": {
+    "arc": {
+      "id": "arc",
+      "name": "Arc Testnet",
+      "chainId": 5042002,
+      "chainIdHex": "0x4cef52",
+      "cctpDomain": 26,
+      "rpcUrl": "https://rpc.testnet.arc.network",
+      "explorerUrl": "https://testnet.arcscan.app",
+      "usdcAddress": "0x3600000000000000000000000000000000000000",
+      "eurcAddress": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+      "usycVaultAddress": "0x934e7309d7fca371db946b0643f2136cc0a0fcb2",
+      "shieldContractAddress": "0x367728bf66Cf962Ce15fD2b65193b7a1466f087c",
+      "nativeCurrency": {
+        "name": "USDC",
+        "symbol": "USDC",
+        "decimals": 6
+      }
+    },
+    "crossChains": [
+      {
+        "id": "base_sepolia",
+        "name": "Base Sepolia",
+        "chainId": 84532,
+        "chainIdHex": "0x14a34",
+        "cctpDomain": 6,
+        "explorerUrl": "https://sepolia.basescan.org",
+        "rpcUrl": "https://sepolia.base.org",
+        "usdcAddress": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "nativeCurrency": { "name": "ETH", "symbol": "ETH", "decimals": 18 }
+      },
+      {
+        "id": "arbitrum_sepolia",
+        "name": "Arbitrum Sepolia",
+        "chainId": 421614,
+        "chainIdHex": "0x66eee",
+        "cctpDomain": 3,
+        "explorerUrl": "https://sepolia.arbiscan.io",
+        "rpcUrl": "https://sepolia-rollup.arbitrum.io/rpc",
+        "usdcAddress": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+        "nativeCurrency": { "name": "ETH", "symbol": "ETH", "decimals": 18 }
+      },
+      {
+        "id": "ethereum_sepolia",
+        "name": "Ethereum Sepolia",
+        "chainId": 11155111,
+        "chainIdHex": "0xaa36a7",
+        "cctpDomain": 0,
+        "explorerUrl": "https://sepolia.etherscan.io",
+        "rpcUrl": "https://rpc.sepolia.org",
+        "usdcAddress": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+        "nativeCurrency": { "name": "ETH", "symbol": "ETH", "decimals": 18 }
+      },
+      {
+        "id": "arc",
+        "name": "Arc Testnet",
+        "chainId": 5042002,
+        "chainIdHex": "0x4cef52",
+        "cctpDomain": 26,
+        "explorerUrl": "https://testnet.arcscan.app",
+        "rpcUrl": "https://rpc.testnet.arc.network",
+        "usdcAddress": "0x3600000000000000000000000000000000000000",
+        "nativeCurrency": { "name": "USDC", "symbol": "USDC", "decimals": 6 }
+      }
+    ],
+    "contracts": {
+      "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+      "gatewayMinter": "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",
+      "cctpTokenMessenger": "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
+      "gatewayApiUrl": "https://gateway-api-testnet.circle.com"
+    }
+  },
+  "mainnet": {
+    "arc": {
+      "id": "arc",
+      "name": "Arc Mainnet",
+      "chainId": 5042,
+      "chainIdHex": "0x13b2",
+      "cctpDomain": 26,
+      "rpcUrl": "https://rpc.arc.network",
+      "explorerUrl": "https://arcscan.app",
+      "usdcAddress": "0x3600000000000000000000000000000000000000",
+      "eurcAddress": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+      "usycVaultAddress": "0x934e7309d7fca371db946b0643f2136cc0a0fcb2",
+      "shieldContractAddress": "0x367728bf66Cf962Ce15fD2b65193b7a1466f087c",
+      "nativeCurrency": {
+        "name": "USDC",
+        "symbol": "USDC",
+        "decimals": 6
+      }
+    },
+    "crossChains": [
+      {
+        "id": "base",
+        "name": "Base",
+        "chainId": 8453,
+        "chainIdHex": "0x2105",
+        "cctpDomain": 6,
+        "explorerUrl": "https://basescan.org",
+        "rpcUrl": "https://mainnet.base.org",
+        "usdcAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "nativeCurrency": { "name": "ETH", "symbol": "ETH", "decimals": 18 }
+      },
+      {
+        "id": "arbitrum",
+        "name": "Arbitrum One",
+        "chainId": 42161,
+        "chainIdHex": "0xa4b1",
+        "cctpDomain": 3,
+        "explorerUrl": "https://arbiscan.io",
+        "rpcUrl": "https://arb1.arbitrum.io/rpc",
+        "usdcAddress": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+        "nativeCurrency": { "name": "ETH", "symbol": "ETH", "decimals": 18 }
+      },
+      {
+        "id": "ethereum",
+        "name": "Ethereum",
+        "chainId": 1,
+        "chainIdHex": "0x1",
+        "cctpDomain": 0,
+        "explorerUrl": "https://etherscan.io",
+        "rpcUrl": "https://eth.llamarpc.com",
+        "usdcAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "nativeCurrency": { "name": "ETH", "symbol": "ETH", "decimals": 18 }
+      },
+      {
+        "id": "arc",
+        "name": "Arc Mainnet",
+        "chainId": 5042,
+        "chainIdHex": "0x13b2",
+        "cctpDomain": 26,
+        "explorerUrl": "https://arcscan.app",
+        "rpcUrl": "https://rpc.arc.network",
+        "usdcAddress": "0x3600000000000000000000000000000000000000",
+        "nativeCurrency": { "name": "USDC", "symbol": "USDC", "decimals": 6 }
+      }
+    ],
+    "contracts": {
+      "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+      "gatewayMinter": "0x2222222d7164433c4C09B0b0D809a9b52C04C205",
+      "cctpTokenMessenger": "0xbd3fa81b58ba92a82136038b25adec7066af3155",
+      "gatewayApiUrl": "https://gateway-api.circle.com"
+    }
+  }
+}

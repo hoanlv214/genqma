@@ -8,61 +8,46 @@ import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from backend.app.core.config import (
-    PAYMENT_WALLET_ADDRESS,
+    ARC_CHAIN_ID,
     ARC_GATEWAY_WALLET,
-    ARC_TESTNET_USDC,
+    IS_TESTNET,
+    MAINNET_GATEWAY_WALLET,
+    NETWORKS_DATA,
     PAYMENT_NETWORK,
+    PAYMENT_WALLET_ADDRESS,
 )
 
-SELLER_ADDRESS = PAYMENT_WALLET_ADDRESS or "0x23e7c029a287a83d80b2e084e008211658dda11d"
-GATEWAY_WALLET_CONTRACT = ARC_GATEWAY_WALLET or "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
-MAINNET_GATEWAY_WALLET = "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+SELLER_ADDRESS = PAYMENT_WALLET_ADDRESS
+GATEWAY_WALLET_CONTRACT = ARC_GATEWAY_WALLET
 
-# Multi-chain network configurations for maximum agent fill rate
-NETWORKS_CONFIG = [
-    {
-        "network": "eip155:5042002",
-        "alias": "arc-testnet",
-        "chainId": 5042002,
-        "tokenAddress": ARC_TESTNET_USDC or "0x3600000000000000000000000000000000000000",
-        "verifyingContract": GATEWAY_WALLET_CONTRACT,
-    },
-    {
-        "network": "eip155:84532",
-        "alias": "base-sepolia",
-        "chainId": 84532,
-        "tokenAddress": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-        "verifyingContract": GATEWAY_WALLET_CONTRACT,
-    },
-    {
-        "network": "eip155:8453",
-        "alias": "base",
-        "chainId": 8453,
-        "tokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-        "verifyingContract": MAINNET_GATEWAY_WALLET,
-    },
-    {
-        "network": "eip155:42161",
-        "alias": "arbitrum",
-        "chainId": 42161,
-        "tokenAddress": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-        "verifyingContract": MAINNET_GATEWAY_WALLET,
-    },
-    {
-        "network": "eip155:421614",
-        "alias": "arbitrum-sepolia",
-        "chainId": 421614,
-        "tokenAddress": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-        "verifyingContract": GATEWAY_WALLET_CONTRACT,
-    },
-    {
-        "network": "eip155:11155111",
-        "alias": "sepolia",
-        "chainId": 11155111,
-        "tokenAddress": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-        "verifyingContract": GATEWAY_WALLET_CONTRACT,
-    },
-]
+def _build_networks_config_from_ssot(mode: str, fallback_contract: str) -> list[dict]:
+    profile = NETWORKS_DATA.get(mode, {})
+    cross_chains = profile.get("crossChains", [])
+    contracts = profile.get("contracts", {})
+    verifying_contract = contracts.get("gatewayWallet", fallback_contract)
+    if not cross_chains:
+        return []
+    result = []
+    for c in cross_chains:
+        cid = c.get("chainId")
+        alias = "arc-testnet" if (mode == "testnet" and cid == ARC_CHAIN_ID) else c.get("id", "").replace("_", "-")
+        net = PAYMENT_NETWORK if cid == ARC_CHAIN_ID else f"eip155:{cid}"
+        result.append({
+            "network": net,
+            "alias": alias,
+            "chainId": cid,
+            "tokenAddress": c.get("usdcAddress"),
+            "verifyingContract": verifying_contract,
+        })
+    result.sort(key=lambda x: 0 if x["alias"] in ("arc", "arc-testnet") else 1)
+    return result
+
+# Multi-chain network configurations organized by profile (Testnet vs Mainnet) - derived directly from SSOT
+TESTNET_NETWORKS_CONFIG = _build_networks_config_from_ssot("testnet", GATEWAY_WALLET_CONTRACT)
+MAINNET_NETWORKS_CONFIG = _build_networks_config_from_ssot("mainnet", MAINNET_GATEWAY_WALLET)
+
+# Active networks config dynamically bound to active profile
+NETWORKS_CONFIG = TESTNET_NETWORKS_CONFIG if IS_TESTNET else MAINNET_NETWORKS_CONFIG
 
 AGENT_GUIDANCE = """GenQMA is an AI agent marketplace for real-time quantitative market intelligence, anomaly detection, funding rate arbitrage signals, and prediction market analytics with on-chain GenLayer SLA settlement verification.
 
@@ -96,29 +81,49 @@ def parse_usdc_atomic(amount_decimal: str) -> str:
 def build_x402_accepts(
     amount_decimal: str = "0.005000",
     seller_address: Optional[str] = None,
+    include_crosschain: bool = False,
 ) -> List[Dict[str, Any]]:
     """Build multi-chain accepts array supported by Circle Gateway and x402 clients."""
     seller = seller_address or SELLER_ADDRESS
     atomic_amount = parse_usdc_atomic(amount_decimal)
 
     accepts = []
+    # 1. Primary payment network always included first
     for cfg in NETWORKS_CONFIG:
-        if cfg["network"] != PAYMENT_NETWORK:
-            continue
-        # Standard CAIP-2 entry compliant with @circle-fin/x402-batching
-        accepts.append({
-            "scheme": "exact",
-            "network": cfg["network"],
-            "asset": cfg["tokenAddress"],
-            "amount": atomic_amount,
-            "payTo": seller,
-            "maxTimeoutSeconds": 604900,
-            "extra": {
-                "name": "GatewayWalletBatched",
-                "version": "1",
-                "verifyingContract": cfg["verifyingContract"],
-            },
-        })
+        if cfg["network"] == PAYMENT_NETWORK:
+            accepts.append({
+                "scheme": "exact",
+                "network": cfg["network"],
+                "asset": cfg["tokenAddress"],
+                "amount": atomic_amount,
+                "payTo": seller,
+                "maxTimeoutSeconds": 604900,
+                "extra": {
+                    "name": "GatewayWalletBatched",
+                    "version": "1",
+                    "verifyingContract": cfg["verifyingContract"],
+                },
+            })
+            break
+
+    # 2. Add supported cross-chain Gateway networks when requested
+    if include_crosschain:
+        for cfg in NETWORKS_CONFIG:
+            if cfg["network"] == PAYMENT_NETWORK:
+                continue
+            accepts.append({
+                "scheme": "exact",
+                "network": cfg["network"],
+                "asset": cfg["tokenAddress"],
+                "amount": atomic_amount,
+                "payTo": seller,
+                "maxTimeoutSeconds": 604900,
+                "extra": {
+                    "name": "GatewayWalletBatched",
+                    "version": "1",
+                    "verifyingContract": cfg["verifyingContract"],
+                },
+            })
     return accepts
 
 

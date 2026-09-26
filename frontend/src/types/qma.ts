@@ -71,6 +71,10 @@ export interface Anomaly {
   openInterestChange24h?: number;
   longShortRatio?: number;
   price?: number;
+  exchange?: string;
+  venues?: Array<{ exchange: string; fundingRate: number; price?: number; volume24h?: number; openInterest?: number; }>;
+  venues_count?: number;
+  funding_spread?: number;
 }
 
 export interface Recommendation {
@@ -83,6 +87,8 @@ export interface Recommendation {
   reason?: string;
   reasons?: string[];
   query?: Record<string, any>;
+  exchange?: string;
+  live?: Record<string, any>;
 }
 
 export interface QmaQuery {

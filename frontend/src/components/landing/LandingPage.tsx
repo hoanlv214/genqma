@@ -3,6 +3,7 @@ import { API_BASE_URL } from "../../services/api";
 import { getPlatformSummary } from "../../services/traction";
 import { LandingHeader } from "../ui/LandingHeader";
 import { QmaLogo } from "../ui/QmaLogo";
+import { ARC_CHAIN } from "../../config/network";
 
 function ArcLogoSvg() {
   return (
@@ -51,7 +52,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
   const [terminalStep, setTerminalStep] = useState(0);
 
   useEffect(() => {
-    const commandText = "qma agent run";
+    const commandText = "qma agent run --budget 5 --max-price 1 --live";
     let timer: any;
 
     if (terminalStep === 0) {
@@ -61,23 +62,23 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
         if (charIndex < commandText.length) {
           setTypedCommand(commandText.substring(0, charIndex + 1));
           charIndex++;
-          timer = setTimeout(typeChar, 70 + Math.random() * 40);
+          timer = setTimeout(typeChar, 50 + Math.random() * 30);
         } else {
           timer = setTimeout(() => {
             setTerminalStep(1);
           }, 600);
         }
       };
-      timer = setTimeout(typeChar, 500);
+      timer = setTimeout(typeChar, 400);
     } else if (terminalStep >= 1 && terminalStep <= 4) {
       timer = setTimeout(() => {
         setTerminalStep((prev) => prev + 1);
-      }, 900);
+      }, 1000);
     } else if (terminalStep === 5) {
       timer = setTimeout(() => {
         setTerminalStep(0);
         setTypedCommand("");
-      }, 4000);
+      }, 5000);
     }
 
     return () => clearTimeout(timer);
@@ -139,13 +140,14 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
   }
 
   const marqueeItems = [
-    { value: compactNumber(metrics.current_unique_payers), label: "current wallets" },
+    { value: compactNumber(metrics.current_unique_payers), label: "active wallets" },
     { value: compactNumber(metrics.current_paid_count), label: "reports unlocked" },
     { value: compactNumber(metrics.current_buyer_type_counts.agent), label: "agent purchases" },
     { value: compactNumber(metrics.current_buyer_type_counts.human), label: "human purchases" },
-    { value: `${Number(metrics.current_revenue_usdc).toFixed(3)}`, label: "current USDC volume" },
+    { value: `${Number(metrics.current_revenue_usdc).toFixed(3)} USDC`, label: "settled on Arc" },
     { value: compactNumber(metrics.preview_count), label: "previews generated" },
     { value: compactNumber(metrics.full_count), label: "full reports delivered" },
+    { value: "< 500ms", label: "Arc finality" },
   ];
 
   return (
@@ -153,18 +155,21 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
       <LandingHeader onNavigate={onNavigate} />
 
       <section className="landing-hero animate-on-scroll">
-        <div className="landing-kicker">Market Memory for Autonomous Crypto Agents</div>
+        <div className="landing-kicker">Quantitative Market Memory for Autonomous Agents</div>
         <h1 className="landing-hero-title">
           Before your agent acts on a market signal, <br />
           <span className="highlight-text">show it what happened last time.</span>
         </h1>
         <p className="landing-hero-desc">
           QMA compares live funding and open-interest anomalies with similar historical regimes,
-          then lets your agent unlock the evidence it needs—per query, within a hard USDC budget.
+          then lets your agent unlock empirical statistical evidence—per query, settled instantly on Arc via Circle Gateway.
         </p>
         <div className="landing-agent-note">
-          <span className="landing-agent-note-label">Decision Support</span>
-          <p className="landing-agent-note-text">Empirical historical context for agents to decide whether to ACT, SKIP, or RESEARCH—without SaaS subscriptions or manual checkouts.</p>
+          <span className="landing-agent-note-label">Autonomous Commerce</span>
+          <p className="landing-agent-note-text">
+            Agents evaluate market regimes and decide to BUY, SKIP, or RESEARCH without human checkout.
+            Settlement uses x402-style micropayments within mathematical session budgets on {ARC_CHAIN.name}.
+          </p>
         </div>
         <div className="landing-actions">
           <button type="button" className="btn-green landing-primary text-btn" onClick={() => onNavigate("app")}>
@@ -172,17 +177,22 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            Run a free market-memory scan
+            Launch Intelligence App
           </button>
-          <a className="landing-secondary" href="/connect">
+          <button type="button" className="landing-secondary text-btn" onClick={() => onNavigate("swap")}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
-              <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
-              <path d="M8.53 15.11a6 6 0 0 1 6.95 0"></path>
-              <line x1="12" y1="20" x2="12.01" y2="20"></line>
+              <path d="M7 10h14l-4-4" />
+              <path d="M17 14H3l4 4" />
             </svg>
-            Connect your agent
-          </a>
+            Swap &amp; StableFX
+          </button>
+          <button type="button" className="landing-secondary text-btn" onClick={() => onNavigate("traction")}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+            Public Ledger
+          </button>
           <a className="landing-secondary" href="/docs" target="_blank" rel="noopener noreferrer">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -199,7 +209,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
       <section className="landing-traction-section animate-on-scroll" aria-label="Live QMA traction">
         <div className="section-eyebrow landing-traction-label">
           <span className="indicator-dot"></span>
-          <span>Platform Activity</span>
+          <span>Live Network Activity</span>
         </div>
         <div className="landing-traction-strip">
           <div className="traction-marquee" aria-live="polite">
@@ -232,7 +242,9 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
             </svg>
           </div>
           <h2>Historical Regime Matching</h2>
-          <p className="landing-feature-desc">Retrieve empirical past market regimes that share the same structural funding and open-interest anomalies.</p>
+          <p className="landing-feature-desc">
+            Retrieve empirical past market regimes that share the same structural funding and open-interest anomalies across perpetual exchanges.
+          </p>
         </article>
         <article className="animate-on-scroll delay-200">
           <div className="feature-icon">
@@ -241,8 +253,10 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
               <path d="M2 10h20" />
             </svg>
           </div>
-          <h2>Outcome Distributions, Not Guarantees</h2>
-          <p className="landing-feature-desc">Inspect post-anomaly price trajectories and statistical distributions. Evidence-backed decision context, zero uncalibrated promises.</p>
+          <h2>Statistical Distributions, Not Guarantees</h2>
+          <p className="landing-feature-desc">
+            Inspect post-anomaly price trajectories and statistical distributions. Evidence-backed decision context with empirical confidence intervals.
+          </p>
         </article>
         <article className="animate-on-scroll delay-300">
           <div className="feature-icon">
@@ -252,49 +266,52 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
               <line x1="15" y1="12" x2="3" y2="12" />
             </svg>
           </div>
-          <h2>Hard Spending Guardrails</h2>
-          <p className="landing-feature-desc">Sub-cent micropayments via Circle Gateway on Arc. Autonomous agents operate within mathematical session budgets without credit card lock-ins.</p>
+          <h2>Hard Spending Guardrails on Arc</h2>
+          <p className="landing-feature-desc">
+            Sub-cent micropayments via Circle Gateway on Arc. Autonomous agents operate within mathematical session budgets without credit card lock-ins.
+          </p>
         </article>
       </div>
 
       <section className="landing-proof">
         <div className="animate-on-scroll">
-          <div className="section-eyebrow landing-section-label">Curated Quantitative Marketplace</div>
-          <h2>Curated Historical Memory for AI Agents</h2>
+          <div className="section-eyebrow landing-section-label">Agent Infrastructure</div>
+          <h2>Machine-Readable Market Memory for AI Agents</h2>
           <p className="landing-proof-desc">
-            Raw anomaly signals answer "What is happening now?", but lack context. QMA provides machine-readable
-            historical memory packages as queryable APIs. Agents use one x402 authorization, and the exact report
-            remains locked until GenLayer returns a finalized VALID verdict for its bound hash.
+            Raw anomaly signals answer "What is happening now?", but lack historical precedent. QMA packages
+            empirical market regime distributions into queryable API reports. Agents use one x402 authorization,
+            and report delivery is cryptographically verified against the bound hash on {ARC_CHAIN.name}.
           </p>
         </div>
         <div className="landing-proof-card animate-on-scroll delay-200">
-          <div className="landing-proof-item"><span className="landing-proof-label">Active Providers</span><strong className="landing-proof-value">Funding Memory, OI Memory</strong></div>
-          <div className="landing-proof-item"><span className="landing-proof-label">Approach</span><strong className="landing-proof-value">Compare today's anomaly with past regimes</strong></div>
+          <div className="landing-proof-item"><span className="landing-proof-label">Active Providers</span><strong className="landing-proof-value">Funding Memory, OI Memory, Pyth</strong></div>
+          <div className="landing-proof-item"><span className="landing-proof-label">Approach</span><strong className="landing-proof-value">Match live anomalies to historical regimes</strong></div>
           <div className="landing-proof-item"><span className="landing-proof-label">Pricing</span><strong className="landing-proof-value">Pay per query ($0.001 preview / $0.005 full)</strong></div>
           <div className="landing-proof-item"><span className="landing-proof-label">Budget Safety</span><strong className="landing-proof-value">Strict session spending caps in USDC</strong></div>
-          <div className="landing-proof-item"><span className="landing-proof-label">Access</span><strong className="landing-proof-value">Per-query cryptographic entitlement</strong></div>
-          <div className="landing-proof-item"><span className="landing-proof-label">Payment</span><strong className="landing-proof-value">One x402 authorization on Arc Testnet</strong></div>
-          <div className="landing-proof-item proof-tech"><span className="landing-proof-label">Tech</span><strong className="landing-proof-value">Arc Testnet USDC / Circle Gateway / x402-style API</strong></div>
+          <div className="landing-proof-item"><span className="landing-proof-label">Payment Rail</span><strong className="landing-proof-value">Circle Gateway Nanopayments on {ARC_CHAIN.name}</strong></div>
+          <div className="landing-proof-item"><span className="landing-proof-label">Audit Engine</span><strong className="landing-proof-value">Athenian Euthyna Cryptographic Hash Chain</strong></div>
+          <div className="landing-proof-item proof-tech"><span className="landing-proof-label">Execution Status</span><strong className="landing-proof-value">Live On-Chain Settlement (Zero Mocks)</strong></div>
         </div>
       </section>
 
       <section className="landing-flow">
-        <div className="section-eyebrow landing-section-label animate-on-scroll">Job-To-Be-Done</div>
+        <div className="section-eyebrow landing-section-label animate-on-scroll">Autonomous Decision Flow</div>
+        <h2>How an Agent Evaluates &amp; Unlocks Evidence</h2>
         <div className="landing-flow-steps">
           <div className="flow-step animate-on-scroll delay-100">
             <div className="flow-step-num">Step 1</div>
             <span className="flow-step-title">Detect Live Anomaly</span>
-            <p className="flow-step-desc">The agent scans live funding rate or open-interest anomalies across perpetual markets.</p>
+            <p className="flow-step-desc">The agent scans perpetual market feeds for funding rate or open-interest divergence anomalies.</p>
           </div>
           <div className="flow-step animate-on-scroll delay-200">
             <div className="flow-step-num">Step 2</div>
             <span className="flow-step-title">Evaluate Utility vs Budget</span>
-            <p className="flow-step-desc">The agent checks whether the historical context is worth purchasing against its hard spending budget (BUY / SKIP).</p>
+            <p className="flow-step-desc">The agent checks whether historical regime evidence is worth purchasing against its remaining session budget.</p>
           </div>
           <div className="flow-step animate-on-scroll delay-300">
             <div className="flow-step-num">Step 3</div>
-            <span className="flow-step-title">Unlock Evidence & Decide</span>
-            <p className="flow-step-desc">Settles micro-USDC via Circle Gateway on Arc, receives the analog outcome distribution, and makes an informed decision.</p>
+            <span className="flow-step-title">Unlock Evidence on Arc</span>
+            <p className="flow-step-desc">Settles micro-USDC via Circle Gateway on Arc, receives the analog outcome distribution, and makes its decision.</p>
           </div>
         </div>
       </section>
@@ -303,39 +320,39 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
         <div className="section-eyebrow landing-section-label animate-on-scroll">Who it's for</div>
         <div className="landing-audience-grid">
           <article className="landing-audience-card--agents animate-on-scroll delay-100">
-            <strong className="landing-audience-title">Autonomous Crypto Agents</strong>
-            <p className="landing-audience-desc">Query market memory on-demand, evaluate analog distributions, and enforce hard spending policies via MCP or CLI.</p>
+            <strong className="landing-audience-title">Autonomous AI Agents</strong>
+            <p className="landing-audience-desc">Query market memory on-demand, evaluate analog distributions, and enforce hard spending policies via SDK or CLI.</p>
           </article>
           <article className="landing-audience-card--researchers animate-on-scroll delay-200">
             <strong className="landing-audience-title">Quant Developers</strong>
-            <p className="landing-audience-desc">Integrate historical regime lookups directly into autonomous research loops without managing SaaS billing keys.</p>
+            <p className="landing-audience-desc">Integrate historical regime lookups directly into automated research pipelines without recurring SaaS credit cards.</p>
           </article>
           <article className="landing-audience-card--traders animate-on-scroll delay-300">
-            <strong className="landing-audience-title">Systematic Traders</strong>
-            <p className="landing-audience-desc">Verify how past regimes responded to severe divergence setups before placing capital at risk.</p>
+            <strong className="landing-audience-title">Data Creators</strong>
+            <p className="landing-audience-desc">Monetize custom quantitative indicators. Earn USDC per query with cryptographic proof of delivery and on-demand claims.</p>
           </article>
         </div>
       </section>
 
       <section className="landing-agent-api">
         <div className="animate-on-scroll">
-          <div className="section-eyebrow landing-section-label">Agent-native API</div>
-          <h2>External agents can buy reports without using the dashboard</h2>
+          <div className="section-eyebrow landing-section-label">Agent-Native CLI &amp; SDK</div>
+          <h2>External agents can purchase reports programmatically</h2>
           <p>
-            A buyer agent can evaluate a ranked signal, create an invoice, settle the x402-style payment,
-            and receive a structured JSON report within its budget.
+            An agent can evaluate ranked anomalies, request an invoice, settle the x402 payment,
+            and receive structured JSON evidence within its strict spending policy.
           </p>
           <div className="landing-actions">
             <a className="btn-green landing-primary" href="/docs" target="_blank" rel="noopener noreferrer">Open API Docs</a>
-            <a className="landing-secondary" href="https://github.com/hoanlv214/qma/blob/main/examples/README.md" target="_blank" rel="noopener noreferrer">View Agent Example</a>
+            <a className="landing-secondary" href="https://github.com/hoanlv214/qma" target="_blank" rel="noopener noreferrer">View GitHub SDK</a>
           </div>
         </div>
-        <div className="agent-terminal animate-on-scroll delay-200" aria-label="Agent buyer flow example">
+        <div className="agent-terminal animate-on-scroll delay-200" aria-label="Agent buyer CLI flow">
           <div className="mac-window-header">
             <span className="mac-dot mac-red"></span>
             <span className="mac-dot mac-yellow"></span>
             <span className="mac-dot mac-green"></span>
-            <span className="mac-title">autonomous-session</span>
+            <span className="mac-title">qma-agent-session</span>
           </div>
           <pre style={{ margin: 0, background: "transparent" }}>
             <code>
@@ -349,25 +366,25 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
               {terminalStep >= 1 && (
                 <span className="terminal-line terminal-command fade-in-line">
                   <span className="t-success" style={{ color: "var(--accent)" }}>✓</span>
-                  <span>Scanned live funding anomaly (e.g. WAVES +0.142%)</span>
+                  <span>Scanned live anomaly: funding rate divergence detected</span>
                 </span>
               )}
               {terminalStep >= 2 && (
                 <span className="terminal-line terminal-command fade-in-line">
                   <span className="t-success" style={{ color: "var(--accent)" }}>✓</span>
-                  <span>Matched 18 historical analog regimes</span>
+                  <span>Matched 18 historical analog regimes in database</span>
                 </span>
               )}
               {terminalStep >= 3 && (
                 <span className="terminal-line terminal-command fade-in-line">
                   <span className="t-success" style={{ color: "var(--accent)" }}>✓</span>
-                  <span>Single x402 payment settled (0.005 USDC)</span>
+                  <span>x402 micropayment settled: 0.005 USDC on {ARC_CHAIN.name}</span>
                 </span>
               )}
               {terminalStep >= 4 && (
                 <span className="terminal-line terminal-command fade-in-line">
                   <span className="t-success" style={{ color: "var(--accent)" }}>✓</span>
-                  <span>Structured historical JSON evidence unlocked</span>
+                  <span>Structured historical JSON evidence unlocked &amp; validated</span>
                 </span>
               )}
             </code>
@@ -377,13 +394,13 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
 
       <section className="landing-builders">
         <div>
-          <div className="section-eyebrow landing-section-label">For Quants & Data Creators</div>
+          <div className="section-eyebrow landing-section-label">For Quants &amp; Data Creators</div>
           <h2>Monetize Quantitative Datasets</h2>
         </div>
         <div>
           <p className="landing-builders-desc">
             Package historical datasets into query-based intelligence APIs. QMA handles x402 settlement,
-            query/report hash binding, and creator earnings accounting after a valid report verdict.
+            query/report hash binding, and creator earnings accounting after valid delivery. Claim your USDC earnings on-demand.
           </p>
           <div className="landing-actions" style={{ marginTop: 24 }}>
             <button type="button" className="btn-green landing-primary text-btn" onClick={() => onNavigate("marketplace")}>Join Provider Beta</button>
@@ -395,9 +412,8 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
       <section className="landing-source" id="source-code">
         <div className="section-eyebrow landing-section-label">Open Source Ecosystem</div>
         <p className="landing-source-desc">
-          QMA is open-source. Build your own provider, customize the analog matching engine, or integrate the
-          payment middleware. The repository includes everything you need to run your own local marketplace and
-          crawl custom historical datasets.
+          QMA is open-source. Build your own provider plugin, customize the analog matching engine, or integrate the
+          payment middleware. The repository includes everything you need to run autonomous buyer agents and monetize quantitative feeds.
         </p>
         <div className="landing-actions" style={{ marginTop: 20 }}>
           <a className="btn-green landing-primary" href="https://github.com/hoanlv214/qma" target="_blank" rel="noopener noreferrer">View GitHub Repository</a>
@@ -410,7 +426,7 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
             <a href="/" className="logo-item qma-logo-item" title="QMA" onClick={(e) => e.preventDefault()}>
               <QmaLogo size={28} showText={true} />
             </a>
-            <p className="footer-brand-desc">Historical market intelligence. Evidence-backed reports from past analog events, not predictions.</p>
+            <p className="footer-brand-desc">Historical market intelligence &amp; autonomous agent commerce on Arc. Evidence-backed reports from past analog events.</p>
             <div className="landing-socials footer-socials" aria-label="QMA footer social links">
               <a className="social-link" href="http://x.com/hoanlv21" target="_blank" rel="noopener noreferrer" title="X (Twitter)">
                 <svg viewBox="0 0 24 24" fill="currentColor">
@@ -431,14 +447,14 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
           </div>
           <div className="landing-footer-col">
             <h3>Product</h3>
-            <button type="button" className="text-btn footer-link-btn" onClick={() => onNavigate("app")}>Agent Picks</button>
-            <button type="button" className="text-btn footer-link-btn" onClick={() => onNavigate("app")}>Preview Reports</button>
-            <button type="button" className="text-btn footer-link-btn" onClick={() => onNavigate("app")}>Full Reports</button>
+            <button type="button" className="text-btn footer-link-btn" onClick={() => onNavigate("app")}>Intelligence App</button>
+            <button type="button" className="text-btn footer-link-btn" onClick={() => onNavigate("swap")}>Swap / StableFX</button>
+            <button type="button" className="text-btn footer-link-btn" onClick={() => onNavigate("traction")}>Public Ledger</button>
             <button type="button" className="text-btn footer-link-btn" onClick={() => onNavigate("profile")}>Wallet History</button>
           </div>
           <div className="landing-footer-col">
             <h3>Platform</h3>
-            <a href="#source-code">Paid Intelligence Kit</a>
+            <button type="button" className="text-btn footer-link-btn" onClick={() => onNavigate("marketplace")}>Creator Marketplace</button>
             <a href={`${API_BASE_URL}/api/v1/providers`} target="_blank" rel="noopener noreferrer">Provider API</a>
             <a href="/docs" target="_blank" rel="noopener noreferrer">API Docs</a>
             <a href="https://testnet.arcscan.app/" target="_blank" rel="noopener noreferrer">Arcscan Explorer</a>
@@ -446,7 +462,8 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
           <div className="landing-footer-col">
             <h3>Developers</h3>
             <a href="https://github.com/hoanlv214/qma" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
-            <a href="#source-code">Sample Data</a>
+            <a href="https://github.com/hoanlv214/qma/blob/main/examples/README.md" target="_blank" rel="noopener noreferrer">Agent Examples</a>
+            <a href="/docs" target="_blank" rel="noopener noreferrer">OpenAPI Docs</a>
             <a href={`${API_BASE_URL}/openapi.json`} target="_blank" rel="noopener noreferrer">OpenAPI Spec</a>
           </div>
         </div>
@@ -454,19 +471,19 @@ export function LandingPage({ onNavigate }: { onNavigate: (route: any) => void }
         <div className="landing-footer-builton">
           <span className="landing-settlement-label">Built on</span>
           <div className="landing-settlement-logos">
-            <a href="https://www.arc.network/" target="_blank" rel="noopener noreferrer" title="Arc Testnet">
+            <a href={ARC_CHAIN.explorerUrl} target="_blank" rel="noopener noreferrer" title={ARC_CHAIN.name}>
               <ArcLogoSvg />
             </a>
             <a href="https://www.circle.com/" target="_blank" rel="noopener noreferrer" title="Circle Gateway">
               <CircleLogoSvg />
             </a>
           </div>
-          <p className="landing-settlement-copy">Built independently on Arc Testnet. USDC settlement via Circle Gateway.</p>
+          <p className="landing-settlement-copy">Built independently on {ARC_CHAIN.name}. USDC &amp; EURC settlement via Circle Gateway.</p>
         </div>
 
         <div className="landing-footer-bottom">
-          <span>2026 QMA. All rights reserved. Historical analogs only. Not financial advice. Running on Arc Testnet.</span>
-          <span className="landing-status-dot">Arc Testnet live</span>
+          <span>2026 QMA Network. All rights reserved. Historical analogs only. Not financial advice. Running on {ARC_CHAIN.name}.</span>
+          <span className="landing-status-dot">{ARC_CHAIN.name} live</span>
         </div>
         <p className="landing-brand-disclaimer">
           Circle, Arc and related marks are trademarks of Circle Internet Group, Inc. and/or its affiliates.

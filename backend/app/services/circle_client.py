@@ -9,9 +9,12 @@ import requests
 from fastapi import HTTPException
 
 from backend.app.core.config import (
+    ARC_CHAIN_ID,
     ARC_EXPLORER,
     ARC_GATEWAY_API,
     ARC_GATEWAY_BASE_URL,
+    ARC_GATEWAY_DOMAIN,
+    ARC_GATEWAY_MINTER,
     ARC_GATEWAY_WALLET,
     ARC_TESTNET_USDC,
     ARC_BATCH_TX_CACHE_TTL_SECONDS,
@@ -29,20 +32,21 @@ from backend.app.services.payment_state_machine import (
     is_gateway_failed_status,
     is_gateway_final_status,
 )
+from backend.app.services.x402_gateway import (
+    extract_settlement_tx_hash,
+    fetch_circle_settlement as _gateway_fetch_circle_settlement,
+    find_arc_batch_tx as _gateway_find_arc_batch_tx,
+)
 
 logger = logging.getLogger("QMA-API")
 
 
 def fetch_circle_settlement(settlement_id: str) -> dict:
-    try:
-        resp = requests.get(f"{ARC_GATEWAY_API}/v1/x402/transfers/{settlement_id}", timeout=10)
-    except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail=f"Circle Gateway lookup failed: {exc}")
-    if resp.status_code == 404:
-        raise HTTPException(status_code=404, detail="Circle settlement not found")
-    if not resp.ok:
-        raise HTTPException(status_code=502, detail=f"Circle Gateway returned {resp.status_code}: {resp.text[:300]}")
-    return resp.json()
+    return _gateway_fetch_circle_settlement(
+        settlement_id,
+        gateway_api=ARC_GATEWAY_API,
+        http_get=requests.get,
+    )
 
 
 def fetch_gateway_balance(address: str) -> dict:
@@ -51,7 +55,7 @@ def fetch_gateway_balance(address: str) -> dict:
             f"{ARC_GATEWAY_API}/v1/balances",
             json={
                 "token": "USDC",
-                "sources": [{"domain": 26, "depositor": address}],
+                "sources": [{"domain": ARC_GATEWAY_DOMAIN, "depositor": address}],
             },
             timeout=10,
         )
@@ -107,7 +111,7 @@ def summarize_gateway_info(data: Optional[dict] = None, *, include_raw: bool = F
             "processed_height": item.get("processedHeight"),
             "burn_intent_expiration_height": item.get("burnIntentExpirationHeight"),
         })
-    arc_domain = next((item for item in domains if item.get("domain") == 26), None)
+    arc_domain = next((item for item in domains if item.get("domain") == ARC_GATEWAY_DOMAIN), None)
     result = {
         "api": ARC_GATEWAY_API,
         "runtime_rail": SETTLEMENT_RAIL,
@@ -118,11 +122,11 @@ def summarize_gateway_info(data: Optional[dict] = None, *, include_raw: bool = F
         "domains": domains,
         "domain_count": len(domains),
         "arc_testnet": arc_domain or {
-            "domain": 26,
+            "domain": ARC_GATEWAY_DOMAIN,
             "chain": "Arc",
-            "network": "testnet",
+            "network": "testnet" if ARC_CHAIN_ID == 5042002 else "mainnet",
             "wallet_contract": ARC_GATEWAY_WALLET,
-            "minter_contract": "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",
+            "minter_contract": ARC_GATEWAY_MINTER,
             "wallet_supported_tokens": [ARC_TESTNET_USDC],
             "minter_supported_tokens": [ARC_TESTNET_USDC],
         },
@@ -197,7 +201,7 @@ def parse_iso_utc(value: str) -> float:
     return parsed.timestamp()
 
 
-def load_arc_gateway_transactions(max_pages: int = 20) -> tuple[list, Optional[str]]:
+def load_arc_gateway_transactions(max_pages: int = 1) -> tuple[list, Optional[str]]:
     now = time.time()
     if now - state.arc_batch_tx_cache.get("at", 0) < ARC_BATCH_TX_CACHE_TTL_SECONDS:
         return state.arc_batch_tx_cache.get("items", []), state.arc_batch_tx_cache.get("error")
@@ -239,48 +243,41 @@ def find_arc_batch_tx(settlement: dict) -> dict:
             "message": "Circle accepted the payment authorization; on-chain batch tx is still pending.",
         }
 
-    transactions, error = load_arc_gateway_transactions()
-    if error:
+    # 1. Authoritative: Direct hash from Circle Gateway settlement response
+    direct_tx = extract_settlement_tx_hash(settlement)
+    if direct_tx:
         return {
-            "batch_tx": None,
-            "explorer_url": None,
+            "batch_tx": direct_tx,
+            "explorer_url": f"{ARC_EXPLORER}/tx/{direct_tx}" if ARC_EXPLORER else None,
             "status": status_value,
-            "message": error,
+            "match_type": "circle_gateway_settlement",
         }
 
-    updated_at = settlement.get("updatedAt")
-    if not updated_at:
-        return {"batch_tx": None, "explorer_url": None, "status": status_value}
+    # 2. Re-query Circle Gateway if settlement_id is available and tx might have finalized
+    settlement_id = settlement.get("id") or settlement.get("settlement_id")
+    if settlement_id and not settlement.get("_queried_circle_api"):
+        try:
+            live = fetch_circle_settlement(settlement_id)
+            live["_queried_circle_api"] = True
+            live_tx = extract_settlement_tx_hash(live)
+            if live_tx:
+                return {
+                    "batch_tx": live_tx,
+                    "explorer_url": f"{ARC_EXPLORER}/tx/{live_tx}" if ARC_EXPLORER else None,
+                    "status": live.get("status", status_value),
+                    "match_type": "circle_gateway_settlement",
+                }
+        except Exception:
+            pass
 
-    updated_ts = parse_iso_utc(updated_at)
-
-    best_tx = None
-    best_delta = None
-    for tx in transactions:
-        if tx.get("method") != "submitBatch":
-            continue
-        tx_ts = parse_iso_utc(tx.get("timestamp", ""))
-        if not tx_ts:
-            continue
-        delta = abs(tx_ts - updated_ts)
-        if delta <= 1800 and (best_delta is None or delta < best_delta):
-            best_tx = tx
-            best_delta = delta
-
-    if best_tx:
-        tx_hash = best_tx.get("hash")
-        return {
-            "batch_tx": tx_hash,
-            "explorer_url": f"{ARC_EXPLORER}/tx/{tx_hash}" if tx_hash else None,
-            "status": status_value,
-        }
-
-    return {
-        "batch_tx": None,
-        "explorer_url": None,
-        "status": status_value,
-        "message": "Settlement completed, but recent Arcscan index did not expose the matching submitBatch tx yet.",
-    }
+    # 3. Fallback: single-page cached Arcscan check only (never crawl 20 pages)
+    return _gateway_find_arc_batch_tx(
+        settlement,
+        load_arc_gateway_transactions=load_arc_gateway_transactions,
+        parse_iso_utc=parse_iso_utc,
+        arc_explorer=ARC_EXPLORER or "",
+        match_type="circle_gateway_settlement",
+    )
 
 
 def refresh_event_batch_tx(event: dict) -> bool:

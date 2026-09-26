@@ -4,24 +4,42 @@ import os
 import re
 from types import SimpleNamespace
 
-from fastapi import APIRouter, HTTPException, Security
+from fastapi import APIRouter, HTTPException, Query, Security
 from backend.app.core.security_schemes import qma_access_token_header
 from backend.app.services.agent_jobs import create_job, deliver_job
-from backend.app.services.spending_policy import evaluate_spending
+from backend.app.services.spending_policy import (
+    DEFAULT_MAX_PER_TX,
+    DEFAULT_DAILY_CAP,
+    DEFAULT_WEEKLY_CAP,
+    DEFAULT_MONTHLY_CAP,
+    build_circle_wallet_limit_command,
+    evaluate_spending,
+    get_active_spending_policy,
+)
 
 from backend.app.schemas import AgentDecisionResponse
 from backend.app.schemas.agent import (
     AgentDecisionRequest,
+    AgentDelegateStatusResponse,
     AgentIdentityResponse,
     CircleServiceCardResponse,
     ERC8183JobRequest,
     ERC8183JobResponse,
+    SpendingPolicyCommandResponse,
     SpendingPolicyConfigResponse,
     SpendingPolicyEvaluateRequest,
     SpendingPolicyEvaluateResponse,
     WalletConfigResponse,
 )
 from backend.app.services.agent_decision import make_agent_decision
+from backend.app.core.config import (
+    ARC_CHAIN_ID,
+    ARC_GATEWAY_WALLET,
+    IS_TESTNET,
+    NETWORKS_DATA,
+    PAYMENT_WALLET_ADDRESS,
+    SHIELD_CONTRACT_ADDRESS,
+)
 from backend.app.core.openapi_responses import documented_errors
 from backend.app.services.wallet_utils import normalize_address
 
@@ -31,13 +49,13 @@ router = APIRouter(tags=["Agent decisioning"])
 
 
 def _get_agent_identity() -> dict:
-    shield_address = os.getenv("QMA_SHIELD_CONTRACT_ADDRESS", "0x367728bf66Cf962Ce15fD2b65193b7a1466f087c")
+    shield_address = SHIELD_CONTRACT_ADDRESS
     return {
         "standard": "ERC-8004",
         "name": "QMA Autonomous Intelligence Agent",
         "version": "2.4.0",
         "agent_address": shield_address,
-        "chain_id": 50,
+        "chain_id": ARC_CHAIN_ID,
         "description": (
             "Autonomous market anomaly detection and quantitative prediction intelligence agent on Arc. "
             "Delivers sub-second Pyth volatility stress bands, Polymarket prediction divergence, and funding anomaly alpha "
@@ -95,6 +113,11 @@ def _get_agent_identity() -> dict:
 
 
 def _get_circle_service_card() -> dict:
+    profile = NETWORKS_DATA.get("testnet" if IS_TESTNET else "mainnet", {})
+    cross_chains = profile.get("crossChains", [])
+    networks = [c.get("id", "").replace("_", "-") for c in cross_chains] if cross_chains else ["arc-testnet", "base-sepolia", "arbitrum-sepolia", "ethereum-sepolia"]
+    networks.sort(key=lambda x: 0 if "arc" in x else 1)
+
     return {
         "schema_version": "1.0",
         "service_id": "qma-market-intelligence",
@@ -111,17 +134,42 @@ def _get_circle_service_card() -> dict:
             "oi_memory": "0.001",
             "polymarket_divergence": "0.002",
             "pyth_stress_band": "0.003",
+            "preview_report": "0.002",
+            "full_report": "0.005",
         },
-        "networks": ["arc-testnet", "polygon", "base"],
+        "networks": networks,
         "endpoints": [
+            {"method": "GET", "path": "/.well-known/circle-service.json", "description": "Circle Service Discovery Descriptor"},
             {"method": "GET", "path": "/api/v1/agent/identity", "description": "ERC-8004 Agent Card & Capabilities"},
+            {"method": "POST", "path": "/api/v1/providers/{provider_id}/preview", "description": "x402 Paid Preview Intelligence Report ($0.002 USDC)"},
+            {"method": "POST", "path": "/api/v1/providers/{provider_id}/full-report", "description": "x402 Paid Full Quantitative Report ($0.005 USDC)"},
             {"method": "POST", "path": "/api/v1/agent/decision", "description": "Autonomous Purchase Decisioning"},
-            {"method": "POST", "path": "/api/v1/agent/jobs", "description": "ERC-8183 Escrowed Task Dispatch"},
+            {"method": "POST", "path": "/api/v1/agent/jobs", "description": "ERC-8183 Escrowed Task Dispatch ($0.010 USDC)"},
             {"method": "GET", "path": "/api/v1/providers", "description": "List Verified Intelligence Providers"},
-            {"method": "GET", "path": "/api/v1/agent/spending-policy", "description": "Circle Wallet Spending Policy"},
-            {"method": "GET", "path": "/api/v1/market/credit-risk-score", "description": "Collateral Risk & Analogs Underwriting (Frontier 3)"},
+            {"method": "GET", "path": "/api/v1/agent/spending-policy", "description": "Circle Wallet Spending Policy Caps"},
+            {"method": "GET", "path": "/api/v1/market/credit-risk-score", "description": "Collateral Risk & Analogs Underwriting"},
             {"method": "GET", "path": "/api/v1/stablefx/quote", "description": "Institutional Stablecoin FX Quote (USDC/EURC)"},
         ],
+        "provider": {
+            "name": "GenQMA Labs",
+            "url": "https://genqma.vercel.app",
+            "support_url": "https://genqma.vercel.app/docs",
+            "documentation_url": "https://genqma.vercel.app/docs",
+            "health_check_url": "https://qma-api.onrender.com/healthz",
+        },
+        "example_prompts": [
+            "Search funding rate arbitrage anomalies for BTC and ETH",
+            "Inspect quantitative analogs and win-rate diagnostics for MBOX",
+            "Get Polymarket event divergence signal vs perpetual futures",
+            "Underwrite collateral credit risk score on Arc",
+        ],
+        "x402_specification": {
+            "version": 2,
+            "scheme": "exact",
+            "payment_rail": "Circle Gateway Nanopayments (x402)",
+            "settlement_verification": "GenLayer Intelligent Contract Consensus",
+            "seller_address": PAYMENT_WALLET_ADDRESS,
+        },
     }
 
 
@@ -166,6 +214,19 @@ def create_agent_router(deps: SimpleNamespace) -> APIRouter:
         responses=documented_errors(429, 500),
     )
     def get_agent_card_well_known():
+        return _get_agent_identity()
+
+    @migrated.get(
+        "/.well-known/agent-card.json",
+        summary="Standard Agent Card metadata for external AI agent discovery",
+        description="""Standard agent discovery metadata card. Enables external AI agents (Circle CLI, Claude, ChatGPT, LangChain) to inspect QMA identity, capabilities, on-chain verification contracts, and pricing models on Arc.
+
+**Authentication:** Public route.""",
+        response_model=AgentIdentityResponse,
+        response_model_exclude_unset=True,
+        responses=documented_errors(429, 500),
+    )
+    def get_agent_card_json_well_known():
         return _get_agent_identity()
 
     @migrated.get(
@@ -234,27 +295,25 @@ def create_agent_router(deps: SimpleNamespace) -> APIRouter:
     @migrated.get(
         "/api/v1/agent/spending-policy",
         summary="Read Circle agent wallet spending policy caps",
-        description="""Inspect QMA advisory spending thresholds (per transaction, UTC calendar day and UTC calendar week). enforce_strict is false: this route does not configure Circle or authorize transfers; payment executors enforce wallet limits.
+        description="""Inspect QMA advisory spending thresholds (per transaction, UTC calendar day, week, and month). enforce_strict is false: this route does not configure Circle or authorize transfers; payment executors enforce wallet limits.
 
 **Authentication:** Public route.""",
         response_model=SpendingPolicyConfigResponse,
         response_model_exclude_unset=True,
         responses=documented_errors(429, 500),
     )
-    def get_spending_policy():
-        return {
-            "standard": "circle-wallet-policy-v1",
-            "max_per_tx_usdc": 0.05,
-            "daily_cap_usdc": 1.00,
-            "weekly_cap_usdc": 5.00,
-            "currency": "USDC",
-            "enforce_strict": False,
-        }
+    def get_spending_policy(
+        wallet_address: str | None = Query(None, description="Optional EVM wallet address to query live Circle CLI limits"),
+    ):
+        if wallet_address:
+            wallet = normalize_address(wallet_address)
+            return get_active_spending_policy(wallet)
+        return get_active_spending_policy()
 
     @migrated.post(
         "/api/v1/agent/spending-policy/evaluate",
         summary="Evaluate proposed purchase against agent spending policy",
-        description="""Read-only evaluation against authoritative settlement history using UTC calendar days and weeks. Evaluations never consume budget. Duplicate settlements count once, confirmed refunds are excluded, and storage failures return 503 rather than an approval. This does not reserve funds or configure Circle spending limits.
+        description="""Read-only evaluation against authoritative settlement history using UTC calendar days, weeks, and months. Evaluations never consume budget. Duplicate settlements count once, confirmed refunds are excluded, and storage failures return 503 rather than an approval. This does not reserve funds or configure Circle spending limits.
 
 **Authentication:** Public route.""",
         response_model=SpendingPolicyEvaluateResponse,
@@ -267,9 +326,101 @@ def create_agent_router(deps: SimpleNamespace) -> APIRouter:
             raise HTTPException(status_code=400, detail="A valid EVM wallet address is required.")
         try:
             events = deps.load_spending_events(wallet)
-            return evaluate_spending(events, request.amount_usdc)
+            kwargs = {}
+            if request.max_per_tx_usdc is not None:
+                kwargs["max_per_tx_usdc"] = request.max_per_tx_usdc
+            if request.daily_cap_usdc is not None:
+                kwargs["daily_cap_usdc"] = request.daily_cap_usdc
+            if request.weekly_cap_usdc is not None:
+                kwargs["weekly_cap_usdc"] = request.weekly_cap_usdc
+            if request.monthly_cap_usdc is not None:
+                kwargs["monthly_cap_usdc"] = request.monthly_cap_usdc
+
+            return evaluate_spending(
+                events,
+                request.amount_usdc,
+                **kwargs,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         except Exception as exc:
             raise HTTPException(status_code=503, detail="Spending ledger is unavailable; no approval was issued.") from exc
+
+    @migrated.get(
+        "/api/v1/agent/spending-policy/command",
+        summary="Generate Circle CLI wallet limit command with OTP instructions",
+        description="""Generates verbatim `circle wallet limit set` CLI command for user terminal execution. Mainnet agent spending limits require email OTP confirmation in an interactive terminal session and must never be handled or stored by the agent server.
+
+**Authentication:** Public route.""",
+        response_model=SpendingPolicyCommandResponse,
+        response_model_exclude_unset=True,
+        responses=documented_errors(400, 429, 500),
+    )
+    def get_spending_policy_command(
+        wallet_address: str = Query(..., description="EVM wallet address of the agent"),
+        max_per_tx: float | None = Query(None, description="Per-transaction cap in USDC"),
+        daily: float | None = Query(None, description="Daily cap in USDC"),
+        weekly: float | None = Query(None, description="Weekly cap in USDC"),
+        monthly: float | None = Query(None, description="Monthly cap in USDC"),
+    ):
+        wallet = normalize_address(wallet_address)
+        if not re.fullmatch(r"0x[0-9a-f]{40}", wallet):
+            raise HTTPException(status_code=400, detail="A valid EVM wallet address is required.")
+        try:
+            kwargs = {}
+            if max_per_tx is not None:
+                kwargs["per_tx"] = max_per_tx
+            if daily is not None:
+                kwargs["daily"] = daily
+            if weekly is not None:
+                kwargs["weekly"] = weekly
+            if monthly is not None:
+                kwargs["monthly"] = monthly
+
+            return build_circle_wallet_limit_command(
+                wallet,
+                **kwargs,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @migrated.get(
+        "/api/v1/agent/delegate-status",
+        summary="Read Circle Gateway Unified Balance delegation status",
+        description="""Returns the active Gateway Wallet contract and supported chains for Circle Gateway Unified Balance addDelegate authorization. Allows the autonomous agent to spend unified balances across chains without per-action popups once authorized by the user.
+
+**Authentication:** Public route.""",
+        response_model=AgentDelegateStatusResponse,
+        response_model_exclude_unset=True,
+        responses=documented_errors(429, 500),
+    )
+    def get_delegate_status(owner_address: str | None = Query(None, description="Optional account owner wallet address")):
+        profile = NETWORKS_DATA.get("testnet" if IS_TESTNET else "mainnet", {})
+        cross_chains = profile.get("crossChains", [])
+        networks = [c.get("id", "").replace("_", "-") for c in cross_chains] if cross_chains else ["arc-testnet", "base-sepolia", "arbitrum-sepolia", "ethereum-sepolia"]
+        networks.sort(key=lambda x: 0 if "arc" in x else 1)
+        normalized_owner = normalize_address(owner_address) if owner_address else None
+        return {
+            "owner_address": normalized_owner,
+            "delegate_address": SHIELD_CONTRACT_ADDRESS,
+            "status": "ready",
+            "is_authorized": True,
+            "gateway_wallet_contract": ARC_GATEWAY_WALLET,
+            "supported_chains": networks,
+            "spending_policy": {
+                "standard": "circle-wallet-policy-v1",
+                "max_per_tx_usdc": DEFAULT_MAX_PER_TX,
+                "daily_cap_usdc": DEFAULT_DAILY_CAP,
+                "weekly_cap_usdc": DEFAULT_WEEKLY_CAP,
+                "monthly_cap_usdc": DEFAULT_MONTHLY_CAP,
+                "currency": "USDC",
+                "enforce_strict": False,
+            },
+            "instructions": (
+                "Call addDelegate(delegateAddress) on Circle Gateway Wallet contract or via "
+                "kit.unifiedBalance.addDelegate() to permit the Autonomous Agent to spend from Unified Balance without interactive popups."
+            ),
+        }
 
     @migrated.get(
         "/api/v1/agent/wallet-config",

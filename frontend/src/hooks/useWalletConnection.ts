@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { clearAllWalletProfileSessions, clearWalletProfileSession } from "../services/walletProfileSession";
 import { useWalletStore } from "../state/walletStore";
+import { ARC_CHAIN } from "../config/network";
 import type { Provider } from "../types/qma";
 
 type ToastTone = "info" | "success" | "warning" | "error";
@@ -83,20 +84,17 @@ export function useWalletConnection({
     return { label: "Buyer", className: "role-buyer" };
   }, [adminAddress, ownedProviders, sellerAddress, wallet]);
 
-  const connect = async () => {
-    if (!window.ethereum?.request) {
-      showToast("EVM wallet provider required.", "error");
-      return;
-    }
-    try {
-      const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as any;
-      const next = accounts && accounts[0] ? String(accounts[0]).toLowerCase() : "";
-      setAddress(next);
-      if (next) {
-        showToast("Wallet connected.", "success");
-      }
-    } catch (err: any) {
-      showToast(err.message || "Connection failed", "error");
+  const [showAppKitModal, setShowAppKitModal] = useState(false);
+
+  const connect = () => {
+    setShowAppKitModal(true);
+  };
+
+  const handleWalletConnected = (addr: string) => {
+    const next = addr ? addr.toLowerCase() : "";
+    setAddress(next);
+    if (next) {
+      showToast(`Wallet connected to ${ARC_CHAIN.name}.`, "success");
     }
   };
 
@@ -114,5 +112,8 @@ export function useWalletConnection({
     walletRole,
     ownedProviders,
     activeProvider,
+    showAppKitModal,
+    setShowAppKitModal,
+    handleWalletConnected,
   };
 }

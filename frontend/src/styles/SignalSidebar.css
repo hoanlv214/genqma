@@ -81,12 +81,193 @@
     margin-bottom: 8px;
 }
 
+.card-symbol-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .card-symbol {
     font-family: var(--mono);
     font-weight: 700;
     font-size: 0.88rem;
     color: var(--t1);
     letter-spacing: 0.5px;
+}
+
+.exchange-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    border: 1px solid var(--bdr);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--t2);
+    line-height: 1.2;
+}
+
+.exchange-logo-icon {
+    width: 12px;
+    height: 12px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.exchange-badge-xs .exchange-logo-icon {
+    width: 11px;
+    height: 11px;
+}
+
+.exchange-badge-sm .exchange-logo-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.exchange-badge-md .exchange-logo-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.sidebar-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: rgba(10, 13, 24, 0.5);
+    border-bottom: 1px solid var(--bdr);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.sidebar-filter-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-pill-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--bdr);
+    color: var(--t3);
+    border-radius: var(--radius-xs);
+    padding: 3px 7px;
+    font-size: 0.65rem;
+    font-family: var(--mono);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+
+.filter-pill-btn:hover {
+    color: var(--t1);
+    border-color: var(--bdr-md);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.filter-pill-btn.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    font-weight: 600;
+}
+
+.card-venues-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.07);
+    font-size: 0.65rem;
+}
+
+.venues-label {
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.venues-list-tags {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.venue-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--bdr);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 0.62rem;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.venue-tag:hover {
+    border-color: var(--accent);
+    background: rgba(124, 111, 255, 0.08);
+}
+
+.venue-tag.is-primary {
+    border-color: rgba(124, 111, 255, 0.35);
+    background: rgba(124, 111, 255, 0.08);
+}
+
+.venue-funding {
+    color: var(--red);
+    font-weight: 600;
+}
+
+.spread-pill {
+    margin-left: auto;
+    color: #00E5FF;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    font-weight: 600;
+    background: rgba(0, 229, 255, 0.08);
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    border-radius: 3px;
+    padding: 1px 4px;
+    white-space: nowrap;
+}
+
+.exchange-pill.exchange-binance {
+    border-color: rgba(243, 186, 47, 0.4);
+    background: rgba(243, 186, 47, 0.12);
+    color: #f3ba2f;
+}
+
+.exchange-pill.exchange-bybit {
+    border-color: rgba(247, 166, 15, 0.4);
+    background: rgba(247, 166, 15, 0.12);
+    color: #f7a60f;
+}
+
+.exchange-pill.exchange-okx {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.exchange-pill.exchange-mexc {
+    border-color: rgba(33, 150, 243, 0.4);
+    background: rgba(33, 150, 243, 0.12);
+    color: #64b5f6;
 }
 
 .card-funding {

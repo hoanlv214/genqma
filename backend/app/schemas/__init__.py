@@ -16,6 +16,7 @@ from backend.app.schemas.providers import (
     CreatorReviewRequest,
     ProviderToggleRequest,
 )
+from backend.app.schemas.onramp import OnrampSessionRequest, OnrampSessionResponse
 from backend.app.schemas.query import QueryModel
 from backend.app.schemas.wallets import WalletProfileSessionRequest
 from backend.app.schemas.health_responses import (
@@ -128,5 +129,7 @@ __all__ = [
 
     "StableFXPairsResponse",
     "StableFXQuoteResponse",
+    "OnrampSessionRequest",
+    "OnrampSessionResponse",
 ]
 

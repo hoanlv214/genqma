@@ -1,3 +1,32 @@
+import { encodeFunctionData, erc20Abi, maxUint256, pad, parseUnits } from "viem";
+import { ARC_CHAIN } from "../config/network";
+
+export const GATEWAY_MINTER_ABI = [
+  {
+    type: "function",
+    name: "gatewayMint",
+    inputs: [
+      { name: "attestationPayload", type: "bytes" },
+      { name: "signature", type: "bytes" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+] as const;
+
+export const GATEWAY_WALLET_ABI = [
+  {
+    type: "function",
+    name: "deposit",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+] as const;
+
 export const utf8ToHex = (value: string) => {
   const bytes = new TextEncoder().encode(String(value || ""));
   return `0x${Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
@@ -5,8 +34,15 @@ export const utf8ToHex = (value: string) => {
 
 export const randomHexBytes = (length: number) => {
   const bytes = new Uint8Array(length);
-  if (window.crypto?.getRandomValues) {
-    window.crypto.getRandomValues(bytes);
+  const cryptoObj =
+    typeof window !== "undefined" && window.crypto
+      ? window.crypto
+      : typeof globalThis !== "undefined" && (globalThis as any).crypto
+        ? (globalThis as any).crypto
+        : null;
+
+  if (cryptoObj?.getRandomValues) {
+    cryptoObj.getRandomValues(bytes);
   } else {
     for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
   }
@@ -15,25 +51,37 @@ export const randomHexBytes = (length: number) => {
 
 export const randomHexNonce = () => randomHexBytes(16);
 
-export const addressToBytes32 = (address: string) => {
+export const addressToBytes32 = (address: string): `0x${string}` => {
   const clean = String(address || "").replace(/^0x/i, "").toLowerCase();
   if (!/^[0-9a-f]{40}$/.test(clean)) {
     throw new Error(`Invalid EVM address: ${address || "empty"}`);
   }
-  return `0x${clean.padStart(64, "0")}`;
+  return pad(`0x${clean}` as `0x${string}`, { size: 32, dir: "left" });
 };
 
-export const encodeGatewayMintCalldata = (attestationHex: string, signatureHex: string) => {
-  const att = String(attestationHex || "").replace(/^0x/i, "").toLowerCase();
-  const sig = String(signatureHex || "").replace(/^0x/i, "").toLowerCase();
-  const attLen = att.length / 2;
-  const sigLen = sig.length / 2;
-  const offset1 = 64;
-  const attPaddedLen = Math.ceil(attLen / 32) * 32;
-  const offset2 = 64 + 32 + attPaddedLen;
-  const toWord = (value: number) => value.toString(16).padStart(64, "0");
-  const padTo32 = (hex: string) => hex.padEnd(Math.ceil(hex.length / 64) * 64, "0");
-  return `0x9fb01cc5${toWord(offset1)}${toWord(offset2)}${toWord(attLen)}${padTo32(att)}${toWord(sigLen)}${padTo32(sig)}`;
+export const encodeGatewayMintCalldata = (attestationHex: string, signatureHex: string): `0x${string}` => {
+  const normAtt = (String(attestationHex || "").startsWith("0x")
+    ? String(attestationHex || "")
+    : `0x${String(attestationHex || "")}`) as `0x${string}`;
+  const normSig = (String(signatureHex || "").startsWith("0x")
+    ? String(signatureHex || "")
+    : `0x${String(signatureHex || "")}`) as `0x${string}`;
+
+  return encodeFunctionData({
+    abi: GATEWAY_MINTER_ABI,
+    functionName: "gatewayMint",
+    args: [normAtt, normSig],
+  });
+};
+
+export const encodeErc20TransferCalldata = (recipient: string, amountDecimal: number, decimals = 6): `0x${string}` => {
+  const normRecipient = (recipient.startsWith("0x") ? recipient : `0x${recipient}`) as `0x${string}`;
+  const rawUnits = parseUnits(amountDecimal.toFixed(decimals), decimals);
+  return encodeFunctionData({
+    abi: erc20Abi,
+    functionName: "transfer",
+    args: [normRecipient, rawUnits],
+  });
 };
 
 export const buildCreatorClaimMessage = ({
@@ -59,7 +107,7 @@ export const buildCreatorClaimMessage = ({
     `amount_usdc: ${Number(amountUsdc || 0).toFixed(6)}`,
     `nonce: ${nonce}`,
     `issued_at: ${Number(issuedAt)}`,
-    `network: ${network || "Arc Testnet"}`,
+    `network: ${network || ARC_CHAIN.name}`,
   ].join("\n");
 };
 
@@ -74,8 +122,8 @@ export const buildGatewayWithdrawIntent = (
   amountUsdc: number,
   { gatewayContractAddress, gatewayMinterAddress, arcUsdcAddress, wallet }: GatewayWithdrawAddresses,
 ) => ({
-  maxBlockHeight: "115792089237316195423570985008687907853269984665640564039457584007913129639935",
-  maxFee: String(Math.round(2.01 * 1_000_000)),
+  maxBlockHeight: maxUint256.toString(),
+  maxFee: parseUnits("2.01", 6).toString(),
   spec: {
     version: 1,
     sourceDomain: 26,
@@ -88,7 +136,7 @@ export const buildGatewayWithdrawIntent = (
     destinationRecipient: addressToBytes32(wallet),
     sourceSigner: addressToBytes32(wallet),
     destinationCaller: addressToBytes32("0x0000000000000000000000000000000000000000"),
-    value: String(Math.round(Number(amountUsdc || 0) * 1_000_000)),
+    value: parseUnits(Number(amountUsdc || 0).toFixed(6), 6).toString(),
     salt: randomHexBytes(32),
     hookData: "0x",
   },

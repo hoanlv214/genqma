@@ -127,7 +127,7 @@ async function acquireSessionLease() {
       }
     }
   } catch (e) {
-    console.error(`[Worker ${WORKER_ID}] Acquire lease error:`, e);
+    console.error(`[Worker ${WORKER_ID}] Acquire lease error (${API_BASE_URL}):`, e);
   }
   return null;
 }
@@ -183,7 +183,7 @@ async function checkpointSessionTick(sessionId: string, runGeneration: number, s
 }
 
 async function runWorkerLoop() {
-  console.log(`[Worker ${WORKER_ID}] Started. Polling Supabase Queue for session ticks...`);
+  console.log(`[Worker ${WORKER_ID}] Started. Polling backend session queue at ${API_BASE_URL} for session ticks...`);
 
   // Background sweeper to reclaim expired leases every 60s
   setInterval(async () => {

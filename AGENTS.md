@@ -61,6 +61,17 @@ QMA-specific reminders:
 
 Before modifying any file listed above: read `docs/agent/PAYMENT_FLOW.md` first, do not infer invoice lifecycle or idempotency rules from code alone. Never write directly to invoice state — always go through the service layer (per ast-grep rule: `python-state-invoices-direct-write.yml`).
 
+## Primary Engineering & Refactoring Protocol (CRCIP)
+
+For any audit, code cleanup, refactoring, architectural migration, or concurrency optimization across this codebase, all autonomous agents (Gemini, Claude, Codex) MUST strictly adhere to the **Controlled Refactoring & Codebase Intelligence Protocol (CRCIP)** specified in [`docs/architecture/CONTROLLED_REFACTORING_PROTOCOL.md`](docs/architecture/CONTROLLED_REFACTORING_PROTOCOL.md).
+
+Key Invariants Enforced by CRCIP:
+1. **Scope Control**: Never expand task scope automatically. Unrelated technical debt discovered during analysis must be logged as findings (`FOLLOW-UP`), not refactored without explicit approval.
+2. **Pre-Flight Mandatory**: Query `CodeGraph`, evaluate 3-axis risk (Business Criticality, Security Sensitivity, Blast Radius), check runtime contracts, and verify test coverage before editing any symbol.
+3. **Evidence-Based (E0–E5)**: No change is complete without empirical proof (E3 build/test required; E5 adversarial review required for payment/critical invariants).
+4. **Safety Boundary**: Never overwrite uncommitted user changes. Distinguish pre-existing baseline test failures from new regressions (zero new regressions permitted).
+5. **Living Intelligence**: Keep `codegraph.db` synchronized with risk metadata and `last_verified_commit`.
+
 ## Work Protocol
 
 For all non-trivial tasks:
@@ -137,4 +148,14 @@ Legacy migration:
 Deployment:
 - `DEPLOYMENT_SETUP.md`
 
+Architecture, Auditing & Refactoring:
+- `docs/architecture/CONTROLLED_REFACTORING_PROTOCOL.md`
+
 Do not load unrelated documentation.
+
+## Independence and Truthfulness Policy (Strict Rule)
+
+1. **Independent Product Identity**: QMA must always be built, maintained, and presented as an independent, production-grade autonomous intelligence application on Arc. NEVER mention "hackathon", "Tameion", "Canteen", "competition", or "prize" in any UI copy, landing page, documentation, code comments, or commit messages.
+2. **Zero False Claims / Grounded Engineering**: Never invent or advertise features, CLI commands, or business workflows that do not exist in the codebase (e.g. do not invent fictitious CLI commands like `arc-cfo` or fictitious HR contractor payroll workflows).
+3. **Canonical CLI Reference**: The sole canonical agent CLI in this repository is `qma` (`agents/bin/qma.js`), invoked via `$ qma agent run [options]` or `npx @hoanlv214/qma-cli agent run`.
+
