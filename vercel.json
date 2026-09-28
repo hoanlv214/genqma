@@ -118,7 +118,7 @@
     },
     {
       "source": "/api/:path*",
-      "destination": "https://qma-api.onrender.com/api/:path*"
+      "destination": "https://driveway-expansive-onyx.ngrok-free.dev/api/:path*"
     },
     {
       "source": "/:path*",
