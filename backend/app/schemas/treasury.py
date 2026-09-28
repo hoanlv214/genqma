@@ -36,6 +36,7 @@ class EuthynaAuditRecordResponse(BaseModel):
     cfo_reasoning: str = Field(..., description="AI CFO rationale")
     provider_id: Optional[str] = Field(None, description="Provider ID if applicable")
     genlayer_consensus: Optional[str] = Field(None, description="GenLayer multi-validator verdict")
+    previous_hash: Optional[str] = Field(None, description="Cryptographic SHA-256 hash of preceding audit record")
     integrity_hash: str = Field(..., description="SHA-256 integrity digest")
     status: str = Field("VERIFIED_AUDITABLE", description="Verification status")
 
@@ -71,6 +72,7 @@ class USYCForecastResponse(BaseModel):
 class EuthynaIntegrityResponse(BaseModel):
     total_audit_records: int = Field(..., description="Total records verified")
     tampered_records: int = Field(..., description="Number of compromised records detected")
+    chain_broken: bool = Field(False, description="Whether hash-chain continuity was broken")
     audit_health: str = Field("PASSED", description="Audit health check status")
     settlement_chain: str = Field(default_factory=lambda: f"{PAYMENT_NETWORK_NAME} ({ARC_CHAIN_ID})", description="Blockchain settlement anchor")
     treasury_anchor: str = Field(..., description="Platform treasury wallet address")

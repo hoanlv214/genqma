@@ -92,16 +92,37 @@ class EuthynaAuditEngine:
         clean_tx = tx_hash.strip() if (tx_hash and isinstance(tx_hash, str) and tx_hash.strip()) else None
         arcscan_link = f"{ARC_EXPLORER}/tx/{clean_tx}" if clean_tx else None
 
-        # Cryptographic integrity digest
+        # Determine predecessor hash for tamper-evident hash chaining
+        prev_hash = "GENESIS"
+        if self._records:
+            prev_hash = self._records[-1].get("integrity_hash", "GENESIS")
+
+        # Balance continuity check for the same actor
+        prev_actor_record = next(
+            (r for r in reversed(self._records) if r.get("actor") == norm_actor), None
+        )
+        if prev_actor_record is not None and prev_actor_record.get("treasury_liquid_after") is not None:
+            prev_after = prev_actor_record["treasury_liquid_after"]
+            if abs(prev_after - rounded_before) > 0.000001:
+                logger.warning(
+                    f"[EUTHYNA AUDIT] Balance discontinuity detected for actor {norm_actor}: "
+                    f"previous liquid after = {prev_after}, current liquid before = {rounded_before}"
+                )
+
+        # Cryptographic integrity digest with chained previous_hash
         tx_str = clean_tx or ""
         payload_to_hash = (
-            f"{record_id}|{timestamp}|{action}|{norm_actor}|{rounded_amount}|"
+            f"{prev_hash}|{record_id}|{timestamp}|{action}|{norm_actor}|{rounded_amount}|"
             f"{rounded_before}|{rounded_after}|{rounded_shares}|{tx_str}"
         )
         record_hash = hashlib.sha256(payload_to_hash.encode("utf-8")).hexdigest()
 
+        # Differentiate between live on-chain settlement vs simulated/prepared intent
+        status = "LIVE_SETTLED" if clean_tx else "DRY_RUN_SIMULATED"
+
         entry = {
             "record_id": record_id,
+            "previous_hash": prev_hash,
             "timestamp": timestamp,
             "action": action,
             "actor": norm_actor,
@@ -116,12 +137,12 @@ class EuthynaAuditEngine:
             "provider_id": provider_id,
             "genlayer_consensus": genlayer_consensus,
             "integrity_hash": record_hash,
-            "status": "VERIFIED_AUDITABLE",
+            "status": status,
         }
 
         self._records.append(entry)
         self._persist_records()
-        logger.info(f"[EUTHYNA AUDIT] Recorded {action} for {actor}: {amount_usdc} USDC -> {clean_tx or 'INTERNAL'}")
+        logger.info(f"[EUTHYNA AUDIT] Recorded {action} [{status}] for {actor}: {amount_usdc} USDC -> {clean_tx or 'INTERNAL'}")
         return entry
 
     def get_audit_trail(
@@ -129,9 +150,12 @@ class EuthynaAuditEngine:
         limit: int = 50,
         action_filter: Optional[str] = None,
         actor_filter: Optional[str] = None,
+        only_live: bool = False,
     ) -> List[Dict[str, Any]]:
         """Retrieve historical audit trail sorted descending by timestamp."""
         results = self._records
+        if only_live:
+            results = [r for r in results if r.get("tx_hash")]
         if action_filter:
             results = [r for r in results if r["action"].lower() == action_filter.lower()]
         if actor_filter:
@@ -141,23 +165,44 @@ class EuthynaAuditEngine:
         return list(reversed(results))[:limit]
 
     def verify_integrity(self) -> Dict[str, Any]:
-        """Cryptographically recompute integrity hashes across all records."""
+        """Cryptographically recompute integrity hashes and verify hash chain across all records."""
         total = len(self._records)
         tampered = 0
-        for r in self._records:
+        chain_broken = False
+        last_hash = "GENESIS"
+
+        for idx, r in enumerate(self._records):
             tx_str = r.get("tx_hash") or ""
-            payload = (
-                f"{r['record_id']}|{r['timestamp']}|{r['action']}|{r['actor']}|"
-                f"{r['amount_usdc']}|{r['treasury_liquid_before']}|"
-                f"{r['treasury_liquid_after']}|{r['usyc_vault_shares']}|{tx_str}"
-            )
+            prev_hash = r.get("previous_hash")
+
+            if prev_hash is not None:
+                # Chained record verification
+                if idx > 0 and prev_hash != last_hash:
+                    tampered += 1
+                    chain_broken = True
+                payload = (
+                    f"{prev_hash}|{r['record_id']}|{r['timestamp']}|{r['action']}|{r['actor']}|"
+                    f"{r['amount_usdc']}|{r['treasury_liquid_before']}|"
+                    f"{r['treasury_liquid_after']}|{r['usyc_vault_shares']}|{tx_str}"
+                )
+            else:
+                # Backward-compatible unchained record verification for legacy entries
+                payload = (
+                    f"{r['record_id']}|{r['timestamp']}|{r['action']}|{r['actor']}|"
+                    f"{r['amount_usdc']}|{r['treasury_liquid_before']}|"
+                    f"{r['treasury_liquid_after']}|{r['usyc_vault_shares']}|{tx_str}"
+                )
+
             expected = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-            if r["integrity_hash"] != expected:
+            if r.get("integrity_hash") != expected:
                 tampered += 1
+
+            last_hash = r.get("integrity_hash") or ""
 
         return {
             "total_audit_records": total,
             "tampered_records": tampered,
+            "chain_broken": chain_broken,
             "audit_health": "PASSED" if tampered == 0 else "COMPROMISED",
             "settlement_chain": f"{PAYMENT_NETWORK_NAME} ({ARC_CHAIN_ID})",
             "treasury_anchor": PLATFORM_TREASURY_ADDRESS,

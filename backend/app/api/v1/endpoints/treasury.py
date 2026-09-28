@@ -87,7 +87,10 @@ def sweep_idle_cash(req: SweepRequest) -> USYCSweepResponse:
                 status_code=400,
                 detail=f"Insufficient liquid USDC on Arc. Available: {liquid_before:.4f}, Requested: {req.amount_usdc}",
             )
-        exec_res = usyc_treasury_service.execute_deposit(amount_usdc=req.amount_usdc, depositor=depositor)
+        try:
+            exec_res = usyc_treasury_service.execute_deposit(amount_usdc=req.amount_usdc, depositor=depositor)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
         tx_hash = exec_res.get("tx_hash")
         explorer_url = exec_res.get("explorer_url")
         status = "CONFIRMED_ONCHAIN"
@@ -144,9 +147,12 @@ def jit_redeem_usyc(req: JITRedeemRequest) -> USYCJITRedeemResponse:
                 status_code=400,
                 detail=f"Insufficient USYC vault shares on Arc. Available: {current_shares:.4f}, Requested: {req.amount_usdc_needed}",
             )
-        exec_res = usyc_treasury_service.execute_redeem(
-            amount_usdc_needed=req.amount_usdc_needed, owner=owner, receiver=receiver
-        )
+        try:
+            exec_res = usyc_treasury_service.execute_redeem(
+                amount_usdc_needed=req.amount_usdc_needed, owner=owner, receiver=receiver
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
         tx_hash = exec_res.get("tx_hash")
         explorer_url = exec_res.get("explorer_url")
         status = "CONFIRMED_ONCHAIN"
@@ -209,9 +215,12 @@ def get_audit_trail(
     limit: int = Query(50, ge=1, le=500),
     action: Optional[str] = Query(None),
     actor: Optional[str] = Query(None),
+    only_live: bool = Query(False, description="Filter only records with confirmed on-chain transaction hashes"),
 ) -> List[EuthynaAuditRecordResponse]:
     """Retrieve immutable audit records for regulatory and board examination."""
-    records = euthyna_audit_engine.get_audit_trail(limit=limit, action_filter=action, actor_filter=actor)
+    records = euthyna_audit_engine.get_audit_trail(
+        limit=limit, action_filter=action, actor_filter=actor, only_live=only_live
+    )
     return [EuthynaAuditRecordResponse(**r) for r in records]
 
 

@@ -74,8 +74,9 @@ def test_euthyna_audit_engine_integrity():
         reasoning="Test audit reasoning",
     )
     assert entry["record_id"].startswith("euthyna_")
-    assert entry["status"] == "VERIFIED_AUDITABLE"
+    assert entry["status"] in {"VERIFIED_AUDITABLE", "DRY_RUN_SIMULATED"}
     assert "integrity_hash" in entry
+    assert "previous_hash" in entry
 
     integrity = audit.verify_integrity()
     assert integrity["audit_health"] == "PASSED"
@@ -363,5 +364,139 @@ def test_treasury_policy_and_decision_api(monkeypatch, tmp_path):
     finally:
         usyc_treasury_service._policy_file = orig_policy_file
         usyc_treasury_service._policy = None
+
+
+def test_usyc_decimals_native_scaled_to_six(monkeypatch):
+    """Verify Arc native USDC balance is scaled by 1e6 (not 1e18)."""
+    service = USYCTreasuryService()
+    raw_hex = hex(10_000_000)  # 10 USDC
+    monkeypatch.setattr(
+        "backend.app.services.usyc_treasury._rpc_generic",
+        lambda method, params: raw_hex,
+    )
+    monkeypatch.setattr(service, "_w3", None)
+    bal = service.get_liquid_usdc_balance("0x23e7c029a287a83d80b2e084e008211658dda11d")
+    assert bal == 10.0
+
+
+def test_usyc_safety_rails_max_sweep(monkeypatch):
+    """Enforce max_sweep_per_epoch_usdc prevents excessive sweeping."""
+    service = USYCTreasuryService()
+    monkeypatch.setattr(service, "get_liquid_usdc_balance", lambda addr: 1000.0)
+    with pytest.raises(ValueError, match="exceeds max limit"):
+        service._enforce_safety_rails("USYC_DEPOSIT", amount_usdc=51.0, bypass_cooldown=True)
+
+
+def test_usyc_safety_rails_min_reserve(monkeypatch):
+    """Enforce min_operating_reserve_usdc prevents draining treasury."""
+    service = USYCTreasuryService()
+    monkeypatch.setattr(service, "get_liquid_usdc_balance", lambda addr: 12.0)
+    with pytest.raises(ValueError, match="breach minimum operational reserve"):
+        service._enforce_safety_rails("USYC_DEPOSIT", amount_usdc=5.0, bypass_cooldown=True)
+
+
+def test_usyc_safety_rails_max_jit_redeem():
+    """Enforce max_jit_redeem_per_epoch_usdc prevents excessive single redemption."""
+    service = USYCTreasuryService()
+    with pytest.raises(ValueError, match="exceeds max limit"):
+        service._enforce_safety_rails("USYC_REDEEM", amount_usdc=100.0, bypass_cooldown=True)
+
+
+def test_usyc_safety_rails_rebalance_cooldown():
+    """Enforce cooldown prevents rapid rebalancing."""
+    service = USYCTreasuryService()
+    service._last_rebalance_at = time.time()
+    with pytest.raises(ValueError, match="rebalance cooldown active"):
+        service._enforce_safety_rails("USYC_DEPOSIT", amount_usdc=1.0, bypass_cooldown=False)
+
+
+def test_euthyna_chained_audit_trail_tamper_detection(tmp_path):
+    """Verify cryptographic hash chaining detects inserted, reordered, or modified records."""
+    audit_file = tmp_path / "test_chained_audit.json"
+    audit = EuthynaAuditEngine(audit_file=audit_file)
+
+    e1 = audit.record_action(
+        action="IDLE_SWEEP",
+        actor="0x23e7c029a287a83d80b2e084e008211658dda11d",
+        amount_usdc=5.0,
+        balance_before=50.0,
+        balance_after=45.0,
+        usyc_shares=5.0,
+        policy_rule="RULE_SWEEP",
+        reasoning="Sweep 1",
+    )
+    e2 = audit.record_action(
+        action="JIT_REDEMPTION",
+        actor="0x23e7c029a287a83d80b2e084e008211658dda11d",
+        amount_usdc=1.0,
+        balance_before=45.0,
+        balance_after=46.0,
+        usyc_shares=4.0,
+        policy_rule="RULE_JIT",
+        reasoning="Redeem 1",
+    )
+    e3 = audit.record_action(
+        action="IDLE_SWEEP",
+        actor="0x23e7c029a287a83d80b2e084e008211658dda11d",
+        amount_usdc=2.0,
+        balance_before=46.0,
+        balance_after=44.0,
+        usyc_shares=6.0,
+        policy_rule="RULE_SWEEP",
+        reasoning="Sweep 2",
+    )
+
+    assert e1["previous_hash"] == "GENESIS"
+    assert e2["previous_hash"] == e1["integrity_hash"]
+    assert e3["previous_hash"] == e2["integrity_hash"]
+
+    ver_clean = audit.verify_integrity()
+    assert ver_clean["audit_health"] == "PASSED"
+    assert ver_clean["chain_broken"] is False
+    assert ver_clean["tampered_records"] == 0
+
+    audit._records[1]["previous_hash"] = "0000000000000000000000000000000000000000000000000000000000000000"
+    ver_tampered = audit.verify_integrity()
+    assert ver_tampered["audit_health"] == "COMPROMISED"
+    assert ver_tampered["chain_broken"] is True
+    assert ver_tampered["tampered_records"] > 0
+
+
+def test_euthyna_live_settled_vs_simulated_status(tmp_path):
+    """Verify audit engine sets LIVE_SETTLED for onchain tx and DRY_RUN_SIMULATED for prepared intent."""
+    audit = EuthynaAuditEngine(audit_file=tmp_path / "test_status_audit.json")
+
+    e_dry = audit.record_action(
+        action="IDLE_SWEEP",
+        actor="0x23e7c029a287a83d80b2e084e008211658dda11d",
+        amount_usdc=5.0,
+        balance_before=50.0,
+        balance_after=45.0,
+        usyc_shares=5.0,
+        policy_rule="RULE_SWEEP",
+        reasoning="Simulated sweep",
+        tx_hash=None,
+    )
+    assert e_dry["status"] == "DRY_RUN_SIMULATED"
+
+    e_live = audit.record_action(
+        action="IDLE_SWEEP",
+        actor="0x23e7c029a287a83d80b2e084e008211658dda11d",
+        amount_usdc=5.0,
+        balance_before=45.0,
+        balance_after=40.0,
+        usyc_shares=10.0,
+        policy_rule="RULE_SWEEP",
+        reasoning="Live on-chain sweep",
+        tx_hash="0x2e3ddaa710fd5ac2366d95c6228c2908fe96af50b8fe8bb9650e6f2eb72825ba",
+    )
+    assert e_live["status"] == "LIVE_SETTLED"
+
+    trail_all = audit.get_audit_trail(only_live=False)
+    assert len(trail_all) == 2
+
+    trail_live = audit.get_audit_trail(only_live=True)
+    assert len(trail_live) == 1
+    assert trail_live[0]["status"] == "LIVE_SETTLED"
 
 

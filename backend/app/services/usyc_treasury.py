@@ -204,7 +204,7 @@ class USYCTreasuryService:
                     self._policy = CorporateTreasuryPolicy(**data)
                     return self._policy
             except Exception as exc:
-                logger.warning(f"Could not load policy from {self._policy_file}: {exc}")
+                logger.error(f"[CFO AGENT POLICY] Could not load policy from {self._policy_file}: {exc}. Enforcing strict default safety policy.")
         self._policy = CorporateTreasuryPolicy()
         return self._policy
 
@@ -228,7 +228,7 @@ class USYCTreasuryService:
         logger.info(f"USYC Vault address set to: {self.vault_address}")
 
     def get_liquid_usdc_balance(self, account_address: Optional[str] = None) -> float:
-        """Query real liquid native USDC balance from Arc Testnet RPC (18 decimals native)."""
+        """Query real liquid native USDC balance from Arc Testnet RPC (6 decimals native)."""
         target = normalize_address(account_address or PLATFORM_TREASURY_ADDRESS or PAYMENT_WALLET_ADDRESS)
         if not target:
             return 0.0
@@ -236,7 +236,8 @@ class USYCTreasuryService:
         if self._w3:
             try:
                 bal_wei = self._w3.eth.get_balance(Web3.to_checksum_address(target))
-                return round(float(bal_wei) / 1e18, 6)
+                # Arc native gas token is USDC (6 decimals: 1 USDC = 1,000,000 micro-units)
+                return round(float(bal_wei) / 1e6, 6)
             except Exception as exc:
                 logger.debug(f"w3.eth.get_balance failed: {exc}")
 
@@ -244,10 +245,49 @@ class USYCTreasuryService:
         res = _rpc_generic("eth_getBalance", [target, "latest"])
         if res and res != "0x":
             try:
-                return round(int(res, 16) / 1e18, 6)
+                return round(int(res, 16) / 1e6, 6)
             except Exception:
                 pass
         return 0.0
+
+    def _enforce_safety_rails(
+        self,
+        action: str,
+        amount_usdc: float,
+        target_account: Optional[str] = None,
+        bypass_cooldown: bool = False,
+    ) -> None:
+        """Enforce strict quantitative safety rails before any on-chain deposit or redemption."""
+        if amount_usdc <= 0:
+            raise ValueError(f"Transaction amount must be strictly positive: {amount_usdc}")
+
+        policy = self.get_policy()
+        now = time.time()
+
+        # 1. Cooldown guard
+        if not bypass_cooldown and self._last_rebalance_at > 0.0 and (now - self._last_rebalance_at) < policy.rebalance_cooldown_seconds:
+            remaining = int(policy.rebalance_cooldown_seconds - (now - self._last_rebalance_at))
+            raise ValueError(f"Treasury rebalance cooldown active. Must wait {remaining}s before next action.")
+
+        acct = normalize_address(target_account or PLATFORM_TREASURY_ADDRESS or PAYMENT_WALLET_ADDRESS)
+        liquid = self.get_liquid_usdc_balance(acct)
+
+        # 2. Action-specific bound checks
+        if action in {"SWEEP", "USYC_DEPOSIT", "SWEEP_IDLE"}:
+            if amount_usdc > policy.max_sweep_per_epoch_usdc:
+                raise ValueError(
+                    f"Sweep amount ({amount_usdc} USDC) exceeds max limit ({policy.max_sweep_per_epoch_usdc} USDC)."
+                )
+            if (liquid - amount_usdc) < policy.min_operating_reserve_usdc:
+                raise ValueError(
+                    f"Sweep would breach minimum operational reserve ({policy.min_operating_reserve_usdc} USDC). "
+                    f"Available: {liquid:.4f}, Requested: {amount_usdc:.4f}, Remaining: {liquid - amount_usdc:.4f} USDC."
+                )
+        elif action in {"REDEEM", "USYC_REDEEM", "JIT_REDEEM", "USYC_JIT_REDEMPTION"}:
+            if amount_usdc > policy.max_jit_redeem_per_epoch_usdc:
+                raise ValueError(
+                    f"Redemption amount ({amount_usdc} USDC) exceeds max limit ({policy.max_jit_redeem_per_epoch_usdc} USDC)."
+                )
 
     def query_onchain_position(self, account_address: Optional[str] = None) -> Dict[str, Any]:
         """Query real on-chain USYC share balance and equivalent USDC assets."""
@@ -341,6 +381,11 @@ class USYCTreasuryService:
         """Prepare autonomous EIP-712 / EVM deposit payload to sweep idle USDC into USYC."""
         if amount_usdc <= 0:
             raise ValueError("Deposit amount must be greater than 0")
+        policy = self.get_policy()
+        if amount_usdc > policy.max_sweep_per_epoch_usdc:
+            raise ValueError(
+                f"Deposit intent exceeds maximum allowable sweep ({policy.max_sweep_per_epoch_usdc} USDC)"
+            )
 
         amount_raw = int(amount_usdc * 1e6)
         depositor_norm = normalize_address(depositor)
@@ -379,6 +424,11 @@ class USYCTreasuryService:
         """Prepare Just-In-Time (JIT) redemption to pay an x402 data feed bill."""
         if amount_usdc_needed <= 0:
             raise ValueError("Redemption amount must be greater than 0")
+        policy = self.get_policy()
+        if amount_usdc_needed > policy.max_jit_redeem_per_epoch_usdc:
+            raise ValueError(
+                f"Redemption intent exceeds maximum allowable JIT redeem ({policy.max_jit_redeem_per_epoch_usdc} USDC)"
+            )
 
         amount_raw = int(amount_usdc_needed * 1e6)
         receiver_norm = normalize_address(receiver)
@@ -425,10 +475,10 @@ class USYCTreasuryService:
         amount_usdc: float,
         private_key: Optional[str] = None,
         depositor: Optional[str] = None,
+        bypass_cooldown: bool = False,
     ) -> Dict[str, Any]:
         """Execute real on-chain deposit into USYCVault on Arc Testnet."""
-        if amount_usdc <= 0:
-            raise ValueError("Deposit amount must be strictly positive")
+        self._enforce_safety_rails("USYC_DEPOSIT", amount_usdc, depositor, bypass_cooldown=bypass_cooldown)
         if not self._w3 or not Account:
             raise RuntimeError("Web3 or eth_account is not available for on-chain execution")
 
@@ -480,6 +530,8 @@ class USYCTreasuryService:
         if receipt.get("status") != 1:
             raise RuntimeError(f"Deposit transaction reverted on Arc Testnet: {tx_hash_hex}")
 
+        self._last_rebalance_at = time.time()
+
         return {
             "success": True,
             "action": "USYC_DEPOSIT",
@@ -497,10 +549,10 @@ class USYCTreasuryService:
         private_key: Optional[str] = None,
         owner: Optional[str] = None,
         receiver: Optional[str] = None,
+        bypass_cooldown: bool = False,
     ) -> Dict[str, Any]:
         """Execute real on-chain redemption from USYCVault on Arc Testnet."""
-        if amount_usdc_needed <= 0:
-            raise ValueError("Redemption amount must be strictly positive")
+        self._enforce_safety_rails("USYC_REDEEM", amount_usdc_needed, owner, bypass_cooldown=bypass_cooldown)
         if not self._w3 or not Account:
             raise RuntimeError("Web3 or eth_account is not available for on-chain execution")
 
@@ -539,6 +591,8 @@ class USYCTreasuryService:
         receipt = self._w3.eth.wait_for_transaction_receipt(raw_tx_hash, timeout=20)
         if receipt.get("status") != 1:
             raise RuntimeError(f"Redemption transaction reverted on Arc Testnet: {tx_hash_hex}")
+
+        self._last_rebalance_at = time.time()
 
         return {
             "success": True,
@@ -656,10 +710,10 @@ class USYCTreasuryService:
             elif execute_if_authorized and policy.autonomous_execution_enabled:
                 try:
                     if decision == "SWEEP_IDLE":
-                        exec_res = self.execute_deposit(amount_usdc=amount_usdc, depositor=target_account)
+                        exec_res = self.execute_deposit(amount_usdc=amount_usdc, depositor=target_account, bypass_cooldown=True)
                         tx_hash = exec_res.get("tx_hash")
                     elif decision == "JIT_REDEEM":
-                        exec_res = self.execute_redeem(amount_usdc_needed=amount_usdc, owner=target_account, receiver=target_account)
+                        exec_res = self.execute_redeem(amount_usdc_needed=amount_usdc, owner=target_account, receiver=target_account, bypass_cooldown=True)
                         tx_hash = exec_res.get("tx_hash")
                     self._last_rebalance_at = now
                     execution_status = "EXECUTED_ONCHAIN"
