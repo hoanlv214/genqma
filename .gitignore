@@ -42,7 +42,8 @@ __v0_jsx-dev-runtime.ts
 .codex/
 .zcode/
 skills-lock.json
-.codegraphmcp-server/dist/
+.codegraph/
+mcp-server/dist/
 
 graphify-out/
 
@@ -50,4 +51,17 @@ graphify-out/
 .arc-studio/
 contracts/out/
 contracts/cache/
-scratch/
+scratch/
+scratch_*
+*_scratch.*
+temp_*
+*_temp.*
+tmp/
+*.tmp
+*.bak
+*.swp
+
+# Private Grant Application & Confidential Proposal Materials
+grant_application/
+*.grant.md
+docs/private/

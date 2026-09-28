@@ -425,6 +425,14 @@ async def qma_http_exception_handler(request: Request, exc: HTTPException):
             headers.setdefault(k, v)
         content["price"] = challenge_body["price"]
         content["x402Version"] = challenge_body["x402Version"]
+        content["protocols"] = challenge_body.get("protocols", [])
+        content["rails"] = challenge_body.get("rails", ["x402", "mpp"])
+        content["dualRail"] = challenge_body.get("dualRail", True)
+        content["multiChain"] = challenge_body.get("multiChain", True)
+        content["auth"] = challenge_body.get("auth", {})
+        content["proofOfHuman"] = challenge_body.get("proofOfHuman", {})
+        content["schema"] = challenge_body.get("schema", {})
+        content["bazaarSchema"] = challenge_body.get("bazaarSchema", {})
         content["accepts"] = challenge_body["accepts"]
         content["extensions"] = challenge_body.get("extensions", {})
 
@@ -623,6 +631,15 @@ def qma_openapi():
         "url": "https://genqma.vercel.app",
     }
     info["x-guidance"] = AGENT_GUIDANCE
+    info["x-capabilities"] = [
+        "dualRail",
+        "circleGateway",
+        "proofOfHuman",
+        "siwx",
+        "multiChain",
+        "bazaarSchema",
+    ]
+    info["x-payment-rails"] = ["x402", "mpp"]
     schema["externalDocs"] = {
         "description": "GenQMA Documentation and Agent Integration Guide",
         "url": "https://genqma.vercel.app/docs",
@@ -684,6 +701,14 @@ def qma_openapi():
             operation["x-qma-audiences"] = _operation_audiences(path, method, operation, access)
             if access == "paid-access":
                 operation["x-payment-info"] = X_PAYMENT_INFO
+                operation["x-capabilities"] = [
+                    "dualRail",
+                    "circleGateway",
+                    "proofOfHuman",
+                    "siwx",
+                    "multiChain",
+                    "bazaarSchema",
+                ]
                 responses = operation.setdefault("responses", {})
                 responses["402"] = {
                     "description": "Payment Required. Returns an x402 challenge with accepts[] containing supported multi-chain networks and Bazaar schema.",
@@ -710,8 +735,27 @@ def qma_openapi():
                                     "amount": "0.005000",
                                 },
                                 "x402Version": 2,
+                                "protocols": X_PAYMENT_INFO.get("protocols", []),
+                                "rails": ["x402", "mpp"],
+                                "dualRail": True,
+                                "multiChain": True,
+                                "auth": {
+                                    "scheme": "siwx",
+                                    "type": "wallet",
+                                    "standards": ["EIP-4361", "CAIP-122"],
+                                },
+                                "proofOfHuman": {
+                                    "enabled": True,
+                                    "provider": "world-id",
+                                },
+                                "schema": BAZAAR_EXTENSIONS["bazaar"]["schema"],
+                                "bazaarSchema": BAZAAR_EXTENSIONS["bazaar"]["schema"],
                                 "accepts": X_PAYMENT_INFO.get("accepts", []),
-                                "extensions": BAZAAR_EXTENSIONS,
+                                "extensions": {
+                                    **BAZAAR_EXTENSIONS,
+                                    "siwx": {"enabled": True, "standards": ["EIP-4361", "CAIP-122"]},
+                                    "proofOfHuman": {"enabled": True, "provider": "world-id"},
+                                },
                             },
                         }
                     },

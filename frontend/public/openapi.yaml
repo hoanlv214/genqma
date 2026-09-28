@@ -109,6 +109,16 @@ info:
 
     - JSON object containing `anomalies`, `historical_analogs`, `weighted_win_rate`,
     `regime_score`, and cryptographic `genlayer_sla` verdict.'
+  x-capabilities:
+  - dualRail
+  - circleGateway
+  - proofOfHuman
+  - siwx
+  - multiChain
+  - bazaarSchema
+  x-payment-rails:
+  - x402
+  - mpp
 servers:
 - url: http://127.0.0.1:8000
   description: Local development API
@@ -1654,73 +1664,182 @@ paths:
                   currency: USDC
                   amount: '0.005000'
                 x402Version: 2
-                accepts: &id001
-                - scheme: exact
-                  network: eip155:5042002
-                  asset: '0x3600000000000000000000000000000000000000'
-                  amount: '5000'
-                  payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
-                  maxTimeoutSeconds: 604900
-                  extra:
-                    name: GatewayWalletBatched
-                    version: '1'
-                    verifyingContract: '0x0077777d7EBA4688BDeF3E311b846F25870A19B9'
-                extensions: &id003
-                  bazaar:
-                    schema:
+                protocols: &id004
+                - x402:
+                    networks: &id001
+                    - eip155:5042002
+                    - eip155:84532
+                    - eip155:421614
+                    - eip155:11155111
+                    - eip155:5042
+                    - eip155:8453
+                    - eip155:42161
+                    - eip155:1
+                    - eip155:137
+                    accepts: &id003
+                    - scheme: exact
+                      network: eip155:5042002
+                      asset: '0x3600000000000000000000000000000000000000'
+                      amount: '5000'
+                      payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
+                      maxTimeoutSeconds: 604900
+                      extra:
+                        name: GatewayWalletBatched
+                        version: '1'
+                        verifyingContract: '0x0077777d7EBA4688BDeF3E311b846F25870A19B9'
+                    - scheme: exact
+                      network: eip155:84532
+                      asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e'
+                      amount: '5000'
+                      payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
+                      maxTimeoutSeconds: 604900
+                      extra:
+                        name: GatewayWalletBatched
+                        version: '1'
+                        verifyingContract: '0x0077777d7EBA4688BDeF3E311b846F25870A19B9'
+                    - scheme: exact
+                      network: eip155:421614
+                      asset: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d'
+                      amount: '5000'
+                      payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
+                      maxTimeoutSeconds: 604900
+                      extra:
+                        name: GatewayWalletBatched
+                        version: '1'
+                        verifyingContract: '0x0077777d7EBA4688BDeF3E311b846F25870A19B9'
+                    - scheme: exact
+                      network: eip155:11155111
+                      asset: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238'
+                      amount: '5000'
+                      payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
+                      maxTimeoutSeconds: 604900
+                      extra:
+                        name: GatewayWalletBatched
+                        version: '1'
+                        verifyingContract: '0x0077777d7EBA4688BDeF3E311b846F25870A19B9'
+                    - scheme: exact
+                      network: eip155:5042
+                      asset: '0x3600000000000000000000000000000000000000'
+                      amount: '5000'
+                      payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
+                      maxTimeoutSeconds: 604900
+                      extra:
+                        name: GatewayWalletBatched
+                        version: '1'
+                        verifyingContract: '0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE'
+                    - scheme: exact
+                      network: eip155:8453
+                      asset: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
+                      amount: '5000'
+                      payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
+                      maxTimeoutSeconds: 604900
+                      extra:
+                        name: GatewayWalletBatched
+                        version: '1'
+                        verifyingContract: '0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE'
+                    - scheme: exact
+                      network: eip155:42161
+                      asset: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'
+                      amount: '5000'
+                      payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
+                      maxTimeoutSeconds: 604900
+                      extra:
+                        name: GatewayWalletBatched
+                        version: '1'
+                        verifyingContract: '0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE'
+                    - scheme: exact
+                      network: eip155:1
+                      asset: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+                      amount: '5000'
+                      payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
+                      maxTimeoutSeconds: 604900
+                      extra:
+                        name: GatewayWalletBatched
+                        version: '1'
+                        verifyingContract: '0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE'
+                    - scheme: exact
+                      network: eip155:137
+                      asset: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'
+                      amount: '5000'
+                      payTo: '0x23e7c029a287a83d80b2e084e008211658dda11d'
+                      maxTimeoutSeconds: 604900
+                      extra:
+                        name: GatewayWalletBatched
+                        version: '1'
+                        verifyingContract: '0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE'
+                - mpp:
+                    networks: *id001
+                rails:
+                - x402
+                - mpp
+                dualRail: true
+                multiChain: true
+                auth:
+                  scheme: siwx
+                  type: wallet
+                  standards:
+                  - EIP-4361
+                  - CAIP-122
+                proofOfHuman:
+                  enabled: true
+                  provider: world-id
+                schema: &id002
+                  type: object
+                  properties:
+                    input:
                       type: object
                       properties:
-                        input:
+                        body:
+                          type: object
+                          required:
+                          - symbol
+                          properties:
+                            symbol:
+                              type: string
+                              description: Trading pair symbol, e.g. BTC_USDT, ETH_USDC
+                            fundingRate:
+                              type: number
+                              description: Current annualized or period funding rate
+                                (optional)
+                            openInterest:
+                              type: number
+                              description: Aggregate open interest in quote currency
+                                (optional)
+                            volume24h:
+                              type: number
+                              description: 24-hour volume in quote currency (optional)
+                            price:
+                              type: number
+                              description: Current reference spot or index price (optional)
+                            longShortRatio:
+                              type: number
+                              description: Long-to-short positioning ratio across
+                                venues (optional)
+                    output:
+                      type: object
+                      properties:
+                        example:
                           type: object
                           properties:
-                            body:
+                            query_symbol:
+                              type: string
+                            tier:
+                              type: string
+                            anomalies:
+                              type: array
+                            historical_analogs:
+                              type: array
+                            weighted_win_rate:
+                              type: number
+                            regime_score:
+                              type: number
+                            genlayer_sla:
                               type: object
-                              required:
-                              - symbol
-                              properties:
-                                symbol:
-                                  type: string
-                                  description: Trading pair symbol, e.g. BTC_USDT,
-                                    ETH_USDC
-                                fundingRate:
-                                  type: number
-                                  description: Current annualized or period funding
-                                    rate (optional)
-                                openInterest:
-                                  type: number
-                                  description: Aggregate open interest in quote currency
-                                    (optional)
-                                volume24h:
-                                  type: number
-                                  description: 24-hour volume in quote currency (optional)
-                                price:
-                                  type: number
-                                  description: Current reference spot or index price
-                                    (optional)
-                                longShortRatio:
-                                  type: number
-                                  description: Long-to-short positioning ratio across
-                                    venues (optional)
-                        output:
-                          type: object
-                          properties:
-                            example:
-                              type: object
-                              properties:
-                                query_symbol:
-                                  type: string
-                                tier:
-                                  type: string
-                                anomalies:
-                                  type: array
-                                historical_analogs:
-                                  type: array
-                                weighted_win_rate:
-                                  type: number
-                                regime_score:
-                                  type: number
-                                genlayer_sla:
-                                  type: object
+                bazaarSchema: *id002
+                accepts: *id003
+                extensions:
+                  bazaar: &id005
+                    schema: *id002
                     info:
                       input:
                         type: http
@@ -1749,6 +1868,14 @@ paths:
                             description: Long-to-short positioning ratio across venues
                               (optional)
                       output: null
+                  siwx:
+                    enabled: true
+                    standards:
+                    - EIP-4361
+                    - CAIP-122
+                  proofOfHuman:
+                    enabled: true
+                    provider: world-id
         '403':
           description: The caller is not authorized for this resource.
           content:
@@ -1797,22 +1924,39 @@ paths:
       x-qma-audiences:
       - agent
       - private
-      x-payment-info: &id004
+      x-payment-info: &id006
         price:
           mode: dynamic
           currency: USDC
           amount: '0.005000'
           min: '0.002000'
           max: '0.005000'
-        protocols:
-        - x402:
-            networks: &id002
-            - eip155:5042002
-            accepts: *id001
-        - mpp:
-            networks: *id002
-        networks: *id002
-        accepts: *id001
+        protocols: *id004
+        rails:
+        - x402
+        - mpp
+        dualRail: true
+        multiChain: true
+        auth:
+          scheme: siwx
+          type: wallet
+          standards:
+          - EIP-4361
+          - CAIP-122
+        proofOfHuman:
+          enabled: true
+          provider: world-id
+        schema: *id002
+        bazaarSchema: *id002
+        networks: *id001
+        accepts: *id003
+      x-capabilities:
+      - dualRail
+      - circleGateway
+      - proofOfHuman
+      - siwx
+      - multiChain
+      - bazaarSchema
   /api/v1/agent/jobs/{job_id}:
     get:
       tags:
@@ -1871,8 +2015,34 @@ paths:
                   currency: USDC
                   amount: '0.005000'
                 x402Version: 2
-                accepts: *id001
-                extensions: *id003
+                protocols: *id004
+                rails:
+                - x402
+                - mpp
+                dualRail: true
+                multiChain: true
+                auth:
+                  scheme: siwx
+                  type: wallet
+                  standards:
+                  - EIP-4361
+                  - CAIP-122
+                proofOfHuman:
+                  enabled: true
+                  provider: world-id
+                schema: *id002
+                bazaarSchema: *id002
+                accepts: *id003
+                extensions:
+                  bazaar: *id005
+                  siwx:
+                    enabled: true
+                    standards:
+                    - EIP-4361
+                    - CAIP-122
+                  proofOfHuman:
+                    enabled: true
+                    provider: world-id
         '403':
           description: The caller is not authorized for this resource.
           content:
@@ -1919,7 +2089,14 @@ paths:
       x-qma-audiences:
       - agent
       - private
-      x-payment-info: *id004
+      x-payment-info: *id006
+      x-capabilities:
+      - dualRail
+      - circleGateway
+      - proofOfHuman
+      - siwx
+      - multiChain
+      - bazaarSchema
   /api/v1/agent/spending-policy:
     get:
       tags:
@@ -1933,6 +2110,17 @@ paths:
 
         **Authentication:** Public route.'
       operationId: get_spending_policy_api_v1_agent_spending_policy_get
+      parameters:
+      - name: wallet_address
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Optional EVM wallet address to query live Circle CLI limits
+          title: Wallet Address
+        description: Optional EVM wallet address to query live Circle CLI limits
       responses:
         '200':
           description: Successful Response
@@ -1952,6 +2140,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
       x-qma-access: public
       x-qma-audiences:
       - agent
@@ -2251,8 +2445,34 @@ paths:
                   currency: USDC
                   amount: '0.005000'
                 x402Version: 2
-                accepts: *id001
-                extensions: *id003
+                protocols: *id004
+                rails:
+                - x402
+                - mpp
+                dualRail: true
+                multiChain: true
+                auth:
+                  scheme: siwx
+                  type: wallet
+                  standards:
+                  - EIP-4361
+                  - CAIP-122
+                proofOfHuman:
+                  enabled: true
+                  provider: world-id
+                schema: *id002
+                bazaarSchema: *id002
+                accepts: *id003
+                extensions:
+                  bazaar: *id005
+                  siwx:
+                    enabled: true
+                    standards:
+                    - EIP-4361
+                    - CAIP-122
+                  proofOfHuman:
+                    enabled: true
+                    provider: world-id
         '404':
           description: The requested resource was not found.
           content:
@@ -2283,7 +2503,14 @@ paths:
       x-qma-audiences:
       - private
       - wallet
-      x-payment-info: *id004
+      x-payment-info: *id006
+      x-capabilities:
+      - dualRail
+      - circleGateway
+      - proofOfHuman
+      - siwx
+      - multiChain
+      - bazaarSchema
   /api/v1/metrics/wallet/{address}:
     get:
       tags:
@@ -3356,8 +3583,34 @@ paths:
                   currency: USDC
                   amount: '0.005000'
                 x402Version: 2
-                accepts: *id001
-                extensions: *id003
+                protocols: *id004
+                rails:
+                - x402
+                - mpp
+                dualRail: true
+                multiChain: true
+                auth:
+                  scheme: siwx
+                  type: wallet
+                  standards:
+                  - EIP-4361
+                  - CAIP-122
+                proofOfHuman:
+                  enabled: true
+                  provider: world-id
+                schema: *id002
+                bazaarSchema: *id002
+                accepts: *id003
+                extensions:
+                  bazaar: *id005
+                  siwx:
+                    enabled: true
+                    standards:
+                    - EIP-4361
+                    - CAIP-122
+                  proofOfHuman:
+                    enabled: true
+                    provider: world-id
         '403':
           description: The caller is not authorized for this resource.
           content:
@@ -3393,7 +3646,14 @@ paths:
       - agent
       - private
       - wallet
-      x-payment-info: *id004
+      x-payment-info: *id006
+      x-capabilities:
+      - dualRail
+      - circleGateway
+      - proofOfHuman
+      - siwx
+      - multiChain
+      - bazaarSchema
   /api/v1/providers/{provider_id}/full-report:
     post:
       tags:
@@ -3482,8 +3742,34 @@ paths:
                   currency: USDC
                   amount: '0.005000'
                 x402Version: 2
-                accepts: *id001
-                extensions: *id003
+                protocols: *id004
+                rails:
+                - x402
+                - mpp
+                dualRail: true
+                multiChain: true
+                auth:
+                  scheme: siwx
+                  type: wallet
+                  standards:
+                  - EIP-4361
+                  - CAIP-122
+                proofOfHuman:
+                  enabled: true
+                  provider: world-id
+                schema: *id002
+                bazaarSchema: *id002
+                accepts: *id003
+                extensions:
+                  bazaar: *id005
+                  siwx:
+                    enabled: true
+                    standards:
+                    - EIP-4361
+                    - CAIP-122
+                  proofOfHuman:
+                    enabled: true
+                    provider: world-id
         '403':
           description: The caller is not authorized for this resource.
           content:
@@ -3519,7 +3805,14 @@ paths:
       - agent
       - private
       - wallet
-      x-payment-info: *id004
+      x-payment-info: *id006
+      x-capabilities:
+      - dualRail
+      - circleGateway
+      - proofOfHuman
+      - siwx
+      - multiChain
+      - bazaarSchema
   /api/v1/preview:
     post:
       tags:
@@ -3591,8 +3884,34 @@ paths:
                   currency: USDC
                   amount: '0.005000'
                 x402Version: 2
-                accepts: *id001
-                extensions: *id003
+                protocols: *id004
+                rails:
+                - x402
+                - mpp
+                dualRail: true
+                multiChain: true
+                auth:
+                  scheme: siwx
+                  type: wallet
+                  standards:
+                  - EIP-4361
+                  - CAIP-122
+                proofOfHuman:
+                  enabled: true
+                  provider: world-id
+                schema: *id002
+                bazaarSchema: *id002
+                accepts: *id003
+                extensions:
+                  bazaar: *id005
+                  siwx:
+                    enabled: true
+                    standards:
+                    - EIP-4361
+                    - CAIP-122
+                  proofOfHuman:
+                    enabled: true
+                    provider: world-id
         '403':
           description: The caller is not authorized for this resource.
           content:
@@ -3626,7 +3945,14 @@ paths:
       x-qma-access: paid-access
       x-qma-audiences:
       - private
-      x-payment-info: *id004
+      x-payment-info: *id006
+      x-capabilities:
+      - dualRail
+      - circleGateway
+      - proofOfHuman
+      - siwx
+      - multiChain
+      - bazaarSchema
   /api/v1/analyze:
     post:
       tags:
@@ -3698,8 +4024,34 @@ paths:
                   currency: USDC
                   amount: '0.005000'
                 x402Version: 2
-                accepts: *id001
-                extensions: *id003
+                protocols: *id004
+                rails:
+                - x402
+                - mpp
+                dualRail: true
+                multiChain: true
+                auth:
+                  scheme: siwx
+                  type: wallet
+                  standards:
+                  - EIP-4361
+                  - CAIP-122
+                proofOfHuman:
+                  enabled: true
+                  provider: world-id
+                schema: *id002
+                bazaarSchema: *id002
+                accepts: *id003
+                extensions:
+                  bazaar: *id005
+                  siwx:
+                    enabled: true
+                    standards:
+                    - EIP-4361
+                    - CAIP-122
+                  proofOfHuman:
+                    enabled: true
+                    provider: world-id
         '403':
           description: The caller is not authorized for this resource.
           content:
@@ -3733,7 +4085,14 @@ paths:
       x-qma-access: paid-access
       x-qma-audiences:
       - private
-      x-payment-info: *id004
+      x-payment-info: *id006
+      x-capabilities:
+      - dualRail
+      - circleGateway
+      - proofOfHuman
+      - siwx
+      - multiChain
+      - bazaarSchema
   /api/v1/sessions:
     post:
       tags:
@@ -5294,6 +5653,15 @@ paths:
           - type: string
           - type: 'null'
           title: Actor
+      - name: only_live
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: Filter only records with confirmed on-chain transaction hashes
+          default: false
+          title: Only Live
+        description: Filter only records with confirmed on-chain transaction hashes
       responses:
         '200':
           description: Successful Response
@@ -5329,6 +5697,89 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EuthynaIntegrityResponse'
+      x-qma-access: public
+      x-qma-audiences:
+      - agent
+      - public
+  /api/v1/treasury/policy:
+    get:
+      tags:
+      - Agent decisioning
+      summary: Get corporate treasury CFO operating policy
+      description: Retrieve active administrative policy bounds, risk limits, and
+        liquidity thresholds governing autonomous corporate CFO agent decisioning.
+      operationId: get_treasury_policy_api_v1_treasury_policy_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorporateTreasuryPolicy'
+      x-qma-access: public
+      x-qma-audiences:
+      - agent
+      - public
+    post:
+      tags:
+      - Agent decisioning
+      summary: Update corporate treasury CFO operating policy
+      description: Update administrative risk limits and autonomous CFO operating
+        parameters. Requires platform administrator token.
+      operationId: update_treasury_policy_api_v1_treasury_policy_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorporateTreasuryPolicy'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorporateTreasuryPolicy'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - x-qma-admin-token: []
+      x-qma-access: admin
+      x-qma-audiences:
+      - agent
+      - private
+  /api/v1/treasury/agent/decide:
+    post:
+      tags:
+      - Agent decisioning
+      summary: Autonomous corporate CFO agent evaluation and execution
+      description: Trigger comprehensive autonomous multi-factor CFO evaluation against
+        active administrative policy bounds, liquidity runways, solvency constraints,
+        and yield optimization targets.
+      operationId: trigger_cfo_decision_api_v1_treasury_agent_decide_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CFODecisionRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CFODecisionResult'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
       x-qma-access: public
       x-qma-audiences:
       - agent
@@ -5519,6 +5970,258 @@ paths:
       x-qma-access: public
       x-qma-audiences:
       - public
+  /api/v1/onramp/session:
+    post:
+      tags:
+      - Onramp
+      summary: Create an Arc Onramp widget session
+      description: Mints a short-lived Circle Onramp session to embed the Arc Onramp
+        widget (fiat-to-USDC via credit card, Apple Pay, Google Pay) directly into
+        the app, depositing USDC straight into the user's Arc wallet.
+      operationId: create_onramp_session_api_v1_onramp_session_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnrampSessionRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnrampSessionResponse'
+        '400':
+          description: The request is invalid or violates a business rule.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: The request was rate limited. Retry after the indicated delay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitErrorResponse'
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: An upstream Gateway or relayer request failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-qma-access: public
+      x-qma-audiences:
+      - public
+  /api/v1/agent/incidents:
+    get:
+      tags:
+      - Agent sessions
+      summary: List recorded agent safety incidents and circuit breaker events
+      description: Retrieve recorded safety incidents with Athenian Euthyna audit
+        chain linking, filterable by session, severity, or resolution status.
+      operationId: list_agent_incidents_api_v1_agent_incidents_get
+      parameters:
+      - name: session_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter incidents by session ID
+          title: Session Id
+        description: Filter incidents by session ID
+      - name: severity
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter by severity (P1_CRITICAL, P2_WARNING, P3_INFO)
+          title: Severity
+        description: Filter by severity (P1_CRITICAL, P2_WARNING, P3_INFO)
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter by status (OPEN, RESOLVED, OVERRIDDEN)
+          title: Status
+        description: Filter by status (OPEN, RESOLVED, OVERRIDDEN)
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          description: Max records to return
+          default: 50
+          title: Limit
+        description: Max records to return
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentIncidentResponse'
+                title: Response List Agent Incidents Api V1 Agent Incidents Get
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-qma-access: public
+      x-qma-audiences:
+      - agent
+      - public
+      - wallet
+  /api/v1/agent/sessions/{session_id}/control:
+    post:
+      tags:
+      - Agent sessions
+      summary: Execute administrative intervention (pause, resume, kill) on an agent
+        session
+      description: Trigger immediate emergency pause, resume, or termination on an
+        autonomous agent session, linked into the Athenian Euthyna immutable audit
+        trail.
+      operationId: control_agent_session_api_v1_agent_sessions__session_id__control_post
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Target session UUID
+          title: Session Id
+        description: Target session UUID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentSessionControlRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentSessionControlResponse'
+        '400':
+          description: The request is invalid or violates a business rule.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The requested resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-qma-access: public
+      x-qma-audiences:
+      - agent
+      - public
+      - wallet
+  /api/v1/agent/incidents/{incident_id}/resolve:
+    post:
+      tags:
+      - Agent sessions
+      summary: Mark an agent safety incident as resolved with audit reasoning
+      description: Resolve or override an open safety incident with administrator
+        notes and cryptographic Euthyna audit logging.
+      operationId: resolve_agent_incident_api_v1_agent_incidents__incident_id__resolve_post
+      parameters:
+      - name: incident_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Target incident ID, e.g. inc_1234abcd
+          title: Incident Id
+        description: Target incident ID, e.g. inc_1234abcd
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentResolveRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentIncidentResponse'
+        '400':
+          description: The request is invalid or violates a business rule.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The requested resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-qma-access: public
+      x-qma-audiences:
+      - agent
+      - public
+      - wallet
 components:
   schemas:
     AcquireLeaseRequest:
@@ -5839,6 +6542,82 @@ components:
       - pricing_model
       - verification
       title: AgentIdentityResponse
+    AgentIncidentResponse:
+      properties:
+        incident_id:
+          type: string
+          title: Incident Id
+          description: Unique incident identifier, e.g. inc_abc12345
+        session_id:
+          type: string
+          title: Session Id
+          description: UUID of the affected session
+        trace_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Trace Id
+          description: Correlated Arc transaction hash or invoice secret hash
+        timestamp:
+          type: string
+          title: Timestamp
+          description: ISO 8601 UTC timestamp
+        severity:
+          $ref: '#/components/schemas/IncidentSeverity'
+          description: P1_CRITICAL, P2_WARNING, P3_INFO
+        status:
+          $ref: '#/components/schemas/IncidentStatus'
+          description: OPEN, RESOLVED, or OVERRIDDEN
+          default: OPEN
+        category:
+          type: string
+          title: Category
+          description: e.g. GENLAYER_SLA_VIOLATION, VELOCITY_DRAIN_SPIKE
+        rule:
+          type: string
+          title: Rule
+          description: Triggered safety invariant rule
+        details:
+          type: string
+          title: Details
+          description: Detailed description of the incident
+        financial_context:
+          additionalProperties: true
+          type: object
+          title: Financial Context
+          description: Spent, attempted, and remaining USDC
+        actor_type:
+          type: string
+          title: Actor Type
+          description: SYSTEM_CIRCUIT_BREAKER or ADMIN_OPERATOR
+          default: SYSTEM_CIRCUIT_BREAKER
+        actor_address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Actor Address
+          description: Admin or system wallet address
+        euthyna_hash:
+          type: string
+          title: Euthyna Hash
+          description: Athenian Euthyna cryptographic hash linking
+        admin_note:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Admin Note
+          description: Note attached upon resolution or override
+      type: object
+      required:
+      - incident_id
+      - session_id
+      - timestamp
+      - severity
+      - category
+      - rule
+      - details
+      - euthyna_hash
+      title: AgentIncidentResponse
     AgentPlanResponse:
       properties:
         action:
@@ -5963,6 +6742,72 @@ components:
       - last_updated
       - recommendations
       title: AgentRecommendationsResponse
+    AgentSessionControlRequest:
+      properties:
+        action:
+          type: string
+          enum:
+          - pause
+          - resume
+          - kill
+          title: Action
+          description: Administrative intervention action
+        reason:
+          type: string
+          maxLength: 1000
+          minLength: 3
+          title: Reason
+          description: Mandatory audit justification
+        admin_wallet:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          title: Admin Wallet
+          description: Executing administrator wallet address
+      type: object
+      required:
+      - action
+      - reason
+      title: AgentSessionControlRequest
+    AgentSessionControlResponse:
+      properties:
+        ok:
+          type: boolean
+          title: Ok
+          default: true
+        session_id:
+          type: string
+          title: Session Id
+        action:
+          type: string
+          title: Action
+        status:
+          type: string
+          title: Status
+        reason:
+          type: string
+          title: Reason
+        incident_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Incident Id
+        euthyna_hash:
+          type: string
+          title: Euthyna Hash
+        timestamp:
+          type: string
+          title: Timestamp
+      type: object
+      required:
+      - session_id
+      - action
+      - status
+      - reason
+      - euthyna_hash
+      - timestamp
+      title: AgentSessionControlResponse
     AgentSessionCreate:
       properties:
         title:
@@ -6044,7 +6889,6 @@ components:
       - event_type
       - id
       - session_id
-      - created_at
       title: AgentSessionEventResponse
     AgentSessionResponse:
       properties:
@@ -6095,8 +6939,6 @@ components:
       - id
       - user_id
       - status
-      - created_at
-      - updated_at
       title: AgentSessionResponse
     AgentSessionUpdate:
       properties:
@@ -6212,6 +7054,80 @@ components:
       - amountUsdc
       - recipient
       title: AgentWalletWithdrawResponse
+    CFODecisionRequest:
+      properties:
+        account:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Account
+          description: Target treasury address (defaults to platform treasury)
+        upcoming_obligations_usdc:
+          anyOf:
+          - type: number
+            minimum: 0.0
+          - type: 'null'
+          title: Upcoming Obligations Usdc
+          description: Override upcoming 30-day liabilities (auto-calculated from
+            pending claims if omitted)
+        execute_if_authorized:
+          type: boolean
+          title: Execute If Authorized
+          description: Whether to execute on-chain if policy permits and autonomous
+            execution is enabled
+          default: false
+      type: object
+      title: CFODecisionRequest
+    CFODecisionResult:
+      properties:
+        decision:
+          type: string
+          title: Decision
+          description: 'Autonomous decision action: SWEEP_IDLE, JIT_REDEEM, HOLD_AND_EARN,
+            COOLDOWN_ACTIVE, or INSOLVENCY_ALERT'
+        amount_usdc:
+          type: number
+          title: Amount Usdc
+          description: Recommended transaction amount in USDC
+          default: 0.0
+        rationale:
+          type: string
+          title: Rationale
+          description: Formal financial rationale and mathematical deduction
+        policy_applied:
+          additionalProperties: true
+          type: object
+          title: Policy Applied
+          description: Policy constraints evaluated
+        financial_metrics:
+          additionalProperties: true
+          type: object
+          title: Financial Metrics
+          description: Liquidity, coverage, runway, and yield metrics
+        execution_status:
+          type: string
+          title: Execution Status
+          description: 'Execution status: EXECUTED_ONCHAIN, PREPARED_INTENT, or NO_ACTION_REQUIRED'
+          default: PROPOSAL_ONLY
+        tx_hash:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tx Hash
+          description: On-chain Arc transaction hash if executed
+        audit_record_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Audit Record Id
+          description: Linked Athenian Euthyna audit record ID
+      type: object
+      required:
+      - decision
+      - rationale
+      - policy_applied
+      - financial_metrics
+      title: CFODecisionResult
     ChatMessage:
       properties:
         role:
@@ -6572,6 +7488,59 @@ components:
       - tail_risk
       - confidence
       title: CollateralRiskScoreResponse
+    CorporateTreasuryPolicy:
+      properties:
+        min_operating_reserve_usdc:
+          type: number
+          minimum: 0.0
+          title: Min Operating Reserve Usdc
+          description: Minimum liquid USDC reserve to preserve on Arc
+          default: 10.0
+        target_safety_buffer_ratio:
+          type: number
+          minimum: 1.0
+          title: Target Safety Buffer Ratio
+          description: Target ratio of liquid assets to upcoming obligations
+          default: 1.5
+        min_sweep_threshold_usdc:
+          type: number
+          minimum: 0.0
+          title: Min Sweep Threshold Usdc
+          description: Minimum surplus cash required before executing sweep
+          default: 2.0
+        max_sweep_per_epoch_usdc:
+          type: number
+          exclusiveMinimum: 0.0
+          title: Max Sweep Per Epoch Usdc
+          description: Maximum USDC allowed to sweep in a single decision epoch
+          default: 50.0
+        max_jit_redeem_per_epoch_usdc:
+          type: number
+          exclusiveMinimum: 0.0
+          title: Max Jit Redeem Per Epoch Usdc
+          description: Maximum USDC allowed to redeem in a single decision epoch
+          default: 50.0
+        rebalance_cooldown_seconds:
+          type: integer
+          minimum: 0.0
+          title: Rebalance Cooldown Seconds
+          description: Minimum seconds between rebalancing actions
+          default: 300
+        autonomous_execution_enabled:
+          type: boolean
+          title: Autonomous Execution Enabled
+          description: Whether the CFO agent is authorized to broadcast transactions
+            autonomously
+          default: false
+        target_apy_baseline:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Target Apy Baseline
+          description: Target baseline annualized yield
+          default: 0.05
+      type: object
+      title: CorporateTreasuryPolicy
     CreatorApplicationRequest:
       properties:
         creator_wallet:
@@ -7106,9 +8075,11 @@ components:
           title: Usyc Vault Shares
           description: USYC shares held in vault
         tx_hash:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Tx Hash
-          description: On-chain Arc transaction hash or simulation hash
+          description: On-chain Arc transaction hash (null if prepared intent)
         arcscan_url:
           anyOf:
           - type: string
@@ -7135,6 +8106,12 @@ components:
           - type: 'null'
           title: Genlayer Consensus
           description: GenLayer multi-validator verdict
+        previous_hash:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Previous Hash
+          description: Cryptographic SHA-256 hash of preceding audit record
         integrity_hash:
           type: string
           title: Integrity Hash
@@ -7154,7 +8131,6 @@ components:
       - treasury_liquid_before
       - treasury_liquid_after
       - usyc_vault_shares
-      - tx_hash
       - policy_rule_applied
       - cfo_reasoning
       - integrity_hash
@@ -7169,6 +8145,11 @@ components:
           type: integer
           title: Tampered Records
           description: Number of compromised records detected
+        chain_broken:
+          type: boolean
+          title: Chain Broken
+          description: Whether hash-chain continuity was broken
+          default: false
         audit_health:
           type: string
           title: Audit Health
@@ -7392,6 +8373,45 @@ components:
       required:
       - ok
       title: HeartbeatLeaseResponse
+    IncidentResolveRequest:
+      properties:
+        resolution:
+          type: string
+          enum:
+          - RESOLVED
+          - OVERRIDDEN
+          title: Resolution
+          default: RESOLVED
+        admin_note:
+          type: string
+          maxLength: 1000
+          minLength: 3
+          title: Admin Note
+          description: Administrative explanation for resolution
+        admin_wallet:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          title: Admin Wallet
+      type: object
+      required:
+      - admin_note
+      title: IncidentResolveRequest
+    IncidentSeverity:
+      type: string
+      enum:
+      - P1_CRITICAL
+      - P2_WARNING
+      - P3_INFO
+      title: IncidentSeverity
+    IncidentStatus:
+      type: string
+      enum:
+      - OPEN
+      - RESOLVED
+      - OVERRIDDEN
+      title: IncidentStatus
     InvoicePaymentStateResponse:
       properties:
         invoice_id:
@@ -7792,6 +8812,11 @@ components:
           - type: 'null'
           title: Cfo Reasoning
           description: Autonomous AI CFO rationale for JIT redemption
+        execute_onchain:
+          type: boolean
+          title: Execute Onchain
+          description: Whether to execute transaction on Arc Testnet via agent wallet
+          default: false
       type: object
       required:
       - amount_usdc_needed
@@ -8048,6 +9073,53 @@ components:
       - expires_in
       - scope
       title: OAuthTokenResponse
+    OnrampSessionRequest:
+      properties:
+        destinationAddress:
+          type: string
+          title: Destinationaddress
+        appUserId:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Appuserid
+      type: object
+      required:
+      - destinationAddress
+      title: OnrampSessionRequest
+    OnrampSessionResponse:
+      properties:
+        sessionToken:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sessiontoken
+        sessionId:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sessionid
+        widgetUrl:
+          type: string
+          title: Widgeturl
+        destinationWallet:
+          type: string
+          title: Destinationwallet
+        expiresAt:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expiresat
+        traceId:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Traceid
+      type: object
+      required:
+      - widgetUrl
+      - destinationWallet
+      title: OnrampSessionResponse
     Page_Dict_str__Any__:
       properties:
         page:
@@ -9366,6 +10438,7 @@ components:
       - draft
       - queued
       - running
+      - paused
       - completed
       - failed
       - stopped
@@ -9489,6 +10562,13 @@ components:
           description: 'False: this endpoint is an advisory ledger evaluation; wallet
             executors enforce spending'
           default: false
+        source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+          description: 'Source of limits: circle_cli or default_policy'
+          default: default_policy
       type: object
       title: SpendingPolicyConfigResponse
     SpendingPolicyEvaluateRequest:
@@ -9981,6 +11061,11 @@ components:
           - type: 'null'
           title: Cfo Reasoning
           description: Autonomous AI CFO rationale for this sweep
+        execute_onchain:
+          type: boolean
+          title: Execute Onchain
+          description: Whether to execute transaction on Arc Testnet via agent wallet
+          default: false
       type: object
       required:
       - amount_usdc
@@ -10155,7 +11240,7 @@ components:
         status:
           type: string
           title: Status
-          description: Redemption intent status
+          description: Redemption execution status (PREPARED or CONFIRMED_ONCHAIN)
           default: PREPARED
         intent:
           additionalProperties: true
@@ -10165,6 +11250,18 @@ components:
         audit_record:
           $ref: '#/components/schemas/EuthynaAuditRecordResponse'
           description: Audit record for this action
+        tx_hash:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tx Hash
+          description: On-chain Arc transaction hash if executed
+        explorer_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Explorer Url
+          description: Arcscan block explorer link if executed
       type: object
       required:
       - intent
@@ -10196,6 +11293,12 @@ components:
           type: boolean
           title: Is Live Onchain
           description: Whether position was verified via live Arc RPC
+        treasury_liquid_usdc:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Treasury Liquid Usdc
+          description: Current live liquid USDC balance on Arc
         usyc_shares:
           type: number
           title: Usyc Shares
@@ -10233,7 +11336,7 @@ components:
         status:
           type: string
           title: Status
-          description: Sweep intent status
+          description: Sweep execution status (PREPARED or CONFIRMED_ONCHAIN)
           default: PREPARED
         intent:
           additionalProperties: true
@@ -10243,6 +11346,18 @@ components:
         audit_record:
           $ref: '#/components/schemas/EuthynaAuditRecordResponse'
           description: Audit record for this action
+        tx_hash:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tx Hash
+          description: On-chain Arc transaction hash if executed
+        explorer_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Explorer Url
+          description: Arcscan block explorer link if executed
       type: object
       required:
       - intent

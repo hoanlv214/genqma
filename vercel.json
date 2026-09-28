@@ -89,11 +89,11 @@
     },
     {
       "source": "/.well-known/:path*",
-      "destination": "https://driveway-expansive-onyx.ngrok-free.dev/.well-known/:path*"
+      "destination": "https://qma-api.onrender.com/.well-known/:path*"
     },
     {
       "source": "/api/:path*",
-      "destination": "https://driveway-expansive-onyx.ngrok-free.dev/api/:path*"
+      "destination": "https://qma-api.onrender.com/api/:path*"
     },
     {
       "source": "/:path*",

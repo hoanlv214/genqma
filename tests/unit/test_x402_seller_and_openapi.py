@@ -62,9 +62,14 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
 
             # Check that accepts[] and networks declare multi-chain compatibility in OpenAPI
             networks = payment_info.get("networks", [])
-            self.assertEqual(networks, ["eip155:5042002"])
+            self.assertGreaterEqual(len(networks), 2)
+            self.assertIn("eip155:5042002", networks)
             accepts_spec = payment_info.get("accepts", [])
-            self.assertEqual(len(accepts_spec), 1)
+            self.assertGreaterEqual(len(accepts_spec), 2)
+            self.assertEqual(payment_info.get("rails"), ["x402", "mpp"])
+            self.assertTrue(payment_info.get("dualRail"))
+            self.assertTrue(payment_info.get("multiChain"))
+            self.assertIn("schema", payment_info)
 
     def test_security_schemes_include_wallet_auth_and_x402(self):
         schemes = self.schema["components"]["securitySchemes"]
@@ -108,17 +113,20 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
         self.assertEqual(data["error"], "payment_required")
         self.assertEqual(data["price"]["currency"], "USDC")
         self.assertEqual(data["price"]["amount"], "0.005000")
+        self.assertEqual(data.get("rails"), ["x402", "mpp"])
+        self.assertTrue(data.get("dualRail"))
+        self.assertTrue(data.get("multiChain"))
+        self.assertIn("schema", data)
         self.assertIn("extensions", data)
         self.assertIn("bazaar", data["extensions"])
         self.assertIn("schema", data["extensions"]["bazaar"])
 
         # Multi-chain network accepts
         accepts = data.get("accepts", [])
-        self.assertEqual(len(accepts), 1)
+        self.assertGreaterEqual(len(accepts), 2)
 
         networks = {a["network"] for a in accepts}
         self.assertTrue(any("5042002" in n or "arc" in n for n in networks), "Arc Testnet missing")
-        self.assertEqual(networks, {"eip155:5042002"})
         self.assertLess(sum(len(k) + len(v) + 4 for k, v in response.headers.items()), 8192)
 
         # Verify Circle Gateway batching specification compliance

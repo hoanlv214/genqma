@@ -125,6 +125,17 @@
         "nativeCurrency": { "name": "ETH", "symbol": "ETH", "decimals": 18 }
       },
       {
+        "id": "polygon",
+        "name": "Polygon",
+        "chainId": 137,
+        "chainIdHex": "0x89",
+        "cctpDomain": 7,
+        "explorerUrl": "https://polygonscan.com",
+        "rpcUrl": "https://polygon-rpc.com",
+        "usdcAddress": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+        "nativeCurrency": { "name": "POL", "symbol": "POL", "decimals": 18 }
+      },
+      {
         "id": "arc",
         "name": "Arc Mainnet",
         "chainId": 5042,

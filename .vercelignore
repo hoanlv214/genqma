@@ -36,3 +36,37 @@ __pycache__/
 */__pycache__/
 payment_ledger.json
 paid_reports.json
+invoices.json
+creator_applications.json
+creator_claims.json
+agent_sessions.json
+agent_session_events.json
+euthyna_audit_trail.json
+.qma-test-wallets*.json
+
+# Scratch, temp, and development tooling
+scratch/
+scratch_*
+*_scratch.*
+temp_*
+*_temp.*
+tmp/
+*.tmp
+*.bak
+*.swp
+logs/
+_refs/
+exports/
+contracts/
+mcp-server/
+graphify-out/
+.codegraph/
+.agents/
+.codex/
+.zcode/
+.arc-studio/
+
+# Private grant proposals and confidential documents
+grant_application/
+*.grant.md
+docs/private/

@@ -49,6 +49,24 @@ MAINNET_NETWORKS_CONFIG = _build_networks_config_from_ssot("mainnet", MAINNET_GA
 # Active networks config dynamically bound to active profile
 NETWORKS_CONFIG = TESTNET_NETWORKS_CONFIG if IS_TESTNET else MAINNET_NETWORKS_CONFIG
 
+def _build_all_gateway_networks() -> list[dict]:
+    seen = set()
+    result = []
+    # Primary network config first
+    for cfg in NETWORKS_CONFIG:
+        if cfg["network"] not in seen:
+            seen.add(cfg["network"])
+            result.append(cfg)
+    # Then include complementary mainnet/testnet networks for broad agent compatibility
+    complementary = MAINNET_NETWORKS_CONFIG if IS_TESTNET else TESTNET_NETWORKS_CONFIG
+    for cfg in complementary:
+        if cfg["network"] not in seen:
+            seen.add(cfg["network"])
+            result.append(cfg)
+    return result
+
+ALL_GATEWAY_NETWORKS = _build_all_gateway_networks()
+
 AGENT_GUIDANCE = """GenQMA is an AI agent marketplace for real-time quantitative market intelligence, anomaly detection, funding rate arbitrage signals, and prediction market analytics with on-chain GenLayer SLA settlement verification.
 
 ### How and When to Call
@@ -81,7 +99,7 @@ def parse_usdc_atomic(amount_decimal: str) -> str:
 def build_x402_accepts(
     amount_decimal: str = "0.005000",
     seller_address: Optional[str] = None,
-    include_crosschain: bool = False,
+    include_crosschain: bool = True,
 ) -> List[Dict[str, Any]]:
     """Build multi-chain accepts array supported by Circle Gateway and x402 clients."""
     seller = seller_address or SELLER_ADDRESS
@@ -89,7 +107,7 @@ def build_x402_accepts(
 
     accepts = []
     # 1. Primary payment network always included first
-    for cfg in NETWORKS_CONFIG:
+    for cfg in ALL_GATEWAY_NETWORKS:
         if cfg["network"] == PAYMENT_NETWORK:
             accepts.append({
                 "scheme": "exact",
@@ -106,9 +124,9 @@ def build_x402_accepts(
             })
             break
 
-    # 2. Add supported cross-chain Gateway networks when requested
+    # 2. Add supported cross-chain Gateway networks
     if include_crosschain:
-        for cfg in NETWORKS_CONFIG:
+        for cfg in ALL_GATEWAY_NETWORKS:
             if cfg["network"] == PAYMENT_NETWORK:
                 continue
             accepts.append({
@@ -126,41 +144,6 @@ def build_x402_accepts(
             })
     return accepts
 
-
-def build_x_payment_info(
-    amount_decimal: str = "0.005000",
-    seller_address: Optional[str] = None,
-) -> Dict[str, Any]:
-    """Generate rich x-payment-info vendor extension with multi-network protocols and accepts list."""
-    accepts_list = build_x402_accepts(amount_decimal, seller_address)
-    networks_list = [item["network"] for item in accepts_list]
-    return {
-        "price": {
-            "mode": "dynamic",
-            "currency": "USDC",
-            "amount": amount_decimal,
-            "min": "0.002000",
-            "max": "0.005000",
-        },
-        "protocols": [
-            {
-                "x402": {
-                    "networks": networks_list,
-                    "accepts": accepts_list,
-                }
-            },
-            {
-                "mpp": {
-                    "networks": networks_list,
-                }
-            },
-        ],
-        "networks": networks_list,
-        "accepts": accepts_list,
-    }
-
-
-X_PAYMENT_INFO = build_x_payment_info("0.005000")
 
 # Standard Circle Bazaar schema extension enabling AI agents to discover input/output payload shapes directly from 402
 BAZAAR_EXTENSIONS: Dict[str, Any] = {
@@ -260,6 +243,56 @@ BAZAAR_EXTENSIONS: Dict[str, Any] = {
 }
 
 
+def build_x_payment_info(
+    amount_decimal: str = "0.005000",
+    seller_address: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Generate rich x-payment-info vendor extension with multi-network protocols and accepts list."""
+    accepts_list = build_x402_accepts(amount_decimal, seller_address, include_crosschain=True)
+    networks_list = [item["network"] for item in accepts_list]
+    return {
+        "price": {
+            "mode": "dynamic",
+            "currency": "USDC",
+            "amount": amount_decimal,
+            "min": "0.002000",
+            "max": "0.005000",
+        },
+        "protocols": [
+            {
+                "x402": {
+                    "networks": networks_list,
+                    "accepts": accepts_list,
+                }
+            },
+            {
+                "mpp": {
+                    "networks": networks_list,
+                }
+            },
+        ],
+        "rails": ["x402", "mpp"],
+        "dualRail": True,
+        "multiChain": True,
+        "auth": {
+            "scheme": "siwx",
+            "type": "wallet",
+            "standards": ["EIP-4361", "CAIP-122"],
+        },
+        "proofOfHuman": {
+            "enabled": True,
+            "provider": "world-id",
+        },
+        "schema": BAZAAR_EXTENSIONS["bazaar"]["schema"],
+        "bazaarSchema": BAZAAR_EXTENSIONS["bazaar"]["schema"],
+        "networks": networks_list,
+        "accepts": accepts_list,
+    }
+
+
+X_PAYMENT_INFO = build_x_payment_info("0.005000")
+
+
 def build_402_challenge_payload(
     url: str = "/api/v1/providers/funding_memory/full-report",
     amount_decimal: str = "0.005000",
@@ -267,10 +300,10 @@ def build_402_challenge_payload(
     seller_address: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, str]]:
     """Construct standard HTTP 402 challenge response body and headers with Circle Bazaar schema extensions."""
-    accepts = build_x402_accepts(amount_decimal, seller_address)
+    accepts = build_x402_accepts(amount_decimal, seller_address, include_crosschain=True)
     networks_list = [item["network"] for item in accepts]
     protocols_list = [
-        {"x402": {"networks": networks_list, "accepts": accepts}},
+        {"x402": {"networks": networks_list}},
         {"mpp": {"networks": networks_list}},
     ]
     extended_extensions = {
@@ -292,7 +325,11 @@ def build_402_challenge_payload(
             "amount": amount_decimal,
         },
         "protocols": protocols_list,
+        "rails": ["x402", "mpp"],
+        "dualRail": True,
+        "multiChain": True,
         "auth": {"scheme": "siwx", "type": "wallet", "standards": ["EIP-4361", "CAIP-122"]},
+        "proofOfHuman": {"enabled": True, "provider": "world-id"},
         "accepts": accepts,
         "extensions": extended_extensions,
     }
@@ -302,7 +339,12 @@ def build_402_challenge_payload(
 
     headers = {
         "PAYMENT-REQUIRED": b64_header,
-        "WWW-Authenticate": f'X402 realm="x402", token="USDC", amount="{amount_decimal}"',
+        "WWW-Authenticate": (
+            f'X402 realm="x402", '
+            f'SIWX realm="siwx", '
+            f'Payment realm="mpp", '
+            f'token="USDC", amount="{amount_decimal}"'
+        ),
         "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, payment-required, WWW-Authenticate",
     }
 
@@ -317,7 +359,13 @@ def build_402_challenge_payload(
         },
         "x402Version": 2,
         "protocols": protocols_list,
+        "rails": ["x402", "mpp"],
+        "dualRail": True,
+        "multiChain": True,
         "auth": {"scheme": "siwx", "type": "wallet", "standards": ["EIP-4361", "CAIP-122"]},
+        "proofOfHuman": {"enabled": True, "provider": "world-id"},
+        "schema": BAZAAR_EXTENSIONS["bazaar"]["schema"],
+        "bazaarSchema": BAZAAR_EXTENSIONS["bazaar"]["schema"],
         "accepts": accepts,
         "extensions": extended_extensions,
     }
