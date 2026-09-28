@@ -22,6 +22,7 @@ from backend.app.schemas.agent import (
     AgentDecisionRequest,
     AgentDelegateStatusResponse,
     AgentIdentityResponse,
+    AgentReputationResponse,
     CircleServiceCardResponse,
     ERC8183JobRequest,
     ERC8183JobResponse,
@@ -34,11 +35,20 @@ from backend.app.schemas.agent import (
 from backend.app.services.agent_decision import make_agent_decision
 from backend.app.core.config import (
     ARC_CHAIN_ID,
+    ARC_EXPLORER,
     ARC_GATEWAY_WALLET,
+    ERC8004_AGENT_ID,
+    ERC8004_IDENTITY_REGISTRY,
+    ERC8004_REPUTATION_REGISTRY,
+    ERC8004_VALIDATION_REGISTRY,
     IS_TESTNET,
     NETWORKS_DATA,
     PAYMENT_WALLET_ADDRESS,
     SHIELD_CONTRACT_ADDRESS,
+)
+from backend.app.services.erc8004_service import (
+    get_onchain_identity,
+    get_onchain_reputation_summary,
 )
 from backend.app.core.openapi_responses import documented_errors
 from backend.app.services.wallet_utils import normalize_address
@@ -94,6 +104,14 @@ def _get_agent_identity() -> dict:
             "shield_address": shield_address,
             "consensus_network": "genlayer-testnet",
             "consensus_standard": "multi-validator subjective agreement",
+        },
+        "erc8004": {
+            "agent_id": ERC8004_AGENT_ID,
+            "identity_registry": ERC8004_IDENTITY_REGISTRY,
+            "reputation_registry": ERC8004_REPUTATION_REGISTRY,
+            "validation_registry": ERC8004_VALIDATION_REGISTRY,
+            "explorer_url": f"{ARC_EXPLORER.rstrip('/')}/token/{ERC8004_IDENTITY_REGISTRY}?a={ERC8004_AGENT_ID}",
+            "onchain_verified": True,
         },
         "arc_rfb_alignment": {
             "frontiers": [
@@ -241,6 +259,19 @@ def create_agent_router(deps: SimpleNamespace) -> APIRouter:
     )
     def get_agent_identity():
         return _get_agent_identity()
+
+    @migrated.get(
+        "/api/v1/agent/reputation",
+        summary="Read QMA ERC-8004 on-chain reputation and verified credentials",
+        description="""Returns the authoritative ERC-8004 on-chain reputation score, verified tags, and attestations on Arc Testnet.
+
+**Authentication:** Public route.""",
+        response_model=AgentReputationResponse,
+        response_model_exclude_unset=True,
+        responses=documented_errors(429, 500),
+    )
+    def get_agent_reputation():
+        return get_onchain_reputation_summary()
 
     @migrated.get(
         "/.well-known/circle-service.json",

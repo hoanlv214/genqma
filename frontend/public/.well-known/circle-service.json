@@ -1,0 +1,95 @@
+{
+  "schema_version": "1.0",
+  "service_id": "qma-market-intelligence",
+  "name": "QMA - Quantitative Market Anomaly & Intelligence",
+  "category": "market-intelligence",
+  "description": "Sub-second Pyth volatility stress bands, Polymarket arbitrage divergence, and funding anomaly feeds on Arc with instant Circle USDC micropayments and zero-gas execution.",
+  "payment_rail": "x402",
+  "currency": "USDC",
+  "pricing": {
+    "funding_memory": "0.001",
+    "oi_memory": "0.001",
+    "polymarket_divergence": "0.002",
+    "pyth_stress_band": "0.003",
+    "preview_report": "0.002",
+    "full_report": "0.005"
+  },
+  "networks": [
+    "arc",
+    "base-sepolia",
+    "arbitrum-sepolia",
+    "ethereum-sepolia"
+  ],
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/.well-known/circle-service.json",
+      "description": "Circle Service Discovery Descriptor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/agent/identity",
+      "description": "ERC-8004 Agent Card & Capabilities"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/providers/{provider_id}/preview",
+      "description": "x402 Paid Preview Intelligence Report ($0.002 USDC)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/providers/{provider_id}/full-report",
+      "description": "x402 Paid Full Quantitative Report ($0.005 USDC)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/agent/decision",
+      "description": "Autonomous Purchase Decisioning"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/agent/jobs",
+      "description": "ERC-8183 Escrowed Task Dispatch ($0.010 USDC)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/providers",
+      "description": "List Verified Intelligence Providers"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/agent/spending-policy",
+      "description": "Circle Wallet Spending Policy Caps"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/market/credit-risk-score",
+      "description": "Collateral Risk & Analogs Underwriting"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/stablefx/quote",
+      "description": "Institutional Stablecoin FX Quote (USDC/EURC)"
+    }
+  ],
+  "provider": {
+    "name": "GenQMA Labs",
+    "url": "https://genqma.vercel.app",
+    "support_url": "https://genqma.vercel.app/docs",
+    "documentation_url": "https://genqma.vercel.app/docs",
+    "health_check_url": "https://qma-api.onrender.com/healthz"
+  },
+  "example_prompts": [
+    "Search funding rate arbitrage anomalies for BTC and ETH",
+    "Inspect quantitative analogs and win-rate diagnostics for MBOX",
+    "Get Polymarket event divergence signal vs perpetual futures",
+    "Underwrite collateral credit risk score on Arc"
+  ],
+  "x402_specification": {
+    "version": 2,
+    "scheme": "exact",
+    "payment_rail": "Circle Gateway Nanopayments (x402)",
+    "settlement_verification": "GenLayer Intelligent Contract Consensus",
+    "seller_address": "0x23e7c029a287a83d80b2e084e008211658dda11d"
+  }
+}

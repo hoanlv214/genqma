@@ -1537,6 +1537,40 @@ paths:
       x-qma-audiences:
       - agent
       - public
+  /api/v1/agent/reputation:
+    get:
+      tags:
+      - Agent decisioning
+      summary: Read QMA ERC-8004 on-chain reputation and verified credentials
+      description: 'Returns the authoritative ERC-8004 on-chain reputation score,
+        verified tags, and attestations on Arc Testnet.
+
+
+        **Authentication:** Public route.'
+      operationId: get_agent_reputation_api_v1_agent_reputation_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentReputationResponse'
+        '429':
+          description: The request was rate limited. Retry after the indicated delay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitErrorResponse'
+        '500':
+          description: The server could not complete the request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-qma-access: public
+      x-qma-audiences:
+      - agent
+      - public
   /.well-known/circle-service.json:
     get:
       tags:
@@ -6531,6 +6565,14 @@ components:
           title: Arc Rfb Alignment
           description: Declared architectural alignment with Arc Request for Builders
             frontiers
+        erc8004:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Erc8004
+          description: Authoritative ERC-8004 on-chain registration and registry contracts
+            on Arc
       type: object
       required:
       - name
@@ -6742,6 +6784,58 @@ components:
       - last_updated
       - recommendations
       title: AgentRecommendationsResponse
+    AgentReputationResponse:
+      properties:
+        standard:
+          type: string
+          title: Standard
+          description: Reputation standard specification
+          default: ERC-8004
+        agent_id:
+          type: integer
+          title: Agent Id
+          description: Registered ERC-8004 agent token identifier on Arc
+        reputation_registry:
+          type: string
+          title: Reputation Registry
+          description: Arc ReputationRegistry contract address
+        average_score:
+          type: number
+          title: Average Score
+          description: Average reputation score (0-100)
+        total_feedbacks:
+          type: integer
+          title: Total Feedbacks
+          description: Total feedback records on-chain
+        verified_tags:
+          items:
+            type: string
+          type: array
+          title: Verified Tags
+          description: Verified performance tags
+        recent_feedbacks:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Recent Feedbacks
+          description: Recent on-chain feedback events
+        validation_status:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Validation Status
+          description: Current on-chain validation credentials
+      type: object
+      required:
+      - agent_id
+      - reputation_registry
+      - average_score
+      - total_feedbacks
+      - verified_tags
+      - recent_feedbacks
+      title: AgentReputationResponse
     AgentSessionControlRequest:
       properties:
         action:

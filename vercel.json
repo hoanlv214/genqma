@@ -57,6 +57,31 @@
       ]
     },
     {
+      "source": "/.well-known/:path*",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, HEAD, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "*"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=60"
+        }
+      ]
+    },
+    {
       "source": "/api/:path*",
       "headers": [
         {
@@ -89,7 +114,7 @@
     },
     {
       "source": "/.well-known/:path*",
-      "destination": "https://qma-api.onrender.com/.well-known/:path*"
+      "destination": "/.well-known/:path*"
     },
     {
       "source": "/api/:path*",

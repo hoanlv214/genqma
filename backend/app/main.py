@@ -454,6 +454,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         path == "/api/v1/chat"
         or path == "/api/v1/preview"
         or path == "/api/v1/analyze"
+        or path == "/api/v1/agent/jobs"
+        or path.startswith("/api/v1/agent/jobs/")
         or (path.startswith("/api/v1/providers/") and (path.endswith("/preview") or path.endswith("/full-report")))
     )
     has_credentials = (
@@ -463,7 +465,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
     if is_paid_path and not has_credentials:
         from backend.app.core.x402_spec import build_402_challenge_payload
-        amount_dec = "0.005000" if ("full-report" in path or "chat" in path or "analyze" in path) else "0.002000"
+        amount_dec = "0.005000" if ("full-report" in path or "chat" in path or "analyze" in path or "agent/jobs" in path) else "0.002000"
         challenge_body, challenge_headers = build_402_challenge_payload(
             url=path,
             amount_decimal=amount_dec,

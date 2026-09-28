@@ -111,6 +111,7 @@ The Access column must match the operation's `x-qma-access` value in
 | POST | `/api/v1/agent/jobs` | `paid-access` | Deliver an invoice-backed intelligence job |
 | GET | `/api/v1/agent/jobs/{job_id}` | `paid-access` | Read an owned invoice-backed job |
 | GET | `/api/v1/agent/recommendations` | `public` | Rank purchase candidates for an agent |
+| GET | `/api/v1/agent/reputation` | `public` | Read QMA ERC-8004 on-chain reputation and verified credentials |
 | POST | `/api/v1/agent/sessions/{session_id}/control` | `public` | Execute administrative intervention (pause, resume, kill) on an agent session |
 | GET | `/api/v1/agent/spending-policy` | `public` | Read Circle agent wallet spending policy caps |
 | GET | `/api/v1/agent/spending-policy/command` | `public` | Generate Circle CLI wallet limit command with OTP instructions |

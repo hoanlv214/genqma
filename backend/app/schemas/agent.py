@@ -43,6 +43,21 @@ class AgentIdentityResponse(BaseModel):
         default=None,
         description="Declared architectural alignment with Arc Request for Builders frontiers",
     )
+    erc8004: Optional[dict] = Field(
+        default=None,
+        description="Authoritative ERC-8004 on-chain registration and registry contracts on Arc",
+    )
+
+
+class AgentReputationResponse(BaseModel):
+    standard: str = Field(default="ERC-8004", description="Reputation standard specification")
+    agent_id: int = Field(..., description="Registered ERC-8004 agent token identifier on Arc")
+    reputation_registry: str = Field(..., description="Arc ReputationRegistry contract address")
+    average_score: float = Field(..., description="Average reputation score (0-100)")
+    total_feedbacks: int = Field(..., description="Total feedback records on-chain")
+    verified_tags: List[str] = Field(..., description="Verified performance tags")
+    recent_feedbacks: List[dict] = Field(..., description="Recent on-chain feedback events")
+    validation_status: Optional[dict] = Field(default=None, description="Current on-chain validation credentials")
 
 
 

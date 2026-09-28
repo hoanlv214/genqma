@@ -1,0 +1,64 @@
+{
+  "standard": "ERC-8004",
+  "name": "QMA Autonomous Intelligence Agent",
+  "version": "2.4.0",
+  "agent_address": "0x367728bf66Cf962Ce15fD2b65193b7a1466f087c",
+  "chain_id": 5042002,
+  "description": "Autonomous market anomaly detection and quantitative prediction intelligence agent on Arc. Delivers sub-second Pyth volatility stress bands, Polymarket prediction divergence, and funding anomaly alpha with gasless Circle x402 nanopayments and GenLayer consensus validation.",
+  "capabilities": [
+    "market_anomaly_detection",
+    "polymarket_divergence",
+    "pyth_low_latency_stress",
+    "x402_nanopayments",
+    "erc8183_escrow",
+    "cctp_crosschain_bridging",
+    "automated_eip712_hedging",
+    "collateral_risk_underwriting",
+    "stablefx_conversion"
+  ],
+  "supported_protocols": [
+    "x402",
+    "erc8183",
+    "erc8004",
+    "mcp",
+    "genlayer-consensus",
+    "circle-stablefx"
+  ],
+  "pricing_model": {
+    "currency": "USDC",
+    "payment_rail": "x402",
+    "min_call_cost": 0.001,
+    "tiers": {
+      "preview": "0.001-0.003 USDC",
+      "full": "0.005-0.015 USDC"
+    }
+  },
+  "verification": {
+    "engine": "GenLayer Intelligent Contract",
+    "shield_address": "0x367728bf66Cf962Ce15fD2b65193b7a1466f087c",
+    "consensus_network": "genlayer-testnet",
+    "consensus_standard": "multi-validator subjective agreement"
+  },
+  "erc8004": {
+    "agent_id": 896885,
+    "identity_registry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    "reputation_registry": "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+    "validation_registry": "0x8004Cb1BF31DAf7788923b405b754f57acEB4272",
+    "explorer_url": "https://testnet.arcscan.app/token/0x8004A818BFB912233c491871b3d84c89A494BD9e?a=896885",
+    "onchain_verified": true
+  },
+  "arc_rfb_alignment": {
+    "frontiers": [
+      "the_agentic_economy",
+      "the_intelligent_account",
+      "onchain_credit_and_collateral",
+      "global_money_and_embedded_finance"
+    ],
+    "archetype": "Autonomous Business (Zero-Person Company) & Two-Sided Outcome Marketplace",
+    "settlement_rail": "Arc L1 Deterministic Finality (USDC native gas)",
+    "treasury_management": "Vestiarion AI CFO with ERC-4626 USYC Yield Sweep",
+    "sla_verification": "GenLayer Optimistic Consensus Shield",
+    "spending_guardrails": "Deterministic Spending Policy Engine (Money with a Mandate)",
+    "stablefx_status": "Enabled (EURC/USDC corridor support)"
+  }
+}

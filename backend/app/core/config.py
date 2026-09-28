@@ -183,6 +183,24 @@ ARC_HEDGE_RELAYER_CONTRACT = os.getenv("QMA_ARC_HEDGE_RELAYER_CONTRACT", ARC_GAT
 ARC_GATEWAY_INTERNAL_SECRET = os.getenv("QMA_ARC_GATEWAY_INTERNAL_SECRET", "")
 
 # ---------------------------------------------------------------------------
+# ERC-8004 AI Agent Registry & Identity (Arc Testnet)
+# ---------------------------------------------------------------------------
+_erc8004_preset = _arc_preset.get("erc8004", {})
+ERC8004_AGENT_ID: int = int(os.getenv("QMA_ERC8004_AGENT_ID", str(_erc8004_preset.get("agentId", 896885))))
+ERC8004_IDENTITY_REGISTRY: str = os.getenv(
+    "QMA_ERC8004_IDENTITY_REGISTRY",
+    _erc8004_preset.get("identityRegistry", "0x8004A818BFB912233c491871b3d84c89A494BD9e"),
+)
+ERC8004_REPUTATION_REGISTRY: str = os.getenv(
+    "QMA_ERC8004_REPUTATION_REGISTRY",
+    _erc8004_preset.get("reputationRegistry", "0x8004B663056A597Dffe9eCcC1965A193B7388713"),
+)
+ERC8004_VALIDATION_REGISTRY: str = os.getenv(
+    "QMA_ERC8004_VALIDATION_REGISTRY",
+    _erc8004_preset.get("validationRegistry", "0x8004Cb1BF31DAf7788923b405b754f57acEB4272"),
+)
+
+# ---------------------------------------------------------------------------
 # Withdraw
 # ---------------------------------------------------------------------------
 WITHDRAW_MODE = os.getenv("QMA_WITHDRAW_MODE", "seller_wallet").strip().lower()
