@@ -9,7 +9,7 @@
 
 ## 1. Executive Overview & Architectural North Star
 
-**QMA (Quantitative Market Agency)** is an autonomous quantitative intelligence and treasury management platform operating natively on the **Arc blockchain** (Chain ID `5042002` / `5042`) with USDC native gas settlement, augmented by decentralized intelligent contract consensus on **GenLayer** (Chain ID `61997`).
+**QMA** (or **GenQMA**) is an autonomous quantitative intelligence and treasury management platform operating natively on the **Arc blockchain** (Chain ID `5042002` / `5042`) with USDC native gas settlement, augmented by decentralized intelligent contract consensus on **GenLayer** (Chain ID `61997`).
 
 The platform provides a dual-interface architecture:
 1. **Autonomous Machine-to-Machine Commerce**: AI agents running the canonical CLI (`@hoanlv214/qma-cli` / `$ qma agent run`) autonomously evaluate, acquire, and settle intelligence assets using programmable Circle agent wallets via HTTP 402 / x402 protocols.
