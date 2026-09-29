@@ -444,7 +444,7 @@ def load_platform_payment_events(
             "provider_id": item.get("provider_id", "funding_memory"),
             "buyer_type": item.get("buyer_type", "human"),
             "amount_usdc": item.get("amount_usdc"),
-            "gateway_status": item.get("gateway_status") or "confirmed",
+            "gateway_status": item.get("gateway_status") or "unknown",
             "transaction_hash": item.get("transaction_hash"),
             "explorer_url": item.get("explorer_url"),
             "paid_at": item.get("paid_at") or item.get("saved_at"),

@@ -64,7 +64,10 @@ def ensure_arc_settlement_plan(invoice: dict) -> dict:
     """Create one immutable financial action for a finalized GenLayer verdict."""
     verdict = str((invoice.get("genlayer") or {}).get("verdict") or "").upper()
     if verdict not in {"VALID", "INVALID"}:
-        raise ArcVerdictSettlementError("A finalized VALID or INVALID GenLayer verdict is required.")
+        if invoice.get("status") in {"verification_rejected", "refunded"} or (invoice.get("arc_settlement") or {}).get("action") == "buyer_refund":
+            verdict = "INVALID"
+        else:
+            raise ArcVerdictSettlementError("A finalized VALID or INVALID GenLayer verdict is required.")
     if not invoice.get("settlement_id"):
         raise ArcVerdictSettlementError("The source Circle settlement_id is required.")
 
@@ -96,7 +99,12 @@ def ensure_arc_settlement_plan(invoice: dict) -> dict:
         transfer_raw = creator_raw
     else:
         action = "buyer_refund"
-        recipient = _required_address(invoice.get("payer_address"), "Settlement payer address")
+        # For Gateway gasless settlements payer_address may be the relayer/SCA;
+        # the invoice-bound buyer_wallet_address is the true fund owner.
+        recipient = _required_address(
+            invoice.get("buyer_wallet_address") or invoice.get("payer_address"),
+            "Settlement payer address",
+        )
         transfer_raw = total_raw
 
     invoice_id = str(invoice.get("invoice_id") or "").strip()

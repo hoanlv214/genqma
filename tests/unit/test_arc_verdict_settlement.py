@@ -140,3 +140,69 @@ def test_public_view_does_not_expose_replay_material():
     assert "operator_signature" not in public
     assert "mint_idempotency_key" not in public
     assert "burn_intent_salt" not in public
+
+
+def test_buyer_refund_prefers_bound_buyer_wallet():
+    w_buyer = "0x4444444444444444444444444444444444444444"
+    w_relayer = "0x5555555555555555555555555555555555555555"
+    record = invoice("INVALID")
+    record["buyer_wallet_address"] = w_buyer
+    record["payer_address"] = w_relayer
+    plan = ensure_arc_settlement_plan(record)
+    assert plan["action"] == "buyer_refund"
+    assert plan["recipient"] == w_buyer
+
+
+def test_report_hash_change_moves_invoice_to_rejected_with_refund(monkeypatch):
+    from fastapi import HTTPException
+    from backend.app.main import _verify_invoice_report_with_genlayer_locked
+
+    saved = []
+    monkeypatch.setattr("backend.app.main._save_invoice", lambda inv: saved.append(dict(inv)))
+    monkeypatch.setattr("backend.app.main.ARC_GATEWAY_BASE_URL", "")
+
+    invoice_id = "inv-hash-change-1"
+    inv = {
+        "invoice_id": invoice_id,
+        "provider_id": "funding_memory",
+        "query": {"symbol": "BTC/USDT"},
+        "tier": "full",
+        "amount": 0.05,
+        "amount_raw": "50000",
+        "status": "verification_pending",
+        "settlement_id": "settlement-refund-1",
+        "verification_report_hash": "stale-prewarmed-hash-that-will-mismatch",
+        "payer_address": "0x3333333333333333333333333333333333333333",
+        "buyer_wallet_address": "0x4444444444444444444444444444444444444444",
+        "platform_treasury_wallet": "0x1111111111111111111111111111111111111111",
+    }
+
+    with pytest.raises(HTTPException) as exc_info:
+        _verify_invoice_report_with_genlayer_locked(invoice_id, inv)
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail.get("error") == "verification_report_hash_changed"
+    assert inv["status"] == "verification_rejected"
+    assert inv["access_status"] == "verification_rejected"
+    assert inv["genlayer"]["error"] == "verification_report_hash_changed"
+    assert inv["genlayer"]["verdict"] is None
+    assert "_verification_report" not in inv
+    assert "arc_settlement" in inv
+    assert inv["arc_settlement"]["action"] == "buyer_refund"
+    assert inv["arc_settlement"]["recipient"] == "0x4444444444444444444444444444444444444444"
+
+
+def test_production_secrets_boot_gate(monkeypatch):
+    from backend.app.core import config
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setenv("QMA_ENV", "production")
+    monkeypatch.setattr(config, "ACCESS_TOKEN_SECRET", "qma-local-demo-secret-change-me")
+    with pytest.raises(RuntimeError, match="Refusing to boot with insecure QMA_ACCESS_TOKEN_SECRET"):
+        config._assert_production_secrets()
+
+    monkeypatch.setattr(config, "ACCESS_TOKEN_SECRET", "")
+    with pytest.raises(RuntimeError, match="Refusing to boot with insecure QMA_ACCESS_TOKEN_SECRET"):
+        config._assert_production_secrets()
+
+    monkeypatch.setenv("PYTEST_CURRENT_TEST", "1")
+    config._assert_production_secrets()

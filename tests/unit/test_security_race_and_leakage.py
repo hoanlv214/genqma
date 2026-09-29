@@ -180,3 +180,310 @@ def test_webhook_provider_ssrf_mitigation():
             k in str(excinfo.value).lower()
             for k in ["private", "blocked", "forbidden", "ssrf", "localhost", "loopback", "invalid"]
         )
+
+
+# ---------------------------------------------------------------------------
+# 5. On-Chain Settlement Payer Binding & Replay Integrity
+# ---------------------------------------------------------------------------
+
+W1 = "0x1111111111111111111111111111111111111111"
+W2 = "0x2222222222222222222222222222222222222222"
+
+
+def _make_onchain_test_invoice(invoice_id: str, buyer_wallet_address: str | None = None) -> dict:
+    import time
+    from backend.app.core.config import PAYMENT_WALLET_ADDRESS
+    invoice = {
+        "invoice_id": invoice_id,
+        "invoice_secret": "secret_test_onchain_123456",
+        "status": "pending",
+        "created_at": time.time(),
+        "expires_at": time.time() + 600,
+        "symbol": "BTC",
+        "provider_id": "funding_memory",
+        "owner_wallet": PAYMENT_WALLET_ADDRESS,
+        "wallet_address": PAYMENT_WALLET_ADDRESS,
+        "platform_treasury_wallet": PAYMENT_WALLET_ADDRESS,
+        "buyer_type": "human",
+        "tier": "preview",
+        "resource_type": "qma_signal_report",
+        "query": {"symbol": "BTC"},
+        "query_hash": "query_hash_onchain_test",
+        "amount": "0.001000",
+        "amount_raw": "1000",
+        "pricing": {"amount_usdc": "0.001000"},
+        "settlement": {"currency": "USDC", "decimals": 6, "mode": "treasury_ledger"},
+        "accounting": {"settlement_mode": "treasury_ledger"},
+    }
+    if buyer_wallet_address:
+        invoice["buyer_wallet_address"] = buyer_wallet_address
+    return invoice
+
+
+def test_raw_onchain_settlement_rejects_foreign_sender(client, monkeypatch):
+    """Raw on-chain settlement from W2 must be rejected with 403 when invoice is bound to buyer W1."""
+    import backend.app.main as main_module
+    invoice = _make_onchain_test_invoice("inv_foreign_sender", buyer_wallet_address=W1)
+    monkeypatch.setitem(main_module.state.invoices_db, invoice["invoice_id"], invoice)
+    monkeypatch.setattr(main_module, "_save_invoice", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(main_module.storage_backend, "is_settlement_id_claimed", lambda *_args, **_kwargs: False)
+
+    tx_hash = "0x" + "a" * 64
+    fake_settlement = {
+        "id": tx_hash,
+        "settlement_id": tx_hash,
+        "status": "completed",
+        "fromAddress": W2,
+        "toAddress": invoice["wallet_address"],
+        "amount": "1000",
+        "rail": "arc_onchain",
+    }
+    monkeypatch.setattr(main_module, "fetch_circle_settlement", lambda _sid: fake_settlement)
+
+    res = client.post(
+        f"/api/v1/payment/verify?invoice_id={invoice['invoice_id']}",
+        json={
+            "invoice_secret": invoice["invoice_secret"],
+            "settlement_id": tx_hash,
+            "payer_address": W2,
+        },
+    )
+    assert res.status_code == 403
+    assert "Settlement sender does not match the invoice buyer wallet." in res.json().get("detail", "")
+
+
+def test_raw_onchain_settlement_requires_buyer_binding(client, monkeypatch):
+    """Raw on-chain settlement must fail with 400 when the invoice has no buyer_wallet_address."""
+    import backend.app.main as main_module
+    invoice = _make_onchain_test_invoice("inv_no_buyer", buyer_wallet_address=None)
+    monkeypatch.setitem(main_module.state.invoices_db, invoice["invoice_id"], invoice)
+    monkeypatch.setattr(main_module, "_save_invoice", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(main_module.storage_backend, "is_settlement_id_claimed", lambda *_args, **_kwargs: False)
+
+    tx_hash = "0x" + "b" * 64
+    fake_settlement = {
+        "id": tx_hash,
+        "settlement_id": tx_hash,
+        "status": "completed",
+        "fromAddress": W2,
+        "toAddress": invoice["wallet_address"],
+        "amount": "1000",
+        "rail": "arc_onchain",
+    }
+    monkeypatch.setattr(main_module, "fetch_circle_settlement", lambda _sid: fake_settlement)
+
+    res = client.post(
+        f"/api/v1/payment/verify?invoice_id={invoice['invoice_id']}",
+        json={
+            "invoice_secret": invoice["invoice_secret"],
+            "settlement_id": tx_hash,
+            "payer_address": W2,
+        },
+    )
+    assert res.status_code == 400
+    assert "On-chain settlement verification requires an invoice bound to a buyer wallet address." in res.json().get("detail", "")
+
+
+def test_gateway_settlement_unaffected_by_buyer_binding(client, monkeypatch):
+    """Circle Gateway settlements (without rail=='arc_onchain') must NOT be rejected by the buyer binding guard."""
+    import backend.app.main as main_module
+    invoice = _make_onchain_test_invoice("inv_gateway_compat", buyer_wallet_address=W1)
+    monkeypatch.setitem(main_module.state.invoices_db, invoice["invoice_id"], invoice)
+    monkeypatch.setattr(main_module, "_save_invoice", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(main_module, "reload_persistent_state", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(main_module.storage_backend, "is_settlement_id_claimed", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(main_module, "find_arc_batch_tx", lambda _s: {"batch_tx": None, "explorer_url": None})
+    monkeypatch.setattr(main_module, "verify_invoice_report_with_genlayer", lambda _id, _inv: {
+        "status": "VERIFIED", "verdict": "VALID", "confidence": 90,
+    })
+
+    settle_id = "circle_settle_gateway_123"
+    fake_settlement = {
+        "id": settle_id,
+        "settlement_id": settle_id,
+        "status": "completed",
+        "fromAddress": W2,  # relayer or different from buyer W1
+        "toAddress": invoice["wallet_address"],
+        "amount": "1000",
+        # NOTE: no "rail": "arc_onchain"
+    }
+    monkeypatch.setattr(main_module, "fetch_circle_settlement", lambda _sid: fake_settlement)
+
+    res = client.post(
+        f"/api/v1/payment/verify?invoice_id={invoice['invoice_id']}",
+        json={
+            "invoice_secret": invoice["invoice_secret"],
+            "settlement_id": settle_id,
+            "payer_address": W2,
+        },
+    )
+    # Must NOT raise 403 from the buyer binding guard
+    assert res.status_code != 403
+    assert res.status_code == 200
+
+
+def test_raw_onchain_settlement_hex_decode_malformed_erc20(monkeypatch):
+    """Malformed ERC-20 transfer input (non-hex tail) must raise HTTP 400 instead of unhandled ValueError."""
+    from backend.app.services.x402_gateway import _fetch_arc_onchain_settlement
+    from fastapi import HTTPException
+    from unittest.mock import MagicMock
+
+    class FakeEth:
+        def get_transaction(self, tx_hash):
+            return {
+                "from": "0x1111111111111111111111111111111111111111",
+                "to": "0x3600000000000000000000000000000000000000",
+                "value": 0,
+                # 0xa9059cbb + 32-byte address + 32-byte invalid hex amount
+                "input": "0xa9059cbb" + ("0" * 24 + "1" * 40) + "NON_HEX_TAIL_VALUE_ERROR_TRIGGER" + ("0" * 32),
+            }
+
+        def get_transaction_receipt(self, tx_hash):
+            return {"status": 1, "blockNumber": 123}
+
+    class FakeWeb3:
+        HTTPProvider = MagicMock()
+        def __init__(self, *args, **kwargs):
+            self.eth = FakeEth()
+
+    monkeypatch.setattr("web3.Web3", FakeWeb3)
+
+    with pytest.raises(HTTPException) as exc_info:
+        _fetch_arc_onchain_settlement("0x" + "c" * 64)
+    assert exc_info.value.status_code == 400
+    assert "Malformed ERC-20 transfer payload in Arc transaction" in exc_info.value.detail
+
+
+# ---------------------------------------------------------------------------
+# Concurrency Regression Tests (Batch 4)
+# ---------------------------------------------------------------------------
+
+def test_concurrent_invoice_saves_all_persist(tmp_path):
+    from storage import JsonStorage
+    import threading
+
+    invoices_file = str(tmp_path / "payment_invoices.json")
+    storage = JsonStorage(
+        ledger_path=str(tmp_path / "ledger.json"),
+        reports_path=str(tmp_path / "reports.json"),
+        invoices_path=invoices_file,
+        creators_path=str(tmp_path / "creators.json"),
+        provider_controls_path=str(tmp_path / "controls.json"),
+    )
+
+    num_threads = 8
+    barrier = threading.Barrier(num_threads)
+    errors = []
+
+    def worker(i):
+        try:
+            invoice = {
+                "invoice_id": f"inv_concurrent_{i}",
+                "amount": 10.0 + i,
+                "status": "paid",
+            }
+            barrier.wait()
+            storage.save_invoice(invoice)
+        except Exception as e:
+            errors.append(e)
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, f"Errors during concurrent save_invoice: {errors}"
+    loaded = storage.load_invoices()
+    assert len(loaded) == num_threads
+    for i in range(num_threads):
+        assert f"inv_concurrent_{i}" in loaded
+
+
+def test_concurrent_payment_events_all_persist(tmp_path):
+    from storage import JsonStorage
+    import threading
+
+    ledger_file = str(tmp_path / "payment_ledger.json")
+    storage = JsonStorage(
+        ledger_path=ledger_file,
+        reports_path=str(tmp_path / "reports.json"),
+        invoices_path=str(tmp_path / "invoices.json"),
+        creators_path=str(tmp_path / "creators.json"),
+        provider_controls_path=str(tmp_path / "controls.json"),
+    )
+
+    num_threads = 8
+    barrier = threading.Barrier(num_threads)
+    errors = []
+
+    def worker(i):
+        try:
+            event = {
+                "event_id": f"evt_concurrent_{i}",
+                "invoice_id": f"inv_evt_{i}",
+                "settlement_id": f"settle_evt_{i}",
+                "amount_usdc": 5.0 + i,
+            }
+            barrier.wait()
+            storage.save_single_payment_event(event)
+        except Exception as e:
+            errors.append(e)
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, f"Errors during concurrent save_single_payment_event: {errors}"
+    loaded = storage.load_payment_events()
+    assert len(loaded) == num_threads
+    loaded_ids = {e.get("settlement_id") for e in loaded}
+    for i in range(num_threads):
+        assert f"settle_evt_{i}" in loaded_ids
+
+
+def test_euthyna_concurrent_records_chain_intact(tmp_path):
+    from backend.app.services.euthyna_audit import EuthynaAuditEngine
+    import threading
+
+    audit_file = tmp_path / "euthyna_audit_trail.json"
+    engine = EuthynaAuditEngine(audit_file=audit_file)
+
+    initial_count = len(engine.get_audit_trail(limit=1000))
+    num_threads = 8
+    barrier = threading.Barrier(num_threads)
+    errors = []
+
+    def worker(i):
+        try:
+            barrier.wait()
+            engine.record_action(
+                action=f"ACTION_{i}",
+                actor=f"0x{i:040x}",
+                amount_usdc=10.0 * (i + 1),
+                balance_before=100.0,
+                balance_after=100.0 - 10.0 * (i + 1),
+                usyc_shares=0.0,
+                policy_rule="TEST_RULE",
+                reasoning=f"Concurrent thread {i}",
+            )
+        except Exception as e:
+            errors.append(e)
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, f"Errors during concurrent record_action: {errors}"
+    current_records = engine.get_audit_trail(limit=1000)
+    assert len(current_records) == initial_count + num_threads
+
+    integrity = engine.verify_integrity()
+    assert integrity["tampered_records"] == 0
+    assert integrity["chain_broken"] is False
+    assert integrity["audit_health"] == "PASSED"
+

@@ -18,6 +18,7 @@ class InvoiceRequest(QueryModel):
     synthetic: bool = Field(default=False, examples=[False])
     agent_label: Optional[str] = Field(default=None, max_length=120, examples=["autonomous-session"])
     run_source: Optional[str] = Field(default=None, max_length=120, examples=["cli-agent"])
+    plan: Optional[Dict[str, Any]] = Field(default=None, description="Optional agent decision plan to bind price ceiling")
 
 
 class QuoteRequest(QueryModel):

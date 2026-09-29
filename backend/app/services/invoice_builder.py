@@ -382,7 +382,13 @@ def paid_invoice_event(invoice: dict) -> dict:
 # Get invoice or 402
 # ---------------------------------------------------------------------------
 
-def get_invoice_or_402(invoices_db: dict, invoice_id: str, load_invoices_fn=None) -> dict:
+def get_invoice_or_402(
+    invoices_db: dict,
+    invoice_id: str,
+    load_invoices_fn=None,
+    invoice_secret: Optional[str] = None,
+    allow_expired: bool = False,
+) -> dict:
     invoice = invoices_db.get(invoice_id)
     if not invoice and load_invoices_fn:
         try:
@@ -401,30 +407,34 @@ def get_invoice_or_402(invoices_db: dict, invoice_id: str, load_invoices_fn=None
                 "payment": payment_requirement(invoice_id=invoice_id),
             },
         )
+    if invoice_secret is not None:
+        import hmac as _hmac
+        if not _hmac.compare_digest(str(invoice_secret), str(invoice.get("invoice_secret"))):
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "payment_required",
+                    "message": "Create and settle a USDC invoice before requesting this report.",
+                    "payment": payment_requirement(invoice_id=invoice_id),
+                },
+            )
     if has_fabricated_settlement(invoice):
         raise HTTPException(status_code=402, detail="This legacy invoice has no verified Circle settlement. Create and pay a new invoice.")
     hydrate_payment_schema(invoice)
     status = invoice.get("status")
-    if status not in {"paid", "verification_pending", "refunded"}:
+    if not allow_expired and status not in {"paid", "verification_pending", "refunded"}:
         expires_at = invoice.get("expires_at")
         try:
             exp = float(expires_at) if expires_at is not None else None
         except (ValueError, TypeError):
             exp = None
         if exp is not None and time.time() > exp:
-            invoice["status"] = "expired"
             raise HTTPException(
                 status_code=402,
                 detail={
-                    "error": "invoice_expired",
-                    "message": "Invoice expired. Create a fresh invoice.",
-                    "payment": payment_requirement(
-                        symbol=invoice.get("symbol"),
-                        amount_usdc=invoice.get("amount"),
-                        tier=invoice.get("tier", "full"),
-                        resource_type=invoice.get("resource_type", PAYMENT_RESOURCE_TYPE),
-                        provider_id=invoice.get("provider_id", "funding_memory"),
-                    ),
+                    "error": "payment_required",
+                    "message": "Create and settle a USDC invoice before requesting this report.",
+                    "payment": payment_requirement(invoice_id=invoice_id),
                 },
             )
     return invoice

@@ -20,7 +20,65 @@ def extract_settlement_tx_hash(settlement: dict) -> str | None:
     )
 
 
+def _fetch_arc_onchain_settlement(tx_hash: str) -> dict:
+    from backend.app.core.config import ARC_RPC_URL, ARC_USDC_ADDRESS
+    from backend.app.services.wallet_utils import normalize_address
+    try:
+        from web3 import Web3
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Web3 library not installed")
+
+    w3 = Web3(Web3.HTTPProvider(ARC_RPC_URL))
+    try:
+        tx = w3.eth.get_transaction(tx_hash)
+        receipt = w3.eth.get_transaction_receipt(tx_hash)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=f"Arc on-chain transaction not found: {exc}")
+
+    if not tx or not receipt:
+        raise HTTPException(status_code=404, detail="Arc on-chain transaction or receipt not found")
+
+    if receipt.get("status") != 1:
+        raise HTTPException(status_code=400, detail="Arc transaction failed or reverted on-chain")
+
+    from_addr = normalize_address(tx.get("from"))
+    to_addr = normalize_address(tx.get("to"))
+    value = int(tx.get("value") or 0)
+    data = tx.get("input") or tx.get("data") or ""
+    if hasattr(data, "hex"):
+        data = data.hex()
+    data = str(data)
+
+    amount_raw = 0
+    # Check ERC-20 transfer
+    if to_addr == normalize_address(ARC_USDC_ADDRESS) and data.startswith("0xa9059cbb") and len(data) >= 138:
+        try:
+            to_addr = normalize_address("0x" + data[34:74])
+            amount_raw = int(data[74:138], 16)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Malformed ERC-20 transfer payload in Arc transaction")
+    else:
+        # Native Arc USDC transfer (18 decimals -> 6 decimals raw micro-units)
+        amount_raw = value // int(10**12)
+
+    return {
+        "id": tx_hash,
+        "settlement_id": tx_hash,
+        "transactionHash": tx_hash,
+        "txHash": tx_hash,
+        "status": "completed",
+        "fromAddress": from_addr,
+        "toAddress": to_addr,
+        "amount": str(amount_raw),
+        "blockNumber": receipt.get("blockNumber"),
+        "network": "arc-testnet",
+        "rail": "arc_onchain",
+    }
+
+
 def fetch_circle_settlement(settlement_id: str, *, gateway_api: str, http_get=None) -> dict:
+    if isinstance(settlement_id, str) and settlement_id.startswith("0x") and len(settlement_id) == 66:
+        return _fetch_arc_onchain_settlement(settlement_id)
     _get = http_get or requests.get
     try:
         resp = _get(f"{gateway_api}/v1/x402/transfers/{settlement_id}", timeout=10)
@@ -38,6 +96,7 @@ def fetch_circle_settlement(settlement_id: str, *, gateway_api: str, http_get=No
     if not resp.ok:
         raise HTTPException(status_code=502, detail=f"Circle Gateway returned {resp.status_code}: {resp.text[:300]}")
     return resp.json()
+
 
 
 def find_arc_batch_tx(

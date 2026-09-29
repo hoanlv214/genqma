@@ -78,13 +78,12 @@ def create_payments_router(deps: SimpleNamespace) -> APIRouter:
     def get_payment_invoice_status(
         invoice_id: str,
         invoice_secret_header: Optional[str] = Security(qma_invoice_secret_header),
-        invoice_secret: Optional[str] = Query(default=None),
         refresh: bool = Query(default=True),
     ):
         """Returns the authoritative resumable payment, GenLayer verdict, and sanitized Arc payout/refund state for one invoice."""
-        secret = invoice_secret_header or invoice_secret
+        secret = invoice_secret_header
         if not secret or len(secret) < 16:
-            raise HTTPException(status_code=400, detail="invoice_secret header X-QMA-Invoice-Secret or query parameter is required (min length 16)")
+            raise HTTPException(status_code=400, detail="invoice_secret header X-QMA-Invoice-Secret is required (min length 16)")
         return deps.get_payment_invoice_status(
             invoice_id=invoice_id,
             invoice_secret=secret,

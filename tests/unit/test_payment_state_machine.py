@@ -370,6 +370,109 @@ class PaymentStateMachineTests(unittest.TestCase):
                 )
         self.assertEqual(raised.exception.status_code, 503)
 
+    def test_split_raw_onchain_settlement_rejects_foreign_sender(self):
+        invoice = make_split_invoice("inv_split_foreign")
+        invoice["buyer_wallet_address"] = PAYER
+        creator_leg, platform_leg = invoice["split"]["legs"]
+        main.invoices_db = {invoice["invoice_id"]: invoice}
+
+        FOREIGN = "0x9999999999999999999999999999999999999999"
+        proof = main.PaymentVerifyRequest(
+            invoice_secret=invoice["invoice_secret"],
+            payer_address=FOREIGN,
+            split_settlements=[
+                {
+                    "leg_id": "creator",
+                    "settlement_id": "settle_creator",
+                    "pay_to": creator_leg["pay_to"],
+                    "amount_raw": creator_leg["amount_raw"],
+                    "sidecar_receipt": split_receipt(invoice["invoice_id"], creator_leg, "settle_creator"),
+                },
+                {
+                    "leg_id": "platform",
+                    "settlement_id": "settle_platform",
+                    "pay_to": platform_leg["pay_to"],
+                    "amount_raw": platform_leg["amount_raw"],
+                    "sidecar_receipt": split_receipt(invoice["invoice_id"], platform_leg, "settle_platform"),
+                },
+            ],
+        )
+
+        def fake_settlement(settlement_id):
+            leg = creator_leg if settlement_id == "settle_creator" else platform_leg
+            return {
+                "status": "received",
+                "toAddress": leg["pay_to"],
+                "fromAddress": FOREIGN,
+                "amount": leg["amount_raw"],
+                "rail": "arc_onchain",
+            }
+
+        patchers = self.no_storage_patches(invoice)
+        patchers.extend([
+            patch.object(main, "fetch_circle_settlement", fake_settlement),
+            patch.object(backend_main, "validate_arc_split_leg_payment", lambda *args, **kwargs: None),
+        ])
+        with ExitStack() as stack:
+            for patcher in patchers:
+                stack.enter_context(patcher)
+            with self.assertRaises(HTTPException) as raised:
+                main.verify_split_payment(invoice["invoice_id"], invoice, proof)
+
+        self.assertEqual(raised.exception.status_code, 403)
+        self.assertEqual(raised.exception.detail, "Settlement sender does not match the invoice buyer wallet.")
+
+    def test_split_raw_onchain_settlement_requires_buyer_binding(self):
+        invoice = make_split_invoice("inv_split_no_buyer")
+        invoice.pop("buyer_wallet_address", None)
+        creator_leg, platform_leg = invoice["split"]["legs"]
+        main.invoices_db = {invoice["invoice_id"]: invoice}
+
+        proof = main.PaymentVerifyRequest(
+            invoice_secret=invoice["invoice_secret"],
+            payer_address=PAYER,
+            split_settlements=[
+                {
+                    "leg_id": "creator",
+                    "settlement_id": "settle_creator",
+                    "pay_to": creator_leg["pay_to"],
+                    "amount_raw": creator_leg["amount_raw"],
+                    "sidecar_receipt": split_receipt(invoice["invoice_id"], creator_leg, "settle_creator"),
+                },
+                {
+                    "leg_id": "platform",
+                    "settlement_id": "settle_platform",
+                    "pay_to": platform_leg["pay_to"],
+                    "amount_raw": platform_leg["amount_raw"],
+                    "sidecar_receipt": split_receipt(invoice["invoice_id"], platform_leg, "settle_platform"),
+                },
+            ],
+        )
+
+        def fake_settlement(settlement_id):
+            leg = creator_leg if settlement_id == "settle_creator" else platform_leg
+            return {
+                "status": "received",
+                "toAddress": leg["pay_to"],
+                "fromAddress": PAYER,
+                "amount": leg["amount_raw"],
+                "rail": "arc_onchain",
+            }
+
+        patchers = self.no_storage_patches(invoice)
+        patchers.extend([
+            patch.object(main, "fetch_circle_settlement", fake_settlement),
+            patch.object(backend_main, "validate_arc_split_leg_payment", lambda *args, **kwargs: None),
+        ])
+        with ExitStack() as stack:
+            for patcher in patchers:
+                stack.enter_context(patcher)
+            with self.assertRaises(HTTPException) as raised:
+                main.verify_split_payment(invoice["invoice_id"], invoice, proof)
+
+        self.assertEqual(raised.exception.status_code, 400)
+        self.assertEqual(raised.exception.detail, "On-chain settlement verification requires an invoice bound to a buyer wallet address.")
+
 
 if __name__ == "__main__":
     unittest.main()
