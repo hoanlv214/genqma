@@ -34,7 +34,13 @@ def test_usyc_prepare_deposit_intent():
 
 
 def test_usyc_prepare_jit_redemption():
+    from unittest.mock import MagicMock
     service = USYCTreasuryService()
+    mock_contract = MagicMock()
+    mock_contract.functions.convertToShares.return_value.call.return_value = 5_000
+    mock_contract.functions.decimals.return_value.call.return_value = 6
+    service._contract = mock_contract
+
     intent = service.prepare_jit_redemption(
         amount_usdc_needed=0.005,
         receiver="0x23e7c029a287a83d80b2e084e008211658dda11d",
@@ -42,6 +48,7 @@ def test_usyc_prepare_jit_redemption():
     )
     assert intent["action"] == "USYC_JIT_REDEMPTION"
     assert intent["amount_usdc_needed"] == 0.005
+    assert intent["shares_to_burn"] == 0.005
     assert intent["calldata"].startswith("0xba087652")
 
 
@@ -367,16 +374,63 @@ def test_treasury_policy_and_decision_api(monkeypatch, tmp_path):
 
 
 def test_usyc_decimals_native_scaled_to_six(monkeypatch):
-    """Verify Arc native USDC balance is scaled by 1e6 (not 1e18)."""
+    """Verify Arc native USDC balance is scaled strictly by 1e18, and ERC-20 by 1e6."""
     service = USYCTreasuryService()
-    raw_hex = hex(10_000_000)  # 10 USDC
+    # Stub balanceOf for ERC-20 USDC
     monkeypatch.setattr(
-        "backend.app.services.usyc_treasury._rpc_generic",
-        lambda method, params: raw_hex,
+        "backend.app.services.usyc_treasury._rpc_eth_call",
+        lambda addr, data: hex(10_000_000),  # 10 USDC (6 dec)
     )
     monkeypatch.setattr(service, "_w3", None)
     bal = service.get_liquid_usdc_balance("0x23e7c029a287a83d80b2e084e008211658dda11d")
     assert bal == 10.0
+
+
+def test_liquid_balance_uses_erc20_asset():
+    from unittest.mock import MagicMock
+    service = USYCTreasuryService()
+    mock_w3 = MagicMock()
+    mock_contract = MagicMock()
+    mock_contract.functions.balanceOf.return_value.call.return_value = 5_000_000
+    mock_w3.eth.contract.return_value = mock_contract
+    service._w3 = mock_w3
+
+    bal = service.get_liquid_usdc_balance("0x23e7c029a287a83d80b2e084e008211658dda11d")
+    assert bal == 5.0
+
+    # Stub native get_balance returning 5e18 -> 5.0
+    mock_contract.functions.balanceOf.return_value.call.side_effect = RuntimeError("no erc20")
+    mock_w3.eth.get_balance.return_value = 5 * 10**18
+    bal_native = service.get_liquid_usdc_balance("0x23e7c029a287a83d80b2e084e008211658dda11d")
+    assert bal_native == 5.0
+
+
+def test_jit_redeem_uses_convert_to_shares():
+    from unittest.mock import MagicMock
+    service = USYCTreasuryService()
+    mock_contract = MagicMock()
+    # 12-dec vault shares: 0.005 USDC (5_000 raw) -> 5_000 * 10**6 = 5_000_000_000 raw shares
+    mock_contract.functions.convertToShares.return_value.call.return_value = 5_000_000_000
+    mock_contract.functions.decimals.return_value.call.return_value = 12
+    service._contract = mock_contract
+    service._share_decimals = None
+
+    plan = service.prepare_jit_redemption(
+        amount_usdc_needed=0.005,
+        receiver="0x23e7c029a287a83d80b2e084e008211658dda11d",
+        owner="0x23e7c029a287a83d80b2e084e008211658dda11d",
+    )
+    assert plan["action"] == "USYC_JIT_REDEMPTION"
+    assert plan["shares_to_burn"] == 0.005
+
+    # convertToShares failure -> RuntimeError (not 1:1)
+    mock_contract.functions.convertToShares.return_value.call.side_effect = RuntimeError("reverted")
+    with pytest.raises(RuntimeError):
+        service.prepare_jit_redemption(
+            amount_usdc_needed=0.005,
+            receiver="0x23e7c029a287a83d80b2e084e008211658dda11d",
+            owner="0x23e7c029a287a83d80b2e084e008211658dda11d",
+        )
 
 
 def test_usyc_safety_rails_max_sweep(monkeypatch):

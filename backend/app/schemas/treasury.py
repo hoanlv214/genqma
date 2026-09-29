@@ -87,6 +87,8 @@ class CorporateTreasuryPolicy(BaseModel):
     rebalance_cooldown_seconds: int = Field(300, ge=0, description="Minimum seconds between rebalancing actions")
     autonomous_execution_enabled: bool = Field(False, description="Whether the CFO agent is authorized to broadcast transactions autonomously")
     target_apy_baseline: float = Field(0.05, ge=0.0, le=1.0, description="Target baseline annualized yield")
+    yield_rail: str = Field("EARN_KIT_MORPHO", description="Target yield rail: EARN_KIT_MORPHO (Arc Morpho Lending Vault) or USYC (Institutional USYC Treasury)")
+    target_earn_vault: str = Field("morpho_arc_usdc_core", description="Default Earn Kit vault ID on Arc")
 
 
 class CFODecisionResult(BaseModel):

@@ -1,0 +1,92 @@
+{
+  "0x1111111111111111111111111111111111111111:morpho_arc_usdc_core": {
+    "wallet": "0x1111111111111111111111111111111111111111",
+    "vault_id": "morpho_arc_usdc_core",
+    "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
+    "shares": 0.0,
+    "principal_usdc": 0.0,
+    "last_deposit_at": 1790681698.2667935,
+    "last_rebalance_at": 1790681698.2802358,
+    "created_at": 1790649084.2668931
+  },
+  "0x2222222222222222222222222222222222222222:morpho_arc_usdc_prime": {
+    "wallet": "0x2222222222222222222222222222222222222222",
+    "vault_id": "morpho_arc_usdc_prime",
+    "vaultAddress": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "shares": 0.0,
+    "principal_usdc": 0.0,
+    "last_deposit_at": 1790667483.9052224,
+    "last_rebalance_at": 1806219483.907231,
+    "created_at": 1790649084.2774525
+  },
+  "0x3333333333333333333333333333333333333333:morpho_arc_usdc_core": {
+    "wallet": "0x3333333333333333333333333333333333333333",
+    "vault_id": "morpho_arc_usdc_core",
+    "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
+    "shares": 0.0,
+    "principal_usdc": 0.0,
+    "last_deposit_at": 1790681698.3094566,
+    "last_rebalance_at": 1790681698.3219352,
+    "created_at": 1790649084.2874439
+  },
+  "0x4444444444444444444444444444444444444444:morpho_arc_usdc_core": {
+    "wallet": "0x4444444444444444444444444444444444444444",
+    "vault_id": "morpho_arc_usdc_core",
+    "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
+    "shares": 0.0,
+    "principal_usdc": 0.0,
+    "last_deposit_at": 1790681698.3345582,
+    "last_rebalance_at": 1790681698.356593,
+    "created_at": 1790649084.2997096
+  },
+  "0xf9c43a6cd72f5b9d1443e3faa0fac022de0abb19:morpho_arc_usdc_prime": {
+    "wallet": "0xf9c43a6cd72f5b9d1443e3faa0fac022de0abb19",
+    "vault_id": "morpho_arc_usdc_prime",
+    "vaultAddress": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "shares": 0.0,
+    "principal_usdc": 0.0,
+    "last_deposit_at": 1790663066.379303,
+    "last_rebalance_at": 1790663067.863218,
+    "created_at": 1790663066.379303
+  },
+  "0x7e712e24f64a27f5f437c3b5caee43b82d30cab9:morpho_arc_usdc_prime": {
+    "wallet": "0x7e712e24f64a27f5f437c3b5caee43b82d30cab9",
+    "vault_id": "morpho_arc_usdc_prime",
+    "vaultAddress": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "shares": 0.005,
+    "principal_usdc": 0.005,
+    "last_deposit_at": 1790663101.156426,
+    "last_rebalance_at": 1790663101.156426,
+    "created_at": 1790663101.156426
+  },
+  "0x2222222222222222222222222222222222222222:morpho_arc_usdc_core": {
+    "wallet": "0x2222222222222222222222222222222222222222",
+    "vault_id": "morpho_arc_usdc_core",
+    "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
+    "shares": 0.0,
+    "principal_usdc": 0.0,
+    "last_deposit_at": 1790681698.2932675,
+    "last_rebalance_at": 1808825698.2964196,
+    "created_at": 1790667755.2496955
+  },
+  "0x5555555555555555555555555555555555555555:morpho_arc_usdc_core": {
+    "wallet": "0x5555555555555555555555555555555555555555",
+    "vault_id": "morpho_arc_usdc_core",
+    "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
+    "shares": 0.0,
+    "principal_usdc": 0.0,
+    "last_deposit_at": 1790681698.3762736,
+    "last_rebalance_at": 1790681698.3799446,
+    "created_at": 1790667755.6649654
+  },
+  "0x8888888888888888888888888888888888888888:morpho_arc_usdc_core": {
+    "wallet": "0x8888888888888888888888888888888888888888",
+    "vault_id": "morpho_arc_usdc_core",
+    "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
+    "shares": 0.0,
+    "principal_usdc": 0.0,
+    "last_deposit_at": 1790681698.401566,
+    "last_rebalance_at": 1790681698.4150398,
+    "created_at": 1790667755.681408
+  }
+}

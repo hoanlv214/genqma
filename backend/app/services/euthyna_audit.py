@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -32,6 +33,8 @@ from backend.app.services.payment_signing import usdc_to_raw
 from backend.app.services.wallet_utils import normalize_address
 
 logger = logging.getLogger("QMA-Euthyna-Audit")
+
+_EUTHYNA_LOCK = threading.Lock()
 
 
 class EuthynaAuditEngine:
@@ -93,57 +96,62 @@ class EuthynaAuditEngine:
         arcscan_link = f"{ARC_EXPLORER}/tx/{clean_tx}" if clean_tx else None
 
         # Determine predecessor hash for tamper-evident hash chaining
-        prev_hash = "GENESIS"
-        if self._records:
-            prev_hash = self._records[-1].get("integrity_hash", "GENESIS")
+        with _EUTHYNA_LOCK:
+            from backend.app.core.state import cross_process_lock
 
-        # Balance continuity check for the same actor
-        prev_actor_record = next(
-            (r for r in reversed(self._records) if r.get("actor") == norm_actor), None
-        )
-        if prev_actor_record is not None and prev_actor_record.get("treasury_liquid_after") is not None:
-            prev_after = prev_actor_record["treasury_liquid_after"]
-            if abs(prev_after - rounded_before) > 0.000001:
-                logger.warning(
-                    f"[EUTHYNA AUDIT] Balance discontinuity detected for actor {norm_actor}: "
-                    f"previous liquid after = {prev_after}, current liquid before = {rounded_before}"
+            with cross_process_lock("euthyna_audit_trail"):
+                self._load_records()
+                prev_hash = "GENESIS"
+                if self._records:
+                    prev_hash = self._records[-1].get("integrity_hash", "GENESIS")
+
+                # Balance continuity check for the same actor
+                prev_actor_record = next(
+                    (r for r in reversed(self._records) if r.get("actor") == norm_actor), None
                 )
+                if prev_actor_record is not None and prev_actor_record.get("treasury_liquid_after") is not None:
+                    prev_after = prev_actor_record["treasury_liquid_after"]
+                    if abs(prev_after - rounded_before) > 0.000001:
+                        logger.warning(
+                            f"[EUTHYNA AUDIT] Balance continuity detected for actor {norm_actor}: "
+                            f"previous liquid after = {prev_after}, current liquid before = {rounded_before}"
+                        )
 
-        # Cryptographic integrity digest with chained previous_hash
-        tx_str = clean_tx or ""
-        payload_to_hash = (
-            f"{prev_hash}|{record_id}|{timestamp}|{action}|{norm_actor}|{rounded_amount}|"
-            f"{rounded_before}|{rounded_after}|{rounded_shares}|{tx_str}"
-        )
-        record_hash = hashlib.sha256(payload_to_hash.encode("utf-8")).hexdigest()
+                # Cryptographic integrity digest with chained previous_hash
+                tx_str = clean_tx or ""
+                payload_to_hash = (
+                    f"{prev_hash}|{record_id}|{timestamp}|{action}|{norm_actor}|{rounded_amount}|"
+                    f"{rounded_before}|{rounded_after}|{rounded_shares}|{tx_str}"
+                )
+                record_hash = hashlib.sha256(payload_to_hash.encode("utf-8")).hexdigest()
 
-        # Differentiate between live on-chain settlement vs simulated/prepared intent
-        status = "LIVE_SETTLED" if clean_tx else "DRY_RUN_SIMULATED"
+                # Differentiate between live on-chain settlement vs simulated/prepared intent
+                status = "LIVE_SETTLED" if clean_tx else "DRY_RUN_SIMULATED"
 
-        entry = {
-            "record_id": record_id,
-            "previous_hash": prev_hash,
-            "timestamp": timestamp,
-            "action": action,
-            "actor": norm_actor,
-            "amount_usdc": rounded_amount,
-            "treasury_liquid_before": rounded_before,
-            "treasury_liquid_after": rounded_after,
-            "usyc_vault_shares": rounded_shares,
-            "tx_hash": clean_tx,
-            "arcscan_url": arcscan_link,
-            "policy_rule_applied": policy_rule,
-            "cfo_reasoning": reasoning,
-            "provider_id": provider_id,
-            "genlayer_consensus": genlayer_consensus,
-            "integrity_hash": record_hash,
-            "status": status,
-        }
+                entry = {
+                    "record_id": record_id,
+                    "previous_hash": prev_hash,
+                    "timestamp": timestamp,
+                    "action": action,
+                    "actor": norm_actor,
+                    "amount_usdc": rounded_amount,
+                    "treasury_liquid_before": rounded_before,
+                    "treasury_liquid_after": rounded_after,
+                    "usyc_vault_shares": rounded_shares,
+                    "tx_hash": clean_tx,
+                    "arcscan_url": arcscan_link,
+                    "policy_rule_applied": policy_rule,
+                    "cfo_reasoning": reasoning,
+                    "provider_id": provider_id,
+                    "genlayer_consensus": genlayer_consensus,
+                    "integrity_hash": record_hash,
+                    "status": status,
+                }
 
-        self._records.append(entry)
-        self._persist_records()
-        logger.info(f"[EUTHYNA AUDIT] Recorded {action} [{status}] for {actor}: {amount_usdc} USDC -> {clean_tx or 'INTERNAL'}")
-        return entry
+                self._records.append(entry)
+                self._persist_records()
+                logger.info(f"[EUTHYNA AUDIT] Recorded {action} [{status}] for {actor}: {amount_usdc} USDC -> {clean_tx or 'INTERNAL'}")
+                return entry
 
     def get_audit_trail(
         self,
@@ -153,25 +161,26 @@ class EuthynaAuditEngine:
         only_live: bool = False,
     ) -> List[Dict[str, Any]]:
         """Retrieve historical audit trail sorted descending by timestamp."""
-        results = self._records
-        if only_live:
-            results = [r for r in results if r.get("tx_hash")]
-        if action_filter:
-            results = [r for r in results if r["action"].lower() == action_filter.lower()]
-        if actor_filter:
-            norm_actor = normalize_address(actor_filter)
-            results = [r for r in results if r["actor"].lower() == norm_actor.lower()]
+        with _EUTHYNA_LOCK:
+            results = self._records
+            if only_live:
+                results = [r for r in results if r.get("tx_hash")]
+            if action_filter:
+                results = [r for r in results if r["action"].lower() == action_filter.lower()]
+            if actor_filter:
+                norm_actor = normalize_address(actor_filter)
+                results = [r for r in results if r["actor"].lower() == norm_actor.lower()]
 
-        return list(reversed(results))[:limit]
+            return list(reversed(results))[:limit]
 
-    def verify_integrity(self) -> Dict[str, Any]:
-        """Cryptographically recompute integrity hashes and verify hash chain across all records."""
-        total = len(self._records)
+    def _evaluate_integrity(self, records: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Cryptographically recompute integrity hashes and verify hash chain across records."""
+        total = len(records)
         tampered = 0
         chain_broken = False
         last_hash = "GENESIS"
 
-        for idx, r in enumerate(self._records):
+        for idx, r in enumerate(records):
             tx_str = r.get("tx_hash") or ""
             prev_hash = r.get("previous_hash")
 
@@ -207,6 +216,16 @@ class EuthynaAuditEngine:
             "settlement_chain": f"{PAYMENT_NETWORK_NAME} ({ARC_CHAIN_ID})",
             "treasury_anchor": PLATFORM_TREASURY_ADDRESS,
         }
+
+    def verify_integrity(self) -> Dict[str, Any]:
+        """Cryptographically recompute integrity hashes and verify hash chain across all records."""
+        with _EUTHYNA_LOCK:
+            mem_result = self._evaluate_integrity(self._records)
+            if mem_result["audit_health"] == "COMPROMISED":
+                return mem_result
+
+            self._load_records()
+            return self._evaluate_integrity(self._records)
 
     def reconcile_books(
         self,
