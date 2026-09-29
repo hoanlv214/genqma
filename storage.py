@@ -11,8 +11,13 @@ import requests
 logger = logging.getLogger("QMA-Storage")
 
 
+from backend.app.core.state import cross_process_lock
 from backend.app.services.payment_state_machine import has_fabricated_settlement
 from backend.app.services.wallet_utils import normalize_address
+
+
+def _storage_json_lock_key(path: str) -> str:
+    return "storage_json:" + os.path.basename(str(path or ""))
 
 def wallet_matches(record: dict, address: str) -> bool:
     normalized = normalize_address(address)
@@ -179,6 +184,10 @@ class JsonStorage:
         self.session_events_path = os.path.join(base_dir, "agent_session_events.json")
         self._rpc_lock = threading.Lock()
 
+    @staticmethod
+    def _lock_key(path: str) -> str:
+        return _storage_json_lock_key(path)
+
     def _load_json(self, path: str, fallback):
         if not os.path.exists(path):
             return fallback
@@ -229,7 +238,8 @@ class JsonStorage:
         return sorted(events, key=lambda item: item.get("paid_at") or 0, reverse=True)[:limit]
 
     def save_payment_events(self, events: list) -> None:
-        self._save_json(self.ledger_path, events)
+        with cross_process_lock(self._lock_key(self.ledger_path)):
+            self._save_json(self.ledger_path, events)
 
     def load_wallet_spending_events(self, address: str) -> list:
         normalized = normalize_address(address)
@@ -238,17 +248,18 @@ class JsonStorage:
         return invoices + events
 
     def save_single_payment_event(self, event: dict) -> None:
-        events = self.load_payment_events()
-        key = event_key(event)
-        updated = False
-        for i, existing in enumerate(events):
-            if event_key(existing) == key:
-                events[i] = event
-                updated = True
-                break
-        if not updated:
-            events.append(event)
-        self.save_payment_events(events)
+        with cross_process_lock(self._lock_key(self.ledger_path)):
+            events = self.load_payment_events()
+            key = event_key(event)
+            updated = False
+            for i, existing in enumerate(events):
+                if event_key(existing) == key:
+                    events[i] = event
+                    updated = True
+                    break
+            if not updated:
+                events.append(event)
+            self._save_json(self.ledger_path, events)
 
     def reserve_withdrawal(self, operation_id: str, operation: dict) -> dict:
         withdrawals_path = os.path.join(os.path.dirname(self.invoices_path) or ".", "withdrawals.json")
@@ -349,12 +360,14 @@ class JsonStorage:
         return False
 
     def save_paid_reports(self, reports: dict) -> None:
-        self._save_json(self.reports_path, reports)
+        with cross_process_lock(self._lock_key(self.reports_path)):
+            self._save_json(self.reports_path, reports)
 
     def save_single_paid_report(self, entitlement_id: str, record: dict) -> None:
-        reports = self.load_paid_reports()
-        reports[entitlement_id] = record
-        self.save_paid_reports(reports)
+        with cross_process_lock(self._lock_key(self.reports_path)):
+            reports = self.load_paid_reports()
+            reports[entitlement_id] = record
+            self._save_json(self.reports_path, reports)
 
     def load_invoices(self) -> dict:
         data = self._load_json(self.invoices_path, {})
@@ -383,11 +396,12 @@ class JsonStorage:
         return sorted(events, key=lambda item: item.get("paid_at") or 0, reverse=True)[:limit]
 
     def save_invoice(self, invoice: dict) -> None:
-        invoices = self.load_invoices()
-        invoice_id = invoice.get("invoice_id")
-        if invoice_id:
-            invoices[invoice_id] = invoice
-            self._save_json(self.invoices_path, invoices)
+        with cross_process_lock(self._lock_key(self.invoices_path)):
+            invoices = self.load_invoices()
+            invoice_id = invoice.get("invoice_id")
+            if invoice_id:
+                invoices[invoice_id] = invoice
+                self._save_json(self.invoices_path, invoices)
 
     def load_creator_applications(self) -> dict:
         data = self._load_json(self.creators_path, {})

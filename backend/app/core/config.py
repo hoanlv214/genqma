@@ -55,6 +55,8 @@ class Settings:
     provider_controls_path: Path = DATA_DIR / "provider_controls.json"
     creator_claims_path: Path = DATA_DIR / "creator_claims.json"
     euthyna_audit_path: Path = DATA_DIR / "euthyna_audit_trail.json"
+    treasury_policy_path: Path = DATA_DIR / "treasury_policy.json"
+    earn_vault_positions_path: Path = DATA_DIR / "earn_vault_positions.json"
     brand_name: str = BRAND_NAME
     brand_codename: str = BRAND_CODENAME
     brand_tagline: str = BRAND_TAGLINE
@@ -235,12 +237,31 @@ ACCESS_TOKEN_SECRET = os.getenv("QMA_ACCESS_TOKEN_SECRET") or os.getenv("QMA_SES
 SPLIT_LEG_URL_SECRET = os.getenv("QMA_SPLIT_LEG_URL_SECRET") or f"split-url:{ACCESS_TOKEN_SECRET}"
 SPLIT_RECEIPT_SECRET = os.getenv("QMA_SPLIT_RECEIPT_SECRET") or f"split-receipt:{ACCESS_TOKEN_SECRET}"
 
+
+def _assert_production_secrets() -> None:
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        return
+    is_prod = (
+        os.getenv("QMA_ENV", "").lower() in {"prod", "production"}
+        or bool(os.getenv("RENDER"))
+        or bool(os.getenv("RENDER_SERVICE_ID"))
+    )
+    if is_prod and (not ACCESS_TOKEN_SECRET or ACCESS_TOKEN_SECRET == "qma-local-demo-secret-change-me"):
+        raise RuntimeError(
+            "Refusing to boot with insecure QMA_ACCESS_TOKEN_SECRET. "
+            "Set QMA_ACCESS_TOKEN_SECRET (and optionally QMA_SPLIT_RECEIPT_SECRET / QMA_SPLIT_LEG_URL_SECRET) before deploying."
+        )
+
+
+_assert_production_secrets()
+
 # ---------------------------------------------------------------------------
 # Hosted MCP server / OAuth 2.1 for connector clients
 # ---------------------------------------------------------------------------
 MCP_TOKEN_TTL_SECONDS = int(os.getenv("QMA_MCP_TOKEN_TTL_SECONDS", str(30 * 24 * 3600)))
 MCP_MAX_BUDGET_USDC = float(os.getenv("QMA_MCP_MAX_BUDGET_USDC", "50"))
 MCP_MAX_PRICE_USDC = float(os.getenv("QMA_MCP_MAX_PRICE_USDC", "5"))
+AGENT_MAX_DECISION_BUDGET_USDC = float(os.getenv("QMA_AGENT_MAX_DECISION_BUDGET_USDC", "1.0"))
 MCP_CONNECT_BASE_URL = os.getenv("QMA_MCP_CONNECT_BASE_URL") or ("https://genqma.vercel.app" if os.getenv("RENDER_EXTERNAL_URL") else "http://localhost:5173")
 MCP_API_BASE_URL = os.getenv("QMA_MCP_API_BASE_URL") or os.getenv("RENDER_EXTERNAL_URL") or "http://127.0.0.1:8000"
 

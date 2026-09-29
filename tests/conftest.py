@@ -50,3 +50,26 @@ def isolate_test_audit_trail(tmp_path):
     object.__setattr__(settings, "euthyna_audit_path", old_audit_path)
     euthyna_audit_engine._audit_file = old_file
     euthyna_audit_engine._records = old_records
+
+
+@pytest.fixture(autouse=True)
+def isolate_test_treasury(tmp_path):
+    """Isolate corporate treasury policy file and memory cache across test runs."""
+    test_policy_file = tmp_path / "test_treasury_policy.json"
+    from backend.app.core.config import settings
+    old_policy_path = settings.treasury_policy_path
+    object.__setattr__(settings, "treasury_policy_path", test_policy_file)
+
+    from backend.app.services.usyc_treasury import usyc_treasury_service
+    old_service_file = usyc_treasury_service._policy_file
+    old_service_policy = usyc_treasury_service._policy
+
+    usyc_treasury_service._policy_file = test_policy_file
+    usyc_treasury_service._policy = None
+
+    yield
+
+    object.__setattr__(settings, "treasury_policy_path", old_policy_path)
+    usyc_treasury_service._policy_file = old_service_file
+    usyc_treasury_service._policy = old_service_policy
+

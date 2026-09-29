@@ -13,10 +13,140 @@ from dataclasses import replace
 from typing import Any, Optional
 
 
+import threading
+import time
+from pathlib import Path
+
 logger = logging.getLogger("GenQMA-GenLayer")
 
 STUDIO_NEXT_CHAIN_ID = 61997
 STUDIO_NEXT_EXPLORER_URL = "https://explorer-studio-dev.genlayer.com"
+GENLAYER_SLA_CACHE_TTL_SECONDS = int(os.getenv("QMA_GENLAYER_SLA_CACHE_TTL_SECONDS", "900"))
+
+_SLA_CACHE_LOCK = threading.Lock()
+_SLA_VERDICT_CACHE: dict[str, dict[str, Any]] = {}
+_SLA_CACHE_FILE = Path(__file__).resolve().parents[3] / "data" / "genlayer_sla_cache.json"
+
+
+def _load_persisted_sla_cache() -> None:
+    if not _SLA_CACHE_FILE.exists():
+        return
+    try:
+        with open(_SLA_CACHE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        now = time.time()
+        for k, v in data.items():
+            if isinstance(v, dict) and v.get("expires_at", 0) > now:
+                _SLA_VERDICT_CACHE[k] = v
+        if _SLA_VERDICT_CACHE:
+            logger.info("Loaded %d active GenLayer SLA cached verdicts from %s", len(_SLA_VERDICT_CACHE), _SLA_CACHE_FILE.name)
+    except Exception as exc:
+        logger.warning("Could not load persisted GenLayer SLA cache: %s", exc)
+
+
+def _save_persisted_sla_cache() -> None:
+    try:
+        _SLA_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        now = time.time()
+        active = {k: v for k, v in _SLA_VERDICT_CACHE.items() if v.get("expires_at", 0) > now}
+        with open(_SLA_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(active, f, indent=2)
+    except Exception as exc:
+        logger.warning("Could not persist GenLayer SLA cache: %s", exc)
+
+
+_load_persisted_sla_cache()
+
+
+def get_cached_sla_verdict(
+    *,
+    symbol: str,
+    query_hash: str,
+    report_hash: Optional[str] = None,
+) -> Optional[dict[str, Any]]:
+    """Retrieve an unexpired GenLayer SLA attestation if available."""
+    if not report_hash:
+        return None
+    clean_symbol = str(symbol or "").strip().upper()
+    exact_key = f"{clean_symbol}:{query_hash}:{report_hash}"
+    now = time.time()
+    with _SLA_CACHE_LOCK:
+        entry = _SLA_VERDICT_CACHE.get(exact_key)
+        if not entry:
+            return None
+        if entry.get("expires_at", 0) <= now:
+            _SLA_VERDICT_CACHE.pop(exact_key, None)
+            return None
+        receipt = dict(entry["receipt"])
+        receipt["cached"] = True
+        receipt["cache_hit"] = True
+        receipt["verified_at"] = entry.get("created_at") or entry.get("verified_at") or now
+        receipt["expires_at"] = entry["expires_at"]
+        receipt["ttl_remaining_seconds"] = max(0, int(entry["expires_at"] - now))
+        return receipt
+
+
+def cache_sla_verdict(
+    *,
+    symbol: str,
+    query_hash: str,
+    report_hash: str,
+    receipt: dict[str, Any],
+    ttl_seconds: Optional[int] = None,
+) -> None:
+    """Cache a valid GenLayer SLA consensus verdict with a fixed TTL window."""
+    ttl = ttl_seconds if ttl_seconds is not None else GENLAYER_SLA_CACHE_TTL_SECONDS
+    if ttl <= 0 or str(receipt.get("verdict") or "").upper() != "VALID":
+        return
+    clean_symbol = str(symbol or "").strip().upper()
+    now = time.time()
+    entry = {
+        "key": f"{clean_symbol}:{query_hash}:{report_hash}",
+        "symbol": clean_symbol,
+        "query_hash": query_hash,
+        "report_hash": report_hash,
+        "receipt": dict(receipt),
+        "created_at": now,
+        "verified_at": now,
+        "expires_at": now + ttl,
+        "ttl_seconds": ttl,
+    }
+    with _SLA_CACHE_LOCK:
+        _SLA_VERDICT_CACHE[f"{clean_symbol}:{query_hash}:{report_hash}"] = entry
+        _SLA_VERDICT_CACHE[f"{clean_symbol}:{query_hash}"] = entry
+        _save_persisted_sla_cache()
+    logger.info("Cached GenLayer SLA attestation for %s (TTL: %ds, expires_at: %d)", clean_symbol, ttl, int(now + ttl))
+
+
+def clear_sla_cache() -> None:
+    """Clear all cached SLA attestations (in-memory and on-disk)."""
+    with _SLA_CACHE_LOCK:
+        _SLA_VERDICT_CACHE.clear()
+        if _SLA_CACHE_FILE.exists():
+            try:
+                _SLA_CACHE_FILE.unlink()
+            except OSError:
+                pass
+
+
+def get_sla_cache_stats() -> dict[str, Any]:
+    """Expose SLA cache health and active entries."""
+    now = time.time()
+    with _SLA_CACHE_LOCK:
+        active_entries = []
+        for k, v in list(_SLA_VERDICT_CACHE.items()):
+            if k.count(":") >= 2 and v.get("expires_at", 0) > now:
+                active_entries.append({
+                    "symbol": v.get("symbol"),
+                    "transaction_hash": v.get("receipt", {}).get("transaction_hash"),
+                    "ttl_remaining_seconds": max(0, int(v["expires_at"] - now)),
+                    "expires_at": v["expires_at"],
+                })
+        return {
+            "cached_verdicts_count": len(active_entries),
+            "ttl_default_seconds": GENLAYER_SLA_CACHE_TTL_SECONDS,
+            "active_verdicts": active_entries,
+        }
 
 
 def _contract_address() -> str:
@@ -350,8 +480,35 @@ def verify_report(
     verification_manifest: str,
     evidence_url: str,
     transaction_hash: Optional[str] = None,
+    use_cache: bool = True,
 ) -> dict[str, Any]:
     """Submit or resume an on-chain verification and return finalized state."""
+    # 1. Check TTL cache for an existing valid attestation
+    if use_cache:
+        cached_verdict = get_cached_sla_verdict(
+            symbol=symbol,
+            query_hash=query_hash,
+            report_hash=report_hash,
+        )
+        if (
+            cached_verdict
+            and cached_verdict.get("verdict") == "VALID"
+            and str(cached_verdict.get("report_hash") or "") == str(report_hash)
+        ):
+            logger.info(
+                "⚡ GenLayer SLA cache HIT for %s: reusing verified attestation in 0ms (tx=%s, ttl_remaining=%ds)",
+                symbol,
+                cached_verdict.get("transaction_hash"),
+                cached_verdict.get("ttl_remaining_seconds", 0),
+            )
+            return {
+                **cached_verdict,
+                "invoice_id": invoice_id,
+                "buyer": buyer,
+                "cached": True,
+                "cache_hit": True,
+            }
+
     client, account = _create_client()
     net = _network()
     is_studio_next = "next" in net
@@ -359,13 +516,21 @@ def verify_report(
     # Check if order already settled on chain
     existing = _read_order(client, invoice_id)
     if existing:
-        return _validate_order(
+        validated = _validate_order(
             existing,
             invoice_id=invoice_id,
             query_hash=query_hash,
             report_hash=report_hash,
             transaction_hash=transaction_hash,
         )
+        if validated.get("verdict") == "VALID":
+            cache_sla_verdict(
+                symbol=symbol,
+                query_hash=query_hash,
+                report_hash=report_hash,
+                receipt=validated,
+            )
+        return validated
 
     is_real_client = type(client).__name__ == "GenLayerClient"
     if is_studio_next and is_real_client:
@@ -405,13 +570,21 @@ def verify_report(
                 "GenLayer consensus verification is pending on-chain",
                 transaction_hash=tx_hash,
             )
-        return _validate_order(
+        validated = _validate_order(
             order,
             invoice_id=invoice_id,
             query_hash=query_hash,
             report_hash=report_hash,
             transaction_hash=tx_hash,
         )
+        if validated.get("verdict") == "VALID":
+            cache_sla_verdict(
+                symbol=symbol,
+                query_hash=query_hash,
+                report_hash=report_hash,
+                receipt=validated,
+            )
+        return validated
 
     if transaction_hash:
         _wait_for_finalized(client, transaction_hash)
@@ -440,11 +613,19 @@ def verify_report(
         _wait_for_finalized(client, transaction_hash)
 
     order = _read_order(client, invoice_id)
-    return _validate_order(
+    validated = _validate_order(
         order,
         invoice_id=invoice_id,
         query_hash=query_hash,
         report_hash=report_hash,
         transaction_hash=transaction_hash,
     )
+    if validated.get("verdict") == "VALID":
+        cache_sla_verdict(
+            symbol=symbol,
+            query_hash=query_hash,
+            report_hash=report_hash,
+            receipt=validated,
+        )
+    return validated
 

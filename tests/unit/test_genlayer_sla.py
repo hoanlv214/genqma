@@ -37,6 +37,13 @@ class FakeGenLayerClient:
         return {"status_name": "FINALIZED", "tx_execution_result_name": "FINISHED_WITH_RETURN"}
 
 
+@pytest.fixture(autouse=True)
+def clean_sla_cache():
+    genlayer_arbiter.clear_sla_cache()
+    yield
+    genlayer_arbiter.clear_sla_cache()
+
+
 @pytest.mark.parametrize("verdict,status", [("VALID", "VERIFIED"), ("INVALID", "REJECTED")])
 def test_verify_report_returns_only_finalized_contract_state(monkeypatch, verdict, status):
     client = FakeGenLayerClient(verdict)
@@ -160,4 +167,214 @@ def test_verify_report_handles_empty_or_malformed_raw_order(monkeypatch):
             )
         assert "pending on-chain" in str(exc_info.value)
         assert exc_info.value.transaction_hash == "0xpending_tx_123"
+
+
+def test_genlayer_sla_cache_hit_returns_instantly_without_network(monkeypatch):
+    genlayer_arbiter.clear_sla_cache()
+    try:
+        # 1. Warm cache with a VALID verdict
+        mock_receipt = {
+            "invoice_id": "inv_original",
+            "symbol": "BTC_USDT",
+            "query_hash": "q_hash_1",
+            "report_hash": "rep_hash_1",
+            "verdict": "VALID",
+            "status": "VERIFIED",
+            "confidence": 95,
+            "reasoning": "MEXC perp match confirmed.",
+            "transaction_hash": "0xgenlayer_original_tx",
+            "contract_address": "0xshield_contract",
+            "network": "studio-next",
+            "consensus_type": "GenLayer run_nondet semantic validation",
+        }
+        genlayer_arbiter.cache_sla_verdict(
+            symbol="BTC_USDT",
+            query_hash="q_hash_1",
+            report_hash="rep_hash_1",
+            receipt=mock_receipt,
+            ttl_seconds=300,
+        )
+
+        # 2. Ensure network client raises if called
+        def should_not_be_called():
+            raise AssertionError("_create_client must not be called on cache hit!")
+
+        monkeypatch.setattr(genlayer_arbiter, "_create_client", should_not_be_called)
+
+        # 3. New buyer purchasing identical report gets instant cache hit
+        hit = genlayer_arbiter.verify_report(
+            invoice_id="inv_buyer_2",
+            buyer="0xbuyer2",
+            provider="0xprovider",
+            symbol="BTC_USDT",
+            expected_anomaly="funding rate anomaly",
+            query_hash="q_hash_1",
+            report_hash="rep_hash_1",
+            verification_manifest="manifest",
+            evidence_url="https://contract.mexc.com/api/v1/contract/funding_rate/BTC_USDT",
+            use_cache=True,
+        )
+
+        assert hit["cached"] is True
+        assert hit["cache_hit"] is True
+        assert hit["verdict"] == "VALID"
+        assert hit["invoice_id"] == "inv_buyer_2"
+        assert hit["buyer"] == "0xbuyer2"
+        assert hit["transaction_hash"] == "0xgenlayer_original_tx"
+        assert hit["ttl_remaining_seconds"] > 0
+    finally:
+        genlayer_arbiter.clear_sla_cache()
+
+
+def test_genlayer_sla_cache_ttl_expiration(monkeypatch):
+    genlayer_arbiter.clear_sla_cache()
+    try:
+        mock_receipt = {
+            "verdict": "VALID",
+            "status": "VERIFIED",
+            "confidence": 90,
+            "reasoning": "Valid.",
+            "transaction_hash": "0xtx",
+        }
+        # Cache with 1s TTL
+        genlayer_arbiter.cache_sla_verdict(
+            symbol="SOL_USDT",
+            query_hash="q_sol",
+            report_hash="rep_sol",
+            receipt=mock_receipt,
+            ttl_seconds=1,
+        )
+
+        # Immediate check: Hit
+        cached = genlayer_arbiter.get_cached_sla_verdict(symbol="SOL_USDT", query_hash="q_sol", report_hash="rep_sol")
+        assert cached is not None
+        assert cached["verdict"] == "VALID"
+
+        # Mock time forward by 2 seconds
+        import time as _time
+        real_time = _time.time
+        monkeypatch.setattr(genlayer_arbiter.time, "time", lambda: real_time() + 2.0)
+
+        # Post-expiry check: Miss
+        expired = genlayer_arbiter.get_cached_sla_verdict(symbol="SOL_USDT", query_hash="q_sol", report_hash="rep_sol")
+        assert expired is None
+    finally:
+        genlayer_arbiter.clear_sla_cache()
+
+
+def test_cache_requires_exact_report_hash():
+    genlayer_arbiter.clear_sla_cache()
+    try:
+        symbol = "BTC_USDT"
+        query_hash = "shared_query_hash"
+        report_hash_a = "a" * 64
+        report_hash_b = "b" * 64
+        mock_receipt = {
+            "verdict": "VALID",
+            "status": "VERIFIED",
+            "confidence": 95,
+            "reasoning": "Valid report A.",
+            "transaction_hash": "0xtx_a",
+            "report_hash": report_hash_a,
+        }
+        genlayer_arbiter.cache_sla_verdict(
+            symbol=symbol,
+            query_hash=query_hash,
+            report_hash=report_hash_a,
+            receipt=mock_receipt,
+            ttl_seconds=300,
+        )
+
+        assert genlayer_arbiter.get_cached_sla_verdict(symbol=symbol, query_hash=query_hash, report_hash=report_hash_b) is None
+        assert genlayer_arbiter.get_cached_sla_verdict(symbol=symbol, query_hash=query_hash, report_hash=None) is None
+        assert genlayer_arbiter.get_cached_sla_verdict(symbol=symbol, query_hash=query_hash, report_hash="") is None
+
+        exact = genlayer_arbiter.get_cached_sla_verdict(symbol=symbol, query_hash=query_hash, report_hash=report_hash_a)
+        assert exact is not None
+        assert exact["verdict"] == "VALID"
+        assert exact["transaction_hash"] == "0xtx_a"
+        assert exact["report_hash"] == report_hash_a
+    finally:
+        genlayer_arbiter.clear_sla_cache()
+
+
+def test_verify_report_does_not_reuse_foreign_report_hash(monkeypatch):
+    genlayer_arbiter.clear_sla_cache()
+    try:
+        report_hash_a = "a" * 64
+        report_hash_b = "b" * 64
+        mock_receipt = {
+            "verdict": "VALID",
+            "status": "VERIFIED",
+            "confidence": 95,
+            "reasoning": "Valid report A.",
+            "transaction_hash": "0xtx_a",
+            "report_hash": report_hash_a,
+        }
+        genlayer_arbiter.cache_sla_verdict(
+            symbol="BTC_USDT",
+            query_hash="shared_query_hash",
+            report_hash=report_hash_a,
+            receipt=mock_receipt,
+            ttl_seconds=900,
+        )
+
+        def mock_create_client():
+            raise genlayer_arbiter.GenLayerVerificationError("Client invoked because cache missed foreign report hash")
+
+        monkeypatch.setattr(genlayer_arbiter, "_create_client", mock_create_client)
+
+        with pytest.raises(genlayer_arbiter.GenLayerVerificationError, match="cache missed foreign report hash"):
+            genlayer_arbiter.verify_report(
+                invoice_id="inv_buyer_b",
+                buyer="0xbuyer_b",
+                provider="0xprovider",
+                symbol="BTC_USDT",
+                expected_anomaly="anomaly",
+                query_hash="shared_query_hash",
+                report_hash=report_hash_b,
+                verification_manifest="{}",
+                evidence_url="https://contract.mexc.com/api/v1/contract/funding_rate/BTC_USDT",
+                use_cache=True,
+            )
+    finally:
+        genlayer_arbiter.clear_sla_cache()
+
+
+def test_verify_invoice_report_fails_closed_on_report_hash_mismatch(monkeypatch):
+    from fastapi import HTTPException
+    from backend.app.main import _verify_invoice_report_with_genlayer_locked, _save_invoice
+
+    monkeypatch.setattr("backend.app.main._save_invoice", lambda _inv: True)
+    invoice_id = "inv_mismatch_test"
+    invoice = {
+        "invoice_id": invoice_id,
+        "provider_id": "funding_memory",
+        "query": {"symbol": "BTC/USDT"},
+        "tier": "full",
+        "amount": 0.05,
+        "status": "settlement_verified",
+        "payer_address": "0x1234",
+    }
+    monkeypatch.setattr(
+        genlayer_arbiter,
+        "verify_report",
+        lambda **kwargs: {
+            "verdict": "VALID",
+            "status": "VERIFIED",
+            "transaction_hash": "0xtx_mismatch",
+            "report_hash": "mismatched_report_hash",
+        },
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        _verify_invoice_report_with_genlayer_locked(invoice_id, invoice)
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail["error"] == "genlayer_receipt_report_hash_mismatch"
+    assert invoice["status"] == "verification_pending"
+    assert invoice["genlayer"]["verdict"] == "PENDING"
+    assert invoice["genlayer"]["error"] == "genlayer_receipt_report_hash_mismatch"
+
+
+
 

@@ -46,10 +46,16 @@ def make_app(entitlements=None, recommendations=None):
 class AgentDecisionApiTests(unittest.TestCase):
     def setUp(self):
         self.previous_key = os.environ.pop("OPENAI_API_KEY", None)
+        self.previous_laya = os.environ.pop("QMA_USE_LAYA", None)
+        self.previous_provider = os.environ.pop("QMA_LLM_PROVIDER", None)
 
     def tearDown(self):
         if self.previous_key is not None:
             os.environ["OPENAI_API_KEY"] = self.previous_key
+        if self.previous_laya is not None:
+            os.environ["QMA_USE_LAYA"] = self.previous_laya
+        if self.previous_provider is not None:
+            os.environ["QMA_LLM_PROVIDER"] = self.previous_provider
 
     def test_endpoint_returns_validated_purchase_decision(self):
         response = TestClient(make_app()).post(

@@ -92,6 +92,8 @@ class ProviderReportResponse(ResponseModel):
         default=None,
         description="Provider-specific report data (Legacy)."
     )
+    risk_flags: Optional[List[str]] = None
+    effective_sample_size: Optional[float] = None
 
     @model_validator(mode="after")
     def sync_payload(self) -> "ProviderReportResponse":

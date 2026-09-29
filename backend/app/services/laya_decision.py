@@ -163,7 +163,8 @@ def predict_laya_plan(
 
     action = evaluation["action"]
     objective = evaluation["objective"] or fallback_objective
-    requested_tier = tier_filter or evaluation["tier"]
+    explicit_tier_in_prompt = "preview" if "preview" in prompt.lower() else ("full" if "full" in prompt.lower() else None)
+    requested_tier = tier_filter or explicit_tier_in_prompt or "auto"
     confidence = evaluation.get("action_confidence", 0.0)
 
     # If ambiguous/clarify, let caller handle clarification or fallback
@@ -180,6 +181,10 @@ def predict_laya_plan(
 
     # If explicit skip / decline
     if action == "skip":
+        prompt_lower = prompt.lower()
+        is_explicit_cancel = any(w in prompt_lower for w in ("cancel", "stop", "abort", "don't", "dont", "do not", "skip")) or bool(re.search(r"\bno\b", prompt_lower))
+        if confidence < 0.50 and not is_explicit_cancel:
+            return None
         return {
             "action": "skip",
             "candidate_id": None,

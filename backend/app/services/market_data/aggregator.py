@@ -46,16 +46,25 @@ class MultiExchangeAggregator(MarketDataAdapter):
                 logger.warning("Adapter %s scan failed: %s", adapter.source_id, exc)
                 return []
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(self.adapters)) as executor:
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(self.adapters))
+        completed_count = 0
+        try:
             future_to_adapter = {executor.submit(_scan, a): a for a in self.adapters}
-            for future in concurrent.futures.as_completed(future_to_adapter, timeout=self.timeout):
-                try:
-                    res = future.result()
-                    if isinstance(res, list):
-                        all_anomalies.extend(res)
-                except Exception as exc:
-                    a = future_to_adapter[future]
-                    logger.debug("Scan future error for %s: %s", getattr(a, "source_id", "unknown"), exc)
+            try:
+                for future in concurrent.futures.as_completed(future_to_adapter, timeout=self.timeout):
+                    completed_count += 1
+                    try:
+                        res = future.result()
+                        if isinstance(res, list):
+                            all_anomalies.extend(res)
+                    except Exception as exc:
+                        a = future_to_adapter[future]
+                        logger.debug("Scan future error for %s: %s", getattr(a, "source_id", "unknown"), exc)
+            except concurrent.futures.TimeoutError:
+                unfinished = len(future_to_adapter) - completed_count
+                logger.warning("Scan anomalies timed out after %.2fs; %d adapter(s) did not finish", self.timeout, unfinished)
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         if not all_anomalies:
             return []
@@ -92,6 +101,22 @@ class MultiExchangeAggregator(MarketDataAdapter):
                 primary["funding_spread"] = round(spread, 6)
             else:
                 primary["funding_spread"] = 0.0
+
+            # Determine whether token has an authoritative on-chain verifiable venue
+            mexc_venue = next((v for v in venues if v.get("exchange") == "MEXC"), None)
+            binance_venue = next((v for v in venues if v.get("exchange") == "BINANCE"), None)
+
+            if primary.get("exchange") == "MEXC" or mexc_venue:
+                primary["verifiable"] = True
+                primary["verifiable_exchange"] = "MEXC"
+                primary["evidence_url"] = f"https://contract.mexc.com/api/v1/contract/funding_rate/{sym}_USDT"
+            elif primary.get("exchange") == "BINANCE" or binance_venue:
+                primary["verifiable"] = True
+                primary["verifiable_exchange"] = "BINANCE"
+                primary["evidence_url"] = f"https://api.binance.com/api/v3/ticker/24hr?symbol={sym}USDT"
+            else:
+                primary["verifiable"] = False
+                primary["verifiable_exchange"] = None
 
             consolidated.append(primary)
 

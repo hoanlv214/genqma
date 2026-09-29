@@ -503244,9 +503244,9 @@
     "runtime_state": {
       "last_control_action": "pause",
       "last_control_reason": "Auto-pause: GenLayer SLA rejected report for invoice inv_sla_test_001",
-      "last_control_at": "2026-09-28T01:58:02Z"
+      "last_control_at": "2026-09-29T11:34:38Z"
     },
-    "updated_at": "2026-09-28T01:58:02Z"
+    "updated_at": "2026-09-29T11:34:38Z"
   },
   {
     "id": "33333333-3333-3333-3333-333333333333",
@@ -503256,8 +503256,8 @@
     "runtime_state": {
       "last_control_action": "kill",
       "last_control_reason": "Manual emergency kill",
-      "last_control_at": "2026-09-28T01:58:05Z"
+      "last_control_at": "2026-09-29T11:34:43Z"
     },
-    "updated_at": "2026-09-28T01:58:05Z"
+    "updated_at": "2026-09-29T11:34:43Z"
   }
 ]

@@ -212,7 +212,8 @@ class ApiHealthMarketProvidersTests(unittest.TestCase):
         with patch.object(app_module, "_save_invoice", lambda *_args, **_kwargs: None):
             response = self.client.get(
                 f"/api/v1/payment/invoices/{self.invoice['invoice_id']}/status",
-                params={"invoice_secret": self.invoice["invoice_secret"], "refresh": "false"},
+                headers={"X-QMA-Invoice-Secret": self.invoice["invoice_secret"]},
+                params={"refresh": "false"},
             )
 
         self.assertEqual(response.status_code, 200)
@@ -244,11 +245,11 @@ class ApiHealthMarketProvidersTests(unittest.TestCase):
             )
 
         self.assertEqual(response_header.status_code, 402)
-        self.assertEqual(response_query.status_code, 402)
-        self.assertEqual(response_header.json()["detail"]["error"], "invoice_expired")
-        self.assertIn("Create a fresh invoice", response_header.json()["detail"]["message"])
-        self.assertEqual(invalid.status_code, 403)
-        self.assertEqual(invalid.json()["detail"], "Invoice secret mismatch.")
+        self.assertEqual(response_query.status_code, 400)
+        self.assertEqual(response_header.json()["detail"]["error"], "payment_required")
+        self.assertIn("Create and settle a USDC invoice", response_header.json()["detail"]["message"])
+        self.assertEqual(invalid.status_code, 402)
+        self.assertEqual(invalid.json()["detail"]["error"], "payment_required")
 
     def test_verify_http_contract_issues_access_only_after_all_legs(self):
         self.invoice = make_split_invoice("inv_http_verify")
@@ -410,7 +411,8 @@ class ApiHealthMarketProvidersTests(unittest.TestCase):
         self.seed_invoice(copy.deepcopy(invoice))
         response = self.client.get(
             f"/api/v1/payment/invoices/{invoice['invoice_id']}/status",
-            params={"invoice_secret": invoice["invoice_secret"], "refresh": "false"},
+            headers={"X-QMA-Invoice-Secret": invoice["invoice_secret"]},
+            params={"refresh": "false"},
         )
 
         self.assertEqual(response.status_code, 200)

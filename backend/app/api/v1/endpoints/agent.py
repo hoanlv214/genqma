@@ -81,6 +81,7 @@ def _get_agent_identity() -> dict:
             "automated_eip712_hedging",
             "collateral_risk_underwriting",
             "stablefx_conversion",
+            "arc_earn_kit_morpho_lending",
         ],
         "supported_protocols": [
             "x402",
@@ -89,6 +90,8 @@ def _get_agent_identity() -> dict:
             "mcp",
             "genlayer-consensus",
             "circle-stablefx",
+            "arc-earn-kit",
+            "morpho-lending",
         ],
         "pricing_model": {
             "currency": "USDC",

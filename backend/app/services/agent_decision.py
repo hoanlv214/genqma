@@ -14,6 +14,8 @@ from typing import Optional
 
 import requests
 
+from backend.app.core.config import AGENT_MAX_DECISION_BUDGET_USDC
+
 
 logger = logging.getLogger("QMA-Agent")
 MAX_REASON_LENGTH = 240
@@ -44,7 +46,9 @@ def _prompt_policy(prompt: str, budget_override: Optional[float], max_price_over
     lowered = prompt.lower()
     match = re.search(r"(?:budget|under|limit|max|price|of)\s*\$?\s*([0-9.]+)", lowered)
     budget = budget_override if budget_override is not None else (_number(match.group(1), 0.01) if match else 0.01)
+    budget = min(budget, AGENT_MAX_DECISION_BUDGET_USDC)
     max_price = max_price_override if max_price_override is not None else min(budget, 0.005)
+    max_price = min(max_price, budget)
     provider_id = None
     if "oi_memory" in lowered or "open_interest" in lowered or re.search(r"\boi\b", lowered):
         provider_id = "oi_memory"
@@ -333,8 +337,39 @@ def _decision_payload(
         "selection_basis": _selection_basis(candidates, selected, objective),
         "candidate_count": len(candidates),
         "decision_source": source,
+        "idle_capital_strategy": _resolve_idle_capital_strategy() if not selected else None,
     }
 
+
+
+
+def _resolve_idle_capital_strategy() -> dict:
+    try:
+        from backend.app.services.earn_kit import earn_kit_service
+        opp = earn_kit_service.get_opportunity("morpho_steakhouse_usdc") or earn_kit_service.get_opportunity("morpho_arc_usdc_core")
+        if opp:
+            return {
+                "action_recommended": "SWEEP_IDLE",
+                "opportunity": opp["name"],
+                "vault_id": opp["vault_id"],
+                "vault_address": opp["vaultAddress"],
+                "protocol": opp["protocol"],
+                "net_apy": opp["currentApy"],
+                "net_apy_percentage": f"{round(opp['currentApy'] * 100, 2)}%",
+                "rationale": f"All market intelligence candidates evaluated. Deploying remaining idle capital into {opp['name']} on Arc for {round(opp['currentApy'] * 100, 2)}% APY.",
+            }
+    except Exception:
+        pass
+    return {
+        "action_recommended": "SWEEP_IDLE",
+        "opportunity": "Steakhouse USDC",
+        "vault_id": "morpho_steakhouse_usdc",
+        "vault_address": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
+        "protocol": "Morpho",
+        "net_apy": 0.065,
+        "net_apy_percentage": "6.5%",
+        "rationale": "All market intelligence candidates evaluated. Deploying remaining idle capital into Steakhouse USDC on Arc for 6.5% APY.",
+    }
 
 def _normalize_model_plan(value: object) -> dict:
     if not isinstance(value, dict):
@@ -660,6 +695,31 @@ def make_agent_decision(
     use_llm: bool = True,
     use_laya: Optional[bool] = None,
 ) -> dict:
+    """
+    Evaluates buyer agent intent and ranks candidate purchase items using a 4-Tier Cascade:
+
+    [Incoming Buyer Prompt]
+             │
+             ▼
+     ┌───────────────┐
+     │ Tier 0: Regex │  --> <1ms: Fast regex pattern matching for deterministic requests.
+     └───────┬───────┘
+             │ (If prompt requires natural language comprehension)
+             ▼
+     ┌───────────────┐
+     │ Tier 1: LAYA  │  --> Sub-35ms: Local Non-autoregressive Neural Router (convaiinnovations/laya).
+     └───────┬───────┘      Predicts intent (purchase / skip / clarify) & ranks candidates without Cloud LLM latency.
+             │ (If Laya is disabled, package not installed, or confidence < 0.65)
+             ▼
+     ┌───────────────┐
+     │ Tier 2: LLM   │  --> 1-3s: Autoregressive Cloud LLM (OpenAI / Gemini / Groq).
+     └───────┬───────┘      Handles complex multi-variable reasoning and nuanced semantic instructions.
+             │ (If LLM times out, errors, or produces invalid schema)
+             ▼
+     ┌───────────────┐
+     │ Tier 3: Greedy│  --> <1ms: Deterministic mathematical ranking (highest win-rate / value-density).
+     └───────────────┘      Guaranteed safe fallback to ensure the agent never crashes or deadlocks.
+    """
     budget, max_price, provider_filter, tier_filter = _prompt_policy(prompt, budget_usdc, max_price_usdc)
     lowered_prompt = prompt.lower()
     objective = "highest_score" if any(term in lowered_prompt for term in ("best", "highest", "strongest", "top")) else "value_density"
