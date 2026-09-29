@@ -139,7 +139,7 @@ The Access column must match the operation's `x-qma-access` value in
 | POST | `/api/v1/oauth/token` | `public` | Exchange a single-use authorization code (PKCE) for an MCP access token |
 | POST | `/api/v1/onramp/session` | `public` | Create an Arc Onramp widget session |
 | POST | `/api/v1/payment/invoice` | `public` | Create a provider/query/tier-bound single-payment invoice |
-| GET | `/api/v1/payment/invoices/{invoice_id}/status` | `invoice-owner` | Read payment, GenLayer verdict, and sanitized Arc payout/refund status |
+| GET | `/api/v1/payment/invoices/{invoice_id}/status` | `invoice-owner` | Read payment, GenLayer verdict, and sanitized Arc payout/refund status (secret header-only) |
 | POST | `/api/v1/payment/quote` | `public` | Quote a provider-bound report |
 | GET | `/api/v1/payment/settlement/{settlement_id}` | `public` | Inspect public settlement evidence |
 | POST | `/api/v1/payment/verify` | `public` | Verify one Circle payment, require finalized GenLayer verdict, then schedule creator payout or buyer refund |

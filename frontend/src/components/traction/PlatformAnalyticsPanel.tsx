@@ -125,8 +125,16 @@ export function PlatformAnalyticsPanel() {
   return (
     <section
       className="report-section section-span-all platform-stats-section platform-stats-section-compact"
+      style={{
+        background: "rgba(10, 13, 24, 0.8)",
+        border: "1px solid var(--bdr, rgba(255, 255, 255, 0.08))",
+        borderRadius: "14px",
+        padding: "24px",
+        boxShadow: "0 12px 36px rgba(0, 0, 0, 0.4)",
+        backdropFilter: "blur(14px)",
+      }}
     >
-      <div className="section-header platform-stats-summary">
+      <div className="section-header platform-stats-summary" style={{ fontSize: "20px", fontWeight: 700, color: "#ffffff", letterSpacing: "-0.02em", marginBottom: "16px" }}>
         Platform Analytics &amp; Payment Activity
       </div>
       {platformTablesError ? <div className="risk-item platform-tables-error">{platformTablesError}</div> : null}

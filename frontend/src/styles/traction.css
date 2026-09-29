@@ -1,3 +1,11 @@
+/* ==========================================================================
+   QMA Autonomous Intelligence Protocol — Traction & Public Proof Styles
+   Architected per UI/UX Pro Max directives:
+   - Zero icons / Anti-icon typographic minimalism
+   - Curated HSL dark palette aligning with project SSOT (:root)
+   - Layered depth, subtle glassmorphism, responsive grid architecture
+   ========================================================================== */
+
 .traction-body {
   height: auto;
   min-height: 100vh;
@@ -9,216 +17,460 @@
 .traction-page {
   min-height: 100vh;
   color: var(--t1, #e8ebf2);
-  background: var(--bg, #04060b);
-  font-family: var(--sans, Inter, sans-serif);
+  background-color: var(--bg-0, #06080f);
+  background-image: 
+    radial-gradient(ellipse 900px 520px at 50% -10%, rgba(124, 111, 255, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 700px 400px at 85% 25%, rgba(34, 211, 160, 0.05) 0%, transparent 60%);
+  background-attachment: fixed;
+  font-family: var(--sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
+  padding-bottom: 80px;
 }
 
-.traction-page>.platform-stats-section {
-  width: min(1180px, 100%);
-  margin: 18px auto 0;
-}
-
-.traction-page .platform-stats-section .split-table-col {
-  min-width: 0;
-}
-
-@media (max-width: 900px) {
-  /* .traction-page .seller-balance-grid,
-  .traction-page .split-tables {
-    grid-template-columns: 1fr;
-  } */
-
-  .traction-page .split-table-col {
-    overflow-x: auto;
-  }
-}
-
-.traction-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* Container */
+.traction-container {
   max-width: 1180px;
-  min-height: 64px;
   margin: 0 auto;
-  border-bottom: 1px solid var(--bdr, rgba(255, 255, 255, .08));
+  padding: 0 20px;
 }
 
-.traction-brand,
-.traction-nav-links button,
-.traction-nav-links a {
-  border: 0;
-  background: transparent;
-  color: var(--t2, #a4adbf);
-  font: 600 12px var(--mono, monospace);
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.traction-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--t1, #e8ebf2);
-  font-size: 14px;
-}
-
-.traction-nav-links {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-.traction-nav-links button:hover,
-.traction-nav-links a:hover {
-  color: var(--green, #22d3a0);
-}
-
-.traction-hero,
-.traction-metric-grid,
-.traction-provenance,
-.traction-panel,
-.traction-two-column,
-.traction-disclaimer {
-  max-width: 1180px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
+/* ==========================================================================
+   Hero Section
+   ========================================================================== */
 .traction-hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 56px 20px 36px;
   display: flex;
   justify-content: space-between;
-  align-items: end;
+  align-items: flex-end;
   gap: 32px;
-  padding: 92px 0 42px;
+  flex-wrap: wrap;
 }
 
-.traction-eyebrow,
-.traction-section-label {
-  color: var(--green, #22d3a0);
-  font: 700 11px var(--mono, monospace);
-  letter-spacing: .16em;
+.traction-hero-text {
+  max-width: 680px;
+}
+
+.traction-eyebrow {
+  color: var(--accent, #7C6FFF);
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  margin: 0 0 10px;
 }
 
-.traction-hero h1 {
-  margin: 10px 0 12px;
-  font-size: clamp(42px, 7vw, 76px);
-  letter-spacing: -.06em;
-  line-height: .95;
+.traction-title {
+  margin: 0 0 14px;
+  font-size: clamp(34px, 5vw, 54px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  color: #ffffff;
 }
 
 .traction-intro {
-  max-width: 570px;
   margin: 0;
-  color: var(--t2, #a4adbf);
-  font-size: 16px;
-  line-height: 1.65;
+  color: var(--t2, #8d95b0);
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 600px;
 }
 
 .traction-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   white-space: nowrap;
   color: var(--green, #22d3a0);
-  font: 700 11px var(--mono, monospace);
-  border: 1px solid rgba(34, 211, 160, 0.32);
-  border-radius: 36px;
-  padding: 8px;
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(34, 211, 160, 0.08);
+  border: 1px solid rgba(34, 211, 160, 0.28);
 }
 
-.traction-live-badge span {
-  display: inline-block;
+.traction-live-dot {
   width: 7px;
   height: 7px;
-  margin-right: 7px;
   border-radius: 50%;
   background: var(--green, #22d3a0);
-  box-shadow: 0 0 14px var(--green, #22d3a0);
+  box-shadow: 0 0 10px var(--green, #22d3a0);
 }
 
-.traction-error {
+/* ==========================================================================
+   Tab Navigation Bar (Minimalist Segmented Control)
+   ========================================================================== */
+.traction-tab-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
   max-width: 1180px;
-  margin: 0 auto 20px;
-  padding: 12px 14px;
-  color: var(--red, #fb7185);
-  border: 1px solid rgba(251, 113, 133, .35);
-  background: rgba(251, 113, 133, .08);
+  margin: 0 auto 28px;
+  padding: 6px;
+  background: rgba(10, 13, 24, 0.85);
+  border: 1px solid var(--bdr-md, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  backdrop-filter: blur(16px);
 }
 
-.traction-metric-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+.traction-tab-btn {
+  flex: 1 1 auto;
+  min-width: 150px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--t2, #8d95b0);
+  font-family: var(--sans, 'Inter', sans-serif);
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.traction-metric,
-.traction-provenance,
-.traction-panel {
-  border: 1px solid var(--bdr, rgba(255, 255, 255, .08));
-  background: rgba(14, 18, 29, .78);
-  border-radius: 14px;
+.traction-tab-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.traction-metric {
-  min-height: 128px;
-  padding: 18px;
+.traction-tab-btn.is-active {
+  color: #ffffff;
+  font-weight: 600;
+  background: rgba(124, 111, 255, 0.12);
+  border-color: rgba(124, 111, 255, 0.35);
+  box-shadow: 0 2px 10px rgba(124, 111, 255, 0.12);
 }
 
-.traction-metric span,
-.traction-metric small,
-.traction-provenance-item span,
-.traction-provenance-item small,
-.traction-panel-meta,
-.traction-provider-row small,
-.traction-settlement-row small {
-  display: block;
-  color: var(--t3, #6f7890);
-  font: 10px var(--mono, monospace);
-  letter-spacing: .08em;
+.traction-tab-badge {
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
-.traction-metric strong {
+/* ==========================================================================
+   Headline Cards (Active Streams, Real Volume, Yield)
+   ========================================================================== */
+.traction-headline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.traction-headline-card {
+  border-radius: 12px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  background: rgba(10, 13, 24, 0.75);
+  border: 1px solid var(--bdr, rgba(255, 255, 255, 0.08));
+  backdrop-filter: blur(12px);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.traction-headline-card:hover {
+  transform: translateY(-2px);
+}
+
+.traction-headline-card.card-streams {
+  background: linear-gradient(135deg, rgba(124, 111, 255, 0.10) 0%, rgba(10, 13, 24, 0.85) 100%);
+  border-color: rgba(124, 111, 255, 0.25);
+}
+.traction-headline-card.card-streams:hover {
+  border-color: rgba(124, 111, 255, 0.45);
+}
+
+.traction-headline-card.card-settled {
+  background: linear-gradient(135deg, rgba(34, 211, 160, 0.10) 0%, rgba(10, 13, 24, 0.85) 100%);
+  border-color: rgba(34, 211, 160, 0.25);
+}
+.traction-headline-card.card-settled:hover {
+  border-color: rgba(34, 211, 160, 0.45);
+}
+
+.traction-headline-card.card-yield {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.10) 0%, rgba(10, 13, 24, 0.85) 100%);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+.traction-headline-card.card-yield:hover {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.traction-headline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.traction-headline-label {
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.traction-headline-card.card-streams .traction-headline-label {
+  color: var(--accent, #7C6FFF);
+}
+
+.traction-headline-card.card-settled .traction-headline-label {
+  color: var(--green, #22d3a0);
+}
+
+.traction-headline-card.card-yield .traction-headline-label {
+  color: var(--amber, #f59e0b);
+}
+
+.traction-headline-val {
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 30px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  margin: 4px 0 0;
+}
+
+.traction-headline-desc {
+  font-size: 13px;
+  color: var(--t2, #8d95b0);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.traction-headline-footer {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.traction-tag-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.traction-tag {
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--t2, #8d95b0);
+}
+
+.traction-tag-accent {
+  background: rgba(124, 111, 255, 0.12);
+  color: var(--accent, #7C6FFF);
+}
+
+.traction-tag-purple {
+  background: rgba(167, 139, 250, 0.12);
+  color: var(--purple, #a78bfa);
+}
+
+.traction-tag-amber {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--amber, #f59e0b);
+}
+
+.traction-tag-green {
+  background: rgba(34, 211, 160, 0.12);
+  color: var(--green, #22d3a0);
+}
+
+/* ==========================================================================
+   Teaser / Interactive Simulation Banner
+   ========================================================================== */
+.traction-teaser-card {
+  background: linear-gradient(135deg, rgba(124, 111, 255, 0.08) 0%, rgba(10, 13, 24, 0.75) 100%);
+  border: 1px solid rgba(124, 111, 255, 0.22);
+  border-radius: 12px;
+  padding: 16px 22px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.traction-teaser-text strong {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
   display: block;
-  margin: 17px 0 7px;
-  color: var(--t1, #e8ebf2);
-  font: 700 clamp(20px, 2.2vw, 30px) var(--mono, monospace);
-  letter-spacing: -.04em;
+  margin-bottom: 2px;
+}
+
+.traction-teaser-text span {
+  font-size: 12.5px;
+  color: var(--t2, #8d95b0);
+}
+
+.traction-teaser-btn {
+  background: var(--accent, #7C6FFF);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 20px;
+  font-family: var(--sans, 'Inter', sans-serif);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.traction-teaser-btn:hover {
+  background: #6b5ce7;
+  box-shadow: 0 4px 14px rgba(124, 111, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   Detailed Metrics Grid (7 items)
+   ========================================================================== */
+.traction-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.traction-metric {
+  background: rgba(10, 13, 24, 0.65);
+  border: 1px solid var(--bdr, rgba(255, 255, 255, 0.06));
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100px;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.traction-metric:hover {
+  border-color: var(--bdr-md, rgba(255, 255, 255, 0.12));
+  background: rgba(14, 18, 32, 0.85);
+}
+
+.traction-metric span {
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--t3, #4a5270);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: block;
+}
+
+.traction-metric strong {
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  margin: 10px 0 4px;
+  display: block;
 }
 
 .traction-metric small {
-  letter-spacing: 0;
-  text-transform: none;
+  font-family: var(--sans, 'Inter', sans-serif);
+  font-size: 11px;
+  color: var(--t2, #8d95b0);
+  display: block;
 }
 
+/* ==========================================================================
+   Settled Provenance Panel
+   ========================================================================== */
 .traction-provenance {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr;
-  gap: 20px;
-  margin-top: 18px;
+  background: rgba(10, 13, 24, 0.65);
+  border: 1px solid var(--bdr, rgba(255, 255, 255, 0.06));
+  border-radius: 12px;
   padding: 22px;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
 }
 
 .traction-provenance p {
-  margin: 9px 0 0;
-  color: var(--t2, #a4adbf);
+  margin: 6px 0 0;
+  color: var(--t2, #8d95b0);
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.5;
+}
+
+.traction-section-label {
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent, #7C6FFF);
+  display: block;
 }
 
 .traction-provenance-item {
   padding-left: 20px;
-  border-left: 1px solid var(--bdr, rgba(255, 255, 255, .08));
+  border-left: 1px solid var(--bdr, rgba(255, 255, 255, 0.08));
+}
+
+.traction-provenance-item span {
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 10.5px;
+  color: var(--t3, #4a5270);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: block;
 }
 
 .traction-provenance-item strong {
-  display: inline-block;
-  margin: 10px 10px 5px 0;
-  font: 700 24px var(--mono, monospace);
-  color: var(--t1, #e8ebf2);
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  display: block;
+  margin: 6px 0 2px;
 }
 
+.traction-provenance-item small {
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 11.5px;
+  color: var(--green, #22d3a0);
+  display: block;
+}
+
+/* ==========================================================================
+   Activity Chart Panel
+   ========================================================================== */
 .traction-panel {
-  margin-top: 18px;
+  background: rgba(10, 13, 24, 0.65);
+  border: 1px solid var(--bdr, rgba(255, 255, 255, 0.06));
+  border-radius: 12px;
   padding: 22px;
+  margin-bottom: 24px;
 }
 
 .traction-panel-heading {
@@ -227,180 +479,122 @@
   justify-content: space-between;
   gap: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--bdr, rgba(255, 255, 255, .08));
+  border-bottom: 1px solid var(--bdr, rgba(255, 255, 255, 0.06));
 }
 
 .traction-panel-heading h2 {
-  margin: 6px 0 0;
-  font-size: 20px;
-  letter-spacing: -.03em;
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.traction-panel-meta {
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  color: var(--t3, #4a5270);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .traction-chart {
   display: flex;
-  align-items: end;
-  gap: 7px;
-  height: 170px;
+  align-items: flex-end;
+  gap: 8px;
+  height: 160px;
   padding: 24px 0 0;
 }
 
 .traction-bar-wrap {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   flex: 1;
   height: 100%;
   min-width: 0;
-  border-bottom: 1px solid var(--bdr, rgba(255, 255, 255, .12));
+  border-bottom: 1px solid var(--bdr-md, rgba(255, 255, 255, 0.10));
 }
 
 .traction-bar {
   width: 100%;
-  min-height: 3px;
-  background: linear-gradient(180deg, var(--green, #22d3a0), rgba(34, 211, 160, .3));
+  min-height: 4px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, var(--green, #22d3a0) 0%, rgba(34, 211, 160, 0.25) 100%);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.traction-bar-wrap:hover .traction-bar {
+  opacity: 0.85;
+  transform: scaleY(1.04);
 }
 
 .traction-chart-axis {
   display: flex;
   justify-content: space-between;
   margin-top: 10px;
-  color: var(--t3, #6f7890);
-  font: 10px var(--mono, monospace);
+  color: var(--t3, #4a5270);
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 10.5px;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-.traction-two-column {
-  display: grid;
-  grid-template-columns: 1fr 1.15fr;
-  gap: 18px;
-}
-
-.traction-provider-list,
-.traction-settlement-list {
-  display: grid;
-  gap: 0;
-}
-
-.traction-provider-row,
-.traction-settlement-row {
-  display: grid;
-  align-items: center;
-  gap: 12px;
-  padding: 15px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, .06);
-}
-
-.traction-provider-row {
-  grid-template-columns: 1fr auto auto;
-}
-
-.traction-settlement-row {
-  grid-template-columns: 1.2fr .6fr auto .8fr;
-}
-
-.traction-provider-row:last-child,
-.traction-settlement-row:last-child {
-  border-bottom: 0;
-}
-
-.traction-provider-row strong,
-.traction-settlement-row strong {
-  display: block;
-  color: var(--t1, #e8ebf2);
+/* ==========================================================================
+   Error & Disclaimer
+   ========================================================================== */
+.traction-error {
+  max-width: 1180px;
+  margin: 0 auto 20px;
+  padding: 12px 18px;
+  color: var(--red, #f4475b);
+  border: 1px solid rgba(244, 71, 91, 0.3);
+  background: rgba(244, 71, 91, 0.08);
+  border-radius: 8px;
   font-size: 13px;
 }
 
-.traction-provider-row span,
-.traction-settlement-row span {
-  color: var(--t2, #a4adbf);
-  font: 11px var(--mono, monospace);
-}
-
-.traction-provider-row b,
-.traction-settlement-row b {
-  color: var(--green, #22d3a0);
-  font: 700 12px var(--mono, monospace);
-  white-space: nowrap;
-}
-
-.traction-provider-money {
-  text-align: right;
-}
-
-.traction-provider-money small {
-  margin-top: 4px;
-  letter-spacing: 0;
-  text-transform: none;
-  white-space: nowrap;
-}
-
-.traction-empty {
-  padding: 20px 0;
-  color: var(--t3, #6f7890);
-  font: 12px var(--mono, monospace);
-}
-
 .traction-disclaimer {
-  margin-top: 20px;
-  color: var(--t3, #6f7890);
-  font: 11px/1.6 var(--mono, monospace);
+  max-width: 1180px;
+  margin: 32px auto 0;
+  color: var(--t3, #4a5270);
+  font-family: var(--mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  line-height: 1.6;
 }
 
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
 @media (max-width: 900px) {
-  .traction-metric-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .traction-two-column {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 600px) {
-  .traction-page {
-    padding-inline: 14px;
-  }
-
-  .traction-nav {
-    align-items: flex-start;
-    gap: 12px;
-    padding: 14px 0;
-  }
-
-  .traction-nav-links {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 10px;
-  }
-
-  .traction-hero {
-    display: block;
-    padding: 58px 0 30px;
-  }
-
-  .traction-live-badge {
-    margin-top: 22px;
-  }
-
-  .traction-metric-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .traction-provenance {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
-
   .traction-provenance-item {
-    padding: 14px 0 0;
-    border-left: 0;
-    border-top: 1px solid var(--bdr, rgba(255, 255, 255, .08));
+    padding-left: 0;
+    padding-top: 12px;
+    border-left: none;
+    border-top: 1px solid var(--bdr, rgba(255, 255, 255, 0.08));
   }
+}
 
-  .traction-settlement-row {
-    grid-template-columns: 1.2fr auto;
+@media (max-width: 680px) {
+  .traction-hero {
+    padding: 36px 16px 24px;
   }
-
-  .traction-settlement-row b,
-  .traction-settlement-row>small {
-    text-align: right;
+  .traction-container {
+    padding: 0 16px;
+  }
+  .traction-tab-bar {
+    gap: 4px;
+    padding: 4px;
+  }
+  .traction-tab-btn {
+    min-width: 120px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .traction-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

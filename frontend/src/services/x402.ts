@@ -30,12 +30,38 @@ export class X402PaymentError extends Error {
   }
 }
 
+function normalizeResourceUrl(resourceUrl: string): string {
+  if (typeof window === "undefined") return resourceUrl;
+  try {
+    const parsed = new URL(resourceUrl, window.location.origin);
+    const isLocalFrontend = ["localhost", "127.0.0.1", "0.0.0.0"].includes(window.location.hostname);
+    const isLocalTarget =
+      ["localhost", "127.0.0.1", "0.0.0.0"].includes(parsed.hostname) &&
+      (parsed.port === "3000" || parsed.port === "8000" || parsed.port === window.location.port);
+    if (isLocalFrontend && isLocalTarget) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+  } catch {
+    // Keep as is
+  }
+  return resourceUrl;
+}
+
+function getFetchHeaders(resourceUrl: string, additionalHeaders: Record<string, string> = {}): Record<string, string> {
+  const headers: Record<string, string> = { ...additionalHeaders };
+  if (resourceUrl.includes("ngrok")) {
+    headers["ngrok-skip-browser-warning"] = "1";
+  }
+  return headers;
+}
+
 export async function prepareX402Payment(resourceUrl: string, account: string): Promise<PreparedX402Payment> {
   const provider = getInjectedWallet();
   if (!provider) throw new Error("No EVM wallet provider found.");
 
-  const challengeResp = await fetch(resourceUrl, {
-    headers: { "ngrok-skip-browser-warning": "1" },
+  const targetUrl = normalizeResourceUrl(resourceUrl);
+  const challengeResp = await fetch(targetUrl, {
+    headers: getFetchHeaders(resourceUrl),
   });
   if (challengeResp.status !== 402) {
     throw new Error(`Expected x402 challenge, got ${challengeResp.status}.`);
@@ -107,11 +133,11 @@ export async function prepareX402Payment(resourceUrl: string, account: string): 
 }
 
 export async function submitX402Payment(prepared: PreparedX402Payment) {
-  const paidResp = await fetch(prepared.resourceUrl, {
-    headers: {
+  const targetUrl = normalizeResourceUrl(prepared.resourceUrl);
+  const paidResp = await fetch(targetUrl, {
+    headers: getFetchHeaders(prepared.resourceUrl, {
       "payment-signature": prepared.paymentSignature,
-      "ngrok-skip-browser-warning": "1",
-    },
+    }),
   });
   const paidData = await paidResp.json().catch(async () => ({ error: await paidResp.text() }));
   if (!paidResp.ok) {

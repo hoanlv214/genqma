@@ -100,80 +100,80 @@ export function AutonomousCfoTreasuryRadar() {
     return () => clearInterval(interval);
   }, []);
 
-  const getActionBadgeClass = (action: string) => {
-    switch (action) {
-      case "IDLE_SWEEP":
-        return "status-badge status-badge-sweep";
-      case "JIT_REDEMPTION":
-        return "status-badge status-badge-redeem";
-      case "CREATOR_CLAIM":
-        return "status-badge status-badge-payout";
-      case "STABLEFX_SWAP":
-        return "status-badge status-badge-swap";
-      default:
-        return "status-badge status-badge-neutral";
-    }
-  };
-
   return (
-    <section className="report-section section-span-all cfo-treasury-radar-section" style={{
-      maxWidth: "1180px",
-      margin: "24px auto 0",
-      background: "linear-gradient(180deg, rgba(8, 12, 24, 0.95) 0%, rgba(5, 8, 18, 0.98) 100%)",
-      border: "1px solid rgba(255, 255, 255, 0.08)",
-      borderRadius: "14px",
-      padding: "24px",
-      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
-    }}>
+    <section
+      className="report-section section-span-all cfo-treasury-radar-section"
+      style={{
+        maxWidth: "1180px",
+        margin: "0 auto 28px",
+        background: "rgba(10, 13, 24, 0.8)",
+        border: "1px solid var(--bdr, rgba(255, 255, 255, 0.08))",
+        borderRadius: "14px",
+        padding: "24px",
+        boxShadow: "0 12px 36px rgba(0, 0, 0, 0.4)",
+        backdropFilter: "blur(14px)",
+      }}
+    >
       {/* HEADER ROW */}
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        flexWrap: "wrap",
-        gap: "16px",
-        marginBottom: "20px",
-        paddingBottom: "16px",
-        borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          gap: "16px",
+          marginBottom: "20px",
+          paddingBottom: "16px",
+          borderBottom: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))",
+        }}
+      >
         <div>
-          <div style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-            fontSize: "11px",
-            fontFamily: "var(--mono, monospace)",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.14em",
-            color: "#38bdf8",
-            marginBottom: "6px",
-          }}>
-            <span style={{
-              width: "7px",
-              height: "7px",
-              borderRadius: "50%",
-              background: "#38bdf8",
-              boxShadow: "0 0 8px #38bdf8",
-            }}></span>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: "11px",
+              fontFamily: "var(--mono, monospace)",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.14em",
+              color: "var(--accent, #7C6FFF)",
+              marginBottom: "6px",
+            }}
+          >
+            <span
+              style={{
+                width: "7px",
+                height: "7px",
+                borderRadius: "50%",
+                background: "var(--accent, #7C6FFF)",
+                boxShadow: "0 0 8px var(--accent, #7C6FFF)",
+              }}
+            />
             Vestiarion Protocol Engine · Arc Autonomous CFO
           </div>
-          <h2 style={{
-            margin: "0 0 6px 0",
-            fontSize: "20px",
-            fontWeight: 700,
-            color: "#ffffff",
-            fontFamily: "var(--font-heading, Inter, sans-serif)",
-          }}>
+          <h2
+            style={{
+              margin: "0 0 6px 0",
+              fontSize: "20px",
+              fontWeight: 700,
+              color: "#ffffff",
+              fontFamily: "var(--sans, 'Inter', sans-serif)",
+              letterSpacing: "-0.02em",
+            }}
+          >
             Autonomous Corporate Treasury &amp; Yield Radar
           </h2>
-          <p style={{
-            margin: 0,
-            fontSize: "13px",
-            color: "rgba(255, 255, 255, 0.65)",
-            maxWidth: "720px",
-            lineHeight: 1.5,
-          }}>
+          <p
+            style={{
+              margin: 0,
+              fontSize: "13px",
+              color: "var(--t2, #8d95b0)",
+              maxWidth: "720px",
+              lineHeight: 1.5,
+            }}
+          >
             Governs platform operating runway, sweeps surplus cash into Hashnote USYC (ERC-4626, ~5.0% APY on Arc),
             executes Just-In-Time (JIT) bill redemption, and immutably chains state transitions via Euthyna SHA-256.
           </p>
@@ -181,20 +181,21 @@ export function AutonomousCfoTreasuryRadar() {
 
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {verifyResult?.valid && (
-            <div style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "6px 12px",
-              borderRadius: "20px",
-              background: "rgba(16, 185, 129, 0.12)",
-              border: "1px solid rgba(16, 185, 129, 0.4)",
-              color: "#34d399",
-              fontSize: "12px",
-              fontFamily: "var(--mono, monospace)",
-              fontWeight: 600,
-            }}>
-              <span>✓</span> Euthyna Chain 100% Intact
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "6px 12px",
+                borderRadius: "20px",
+                background: "rgba(34, 211, 160, 0.12)",
+                border: "1px solid rgba(34, 211, 160, 0.35)",
+                color: "var(--green, #22d3a0)",
+                fontSize: "11.5px",
+                fontFamily: "var(--mono, monospace)",
+                fontWeight: 600,
+              }}
+            >
+              Euthyna Chain Verified
             </div>
           )}
           <a
@@ -204,23 +205,18 @@ export function AutonomousCfoTreasuryRadar() {
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: "6px",
               padding: "6px 14px",
               borderRadius: "6px",
               background: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(255, 255, 255, 0.12)",
+              border: "1px solid var(--bdr-md, rgba(255, 255, 255, 0.12))",
               color: "#e2e8f0",
               fontSize: "12px",
               fontFamily: "var(--mono, monospace)",
               textDecoration: "none",
+              transition: "background 0.18s ease",
             }}
           >
-            <span>Arcscan Vault</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-              <polyline points="15 3 21 3 21 9"></polyline>
-              <line x1="10" y1="14" x2="21" y2="3"></line>
-            </svg>
+            Arcscan Vault
           </a>
         </div>
       </div>
@@ -230,154 +226,170 @@ export function AutonomousCfoTreasuryRadar() {
           <Loader label={`Connecting to ${ARC_CHAIN.name} USYC Vault...`} variant="signal" size="md" />
         </div>
       ) : error ? (
-        <div style={{ padding: "12px 16px", borderRadius: "8px", background: "rgba(239, 68, 68, 0.1)", color: "#f87171", fontSize: "13px" }}>
+        <div style={{ padding: "12px 16px", borderRadius: "8px", background: "rgba(244, 71, 91, 0.1)", color: "var(--red, #f4475b)", fontSize: "13px" }}>
           {error}
         </div>
       ) : (
         <>
           {/* 4 CORE METRIC CARDS */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: "14px",
-            marginBottom: "24px",
-          }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: "14px",
+              marginBottom: "24px",
+            }}
+          >
             {/* Card 1: Liquid USDC */}
-            <div style={{
-              background: "rgba(10, 16, 32, 0.7)",
-              border: "1px solid rgba(56, 189, 248, 0.25)",
-              borderRadius: "10px",
-              padding: "16px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "4px",
-            }}>
-              <span style={{ fontSize: "11px", fontFamily: "var(--mono, monospace)", textTransform: "uppercase", color: "#94a3b8" }}>
+            <div
+              style={{
+                background: "rgba(10, 13, 24, 0.7)",
+                border: "1px solid rgba(124, 111, 255, 0.25)",
+                borderRadius: "10px",
+                padding: "16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+              }}
+            >
+              <span style={{ fontSize: "11px", fontFamily: "var(--mono, monospace)", textTransform: "uppercase", color: "var(--t3, #4a5270)" }}>
                 Liquid Treasury Cash (Arc)
               </span>
-              <strong style={{ fontSize: "22px", color: "#ffffff", fontFamily: "var(--mono, monospace)" }}>
+              <strong style={{ fontSize: "22px", color: "#ffffff", fontFamily: "var(--mono, monospace)", letterSpacing: "-0.02em" }}>
                 {formatUsdc(position?.treasury_liquid_usdc ?? 0)}
               </strong>
-              <small style={{ fontSize: "11px", color: "#38bdf8" }}>
+              <small style={{ fontSize: "11px", color: "var(--accent, #7C6FFF)", fontFamily: "var(--sans, 'Inter', sans-serif)" }}>
                 Native Arc gas &amp; instant liquid buffer
               </small>
             </div>
 
             {/* Card 2: USYC Vault Yield */}
-            <div style={{
-              background: "rgba(10, 16, 32, 0.7)",
-              border: "1px solid rgba(245, 158, 11, 0.3)",
-              borderRadius: "10px",
-              padding: "16px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "4px",
-            }}>
-              <span style={{ fontSize: "11px", fontFamily: "var(--mono, monospace)", textTransform: "uppercase", color: "#94a3b8" }}>
+            <div
+              style={{
+                background: "rgba(10, 13, 24, 0.7)",
+                border: "1px solid rgba(245, 158, 11, 0.25)",
+                borderRadius: "10px",
+                padding: "16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+              }}
+            >
+              <span style={{ fontSize: "11px", fontFamily: "var(--mono, monospace)", textTransform: "uppercase", color: "var(--t3, #4a5270)" }}>
                 USYC Yield Vault (ERC-4626)
               </span>
-              <strong style={{ fontSize: "22px", color: "#fbbf24", fontFamily: "var(--mono, monospace)" }}>
+              <strong style={{ fontSize: "22px", color: "var(--amber, #f59e0b)", fontFamily: "var(--mono, monospace)", letterSpacing: "-0.02em" }}>
                 {formatUsdc(position?.usdc_equivalent ?? 0)}
               </strong>
-              <small style={{ fontSize: "11px", color: "rgba(245, 158, 11, 0.85)" }}>
+              <small style={{ fontSize: "11px", color: "rgba(245, 158, 11, 0.85)", fontFamily: "var(--sans, 'Inter', sans-serif)" }}>
                 {position?.current_apy_percent?.toFixed(1) || "5.0"}% APY · {position?.usyc_shares?.toFixed(3) || "0.000"} shares
               </small>
             </div>
 
             {/* Card 3: 30-Day Operational Buffer */}
-            <div style={{
-              background: "rgba(10, 16, 32, 0.7)",
-              border: "1px solid rgba(99, 102, 241, 0.25)",
-              borderRadius: "10px",
-              padding: "16px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "4px",
-            }}>
-              <span style={{ fontSize: "11px", fontFamily: "var(--mono, monospace)", textTransform: "uppercase", color: "#94a3b8" }}>
+            <div
+              style={{
+                background: "rgba(10, 13, 24, 0.7)",
+                border: "1px solid rgba(167, 139, 250, 0.25)",
+                borderRadius: "10px",
+                padding: "16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+              }}
+            >
+              <span style={{ fontSize: "11px", fontFamily: "var(--mono, monospace)", textTransform: "uppercase", color: "var(--t3, #4a5270)" }}>
                 30-Day OPEX Buffer
               </span>
-              <strong style={{ fontSize: "22px", color: "#a5b4fc", fontFamily: "var(--mono, monospace)" }}>
+              <strong style={{ fontSize: "22px", color: "var(--purple, #a78bfa)", fontFamily: "var(--mono, monospace)", letterSpacing: "-0.02em" }}>
                 {formatUsdc(forecast?.safety_buffer_usdc ?? 5.0)}
               </strong>
-              <small style={{ fontSize: "11px", color: "rgba(165, 180, 252, 0.8)" }}>
+              <small style={{ fontSize: "11px", color: "rgba(167, 139, 250, 0.85)", fontFamily: "var(--sans, 'Inter', sans-serif)" }}>
                 Reserved for oracles, RPC, &amp; compute bills
               </small>
             </div>
 
             {/* Card 4: Audit Integrity */}
-            <div style={{
-              background: "rgba(10, 16, 32, 0.7)",
-              border: "1px solid rgba(16, 185, 129, 0.25)",
-              borderRadius: "10px",
-              padding: "16px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "4px",
-            }}>
-              <span style={{ fontSize: "11px", fontFamily: "var(--mono, monospace)", textTransform: "uppercase", color: "#94a3b8" }}>
+            <div
+              style={{
+                background: "rgba(10, 13, 24, 0.7)",
+                border: "1px solid rgba(34, 211, 160, 0.25)",
+                borderRadius: "10px",
+                padding: "16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+              }}
+            >
+              <span style={{ fontSize: "11px", fontFamily: "var(--mono, monospace)", textTransform: "uppercase", color: "var(--t3, #4a5270)" }}>
                 Euthyna Continuous Proof
               </span>
-              <strong style={{ fontSize: "22px", color: "#34d399", fontFamily: "var(--mono, monospace)" }}>
+              <strong style={{ fontSize: "22px", color: "var(--green, #22d3a0)", fontFamily: "var(--mono, monospace)", letterSpacing: "-0.02em" }}>
                 {verifyResult?.total_records ?? auditRecords.length} Blocks
               </strong>
-              <small style={{ fontSize: "11px", color: "#34d399" }} title={verifyResult?.latest_hash || ""}>
+              <small style={{ fontSize: "11px", color: "var(--green, #22d3a0)", fontFamily: "var(--mono, monospace)" }} title={verifyResult?.latest_hash || ""}>
                 Latest: {verifyResult?.latest_hash ? shortAddress(verifyResult.latest_hash) : "0x7b23...verified"}
               </small>
             </div>
           </div>
 
           {/* 5 AUTONOMOUS DECISIONS CORRIDOR BAR */}
-          <div style={{
-            background: "rgba(15, 23, 42, 0.5)",
-            border: "1px solid rgba(255, 255, 255, 0.05)",
-            borderRadius: "10px",
-            padding: "14px 18px",
-            marginBottom: "24px",
-          }}>
-            <div style={{ fontSize: "12px", fontWeight: 700, color: "#e2e8f0", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <div
+            style={{
+              background: "rgba(15, 23, 42, 0.4)",
+              border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))",
+              borderRadius: "10px",
+              padding: "14px 18px",
+              marginBottom: "24px",
+            }}
+          >
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--t2, #8d95b0)", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "var(--mono, monospace)" }}>
               5 Autonomous Treasury Decisions Executed on Arc
             </div>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: "10px",
-            }}>
-              <div style={{ padding: "8px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.05)" }}>
-                <strong style={{ color: "#38bdf8", fontSize: "12px", display: "block" }}>1. Idle Yield Sweep</strong>
-                <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px" }}>Sweeps excess cash into USYC ERC-4626 at 5% APY</span>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: "10px",
+              }}
+            >
+              <div style={{ padding: "10px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
+                <strong style={{ color: "var(--accent, #7C6FFF)", fontSize: "12px", display: "block" }}>01. Idle Yield Sweep</strong>
+                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "11px", lineHeight: "1.3", display: "block", marginTop: "2px" }}>Sweeps excess cash into USYC ERC-4626 at 5% APY</span>
               </div>
-              <div style={{ padding: "8px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.05)" }}>
-                <strong style={{ color: "#fbbf24", fontSize: "12px", display: "block" }}>2. JIT Redemption</strong>
-                <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px" }}>Redeems exact micro-amount to pay incoming bills</span>
+              <div style={{ padding: "10px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
+                <strong style={{ color: "var(--amber, #f59e0b)", fontSize: "12px", display: "block" }}>02. JIT Redemption</strong>
+                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "11px", lineHeight: "1.3", display: "block", marginTop: "2px" }}>Redeems exact micro-amount to pay incoming bills</span>
               </div>
-              <div style={{ padding: "8px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.05)" }}>
-                <strong style={{ color: "#34d399", fontSize: "12px", display: "block" }}>3. Creator Claim Payout</strong>
-                <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px" }}>On-demand 80% revenue share payout on Arc</span>
+              <div style={{ padding: "10px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
+                <strong style={{ color: "var(--green, #22d3a0)", fontSize: "12px", display: "block" }}>03. Creator Claim Payout</strong>
+                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "11px", lineHeight: "1.3", display: "block", marginTop: "2px" }}>On-demand 80% revenue share payout on Arc</span>
               </div>
-              <div style={{ padding: "8px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.05)" }}>
-                <strong style={{ color: "#a5b4fc", fontSize: "12px", display: "block" }}>4. StableFX Liquidity</strong>
-                <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px" }}>USDC ↔ EURC RFQ with 5 bps institutional spread</span>
+              <div style={{ padding: "10px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
+                <strong style={{ color: "var(--purple, #a78bfa)", fontSize: "12px", display: "block" }}>04. StableFX Liquidity</strong>
+                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "11px", lineHeight: "1.3", display: "block", marginTop: "2px" }}>USDC to EURC RFQ with 5 bps institutional spread</span>
               </div>
-              <div style={{ padding: "8px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.05)" }}>
-                <strong style={{ color: "#c084fc", fontSize: "12px", display: "block" }}>5. Euthyna SHA-256 Seal</strong>
-                <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px" }}>Immutable cryptographic continuous audit chain</span>
+              <div style={{ padding: "10px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
+                <strong style={{ color: "#38bdf8", fontSize: "12px", display: "block" }}>05. Euthyna SHA-256 Seal</strong>
+                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "11px", lineHeight: "1.3", display: "block", marginTop: "2px" }}>Immutable cryptographic continuous audit chain</span>
               </div>
             </div>
           </div>
 
           {/* RECENT CFO DECISION & AUDIT TRAIL TABLE */}
           <div>
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "10px",
-            }}>
-              <span style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff", fontFamily: "var(--font-heading, Inter, sans-serif)" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "10px",
+              }}
+            >
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff", fontFamily: "var(--sans, 'Inter', sans-serif)" }}>
                 Recent Treasury Decisions &amp; Euthyna Audit Trail
               </span>
-              <span style={{ fontSize: "11px", fontFamily: "var(--mono, monospace)", color: "rgba(255, 255, 255, 0.5)" }}>
+              <span style={{ fontSize: "11px", fontFamily: "var(--mono, monospace)", color: "var(--t3, #4a5270)" }}>
                 Continuous SHA-256 State Hashing
               </span>
             </div>
@@ -397,7 +409,7 @@ export function AutonomousCfoTreasuryRadar() {
                 <tbody>
                   {auditRecords.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: "center", padding: "20px", color: "rgba(255, 255, 255, 0.5)" }}>
+                      <td colSpan={6} style={{ textAlign: "center", padding: "20px", color: "var(--t3, #4a5270)" }}>
                         No audit decisions recorded yet.
                       </td>
                     </tr>
@@ -406,48 +418,50 @@ export function AutonomousCfoTreasuryRadar() {
                       <tr key={r.record_id || i}>
                         <td className="mono-td">
                           #{r.index ?? (i + 1)}
-                          <div style={{ fontSize: "10.5px", color: "rgba(255, 255, 255, 0.45)" }}>
+                          <div style={{ fontSize: "10.5px", color: "var(--t3, #4a5270)" }}>
                             {r.timestamp ? formatDateTime(r.timestamp) : "recent"}
                           </div>
                         </td>
                         <td>
-                          <span style={{
-                            display: "inline-block",
-                            padding: "3px 8px",
-                            borderRadius: "4px",
-                            fontSize: "10.5px",
-                            fontFamily: "var(--mono, monospace)",
-                            fontWeight: 700,
-                            background: r.action === "IDLE_SWEEP"
-                              ? "rgba(56, 189, 248, 0.15)"
-                              : r.action === "JIT_REDEMPTION"
-                              ? "rgba(245, 158, 11, 0.15)"
-                              : r.action === "CREATOR_CLAIM"
-                              ? "rgba(16, 185, 129, 0.15)"
-                              : "rgba(168, 85, 247, 0.15)",
-                            color: r.action === "IDLE_SWEEP"
-                              ? "#38bdf8"
-                              : r.action === "JIT_REDEMPTION"
-                              ? "#fbbf24"
-                              : r.action === "CREATOR_CLAIM"
-                              ? "#34d399"
-                              : "#c084fc",
-                            border: "1px solid currentColor",
-                          }}>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "3px 8px",
+                              borderRadius: "4px",
+                              fontSize: "10.5px",
+                              fontFamily: "var(--mono, monospace)",
+                              fontWeight: 700,
+                              background: r.action === "IDLE_SWEEP"
+                                ? "rgba(124, 111, 255, 0.15)"
+                                : r.action === "JIT_REDEMPTION"
+                                ? "rgba(245, 158, 11, 0.15)"
+                                : r.action === "CREATOR_CLAIM"
+                                ? "rgba(34, 211, 160, 0.15)"
+                                : "rgba(167, 139, 250, 0.15)",
+                              color: r.action === "IDLE_SWEEP"
+                                ? "var(--accent, #7C6FFF)"
+                                : r.action === "JIT_REDEMPTION"
+                                ? "var(--amber, #f59e0b)"
+                                : r.action === "CREATOR_CLAIM"
+                                ? "var(--green, #22d3a0)"
+                                : "var(--purple, #a78bfa)",
+                              border: "1px solid currentColor",
+                            }}
+                          >
                             {r.action}
                           </span>
                         </td>
                         <td className="mono-td" style={{ fontWeight: 600 }}>
                           {formatUsdc(r.amount_usdc)}
                         </td>
-                        <td className="mono-td" style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.6)" }}>
+                        <td className="mono-td" style={{ fontSize: "11px", color: "var(--t2, #8d95b0)" }}>
                           {formatUsdc(r.treasury_liquid_before ?? r.balance_before ?? 0)} &rarr; {formatUsdc(r.treasury_liquid_after ?? r.balance_after ?? 0)}
                         </td>
                         <td style={{ maxWidth: "320px" }}>
                           <div style={{ color: "#e2e8f0", fontSize: "11.5px", lineHeight: 1.4 }}>
                             {r.cfo_reasoning || r.reasoning || "Autonomous treasury decision"}
                           </div>
-                          <small style={{ color: "rgba(255, 255, 255, 0.4)", fontFamily: "var(--mono, monospace)", fontSize: "10px" }}>
+                          <small style={{ color: "var(--t3, #4a5270)", fontFamily: "var(--mono, monospace)", fontSize: "10px" }}>
                             Rule: {r.policy_rule_applied || r.policy_rule || "RULE_TREASURY_BUFFER"}
                           </small>
                         </td>
@@ -457,15 +471,15 @@ export function AutonomousCfoTreasuryRadar() {
                               href={r.arcscan_url || `https://testnet.arcscan.app/tx/${r.tx_hash}`}
                               target="_blank"
                               rel="noreferrer"
-                              style={{ color: "#38bdf8", textDecoration: "none" }}
+                              style={{ color: "var(--accent, #7C6FFF)", textDecoration: "none" }}
                               title={`Arcscan Tx: ${r.tx_hash}`}
                             >
-                              Tx: {shortAddress(r.tx_hash)} ↗
+                              Tx: {shortAddress(r.tx_hash)}
                             </a>
                           ) : (
-                            <span style={{ color: "rgba(255, 255, 255, 0.4)" }}>Prepared intent</span>
+                            <span style={{ color: "var(--t3, #4a5270)" }}>Prepared intent</span>
                           )}
-                          <div style={{ fontSize: "10px", color: "rgba(255, 255, 255, 0.35)" }} title={`SHA-256 Digest: ${r.integrity_hash || r.current_hash || ""}`}>
+                          <div style={{ fontSize: "10px", color: "var(--t3, #4a5270)" }} title={`SHA-256 Digest: ${r.integrity_hash || r.current_hash || ""}`}>
                             Hash: {r.integrity_hash || r.current_hash ? shortAddress(r.integrity_hash || r.current_hash) : "verified"}
                           </div>
                         </td>

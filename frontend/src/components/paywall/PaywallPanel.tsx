@@ -61,7 +61,15 @@ export function PaywallPanel(props: PaywallPanelProps) {
           : "is-pending";
 
   const symbol = (currentInvoice?.symbol || activeQuery.symbol || "ETH-USDT").replace("-", "_").toUpperCase();
-  const mexcEvidenceUrl = `https://contract.mexc.com/api/v1/contract/funding_rate/${symbol}`;
+  const rawEvidenceUrl = (currentInvoice as any)?.evidence_url || (currentInvoice?.query as any)?.evidence_url || (activeQuery as any)?.evidence_url;
+  const targetExchange = rawEvidenceUrl && rawEvidenceUrl.includes("binance.com")
+    ? "Binance"
+    : rawEvidenceUrl && rawEvidenceUrl.includes("polymarket.com")
+      ? "Polymarket"
+      : rawEvidenceUrl && rawEvidenceUrl.includes("pyth.network")
+        ? "Pyth"
+        : (currentInvoice?.query as any)?.exchange || (currentInvoice as any)?.exchange || "MEXC";
+  const evidenceUrl = rawEvidenceUrl || `https://contract.mexc.com/api/v1/contract/funding_rate/${symbol}`;
 
   return (
     <>
@@ -238,8 +246,8 @@ export function PaywallPanel(props: PaywallPanelProps) {
                   </div>
                   <div className="paywall-detail-row">
                     <span className="paywall-detail-label">Live Evidence URL</span>
-                    <a className="paywall-detail-value tx-link" href={mexcEvidenceUrl} target="_blank" rel="noreferrer">
-                      MEXC {symbol}
+                    <a className="paywall-detail-value tx-link" href={evidenceUrl} target="_blank" rel="noreferrer">
+                      {targetExchange} {symbol}
                     </a>
                   </div>
                   <div className="paywall-detail-row">

@@ -108,8 +108,14 @@ export async function ensureArcTestnet(providerOrRdns?: Eip1193Provider | string
 export const ensureArcNetwork = ensureArcTestnet;
 
 /**
- * On Arc Testnet, USDC is the native gas token (6 decimals).
- * We can directly query native balance using eth_getBalance.
+ * On Arc Testnet, USDC serves as the native gas token.
+ * 
+ * DUAL-VIEW DECIMALS NOTE:
+ * - Native Gas EVM view (eth_getBalance): The Arc RPC node scales native gas by 18 decimals
+ *   (10^18 wei) to maintain compatibility with standard EVM wallets (MetaMask, Viem, Web3.js)
+ *   which expect eth_getBalance to return 18-decimal wei.
+ * - ERC-20 Token view (0x3600000000000000000000000000000000000000) & Circle Gateway/x402:
+ *   Standard 6 decimals (10^6 micro-USDC).
  */
 export async function getArcNativeUsdcBalance(address: string, providerOrRdns?: Eip1193Provider | string): Promise<string> {
   if (!address) return "0.00";
@@ -121,9 +127,10 @@ export async function getArcNativeUsdcBalance(address: string, providerOrRdns?: 
       params: [address, "latest"],
     });
     const bigIntBal = BigInt(rawBalance || "0x0");
-    const whole = bigIntBal / 1_000_000n;
-    const frac = bigIntBal % 1_000_000n;
-    const fracStr = frac.toString().padStart(6, "0").slice(0, 4);
+    const WEI_PER_USDC = 10n ** 18n;
+    const whole = bigIntBal / WEI_PER_USDC;
+    const frac = bigIntBal % WEI_PER_USDC;
+    const fracStr = frac.toString().padStart(18, "0").slice(0, 4);
     return `${whole}.${fracStr}`;
   } catch (err) {
     console.warn("Failed to fetch Arc native USDC balance:", err);
