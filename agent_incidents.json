@@ -2330,5 +2330,60 @@
     "actor_address": "0x0000000000000000000000000000000000000000",
     "euthyna_hash": "0x4cc23bebd3ab4ddf9e89572ea0de1bfd",
     "admin_note": "Admin verified test dispute"
+  },
+  {
+    "incident_id": "inc_f79d0b21",
+    "session_id": "55555555-5555-5555-5555-555555555555",
+    "trace_id": "0x9876543210987654321098765432109876543210",
+    "timestamp": "2026-09-30T03:03:06Z",
+    "severity": "P1_CRITICAL",
+    "status": "OPEN",
+    "category": "GENLAYER_SLA_VIOLATION",
+    "rule": "FAIL_CLOSED_VERIFIER",
+    "details": "GenLayer SLA verdict INVALID on invoice inv_sla_test_001. Automatic circuit breaker triggered.",
+    "financial_context": {
+      "attempted_amount_usdc": 0.05,
+      "provider_id": "funding_memory"
+    },
+    "actor_type": "SYSTEM_CIRCUIT_BREAKER",
+    "actor_address": "0x0000000000000000000000000000000000000000",
+    "euthyna_hash": "0x49d9625452b14e05ac31724f800120ff",
+    "admin_note": null
+  },
+  {
+    "incident_id": "inc_da5e6808",
+    "session_id": "33333333-3333-3333-3333-333333333333",
+    "trace_id": null,
+    "timestamp": "2026-09-30T03:03:07Z",
+    "severity": "P1_CRITICAL",
+    "status": "RESOLVED",
+    "category": "GENLAYER_SLA_VIOLATION",
+    "rule": "ORACLE_HASH_MISMATCH",
+    "details": "Payload oracle hash mismatch detected",
+    "financial_context": {},
+    "actor_type": "SYSTEM_CIRCUIT_BREAKER",
+    "actor_address": "0x0000000000000000000000000000000000000000",
+    "euthyna_hash": "0x788057f24d2d48f9acb3fe540ae11342",
+    "admin_note": "Admin reviewed and cleared"
+  },
+  {
+    "incident_id": "inc_13c1c7b3",
+    "session_id": "00000000-0000-0000-0000-000000000001",
+    "trace_id": null,
+    "timestamp": "2026-09-30T03:03:09Z",
+    "severity": "P1_CRITICAL",
+    "status": "RESOLVED",
+    "category": "GENLAYER_SLA_VIOLATION",
+    "rule": "FAIL_CLOSED_VERIFIER",
+    "details": "Delivered payload hash does not match oracle bound hash",
+    "financial_context": {
+      "attempted_amount_usdc": 0.005,
+      "spent_usdc": 0.02,
+      "budget_usdc": 0.05
+    },
+    "actor_type": "SYSTEM_CIRCUIT_BREAKER",
+    "actor_address": "0x0000000000000000000000000000000000000000",
+    "euthyna_hash": "0x6a0431f146354a00b13dab2852ea530a",
+    "admin_note": "Admin verified test dispute"
   }
 ]

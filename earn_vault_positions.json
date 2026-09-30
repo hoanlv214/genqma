@@ -5,8 +5,8 @@
     "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
     "shares": 0.0,
     "principal_usdc": 0.0,
-    "last_deposit_at": 1790703030.9417717,
-    "last_rebalance_at": 1790703030.9543362,
+    "last_deposit_at": 1790737398.3553913,
+    "last_rebalance_at": 1790737398.3706071,
     "created_at": 1790649084.2668931
   },
   "0x2222222222222222222222222222222222222222:morpho_arc_usdc_prime": {
@@ -25,8 +25,8 @@
     "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
     "shares": 0.0,
     "principal_usdc": 0.0,
-    "last_deposit_at": 1790703030.9826725,
-    "last_rebalance_at": 1790703030.9947515,
+    "last_deposit_at": 1790737398.4026499,
+    "last_rebalance_at": 1790737398.4140584,
     "created_at": 1790649084.2874439
   },
   "0x4444444444444444444444444444444444444444:morpho_arc_usdc_core": {
@@ -35,8 +35,8 @@
     "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
     "shares": 0.0,
     "principal_usdc": 0.0,
-    "last_deposit_at": 1790703031.0082653,
-    "last_rebalance_at": 1790703031.0293353,
+    "last_deposit_at": 1790737398.4289696,
+    "last_rebalance_at": 1790737398.4512153,
     "created_at": 1790649084.2997096
   },
   "0xf9c43a6cd72f5b9d1443e3faa0fac022de0abb19:morpho_arc_usdc_prime": {
@@ -65,8 +65,8 @@
     "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
     "shares": 0.0,
     "principal_usdc": 0.0,
-    "last_deposit_at": 1790703030.9665802,
-    "last_rebalance_at": 1808847030.9710934,
+    "last_deposit_at": 1790737398.3834147,
+    "last_rebalance_at": 1808881398.3871422,
     "created_at": 1790667755.2496955
   },
   "0x5555555555555555555555555555555555555555:morpho_arc_usdc_core": {
@@ -75,8 +75,8 @@
     "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
     "shares": 0.0,
     "principal_usdc": 0.0,
-    "last_deposit_at": 1790703031.0475652,
-    "last_rebalance_at": 1790703031.051567,
+    "last_deposit_at": 1790737398.4721615,
+    "last_rebalance_at": 1790737398.4764497,
     "created_at": 1790667755.6649654
   },
   "0x8888888888888888888888888888888888888888:morpho_arc_usdc_core": {
@@ -85,8 +85,8 @@
     "vaultAddress": "0x4869c9B5F54f6c40A5a417537b03a4537cb90c91",
     "shares": 0.0,
     "principal_usdc": 0.0,
-    "last_deposit_at": 1790703031.0719588,
-    "last_rebalance_at": 1790703031.084464,
+    "last_deposit_at": 1790737398.4944289,
+    "last_rebalance_at": 1790737398.5074506,
     "created_at": 1790667755.681408
   }
 }

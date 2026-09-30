@@ -136,28 +136,6 @@ header {
     background: rgba(124, 111, 255, 0.14);
 }
 
-.logo-img-item {
-    height: 24px;
-    min-width: 40px;
-    padding: 3px 8px;
-}
-
-.logo-img-item img {
-    display: block;
-    max-height: 16px;
-    max-width: 78px;
-    object-fit: contain;
-}
-
-.canteen-logo-item img {
-    max-height: 18px;
-    max-width: 88px;
-}
-
-.arc-logo-item img {
-    max-width: 92px;
-}
-
 .status-indicators {
     display: flex;
     align-items: center;
