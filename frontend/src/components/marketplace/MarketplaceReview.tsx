@@ -14,6 +14,7 @@ import { GlobalHeader } from "../ui/GlobalHeader";
 import { Loader } from "../ui/Loader";
 import { WalletAppKitModal } from "../modals/WalletAppKitModal";
 import { ARC_CHAIN } from "../../config/network";
+import { useWalletStore } from "../../state/walletStore";
 
 interface Provider {
   provider_id: string;
@@ -66,7 +67,7 @@ export function MarketplaceReview({
 }: {
   onNavigate: (route: any) => void;
 }) {
-  const [wallet, setWallet] = useState(() => localStorage.getItem("qma_connected_wallet") || "");
+  const { address: wallet, setAddress: setWallet, disconnect: storeDisconnect } = useWalletStore();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [loadingProviders, setLoadingProviders] = useState(false);
@@ -122,11 +123,8 @@ export function MarketplaceReview({
     loadProviders();
     loadAdminPublicConfig();
     const handleAccountsChanged = (accounts: any) => {
-      clearAllWalletProfileSessions();
       const next = accounts && accounts[0] ? String(accounts[0]) : "";
       setWallet(next);
-      if (next) localStorage.setItem("qma_connected_wallet", next);
-      else localStorage.removeItem("qma_connected_wallet");
     };
     if (window.ethereum?.on) {
       window.ethereum.on("accountsChanged", handleAccountsChanged);
@@ -178,9 +176,7 @@ export function MarketplaceReview({
   };
 
   const disconnect = () => {
-    setWallet("");
-    localStorage.removeItem("qma_connected_wallet");
-    clearAllWalletProfileSessions();
+    storeDisconnect();
     setWalletDropdownOpen(false);
     setWalletStatus("Wallet disconnected.");
   };

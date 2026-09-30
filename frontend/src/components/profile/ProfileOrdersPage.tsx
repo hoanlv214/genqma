@@ -13,6 +13,7 @@ import { GlobalHeader } from "../ui/GlobalHeader";
 import { StatusBadge } from "../ui/StatusBadge";
 import { WalletAppKitModal } from "../modals/WalletAppKitModal";
 import { shortAddress } from "../../services/wallet";
+import { useWalletStore } from "../../state/walletStore";
 import type { QmaRoute } from "../../app/routes";
 
 interface ProfileOrdersPageProps {
@@ -75,9 +76,10 @@ interface PaymentRowMeta {
 
 export function ProfileOrdersPage({ onNavigate }: ProfileOrdersPageProps) {
   const isPublicProfile = window.location.pathname.replace(/\/$/, "").startsWith("/user");
+  const { address: storeWallet, setAddress: setStoreWallet, disconnect: storeDisconnect } = useWalletStore();
   const [wallet, setWallet] = useState(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get("wallet") || localStorage.getItem("qma_connected_wallet") || "";
+    return urlParams.get("wallet") || storeWallet || "";
   });
   const [walletToken, setWalletToken] = useState("");
   const [privateProfileUnlocked, setPrivateProfileUnlocked] = useState(false);
@@ -162,10 +164,10 @@ export function ProfileOrdersPage({ onNavigate }: ProfileOrdersPageProps) {
     if (wallet) {
       clearWalletProfileSession(wallet);
     }
+    storeDisconnect();
     setWallet("");
     setWalletToken("");
     setPrivateProfileUnlocked(false);
-    localStorage.removeItem("qma_connected_wallet");
   };
 
   const clearWalletToken = (account: string) => {
@@ -1109,7 +1111,7 @@ export function ProfileOrdersPage({ onNavigate }: ProfileOrdersPageProps) {
           setWalletToken("");
           setPrivateProfileUnlocked(false);
           setWallet(next);
-          localStorage.setItem("qma_connected_wallet", next);
+          setStoreWallet(next);
           const url = new URL(window.location.href);
           url.searchParams.set("wallet", next);
           window.history.replaceState({}, "", url.toString());
