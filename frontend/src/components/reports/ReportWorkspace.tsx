@@ -111,8 +111,49 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
           )}
         </div>
       ) : (
-        <div className="empty-state" style={{ textAlign: "center", color: "var(--t3)", marginTop: 80 }}>
-          No signal selected yet or payment pending.
+        <div
+          className="empty-state workspace-empty-card"
+          role="region"
+          aria-label={
+            activeQuery?.symbol
+              ? `Market Memory Analysis for ${activeQuery.symbol}`
+              : "No signal selected yet"
+          }
+        >
+          <div className="workspace-empty-header">
+            <div className="workspace-empty-badge">
+              <span className="workspace-empty-badge-dot" />
+              <span>{activeQuery?.symbol ? "Signal Ready for Analysis" : "Signal Selection"}</span>
+            </div>
+            <h3 className="workspace-empty-title">
+              {activeQuery?.symbol ? `Inspect Historical Regimes for ${activeQuery.symbol}` : "No Signal Selected Yet"}
+            </h3>
+            <p className="workspace-empty-desc">
+              {activeQuery?.symbol
+                ? `Market anomaly for ${activeQuery.symbol} is selected. Choose Preview ($0.002) or Full Report ($0.005) below to unlock verified historical regime analogs.`
+                : "Pick a ranked signal from the left panel to begin quantitative memory analysis."}
+            </p>
+          </div>
+          <ol className="workspace-empty-steps">
+            <li className="workspace-empty-step">
+              <span className="workspace-empty-step-num">1</span>
+              <span className="workspace-empty-step-text">
+                Pick a ranked signal from the left panel
+              </span>
+            </li>
+            <li className="workspace-empty-step">
+              <span className="workspace-empty-step-num">2</span>
+              <span className="workspace-empty-step-text">
+                Choose Preview ($0.002) or Full ($0.005)
+              </span>
+            </li>
+            <li className="workspace-empty-step">
+              <span className="workspace-empty-step-num">3</span>
+              <span className="workspace-empty-step-text">
+                Unlock the verified report instantly in USDC
+              </span>
+            </li>
+          </ol>
         </div>
       )}
     </>

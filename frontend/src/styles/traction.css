@@ -39,7 +39,7 @@
 .traction-hero {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 56px 20px 36px;
+  padding: calc(var(--header-h, 64px) + 32px) 20px 36px;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -580,7 +580,7 @@
 
 @media (max-width: 680px) {
   .traction-hero {
-    padding: 36px 16px 24px;
+    padding: calc(var(--header-h, 64px) + 24px) 16px 24px;
   }
   .traction-container {
     padding: 0 16px;

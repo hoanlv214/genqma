@@ -189,18 +189,24 @@ CREATE INDEX IF NOT EXISTS qma_payment_events_payer_idx ON public.qma_payment_ev
 CREATE INDEX IF NOT EXISTS qma_payment_events_symbol_idx ON public.qma_payment_events (symbol);
 CREATE INDEX IF NOT EXISTS qma_payment_events_paid_at_idx ON public.qma_payment_events (paid_at DESC);
 CREATE INDEX IF NOT EXISTS qma_payment_events_invoice_idx ON public.qma_payment_events (invoice_id);
+CREATE INDEX IF NOT EXISTS idx_payment_events_provider_created ON public.qma_payment_events (provider_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payment_events_event_gin ON public.qma_payment_events USING gin (event);
 
 -- Indexes: qma_paid_reports
 CREATE INDEX IF NOT EXISTS qma_paid_reports_payer_idx ON public.qma_paid_reports (payer_address);
 CREATE INDEX IF NOT EXISTS qma_paid_reports_symbol_idx ON public.qma_paid_reports (symbol);
 CREATE INDEX IF NOT EXISTS qma_paid_reports_paid_at_idx ON public.qma_paid_reports (paid_at DESC);
 CREATE INDEX IF NOT EXISTS qma_paid_reports_saved_at_idx ON public.qma_paid_reports (saved_at DESC);
+CREATE INDEX IF NOT EXISTS idx_paid_reports_query_hash ON public.qma_paid_reports (query_hash);
+CREATE INDEX IF NOT EXISTS idx_paid_reports_entitlement_gin ON public.qma_paid_reports USING gin (entitlement);
 
 -- Indexes: qma_invoices
 CREATE INDEX IF NOT EXISTS qma_invoices_status_idx ON public.qma_invoices (status);
 CREATE INDEX IF NOT EXISTS qma_invoices_payer_idx ON public.qma_invoices (payer_address);
 CREATE INDEX IF NOT EXISTS qma_invoices_settlement_idx ON public.qma_invoices (settlement_id);
 CREATE INDEX IF NOT EXISTS qma_invoices_created_at_idx ON public.qma_invoices (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_invoices_status_expires ON public.qma_invoices (status, expires_at);
+CREATE INDEX IF NOT EXISTS idx_invoices_invoice_gin ON public.qma_invoices USING gin (invoice);
 
 -- Indexes: agent_sessions
 CREATE INDEX IF NOT EXISTS idx_agent_sessions_status ON public.agent_sessions(status);

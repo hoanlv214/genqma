@@ -27,7 +27,7 @@ export function LandingHeader({ onNavigate }: LandingHeaderProps) {
             <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
             <polyline points="17 6 23 6 23 12"></polyline>
           </svg>
-          Euthyna Audit
+          Live Proof
         </button>
         <a className="landing-nav-link" href="/docs" target="_blank" rel="noopener noreferrer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
@@ -52,7 +52,7 @@ export function LandingHeader({ onNavigate }: LandingHeaderProps) {
             <line x1="8" y1="21" x2="16" y2="21"></line>
             <line x1="12" y1="17" x2="12" y2="21"></line>
           </svg>
-          Launch CFO Terminal
+          Open Market Workspace
         </button>
       </div>
     </nav>

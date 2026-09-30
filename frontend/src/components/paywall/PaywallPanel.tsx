@@ -100,6 +100,12 @@ export function PaywallPanel(props: PaywallPanelProps) {
                     <span className="invoice-label">Amount</span>
                     <span className="invoice-val">{Number(currentInvoice.amount).toFixed(3)} USDC</span>
                   </div>
+                  <div className="invoice-row" style={{ background: "rgba(34, 211, 160, 0.06)", borderRadius: "6px", padding: "6px 8px" }}>
+                    <span className="invoice-label" style={{ color: "var(--green)" }}>Split Allocation</span>
+                    <span className="invoice-val tabular-nums" style={{ color: "var(--green)", fontWeight: 600 }}>
+                      80% Creator ({(Number(currentInvoice.amount) * 0.8).toFixed(4)} USDC) · 20% Protocol
+                    </span>
+                  </div>
                   <div className="invoice-row">
                     <span className="invoice-label">Arbiter Protection</span>
                     <span className="invoice-val" style={{ color: "#818cf8", fontWeight: 600 }}>

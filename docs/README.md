@@ -8,6 +8,7 @@ Use this map to find the owner of a behavior. Not every directory needs a separa
 
 | Area | Primary Documentation | Purpose & Scope |
 | --- | --- | --- |
+| **Technical Whitepaper** | [`whitepaper/QMA_WHITEPAPER.md`](whitepaper/QMA_WHITEPAPER.md) | Authoritative technical whitepaper: Arc L1 native USDC gas, x402 micropayments, GenLayer Intelligent Shield, USYC Vault |
 | **System Architecture** | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Authoritative definitive system architecture, component topology, module boundaries, SSOT matrix |
 | **System & Flows** | [`FLOWS.md`](FLOWS.md) | Canonical end-to-end execution flows (FL-01 to FL-10), sequence diagrams, state invariants |
 | **Security & Attack Surface** | [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) | 3-axis risk assessment, cryptographic gates, HMAC tokens, ingress perimeter defense |

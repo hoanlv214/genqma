@@ -132,6 +132,7 @@ Stop searching when the source of truth, direct consumers, smallest change surfa
 
 ## UI and Design-System Rules
 
+- Follow `docs/frontend/DESIGN_SYSTEM.md` — the design contract (accent semantics, typography, component conventions, copy tone).
 - Reuse components from `src/components/ui/` before introducing a new primitive.
 - Reuse semantic tokens from `src/styles/tokens.css`.
 - Do not scatter new raw hex colors when an existing token can represent the intent.

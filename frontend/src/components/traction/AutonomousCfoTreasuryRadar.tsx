@@ -72,13 +72,15 @@ export function AutonomousCfoTreasuryRadar() {
   const [verifyResult, setVerifyResult] = useState<EuthynaVerifyResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [auditPage, setAuditPage] = useState(1);
+  const AUDIT_PAGE_SIZE = 5;
 
   const loadTreasuryData = async () => {
     try {
       const [posRes, forecastRes, auditRes, verifyRes] = await Promise.all([
         fetch("/api/v1/treasury/usyc/position"),
         fetch("/api/v1/treasury/usyc/forecast?horizon_days=30"),
-        fetch("/api/v1/treasury/audit/euthyna?limit=8"),
+        fetch("/api/v1/treasury/audit/euthyna?limit=50"),
         fetch("/api/v1/treasury/audit/verify", { method: "POST" }),
       ]);
 
@@ -350,28 +352,28 @@ export function AutonomousCfoTreasuryRadar() {
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: "10px",
+                gap: "8px",
               }}
             >
-              <div style={{ padding: "10px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
-                <strong style={{ color: "var(--accent, #7C6FFF)", fontSize: "12px", display: "block" }}>01. Idle Yield Sweep</strong>
-                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "11px", lineHeight: "1.3", display: "block", marginTop: "2px" }}>Sweeps excess cash into USYC ERC-4626 at 5% APY</span>
+              <div style={{ padding: "8px 10px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
+                <strong style={{ color: "var(--accent, #7C6FFF)", fontSize: "11.5px", display: "block" }}>01. Idle Sweep</strong>
+                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "10.5px", display: "block" }}>Morpho USYC 5% APY</span>
               </div>
-              <div style={{ padding: "10px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
-                <strong style={{ color: "var(--amber, #f59e0b)", fontSize: "12px", display: "block" }}>02. JIT Redemption</strong>
-                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "11px", lineHeight: "1.3", display: "block", marginTop: "2px" }}>Redeems exact micro-amount to pay incoming bills</span>
+              <div style={{ padding: "8px 10px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
+                <strong style={{ color: "var(--amber, #f59e0b)", fontSize: "11.5px", display: "block" }}>02. JIT Redemption</strong>
+                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "10.5px", display: "block" }}>Auto bill liquidation</span>
               </div>
-              <div style={{ padding: "10px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
-                <strong style={{ color: "var(--green, #22d3a0)", fontSize: "12px", display: "block" }}>03. Creator Claim Payout</strong>
-                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "11px", lineHeight: "1.3", display: "block", marginTop: "2px" }}>On-demand 80% revenue share payout on Arc</span>
+              <div style={{ padding: "8px 10px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
+                <strong style={{ color: "var(--green, #22d3a0)", fontSize: "11.5px", display: "block" }}>03. Creator Claims</strong>
+                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "10.5px", display: "block" }}>80% revenue share</span>
               </div>
-              <div style={{ padding: "10px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
-                <strong style={{ color: "var(--purple, #a78bfa)", fontSize: "12px", display: "block" }}>04. StableFX Liquidity</strong>
-                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "11px", lineHeight: "1.3", display: "block", marginTop: "2px" }}>USDC to EURC RFQ with 5 bps institutional spread</span>
+              <div style={{ padding: "8px 10px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
+                <strong style={{ color: "var(--purple, #a78bfa)", fontSize: "11.5px", display: "block" }}>04. StableFX RFQ</strong>
+                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "10.5px", display: "block" }}>USDC/EURC 5 bps</span>
               </div>
-              <div style={{ padding: "10px 12px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
-                <strong style={{ color: "#38bdf8", fontSize: "12px", display: "block" }}>05. Euthyna SHA-256 Seal</strong>
-                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "11px", lineHeight: "1.3", display: "block", marginTop: "2px" }}>Immutable cryptographic continuous audit chain</span>
+              <div style={{ padding: "8px 10px", borderRadius: "6px", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))" }}>
+                <strong style={{ color: "#38bdf8", fontSize: "11.5px", display: "block" }}>05. Euthyna Hash</strong>
+                <span style={{ color: "var(--t2, #8d95b0)", fontSize: "10.5px", display: "block" }}>SHA-256 state seal</span>
               </div>
             </div>
           </div>
@@ -390,7 +392,7 @@ export function AutonomousCfoTreasuryRadar() {
                 Recent Treasury Decisions &amp; Euthyna Audit Trail
               </span>
               <span style={{ fontSize: "11px", fontFamily: "var(--mono, monospace)", color: "var(--t3, #4a5270)" }}>
-                Continuous SHA-256 State Hashing
+                Continuous SHA-256 Hashing
               </span>
             </div>
 
@@ -414,81 +416,140 @@ export function AutonomousCfoTreasuryRadar() {
                       </td>
                     </tr>
                   ) : (
-                    auditRecords.map((r, i) => (
-                      <tr key={r.record_id || i}>
-                        <td className="mono-td">
-                          #{r.index ?? (i + 1)}
-                          <div style={{ fontSize: "10.5px", color: "var(--t3, #4a5270)" }}>
-                            {r.timestamp ? formatDateTime(r.timestamp) : "recent"}
-                          </div>
-                        </td>
-                        <td>
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "3px 8px",
-                              borderRadius: "4px",
-                              fontSize: "10.5px",
-                              fontFamily: "var(--mono, monospace)",
-                              fontWeight: 700,
-                              background: r.action === "IDLE_SWEEP"
-                                ? "rgba(124, 111, 255, 0.15)"
-                                : r.action === "JIT_REDEMPTION"
-                                ? "rgba(245, 158, 11, 0.15)"
-                                : r.action === "CREATOR_CLAIM"
-                                ? "rgba(34, 211, 160, 0.15)"
-                                : "rgba(167, 139, 250, 0.15)",
-                              color: r.action === "IDLE_SWEEP"
-                                ? "var(--accent, #7C6FFF)"
-                                : r.action === "JIT_REDEMPTION"
-                                ? "var(--amber, #f59e0b)"
-                                : r.action === "CREATOR_CLAIM"
-                                ? "var(--green, #22d3a0)"
-                                : "var(--purple, #a78bfa)",
-                              border: "1px solid currentColor",
-                            }}
-                          >
-                            {r.action}
-                          </span>
-                        </td>
-                        <td className="mono-td" style={{ fontWeight: 600 }}>
-                          {formatUsdc(r.amount_usdc)}
-                        </td>
-                        <td className="mono-td" style={{ fontSize: "11px", color: "var(--t2, #8d95b0)" }}>
-                          {formatUsdc(r.treasury_liquid_before ?? r.balance_before ?? 0)} &rarr; {formatUsdc(r.treasury_liquid_after ?? r.balance_after ?? 0)}
-                        </td>
-                        <td style={{ maxWidth: "320px" }}>
-                          <div style={{ color: "#e2e8f0", fontSize: "11.5px", lineHeight: 1.4 }}>
-                            {r.cfo_reasoning || r.reasoning || "Autonomous treasury decision"}
-                          </div>
-                          <small style={{ color: "var(--t3, #4a5270)", fontFamily: "var(--mono, monospace)", fontSize: "10px" }}>
-                            Rule: {r.policy_rule_applied || r.policy_rule || "RULE_TREASURY_BUFFER"}
-                          </small>
-                        </td>
-                        <td className="mono-td">
-                          {r.tx_hash ? (
-                            <a
-                              href={r.arcscan_url || `https://testnet.arcscan.app/tx/${r.tx_hash}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ color: "var(--accent, #7C6FFF)", textDecoration: "none" }}
-                              title={`Arcscan Tx: ${r.tx_hash}`}
+                    auditRecords
+                      .slice((auditPage - 1) * AUDIT_PAGE_SIZE, auditPage * AUDIT_PAGE_SIZE)
+                      .map((r, i) => (
+                        <tr key={r.record_id || i}>
+                          <td className="mono-td">
+                            #{r.index ?? ((auditPage - 1) * AUDIT_PAGE_SIZE + i + 1)}
+                            <div style={{ fontSize: "10.5px", color: "var(--t3, #4a5270)" }}>
+                              {r.timestamp ? formatDateTime(r.timestamp) : "recent"}
+                            </div>
+                          </td>
+                          <td>
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "3px 8px",
+                                borderRadius: "4px",
+                                fontSize: "10.5px",
+                                fontFamily: "var(--mono, monospace)",
+                                fontWeight: 700,
+                                background: r.action === "IDLE_SWEEP"
+                                  ? "rgba(124, 111, 255, 0.15)"
+                                  : r.action === "JIT_REDEMPTION"
+                                  ? "rgba(245, 158, 11, 0.15)"
+                                  : r.action === "CREATOR_CLAIM"
+                                  ? "rgba(34, 211, 160, 0.15)"
+                                  : "rgba(167, 139, 250, 0.15)",
+                                color: r.action === "IDLE_SWEEP"
+                                  ? "var(--accent, #7C6FFF)"
+                                  : r.action === "JIT_REDEMPTION"
+                                  ? "var(--amber, #f59e0b)"
+                                  : r.action === "CREATOR_CLAIM"
+                                  ? "var(--green, #22d3a0)"
+                                  : "var(--purple, #a78bfa)",
+                                border: "1px solid currentColor",
+                              }}
                             >
-                              Tx: {shortAddress(r.tx_hash)}
-                            </a>
-                          ) : (
-                            <span style={{ color: "var(--t3, #4a5270)" }}>Prepared intent</span>
-                          )}
-                          <div style={{ fontSize: "10px", color: "var(--t3, #4a5270)" }} title={`SHA-256 Digest: ${r.integrity_hash || r.current_hash || ""}`}>
-                            Hash: {r.integrity_hash || r.current_hash ? shortAddress(r.integrity_hash || r.current_hash) : "verified"}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              {r.action}
+                            </span>
+                          </td>
+                          <td className="mono-td" style={{ fontWeight: 600 }}>
+                            {formatUsdc(r.amount_usdc)}
+                          </td>
+                          <td className="mono-td" style={{ fontSize: "11px", color: "var(--t2, #8d95b0)" }}>
+                            {formatUsdc(r.treasury_liquid_before ?? r.balance_before ?? 0)} &rarr; {formatUsdc(r.treasury_liquid_after ?? r.balance_after ?? 0)}
+                          </td>
+                          <td style={{ maxWidth: "320px" }}>
+                            <div style={{ color: "#e2e8f0", fontSize: "11.5px", lineHeight: 1.4 }}>
+                              {r.cfo_reasoning || r.reasoning || "Autonomous treasury decision"}
+                            </div>
+                            <small style={{ color: "var(--t3, #4a5270)", fontFamily: "var(--mono, monospace)", fontSize: "10px" }}>
+                              Rule: {r.policy_rule_applied || r.policy_rule || "RULE_TREASURY_BUFFER"}
+                            </small>
+                          </td>
+                          <td className="mono-td">
+                            {r.tx_hash ? (
+                              <a
+                                href={r.arcscan_url || `https://testnet.arcscan.app/tx/${r.tx_hash}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ color: "var(--accent, #7C6FFF)", textDecoration: "none" }}
+                                title={`Arcscan Tx: ${r.tx_hash}`}
+                              >
+                                Tx: {shortAddress(r.tx_hash)}
+                              </a>
+                            ) : (
+                              <span style={{ color: "var(--t3, #4a5270)" }}>Prepared intent</span>
+                            )}
+                            <div style={{ fontSize: "10px", color: "var(--t3, #4a5270)" }} title={`SHA-256 Digest: ${r.integrity_hash || r.current_hash || ""}`}>
+                              Hash: {r.integrity_hash || r.current_hash ? shortAddress(r.integrity_hash || r.current_hash) : "verified"}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
                   )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {auditRecords.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginTop: "12px",
+                  paddingTop: "12px",
+                  borderTop: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                }}
+              >
+                <span style={{ fontSize: "11px", color: "var(--t3, #4a5270)", fontFamily: "var(--mono, monospace)" }}>
+                  Showing {(auditPage - 1) * AUDIT_PAGE_SIZE + 1}–{Math.min(auditPage * AUDIT_PAGE_SIZE, auditRecords.length)} of {auditRecords.length} audit records
+                </span>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                  <button
+                    type="button"
+                    disabled={auditPage <= 1}
+                    onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                    style={{
+                      background: "rgba(255, 255, 255, 0.04)",
+                      border: "1px solid var(--bdr, rgba(255, 255, 255, 0.08))",
+                      color: auditPage <= 1 ? "var(--t3, #4a5270)" : "#ffffff",
+                      padding: "4px 10px",
+                      borderRadius: "5px",
+                      fontSize: "11.5px",
+                      cursor: auditPage <= 1 ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ fontSize: "11px", color: "var(--t2, #8d95b0)", padding: "0 4px", fontFamily: "var(--mono, monospace)" }}>
+                    Page {auditPage} of {Math.max(1, Math.ceil(auditRecords.length / AUDIT_PAGE_SIZE))}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={auditPage >= Math.ceil(auditRecords.length / AUDIT_PAGE_SIZE)}
+                    onClick={() => setAuditPage((p) => Math.min(Math.ceil(auditRecords.length / AUDIT_PAGE_SIZE), p + 1))}
+                    style={{
+                      background: "rgba(255, 255, 255, 0.04)",
+                      border: "1px solid var(--bdr, rgba(255, 255, 255, 0.08))",
+                      color: auditPage >= Math.ceil(auditRecords.length / AUDIT_PAGE_SIZE) ? "var(--t3, #4a5270)" : "#ffffff",
+                      padding: "4px 10px",
+                      borderRadius: "5px",
+                      fontSize: "11.5px",
+                      cursor: auditPage >= Math.ceil(auditRecords.length / AUDIT_PAGE_SIZE) ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

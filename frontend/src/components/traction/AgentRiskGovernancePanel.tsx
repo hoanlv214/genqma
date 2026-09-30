@@ -23,10 +23,12 @@ export function AgentRiskGovernancePanel() {
   const [selectedIncident, setSelectedIncident] = useState<IncidentRecord | null>(null);
   const [resolveNote, setResolveNote] = useState("");
   const [isResolving, setIsResolving] = useState(false);
+  const [incidentPage, setIncidentPage] = useState(1);
+  const INCIDENT_PAGE_SIZE = 5;
 
   const fetchIncidents = async () => {
     try {
-      const res = await fetch("/api/v1/agent/incidents?limit=20");
+      const res = await fetch("/api/v1/agent/incidents?limit=50");
       if (res.ok) {
         const data = await res.json();
         setIncidents(Array.isArray(data) ? data : []);
@@ -263,7 +265,9 @@ export function AgentRiskGovernancePanel() {
               </tr>
             </thead>
             <tbody>
-              {incidents.map((inc) => {
+              {incidents
+                .slice((incidentPage - 1) * INCIDENT_PAGE_SIZE, incidentPage * INCIDENT_PAGE_SIZE)
+                .map((inc) => {
                 const isP1 = inc.severity === "P1_CRITICAL";
                 return (
                   <tr
@@ -362,6 +366,63 @@ export function AgentRiskGovernancePanel() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {incidents.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "12px",
+            paddingTop: "12px",
+            borderTop: "1px solid var(--bdr, rgba(255, 255, 255, 0.06))",
+            flexWrap: "wrap",
+            gap: "8px",
+          }}
+        >
+          <span style={{ fontSize: "11px", color: "var(--t3, #4a5270)", fontFamily: "var(--mono, monospace)" }}>
+            Showing {(incidentPage - 1) * INCIDENT_PAGE_SIZE + 1}–{Math.min(incidentPage * INCIDENT_PAGE_SIZE, incidents.length)} of {incidents.length} incidents
+          </span>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <button
+              type="button"
+              disabled={incidentPage <= 1}
+              onClick={() => setIncidentPage((p) => Math.max(1, p - 1))}
+              style={{
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid var(--bdr, rgba(255, 255, 255, 0.08))",
+                color: incidentPage <= 1 ? "var(--t3, #4a5270)" : "#ffffff",
+                padding: "4px 10px",
+                borderRadius: "5px",
+                fontSize: "11.5px",
+                cursor: incidentPage <= 1 ? "not-allowed" : "pointer",
+              }}
+            >
+              Previous
+            </button>
+            <span style={{ fontSize: "11px", color: "var(--t2, #8d95b0)", padding: "0 4px", fontFamily: "var(--mono, monospace)" }}>
+              Page {incidentPage} of {Math.max(1, Math.ceil(incidents.length / INCIDENT_PAGE_SIZE))}
+            </span>
+            <button
+              type="button"
+              disabled={incidentPage >= Math.ceil(incidents.length / INCIDENT_PAGE_SIZE)}
+              onClick={() => setIncidentPage((p) => Math.min(Math.ceil(incidents.length / INCIDENT_PAGE_SIZE), p + 1))}
+              style={{
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid var(--bdr, rgba(255, 255, 255, 0.08))",
+                color: incidentPage >= Math.ceil(incidents.length / INCIDENT_PAGE_SIZE) ? "var(--t3, #4a5270)" : "#ffffff",
+                padding: "4px 10px",
+                borderRadius: "5px",
+                fontSize: "11.5px",
+                cursor: incidentPage >= Math.ceil(incidents.length / INCIDENT_PAGE_SIZE) ? "not-allowed" : "pointer",
+              }}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 

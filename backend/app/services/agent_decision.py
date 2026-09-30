@@ -9,12 +9,19 @@ import logging
 import os
 import re
 import time
+from decimal import Decimal
 from types import SimpleNamespace
 from typing import Optional
 
+import httpx
 import requests
 
 from backend.app.core.config import AGENT_MAX_DECISION_BUDGET_USDC
+from backend.app.services.agent_security import (
+    sanitize_financial_prompt,
+    FinancialPromptInjectionError,
+)
+from backend.app.services.spend_guard import get_spend_limit_guard
 
 
 logger = logging.getLogger("QMA-Agent")
@@ -720,8 +727,26 @@ def make_agent_decision(
      │ Tier 3: Greedy│  --> <1ms: Deterministic mathematical ranking (highest win-rate / value-density).
      └───────────────┘      Guaranteed safe fallback to ensure the agent never crashes or deadlocks.
     """
-    budget, max_price, provider_filter, tier_filter = _prompt_policy(prompt, budget_usdc, max_price_usdc)
-    lowered_prompt = prompt.lower()
+    # 0. Prompt Injection Sanitization (ECC llm-trading-agent-security)
+    try:
+        clean_prompt = sanitize_financial_prompt(prompt)
+    except FinancialPromptInjectionError as inject_err:
+        logger.warning("Adversarial financial prompt injection rejected: %s", inject_err)
+        return {
+            "action": "skip",
+            "candidate_id": None,
+            "requested_tier": "auto",
+            "budget_usdc": 0.0,
+            "max_price_usdc": 0.0,
+            "reason": f"Security alert: {inject_err}",
+            "rejected_candidate_ids": [],
+            "candidates": [],
+            "decision_source": "security_sanitizer",
+            "objective": "security_reject",
+        }
+
+    budget, max_price, provider_filter, tier_filter = _prompt_policy(clean_prompt, budget_usdc, max_price_usdc)
+    lowered_prompt = clean_prompt.lower()
     objective = "highest_score" if any(term in lowered_prompt for term in ("best", "highest", "strongest", "top")) else "value_density"
     recommendation_data = deps.get_agent_recommendations(limit)
     entitlements = deps.load_wallet_entitlements(wallet) if wallet else []
@@ -738,12 +763,23 @@ def make_agent_decision(
         minimum_score,
     )
 
+    def _guard_check(decision: dict) -> dict:
+        if decision.get("action") == "purchase":
+            price_val = Decimal(str(decision.get("max_price_usdc") or "0.005"))
+            allowed, spend_reason = get_spend_limit_guard().can_spend(wallet, price_val)
+            if not allowed:
+                logger.warning("SpendLimitGuard blocked autonomous purchase: %s", spend_reason)
+                decision["action"] = "skip"
+                decision["reason"] = f"Spend Guard: {spend_reason}"
+                decision["agent_rejection"] = "spend_policy_exceeded"
+        return decision
+
     # Try Fast Parser first (Tier 0: <1ms regex)
-    fast_plan = _fast_parse_decision(prompt, candidates, budget, max_price, provider_filter, tier_filter, objective)
+    fast_plan = _fast_parse_decision(clean_prompt, candidates, budget, max_price, provider_filter, tier_filter, objective)
     if fast_plan:
         validated = _validate_llm_plan(deps, fast_plan, candidates, entitlements, budget, max_price, objective, source="fast_parser")
         if validated is not None:
-            return validated
+            return _guard_check(validated)
 
     # Try Laya System 1 Decision Engine (Tier 1: Local Non-autoregressive Neural Router, sub-35ms)
     laya_active = use_laya is True or (
@@ -756,7 +792,7 @@ def make_agent_decision(
         try:
             from backend.app.services.laya_decision import predict_laya_plan
             laya_plan = predict_laya_plan(
-                prompt=prompt,
+                prompt=clean_prompt,
                 budget=budget,
                 max_price=max_price,
                 candidates=candidates,
@@ -768,15 +804,16 @@ def make_agent_decision(
             if laya_plan:
                 validated = _validate_llm_plan(deps, laya_plan, candidates, entitlements, budget, max_price, objective, source="laya_system_one")
                 if validated is not None:
-                    return validated
+                    return _guard_check(validated)
         except Exception as laya_err:
             logger.warning("Laya decision router skipped: %s", laya_err)
 
     # Try LLM Plan (Tier 2: Autoregressive Cloud LLM via OpenAI/Gemini/Groq)
-    llm_plan = _llm_decision(prompt, budget, max_price, candidates, entitlements, objective) if use_llm else None
+    llm_plan = _llm_decision(clean_prompt, budget, max_price, candidates, entitlements, objective) if use_llm else None
     if llm_plan:
         validated = _validate_llm_plan(deps, llm_plan, candidates, entitlements, budget, max_price, objective)
         if validated is not None:
-            return validated
+            return _guard_check(validated)
         logger.warning("Rejected invalid LLM plan; using deterministic fallback.")
-    return _fallback_decision(deps, candidates, entitlements, budget, max_price, objective, tier_filter)
+    fallback_res = _fallback_decision(deps, candidates, entitlements, budget, max_price, objective, tier_filter)
+    return _guard_check(fallback_res)

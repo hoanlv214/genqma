@@ -280,7 +280,7 @@ class QMAAgentClient:
         )
 
     # ---------------------------------------------------------------------------
-    # USYC Treasury & Euthyna Audit (Tameion Corporate Agent CFO)
+    # USYC Treasury & Euthyna Audit (Autonomous Corporate Agent CFO)
     # ---------------------------------------------------------------------------
 
     def get_usyc_position(self, account: Optional[str] = None) -> Dict[str, Any]:

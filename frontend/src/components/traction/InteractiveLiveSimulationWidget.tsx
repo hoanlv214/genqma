@@ -24,25 +24,25 @@ export function InteractiveLiveSimulationWidget() {
       title: "Alpha Anomaly Detected",
       badge: "STREAM EVENT",
       badgeColor: "var(--accent, #7C6FFF)",
-      description: "Autonomous Quant Agent detects a 0.042% funding rate divergence between MEXC & Binance BTC perps.",
+      description: "Quant agent detects 0.042% perp funding divergence between MEXC and Binance.",
       details: {
         "Target Asset": "BTC/USDT Perpetual",
-        "Divergence": "+42 bps (Annualized 38.2%)",
+        "Divergence": "+42 bps (+38.2% ann.)",
         "Action": "Acquire Verified Alpha Report",
         "Invoice Price": "0.002 USDC",
       },
     },
     {
       id: 2,
-      title: "Autonomous x402 Micropayment on Arc",
+      title: "Autonomous x402 Micropayment",
       badge: "ON-CHAIN SETTLED",
       badgeColor: "var(--green, #22d3a0)",
-      description: "Circle Agent Wallet executes native USDC micro-transfer directly on Arc Testnet without human prompt.",
+      description: "Circle Agent Wallet executes native USDC settlement on Arc Testnet.",
       details: {
-        "Settlement Layer": `Arc Network (Chain ${ARC_CHAIN.id})`,
-        "Gas Paid": "0.00002 USDC ($0.00002)",
-        "Settlement Time": "< 650ms Sub-second Finality",
-        "Protocol": "Circle Agent Wallet (DCW Session Policy)",
+        "Settlement Layer": `Arc Network (${ARC_CHAIN.name})`,
+        "Gas Paid": "0.00002 USDC",
+        "Finality": "< 650ms",
+        "Protocol": "Circle DCW Session Policy",
       },
       link: {
         label: "View Arcscan Transaction",
@@ -51,28 +51,28 @@ export function InteractiveLiveSimulationWidget() {
     },
     {
       id: 3,
-      title: "GenLayer SLA Gatekeeper (< 100ms)",
+      title: "GenLayer SLA Verification",
       badge: "SLA VERIFIED",
       badgeColor: "var(--purple, #a78bfa)",
-      description: "GenLayer smart validator pre-verifies signal integrity. Cache hit delivers report instantly without consensus lag.",
+      description: "Intelligent validator confirms data integrity and SLA equivalence in <100ms.",
       details: {
-        "SLA Cache Latency": "38ms (Threshold: 100ms)",
-        "Verdict": "VALID (Zero Buyer Risk)",
-        "Slashing Bond": "100.00 USDC Creator Stake Intact",
-        "Payload Match": "Oracle Bound Hash SHA-256 Validated",
+        "Latency": "38ms (Threshold: 100ms)",
+        "Verdict": "VALID (Consensus passed)",
+        "Slashing Bond": "100.00 USDC Stake Intact",
+        "Payload Match": "SHA-256 Oracle Bound",
       },
     },
     {
       id: 4,
-      title: "Autonomous CFO Idle Sweep to Morpho",
+      title: "Autonomous CFO Idle Sweep",
       badge: "EARN KIT SWEEP",
       badgeColor: "var(--amber, #f59e0b)",
-      description: "Agent CFO evaluates treasury: surplus cash is automatically swept into Morpho Vault to compound 6.5% APY.",
+      description: "Treasury sweeps idle cash into Morpho Vault compounding 6.5% APY.",
       details: {
-        "Earn Vault": "Steakhouse USDC (Arc Earn Kit)",
-        "Current APY": "6.5% – 8.2% Compound",
+        "Earn Vault": "Steakhouse USDC",
+        "Current APY": "6.5% Compound",
         "Amount Swept": "4.000 USDC",
-        "Audit Seal": "Euthyna SHA-256 Contiguous Block Sealed",
+        "Audit Seal": "Euthyna SHA-256 Sealed",
       },
     },
   ];
@@ -170,11 +170,11 @@ export function InteractiveLiveSimulationWidget() {
               1-Click Live Loop
             </span>
           </div>
-          <h2 style={{ fontSize: "22px", margin: "0 0 6px 0", color: "#ffffff", fontWeight: 700, letterSpacing: "-0.02em" }}>
+          <h2 style={{ fontSize: "20px", margin: "0 0 4px 0", color: "#ffffff", fontWeight: 700, letterSpacing: "-0.02em" }}>
             Autonomous Agent Financial Loop
           </h2>
-          <p style={{ fontSize: "13px", color: "var(--t2, #8d95b0)", margin: 0, maxWidth: "760px", lineHeight: "1.5" }}>
-            Witness how an autonomous trading agent operates 24/7 on Arc: detects an alpha signal, pays 0.002 USDC natively via x402, verifies data integrity in sub-100ms via GenLayer SLA, and sweeps idle cash into Morpho (Arc Earn Kit).
+          <p style={{ fontSize: "13px", color: "var(--t2, #8d95b0)", margin: 0, maxWidth: "760px", lineHeight: "1.4" }}>
+            Anomaly detection, sub-second Arc x402 settlement, GenLayer SLA verification, and automated Morpho treasury idle yield sweep.
           </p>
         </div>
 

@@ -190,13 +190,25 @@ export function TractionPage({ onNavigate }: TractionPageProps) {
                 <div className="traction-headline-card card-yield">
                   <div className="traction-headline-header">
                     <span className="traction-headline-label">Treasury Earning Yield</span>
-                    <span className="traction-tag traction-tag-amber">Arc Earn Kit</span>
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                      <span className="traction-tag traction-tag-amber">Arc Earn Kit</span>
+                      <span
+                        className="traction-tag traction-tag-amber"
+                        style={{
+                          background: "var(--amber-dim, rgba(245, 158, 11, 0.10))",
+                          color: "var(--amber, #f59e0b)",
+                          border: "1px solid rgba(245, 158, 11, 0.28)",
+                        }}
+                      >
+                        Estimated · Beta
+                      </span>
+                    </div>
                   </div>
                   <strong className="traction-headline-val" style={{ color: "var(--amber, #f59e0b)" }}>
                     6.5% – 8.2% APY
                   </strong>
                   <p className="traction-headline-desc">
-                    Morpho Steakhouse USDC &amp; Morpho Prime on Arc
+                    Earn Kit target vaults (estimated): Morpho Steakhouse USDC &amp; Morpho Prime on Arc
                   </p>
                   <div className="traction-headline-footer">
                     <small style={{ fontSize: "11px", color: "var(--amber, #f59e0b)", fontFamily: "var(--mono, monospace)" }}>
@@ -229,12 +241,12 @@ export function TractionPage({ onNavigate }: TractionPageProps) {
               <section className="traction-metric-grid" aria-label="Traction summary">
                 {[
                   ["Paid reports", summary ? compactNumber(summary.current_paid_reports) : "—", "preview + full"],
-                  ["Settled reports", summary ? compactNumber(summary.settled_reports) : "—", "final gateway state"],
-                  ["Pending batch", summary ? compactNumber(summary.pending_batch_reports ?? Math.max(0, summary.current_paid_reports - summary.settled_reports)) : "—", "paid, awaiting finality"],
-                  ["Current volume", summary ? usdc(summary.current_revenue_usdc) : "—", "recorded report value"],
-                  ["Settled volume", summary ? usdc(summary.settled_volume_usdc) : "—", "final settlement evidence"],
+                  ["Settled reports", summary ? compactNumber(summary.settled_reports) : "—", "confirmed by Circle Gateway"],
+                  ["Pending batch", summary ? compactNumber(summary.pending_batch_reports ?? Math.max(0, summary.current_paid_reports - summary.settled_reports)) : "—", "paid, settling on-chain"],
+                  ["Current volume", summary ? usdc(summary.current_revenue_usdc) : "—", "recorded value (USDC)"],
+                  ["Settled volume", summary ? usdc(summary.settled_volume_usdc) : "—", "settled on-chain (USDC)"],
                   ["Unique payers", summary ? compactNumber(summary.unique_payers) : "—", "current reports"],
-                  ["Average report", summary ? usdc(summary.average_paid_report_usdc) : "—", "current paid average"],
+                  ["Average report", summary ? usdc(summary.average_paid_report_usdc) : "—", "average paid per report"],
                 ].map(([label, value, sub]) => (
                   <article className="traction-metric" key={label}>
                     <span>{label}</span>

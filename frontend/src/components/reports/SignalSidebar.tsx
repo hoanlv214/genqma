@@ -12,9 +12,10 @@ interface SignalSidebarProps {
   recommendationTier: (item: any) => string;
   onSelectSignal: (item: any) => void;
   onSelectRecommendation: (item: any) => void;
+  onToggleLayout?: () => void;
 }
 
-export function SignalSidebar({ visible, activeQuery, normalizeSignal, entitlementBadgeForSignal, recommendationTier, onSelectSignal, onSelectRecommendation }: SignalSidebarProps) {
+export function SignalSidebar({ visible, activeQuery, normalizeSignal, entitlementBadgeForSignal, recommendationTier, onSelectSignal, onSelectRecommendation, onToggleLayout }: SignalSidebarProps) {
   const [anomalies, setAnomalies] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(true);
@@ -84,7 +85,19 @@ export function SignalSidebar({ visible, activeQuery, normalizeSignal, entitleme
   return <aside className={`live-feed-sidebar ${visible ? "mobile-visible" : ""}`}>
     <div className="sidebar-header">
       <span className="sidebar-title">Live Signals</span>
-      <button className="refresh-btn" onClick={handleManualRefresh}>↻ Refresh</button>
+      <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+        {onToggleLayout && (
+          <button
+            type="button"
+            className="layout-toggle-btn"
+            onClick={onToggleLayout}
+            title="Switch to top horizontal ribbon tape"
+          >
+            Tape View ⇄
+          </button>
+        )}
+        <button className="refresh-btn" onClick={handleManualRefresh}>↻ Refresh</button>
+      </div>
     </div>
 
     {/* Quick filter by exchange */}

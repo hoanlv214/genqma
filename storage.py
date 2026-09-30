@@ -8,6 +8,16 @@ from typing import Optional
 
 import requests
 
+try:
+    import psycopg2
+    from psycopg2.extras import Json as PgJson, RealDictCursor
+    from psycopg2.pool import ThreadedConnectionPool
+except ImportError:
+    psycopg2 = None
+    PgJson = None
+    RealDictCursor = None
+    ThreadedConnectionPool = None
+
 logger = logging.getLogger("QMA-Storage")
 
 
@@ -1118,6 +1128,708 @@ class SupabaseStorage:
         }], "provider_id")
 
 
+class PostgresStorage:
+    """Native PostgreSQL storage engine for QMA."""
+
+    backend_name = "postgres"
+
+    def __init__(self, database_url: str, min_conn: int = 1, max_conn: int = 10):
+        if psycopg2 is None:
+            raise RuntimeError("psycopg2 is not installed. Please install psycopg2-binary to use PostgresStorage.")
+        self.database_url = database_url
+        from urllib.parse import urlparse, unquote
+        parsed = urlparse(database_url)
+        if parsed.scheme in ("postgresql", "postgres"):
+            user = unquote(parsed.username or "postgres")
+            password = unquote(parsed.password or "")
+            host = parsed.hostname or "localhost"
+            port = parsed.port or 5432
+            dbname = parsed.path.lstrip("/") or "qma"
+            self.pool = ThreadedConnectionPool(
+                min_conn, max_conn,
+                user=user,
+                password=password,
+                host=host,
+                port=port,
+                dbname=dbname,
+            )
+        else:
+            self.pool = ThreadedConnectionPool(min_conn, max_conn, database_url)
+
+        self.sessions_path = "agent_sessions.json"
+        self.wallets_path = "agent_wallets.json"
+        self.session_events_path = "agent_session_events.json"
+
+    def _load_json(self, path: str, fallback):
+        table = "agent_sessions" if "session" in str(path) else "agent_wallets" if "wallet" in str(path) else None
+        if table:
+            rows = self.execute_query(f'SELECT * FROM public."{table}";', fetch_all=True) or []
+            return list(rows)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return fallback
+
+    def _save_json(self, path: str, data):
+        table = "agent_sessions" if "session" in str(path) else "agent_wallets" if "wallet" in str(path) else None
+        if table and isinstance(data, list):
+            conflict = "id" if table == "agent_sessions" else "address"
+            self._upsert(table, data, conflict)
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except Exception:
+            pass
+
+    def get_connection(self):
+        return self.pool.getconn()
+
+    def put_connection(self, conn):
+        self.pool.putconn(conn)
+
+    def execute_query(self, query: str, params: tuple = (), fetch_all: bool = False, fetch_one: bool = False):
+        conn = self.get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, params)
+                if fetch_one:
+                    return cur.fetchone()
+                if fetch_all:
+                    return cur.fetchall()
+                conn.commit()
+                return None
+        finally:
+            self.put_connection(conn)
+
+    # ---------------------------------------------------------------------------
+    # Payment Events
+    # ---------------------------------------------------------------------------
+    def load_payment_events(self) -> list:
+        rows = self.execute_query(
+            "SELECT event FROM public.qma_payment_events ORDER BY paid_at DESC NULLS LAST LIMIT 5000;",
+            fetch_all=True
+        ) or []
+        return [row["event"] for row in rows if isinstance(row.get("event"), dict)]
+
+    def load_payment_event_summaries(self, *, limit: int = 5000) -> list:
+        rows = self.execute_query(
+            """
+            SELECT event_id, invoice_id, settlement_id, payer_address, symbol, tier,
+                   provider_id, amount_usdc, gateway_status, transaction_hash,
+                   explorer_url, paid_at
+            FROM public.qma_payment_events
+            ORDER BY paid_at DESC NULLS LAST
+            LIMIT %s;
+            """,
+            (limit,),
+            fetch_all=True
+        ) or []
+        return [payment_event_from_row(row) for row in rows]
+
+    def load_payment_events_for_wallet(self, address: str, *, limit: int = 5000) -> list:
+        events = [event for event in self.load_payment_events() if wallet_matches(event, address)]
+        return sorted(events, key=lambda item: item.get("paid_at") or 0, reverse=True)[:limit]
+
+    def save_payment_events(self, events: list) -> None:
+        if not events:
+            return
+        conn = self.get_connection()
+        try:
+            with conn.cursor() as cur:
+                for event in events:
+                    key = event_key(event)
+                    if not key:
+                        continue
+                    cur.execute(
+                        """
+                        INSERT INTO public.qma_payment_events (
+                            event_id, invoice_id, settlement_id, payer_address, symbol, tier,
+                            provider_id, amount_usdc, gateway_status, transaction_hash,
+                            explorer_url, paid_at, event
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (event_id) DO UPDATE SET
+                            settlement_id = EXCLUDED.settlement_id,
+                            gateway_status = EXCLUDED.gateway_status,
+                            event = EXCLUDED.event;
+                        """,
+                        (
+                            key,
+                            event.get("invoice_id"),
+                            event.get("settlement_id"),
+                            normalize_address(event.get("payer_address")),
+                            event.get("symbol"),
+                            event.get("tier"),
+                            event.get("provider_id", "funding_memory"),
+                            event.get("amount_usdc"),
+                            event.get("gateway_status"),
+                            event.get("transaction_hash"),
+                            event.get("explorer_url"),
+                            event.get("paid_at"),
+                            PgJson(event),
+                        )
+                    )
+                conn.commit()
+        finally:
+            self.put_connection(conn)
+
+    def save_single_payment_event(self, event: dict) -> None:
+        self.save_payment_events([event])
+
+    # ---------------------------------------------------------------------------
+    # Paid Reports
+    # ---------------------------------------------------------------------------
+    def load_paid_reports(self) -> dict:
+        rows = self.execute_query(
+            "SELECT entitlement_id, entitlement FROM public.qma_paid_reports ORDER BY saved_at DESC NULLS LAST LIMIT 5000;",
+            fetch_all=True
+        ) or []
+        records = {}
+        for row in rows:
+            record = row.get("entitlement")
+            ent_id = row.get("entitlement_id") or (record or {}).get("entitlement_id")
+            if ent_id and isinstance(record, dict):
+                records[ent_id] = record
+        return records
+
+    def load_paid_reports_for_wallet(
+        self,
+        address: str,
+        *,
+        symbol: Optional[str] = None,
+        provider_id: Optional[str] = None,
+        limit: int = 5000,
+    ) -> dict:
+        symbol_filter = str(symbol or "").strip().upper()
+        records = {
+            entitlement_id: record
+            for entitlement_id, record in self.load_paid_reports().items()
+            if wallet_matches(record, address)
+            and (not symbol_filter or str(record.get("symbol", "")).upper() == symbol_filter)
+            and (not provider_id or record.get("provider_id", "funding_memory") == provider_id)
+        }
+        ordered = sorted(
+            records.items(),
+            key=lambda item: item[1].get("paid_at") or item[1].get("saved_at") or 0,
+            reverse=True,
+        )
+        return dict(ordered[:limit])
+
+    def load_paid_report_summaries(self, *, limit: int = 5000) -> list:
+        rows = self.execute_query(
+            """
+            SELECT entitlement_id, payer_address, symbol, tier, provider_id, query_hash, settlement_id, paid_at, saved_at
+            FROM public.qma_paid_reports
+            ORDER BY saved_at DESC NULLS LAST
+            LIMIT %s;
+            """,
+            (limit,),
+            fetch_all=True
+        ) or []
+        return [paid_report_summary_from_row(row) for row in rows]
+
+    def load_paid_report_summaries_for_wallet(
+        self,
+        address: str,
+        *,
+        symbol: Optional[str] = None,
+        provider_id: Optional[str] = None,
+        limit: int = 5000,
+    ) -> list:
+        return [
+            paid_report_summary_from_row({
+                "entitlement_id": entitlement_id,
+                "entitlement": record,
+            })
+            for entitlement_id, record in self.load_paid_reports_for_wallet(
+                address,
+                symbol=symbol,
+                provider_id=provider_id,
+                limit=limit,
+            ).items()
+        ]
+
+    def load_paid_report_by_id(self, address: str, entitlement_id: str) -> Optional[dict]:
+        record = self.load_paid_reports().get(entitlement_id)
+        return record if wallet_matches(record, address) else None
+
+    def is_settlement_id_claimed(self, settlement_id: str, exclude_invoice_id: Optional[str] = None) -> bool:
+        if not settlement_id:
+            return False
+        if exclude_invoice_id:
+            row = self.execute_query(
+                "SELECT event_id FROM public.qma_payment_events WHERE settlement_id = %s AND (invoice_id != %s OR invoice_id IS NULL) LIMIT 1;",
+                (settlement_id, exclude_invoice_id),
+                fetch_one=True
+            )
+        else:
+            row = self.execute_query(
+                "SELECT event_id FROM public.qma_payment_events WHERE settlement_id = %s LIMIT 1;",
+                (settlement_id,),
+                fetch_one=True
+            )
+        if row:
+            return True
+
+        if exclude_invoice_id:
+            row = self.execute_query(
+                "SELECT invoice_id FROM public.qma_invoices WHERE settlement_id = %s AND invoice_id != %s LIMIT 1;",
+                (settlement_id, exclude_invoice_id),
+                fetch_one=True
+            )
+        else:
+            row = self.execute_query(
+                "SELECT invoice_id FROM public.qma_invoices WHERE settlement_id = %s LIMIT 1;",
+                (settlement_id,),
+                fetch_one=True
+            )
+        return row is not None
+
+    def save_paid_reports(self, reports: dict) -> None:
+        if not reports:
+            return
+        conn = self.get_connection()
+        try:
+            with conn.cursor() as cur:
+                for entitlement_id, record in reports.items():
+                    if not isinstance(record, dict) or not entitlement_id:
+                        continue
+                    cur.execute(
+                        """
+                        INSERT INTO public.qma_paid_reports (
+                            entitlement_id, payer_address, symbol, tier, provider_id,
+                            query_hash, settlement_id, paid_at, saved_at, entitlement
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (entitlement_id) DO UPDATE SET
+                            settlement_id = EXCLUDED.settlement_id,
+                            entitlement = EXCLUDED.entitlement;
+                        """,
+                        (
+                            entitlement_id,
+                            normalize_address(record.get("payer_address")),
+                            record.get("symbol"),
+                            record.get("tier"),
+                            record.get("provider_id", "funding_memory"),
+                            record.get("query_hash"),
+                            record.get("settlement_id"),
+                            record.get("paid_at"),
+                            record.get("saved_at"),
+                            PgJson(record),
+                        )
+                    )
+                conn.commit()
+        finally:
+            self.put_connection(conn)
+
+    def save_single_paid_report(self, entitlement_id: str, record: dict) -> None:
+        self.save_paid_reports({entitlement_id: record})
+
+    # ---------------------------------------------------------------------------
+    # Invoices
+    # ---------------------------------------------------------------------------
+    def load_invoices(self) -> dict:
+        rows = self.execute_query(
+            "SELECT invoice_id, invoice FROM public.qma_invoices ORDER BY created_at DESC NULLS LAST LIMIT 2000;",
+            fetch_all=True
+        ) or []
+        invoices = {}
+        for row in rows:
+            invoice = row.get("invoice")
+            inv_id = row.get("invoice_id") or (invoice or {}).get("invoice_id")
+            if inv_id and isinstance(invoice, dict):
+                invoices[inv_id] = invoice
+        return invoices
+
+    def load_paid_invoices_for_wallet(self, address: str, *, limit: int = 5000) -> dict:
+        invoices = {
+            invoice_id: invoice
+            for invoice_id, invoice in self.load_invoices().items()
+            if isinstance(invoice, dict)
+            and invoice.get("status") == "paid"
+            and wallet_matches(invoice, address)
+        }
+        ordered = sorted(
+            invoices.items(),
+            key=lambda item: item[1].get("paid_at") or item[1].get("created_at") or 0,
+            reverse=True,
+        )
+        return dict(ordered[:limit])
+
+    def load_paid_invoice_events(self, *, limit: int = 5000) -> list:
+        rows = self.execute_query(
+            """
+            SELECT invoice_id, settlement_id, payer_address, symbol, tier, provider_id,
+                   query_hash, created_at, expires_at, paid_at, invoice
+            FROM public.qma_invoices
+            WHERE status = 'paid'
+            ORDER BY paid_at DESC NULLS LAST
+            LIMIT %s;
+            """,
+            (limit,),
+            fetch_all=True
+        ) or []
+        events = []
+        for row in rows:
+            invoice = row.get("invoice") if isinstance(row.get("invoice"), dict) else {}
+            events.extend(invoice_payment_events({
+                **invoice,
+                "invoice_id": row.get("invoice_id") or invoice.get("invoice_id"),
+                "settlement_id": row.get("settlement_id") or invoice.get("settlement_id"),
+                "payer_address": row.get("payer_address") or invoice.get("payer_address"),
+                "symbol": row.get("symbol") or invoice.get("symbol"),
+                "tier": row.get("tier") or invoice.get("tier"),
+                "provider_id": row.get("provider_id") or invoice.get("provider_id", "funding_memory"),
+                "query_hash": row.get("query_hash") or invoice.get("query_hash"),
+                "paid_at": row.get("paid_at") if row.get("paid_at") is not None else invoice.get("paid_at"),
+            }))
+        return events
+
+    def save_invoice(self, invoice: dict) -> None:
+        inv_id = invoice.get("invoice_id")
+        if not inv_id:
+            return
+        self.execute_query(
+            """
+            INSERT INTO public.qma_invoices (
+                invoice_id, status, settlement_id, payer_address, symbol, tier,
+                provider_id, query_hash, created_at, expires_at, paid_at, invoice
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (invoice_id) DO UPDATE SET
+                status = EXCLUDED.status,
+                settlement_id = EXCLUDED.settlement_id,
+                paid_at = EXCLUDED.paid_at,
+                invoice = EXCLUDED.invoice;
+            """,
+            (
+                inv_id,
+                invoice.get("status", "pending"),
+                invoice.get("settlement_id"),
+                normalize_address(invoice.get("payer_address")),
+                invoice.get("symbol"),
+                invoice.get("tier"),
+                invoice.get("provider_id", "funding_memory"),
+                invoice.get("query_hash"),
+                invoice.get("created_at"),
+                invoice.get("expires_at"),
+                invoice.get("paid_at"),
+                PgJson(invoice),
+            )
+        )
+
+    # ---------------------------------------------------------------------------
+    # Creator Applications & Controls
+    # ---------------------------------------------------------------------------
+    def load_creator_applications(self) -> dict:
+        rows = self.execute_query(
+            "SELECT application_id, application FROM public.qma_creator_applications ORDER BY created_at DESC NULLS LAST LIMIT 1000;",
+            fetch_all=True
+        ) or []
+        apps = {}
+        for row in rows:
+            app = row.get("application")
+            app_id = row.get("application_id") or (app or {}).get("application_id")
+            if app_id and isinstance(app, dict):
+                apps[app_id] = app
+        return apps
+
+    def save_creator_application(self, application: dict) -> None:
+        app_id = application.get("application_id")
+        if not app_id:
+            return
+        self.execute_query(
+            """
+            INSERT INTO public.qma_creator_applications (
+                application_id, creator_wallet, provider_id, status,
+                created_at, updated_at, application
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (application_id) DO UPDATE SET
+                status = EXCLUDED.status,
+                updated_at = EXCLUDED.updated_at,
+                application = EXCLUDED.application;
+            """,
+            (
+                app_id,
+                normalize_address(application.get("creator_wallet")),
+                application.get("provider_id"),
+                application.get("status", "pending"),
+                application.get("created_at"),
+                application.get("updated_at"),
+                PgJson(application),
+            )
+        )
+
+    def load_provider_controls(self) -> dict:
+        rows = self.execute_query(
+            "SELECT provider_id, control FROM public.qma_provider_controls LIMIT 1000;",
+            fetch_all=True
+        ) or []
+        ctrls = {}
+        for row in rows:
+            pid = row.get("provider_id")
+            ctrl = row.get("control")
+            if pid and isinstance(ctrl, dict):
+                ctrls[pid] = ctrl
+        return ctrls
+
+    def save_provider_control(self, provider_id: str, control: dict) -> None:
+        if not provider_id:
+            return
+        self.execute_query(
+            """
+            INSERT INTO public.qma_provider_controls (
+                provider_id, enabled, updated_at, control
+            ) VALUES (%s, %s, %s, %s)
+            ON CONFLICT (provider_id) DO UPDATE SET
+                enabled = EXCLUDED.enabled,
+                updated_at = EXCLUDED.updated_at,
+                control = EXCLUDED.control;
+            """,
+            (
+                provider_id,
+                control.get("enabled", True),
+                control.get("updated_at") or int(time.time()),
+                PgJson(control),
+            )
+        )
+
+    def load_creator_claims(self) -> list:
+        try:
+            rows = self.execute_query(
+                "SELECT claim FROM public.qma_creator_claims ORDER BY claim_id ASC LIMIT 500;",
+                fetch_all=True
+            ) or []
+            return [r["claim"] for r in rows if "claim" in r]
+        except Exception:
+            return []
+
+    def save_creator_claim(self, record: dict) -> None:
+        try:
+            self._upsert("qma_creator_claims", [{
+                "claim_id": record["claim_id"], "claim": record,
+            }], "claim_id")
+        except Exception as exc:
+            logger.warning(f"Could not save creator claim: {exc}")
+
+    def load_wallet_spending_events(self, address: str) -> list:
+        result = []
+        norm = normalize_address(address)
+        invs = self.execute_query(
+            "SELECT invoice FROM public.qma_invoices WHERE payer_address = %s ORDER BY created_at DESC LIMIT 500;",
+            (norm,),
+            fetch_all=True
+        ) or []
+        result.extend(r["invoice"] for r in invs if "invoice" in r)
+        evts = self.execute_query(
+            "SELECT event FROM public.qma_payment_events WHERE payer_address = %s ORDER BY paid_at DESC LIMIT 500;",
+            (norm,),
+            fetch_all=True
+        ) or []
+        result.extend(r["event"] for r in evts if "event" in r)
+        return result
+
+    def reserve_withdrawal(self, operation_id: str, operation: dict) -> dict:
+        if not hasattr(self, "_withdrawals"):
+            self._withdrawals = {}
+        return self._withdrawals.setdefault(operation_id, operation)
+
+    def save_withdrawal(self, operation_id: str, operation: dict) -> None:
+        if not hasattr(self, "_withdrawals"):
+            self._withdrawals = {}
+        self._withdrawals[operation_id] = operation
+
+    # ---------------------------------------------------------------------------
+    # PostgREST Compatibility Layer for sessions.py (_request, _upsert, rpc)
+    # ---------------------------------------------------------------------------
+    def _request(self, method: str, table: str, *, params: Optional[dict] = None, json_body=None, prefer: str = ""):
+        clean_table = table.split("?")[0].strip("/")
+        params = params or {}
+        
+        if clean_table.startswith("rpc/"):
+            fn_name = clean_table.split("/", 1)[1]
+            return self.rpc(fn_name, json_body or {})
+
+        conn = self.get_connection()
+        try:
+            def _sql_column_expr(col_name: str) -> str:
+                if "->>" in col_name:
+                    col, field = col_name.split("->>", 1)
+                    col_clean = col.replace('"', '').strip()
+                    field_clean = field.replace("'", "").strip()
+                    return f'"{col_clean}"->>\'{field_clean}\''
+                elif "->" in col_name:
+                    col, field = col_name.split("->", 1)
+                    col_clean = col.replace('"', '').strip()
+                    field_clean = field.replace("'", "").strip()
+                    return f'"{col_clean}"->\'{field_clean}\''
+                else:
+                    col_clean = col_name.replace('"', '').strip()
+                    return f'"{col_clean}"'
+
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                if method == "GET":
+                    where_clauses = []
+                    query_params = []
+                    limit = 5000
+                    for k, v in params.items():
+                        if k == "limit":
+                            try:
+                                limit = int(v)
+                            except ValueError:
+                                pass
+                        elif k in ("select", "order", "Range", "Range-Unit"):
+                            continue
+                        elif isinstance(v, str) and v.startswith("eq."):
+                            where_clauses.append(f'{_sql_column_expr(k)} = %s')
+                            query_params.append(v[3:])
+                        elif isinstance(v, str) and v.startswith("neq."):
+                            where_clauses.append(f'{_sql_column_expr(k)} != %s')
+                            query_params.append(v[4:])
+                    
+                    where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+                    sql = f'SELECT * FROM public."{clean_table}"{where_sql} LIMIT {limit};'
+                    cur.execute(sql, tuple(query_params))
+                    return cur.fetchall()
+
+                elif method == "POST":
+                    rows = json_body if isinstance(json_body, list) else [json_body] if json_body else []
+                    on_conflict = params.get("on_conflict", "id")
+                    if rows:
+                        self._upsert(clean_table, rows, on_conflict)
+                    return None
+
+                elif method == "PATCH":
+                    where_clauses = []
+                    query_params = []
+                    for k, v in params.items():
+                        if isinstance(v, str) and v.startswith("eq."):
+                            where_clauses.append(f'{_sql_column_expr(k)} = %s')
+                            query_params.append(v[3:])
+                    
+                    if not where_clauses or not json_body:
+                        return None
+                    
+                    set_clauses = []
+                    set_values = []
+                    array_cols = {"allowed_providers", "allowed_tiers", "redirect_uris"}
+                    for k, v in json_body.items():
+                        set_clauses.append(f'"{k}" = %s')
+                        if k in array_cols:
+                            set_values.append(list(v) if v is not None else None)
+                        elif isinstance(v, (dict, list)):
+                            set_values.append(PgJson(v))
+                        else:
+                            set_values.append(v)
+                    
+                    sql = f'UPDATE public."{clean_table}" SET {", ".join(set_clauses)} WHERE {" AND ".join(where_clauses)};'
+                    cur.execute(sql, tuple(set_values + query_params))
+                    conn.commit()
+                    return None
+
+                elif method == "DELETE":
+                    where_clauses = []
+                    query_params = []
+                    for k, v in params.items():
+                        if isinstance(v, str) and v.startswith("eq."):
+                            where_clauses.append(f'{_sql_column_expr(k)} = %s')
+                            query_params.append(v[3:])
+                    if where_clauses:
+                        sql = f'DELETE FROM public."{clean_table}" WHERE {" AND ".join(where_clauses)};'
+                        cur.execute(sql, tuple(query_params))
+                        conn.commit()
+                    return None
+        finally:
+            self.put_connection(conn)
+
+    def _get_table_columns(self, table: str) -> set:
+        if not hasattr(self, "_column_cache"):
+            self._column_cache = {}
+        clean_table = table.split("?")[0].strip("/")
+        if clean_table not in self._column_cache:
+            rows = self.execute_query(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = %s;",
+                (clean_table,),
+                fetch_all=True
+            ) or []
+            self._column_cache[clean_table] = {r["column_name"] for r in rows}
+        return self._column_cache[clean_table]
+
+    def _upsert(self, table: str, rows: list[dict], conflict: str) -> None:
+        if not rows:
+            return
+        clean_table = table.split("?")[0].strip("/")
+        array_cols = {"allowed_providers", "allowed_tiers", "redirect_uris"}
+        valid_cols = self._get_table_columns(clean_table)
+        conn = self.get_connection()
+        try:
+            with conn.cursor() as cur:
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    filtered_row = {k: v for k, v in row.items() if not valid_cols or k in valid_cols}
+                    if not filtered_row:
+                        continue
+                    cols = list(filtered_row.keys())
+                    vals = []
+                    for c in cols:
+                        v = filtered_row[c]
+                        if c in array_cols:
+                            vals.append(list(v) if v is not None else None)
+                        elif isinstance(v, (dict, list)):
+                            vals.append(PgJson(v))
+                        else:
+                            vals.append(v)
+                    placeholders = ", ".join(["%s"] * len(cols))
+                    col_names = ", ".join([f'"{c}"' for c in cols])
+                    update_set = ", ".join([f'"{c}" = EXCLUDED."{c}"' for c in cols if c != conflict])
+                    
+                    if update_set:
+                        sql = f'INSERT INTO public."{clean_table}" ({col_names}) VALUES ({placeholders}) ON CONFLICT ("{conflict}") DO UPDATE SET {update_set};'
+                    else:
+                        sql = f'INSERT INTO public."{clean_table}" ({col_names}) VALUES ({placeholders}) ON CONFLICT ("{conflict}") DO NOTHING;'
+                    cur.execute(sql, tuple(vals))
+                conn.commit()
+        finally:
+            self.put_connection(conn)
+
+    def rpc(self, fn_name: str, payload: Optional[dict] = None):
+        payload = payload or {}
+        conn = self.get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                if fn_name == "claim_agent_session_lease":
+                    worker_id = payload.get("p_worker_id") or "worker_1"
+                    duration = int(payload.get("p_lease_duration_seconds", 60))
+                    cur.execute("SELECT * FROM public.claim_agent_session_lease(%s, %s);", (worker_id, duration))
+                    conn.commit()
+                    return cur.fetchall()
+                elif fn_name in ("acquire_session_tick_lease", "pick_queued_session"):
+                    worker_id = payload.get("p_worker_id") or "worker_1"
+                    duration = int(payload.get("p_lease_duration_sec", 60))
+                    cur.execute("SELECT * FROM public.claim_agent_session_lease(%s, %s);", (worker_id, duration))
+                    conn.commit()
+                    return cur.fetchall()
+                elif fn_name == "heartbeat_session_lease":
+                    sid = payload.get("p_session_id") or payload.get("session_id")
+                    duration = int(payload.get("p_lease_duration_sec") or 60)
+                    cur.execute(
+                        "UPDATE public.agent_sessions SET lease_expires_at = NOW() + (%s || ' seconds')::INTERVAL WHERE id = %s;",
+                        (duration, sid)
+                    )
+                    conn.commit()
+                    return True
+                elif fn_name == "release_session_tick_lease":
+                    sid = payload.get("p_session_id") or payload.get("session_id")
+                    cur.execute(
+                        "UPDATE public.agent_sessions SET lease_owner = NULL, lease_expires_at = NULL WHERE id = %s;",
+                        (sid,)
+                    )
+                    conn.commit()
+                    return True
+                return None
+        finally:
+            self.put_connection(conn)
+
+
 def create_storage_backend(
     *,
     ledger_path: str,
@@ -1126,7 +1838,21 @@ def create_storage_backend(
     creators_path: str,
     provider_controls_path: str,
 ):
-    if os.getenv("QMA_STORAGE_BACKEND") == "json":
+    storage_backend = os.getenv("QMA_STORAGE_BACKEND", "").lower()
+    database_url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or os.getenv("QMA_DATABASE_URL")
+
+    # Priority 1: PostgreSQL if configured
+    if (database_url and storage_backend != "json") or storage_backend == "postgres":
+        if database_url:
+            try:
+                return PostgresStorage(database_url)
+            except Exception as exc:
+                logger.warning(f"Could not connect to Postgres database ({exc}), falling back.")
+        else:
+            logger.warning("QMA_STORAGE_BACKEND=postgres requested but DATABASE_URL is not set.")
+
+    # Priority 2: Explicit JSON
+    if storage_backend == "json":
         return JsonStorage(
             ledger_path=ledger_path,
             reports_path=reports_path,
@@ -1134,11 +1860,15 @@ def create_storage_backend(
             creators_path=creators_path,
             provider_controls_path=provider_controls_path,
         )
+
+    # Priority 3: Supabase REST
     supabase_url = os.getenv("SUPABASE_URL") or os.getenv("QMA_SUPABASE_URL")
     service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("QMA_SUPABASE_SERVICE_ROLE_KEY")
     schema = os.getenv("SUPABASE_SCHEMA", "public")
     if supabase_url and service_key:
         return SupabaseStorage(url=supabase_url, service_role_key=service_key, schema=schema)
+
+    # Default fallback: JsonStorage
     return JsonStorage(
         ledger_path=ledger_path,
         reports_path=reports_path,

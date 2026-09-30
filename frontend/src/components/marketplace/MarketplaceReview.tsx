@@ -368,6 +368,13 @@ export function MarketplaceReview({
     return `${Number(val).toFixed(3)} USDC`;
   };
 
+  const formatTierPrice = (val?: number) => {
+    if (val == null || Number(val) <= 0) {
+      return <span style={{ color: "var(--t2)", fontWeight: 400, fontFamily: "var(--sans)", fontSize: "var(--text-xs)" }}>Price on select</span>;
+    }
+    return `${Number(val).toFixed(3)} USDC`;
+  };
+
   return (
     <div className="marketplace-body">
       <GlobalHeader
@@ -421,7 +428,7 @@ export function MarketplaceReview({
                   <div className="creator-action-buttons">
                     <button
                       type="button"
-                      className="submit-btn compact-submit"
+                      className="btn-primary compact-submit"
                       onClick={() => setShowApplyModal(true)}
                     >
                       Apply as Provider
@@ -545,7 +552,7 @@ export function MarketplaceReview({
                 <span className="sidebar-title">Live Providers</span>
                 <p className="marketplace-section-desc">Enabled manual plugins available to QMA buyers and agents.</p>
               </div>
-              <button type="button" className="landing-secondary text-btn" onClick={() => onNavigate("app")}>
+              <button type="button" className="btn-primary compact-submit" onClick={() => onNavigate("app")}>
                 Buy Reports
               </button>
             </div>
@@ -576,7 +583,7 @@ export function MarketplaceReview({
                           </div>
                           <button
                             type="button"
-                            className="landing-secondary text-btn"
+                            className="btn-primary compact-submit"
                             onClick={() => onNavigate("app")}
                           >
                             Select
@@ -586,11 +593,11 @@ export function MarketplaceReview({
                         <div className="marketplace-stats-grid">
                           <div className="marketplace-stat-tile">
                             <span className="marketplace-stat-label">Preview</span>
-                            <strong className="marketplace-stat-value">{formatMoney(preview)}</strong>
+                            <strong className="marketplace-stat-value">{formatTierPrice(preview)}</strong>
                           </div>
                           <div className="marketplace-stat-tile">
                             <span className="marketplace-stat-label">Full</span>
-                            <strong className="marketplace-stat-value">{formatMoney(full)}</strong>
+                            <strong className="marketplace-stat-value">{formatTierPrice(full)}</strong>
                           </div>
                           <div className="marketplace-stat-tile">
                             <span className="marketplace-stat-label">Sales</span>
@@ -937,8 +944,14 @@ export function MarketplaceReview({
                           </div>
                           <div className="admin-card-desc">{p.description || ""}</div>
                           <div className="admin-card-meta">
-                            Owner {shortAddress(p.owner_wallet)} · Preview {formatMoney(p.pricing?.preview?.amount_usdc)} · Full{" "}
-                            {formatMoney(p.pricing?.full?.amount_usdc)}
+                            Owner {shortAddress(p.owner_wallet)} · Preview{" "}
+                            {p.pricing?.preview?.amount_usdc && p.pricing.preview.amount_usdc > 0
+                              ? formatMoney(p.pricing.preview.amount_usdc)
+                              : "Price on select"}{" "}
+                            · Full{" "}
+                            {p.pricing?.full?.amount_usdc && p.pricing.full.amount_usdc > 0
+                              ? formatMoney(p.pricing.full.amount_usdc)
+                              : "Price on select"}
                           </div>
                           <input
                             className="admin-note-input"

@@ -6,6 +6,7 @@ import { DepositModal } from "../modals/DepositModal";
 import { AutonomousAgentModal } from "../modals/AutonomousAgentModal";
 import { GlobalHeader } from "../ui/GlobalHeader";
 import { SignalSidebar } from "./SignalSidebar";
+import { SignalRibbon } from "./SignalRibbon";
 import { ReportWorkspace } from "./ReportWorkspace";
 import { ProfileModal } from "../modals/ProfileModal";
 import { UnifiedDepositModal } from "../modals/UnifiedDepositModal";
@@ -46,6 +47,8 @@ import { ARC_CHAIN } from "../../config/network";
 const DEFAULT_ARC_USDC_ADDRESS = "0x3600000000000000000000000000000000000000";
 const DEFAULT_GATEWAY_MINTER_ADDRESS = "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
 
+
+
 export function AppPage({
   onNavigate,
 }: {
@@ -82,6 +85,20 @@ export function AppPage({
 
   // Basic vs Advanced form edits
   const [showBasicFields, setShowBasicFields] = useState(false);
+
+  // Layout mode for Live Signals: horizontal ribbon vs vertical sidebar
+  const [signalLayoutMode, setSignalLayoutMode] = useState<"ribbon" | "sidebar">(() => {
+    const saved = localStorage.getItem("qma_signal_layout_mode");
+    return saved === "sidebar" ? "sidebar" : "ribbon";
+  });
+
+  const toggleSignalLayout = () => {
+    setSignalLayoutMode((prev) => {
+      const next = prev === "ribbon" ? "sidebar" : "ribbon";
+      localStorage.setItem("qma_signal_layout_mode", next);
+      return next;
+    });
+  };
 
   // Config addresses
   const [sellerAddress, setSellerAddress] = useState("");
@@ -643,28 +660,29 @@ export function AppPage({
         onOpenWithdrawAgent={() => setAgentOpMode("withdraw")}
         onOpenDepositAgent={() => setAgentOpMode("deposit")}
       />
-      <div className="mobile-view-tabs" role="tablist" aria-label="Dashboard sections">
-        {[
-          ["live-feed-sidebar", "Live Signals"],
-          ["main-panel", "Analysis Report"],
-        ].map(([target, label]) => (
-          <button
-            key={target}
-            type="button"
-            role="tab"
-            aria-selected={mobileActiveView === target}
-            className={`view-tab-btn ${mobileActiveView === target ? "active" : ""}`}
-            onClick={() => setMobileActiveView(target as "live-feed-sidebar" | "main-panel")}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {signalLayoutMode === "sidebar" && (
+        <div className="mobile-view-tabs" role="tablist" aria-label="Dashboard sections">
+          {[
+            ["live-feed-sidebar", "Live Signals"],
+            ["main-panel", "Analysis Report"],
+          ].map(([target, label]) => (
+            <button
+              key={target}
+              type="button"
+              role="tab"
+              aria-selected={mobileActiveView === target}
+              className={`view-tab-btn ${mobileActiveView === target ? "active" : ""}`}
+              onClick={() => setMobileActiveView(target as "live-feed-sidebar" | "main-panel")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      <div className="workspace">
-        {/* Left Sidebar */}
-        <SignalSidebar
-          visible={mobileActiveView === "live-feed-sidebar"}
+      {/* Top Horizontal Signal Ribbon */}
+      {signalLayoutMode === "ribbon" && (
+        <SignalRibbon
           activeQuery={activeQuery}
           normalizeSignal={normalizeSignalPayload}
           entitlementBadgeForSignal={entitlementBadgeForSignal}
@@ -676,7 +694,29 @@ export function AppPage({
             setSelectedProviderId(providerId);
             setActiveQuery(signal);
           }}
-        />{/*
+          onToggleLayout={toggleSignalLayout}
+        />
+      )}
+
+      <div className={`workspace ${signalLayoutMode === "ribbon" ? "is-ribbon-layout" : ""}`}>
+        {/* Left Sidebar (rendered when in sidebar mode) */}
+        {signalLayoutMode === "sidebar" && (
+          <SignalSidebar
+            visible={mobileActiveView === "live-feed-sidebar"}
+            activeQuery={activeQuery}
+            normalizeSignal={normalizeSignalPayload}
+            entitlementBadgeForSignal={entitlementBadgeForSignal}
+            recommendationTier={recommendationTier}
+            onSelectSignal={loadAnomalyIntoQuery}
+            onSelectRecommendation={(item) => {
+              const providerId = item.provider_id || "funding_memory";
+              const signal = normalizeSignalPayload(item.query || { symbol: item.symbol });
+              setSelectedProviderId(providerId);
+              setActiveQuery(signal);
+            }}
+            onToggleLayout={toggleSignalLayout}
+          />
+        )}{/*
               ↻ Refresh
         */}{/* Right main panel */}
         <div className={`main-panel ${mobileActiveView === "main-panel" ? "mobile-visible" : ""}`}>
@@ -701,27 +741,84 @@ export function AppPage({
           </div>
           {/* Form / Selected signal card */}
           <div className="query-card-container">
+
             {viewMode === "basic" ? (
               <div className="basic-signal-card basic-only" id="basic-signal-card">
                 <div className="basic-signal-top">
-                  <span className="basic-signal-symbol">{activeQuery?.symbol || "HYPE"}</span>
-                  <span className="basic-signal-tag">Selected market setup</span>
+                  <div className="basic-signal-symbol-group">
+                    <span className="basic-signal-symbol">{activeQuery?.symbol || "HYPE"}</span>
+                    <span className="basic-signal-exchange">Perpetual Anomaly</span>
+                  </div>
+                  <span className="basic-signal-tag">
+                    {activeQuery?.fundingRate && Math.abs(activeQuery.fundingRate) > 0.01 ? "Dislocation Alert" : "Live Setup"}
+                  </span>
                 </div>
+
                 <p className="basic-signal-lead">
-                  {activeQuery?.symbol || "HYPE"} currently shows{" "}
-                  {activeQuery?.fundingRate ? `${(activeQuery.fundingRate * 100).toFixed(3)}%` : "0.000%"} funding rate anomaly. QMA will compare this setup with history.
+                  {activeQuery?.symbol || "HYPE"} currently displays a{" "}
+                  <strong>{activeQuery?.fundingRate ? `${(activeQuery.fundingRate * 100).toFixed(3)}%` : "0.000%"}</strong> funding rate imbalance.
+                  QMA matches this regime against historical analogs across perpetual markets to calculate empirical reversal distributions.
                 </p>
-                <p className="basic-signal-meta">
-                  Summary cost: {quotedPrices.preview ? `${quotedPrices.preview.toFixed(3)} USDC` : "0.001 USDC"}. Full report cost:{" "}
-                  {quotedPrices.full ? `${quotedPrices.full.toFixed(3)} USDC` : "0.005 USDC"}.
-                </p>
-                <button
-                  type="button"
-                  className="basic-toggle-fields-btn"
-                  onClick={() => setShowBasicFields(!showBasicFields)}
-                >
-                  {showBasicFields ? "Hide fields" : "Edit signal inputs"}
-                </button>
+
+                <div className="workspace-spotlight-metrics">
+                  <div className="workspace-metric-cell">
+                    <span className="workspace-metric-val">
+                      {activeQuery?.fundingRate ? `${(activeQuery.fundingRate * 100).toFixed(3)}%` : "0.000%"}
+                    </span>
+                    <span className="workspace-metric-lbl">Funding Rate</span>
+                  </div>
+                  <div className="workspace-metric-cell">
+                    <span className="workspace-metric-val">
+                      {quotedPrices.full ? `${quotedPrices.full.toFixed(3)} USDC` : "0.005 USDC"}
+                    </span>
+                    <span className="workspace-metric-lbl">Full Report</span>
+                  </div>
+                  <div className="workspace-metric-cell">
+                    <span className="workspace-metric-val" style={{ color: "var(--green)" }}>
+                      &lt; 500ms
+                    </span>
+                    <span className="workspace-metric-lbl">Arc Settlement</span>
+                  </div>
+                </div>
+
+                <div className="workspace-action-row">
+                  <button
+                    type="button"
+                    className="workspace-action-cta"
+                    onClick={() => {
+                      if (!wallet) {
+                        showToast("Opening paywall for Arc USDC settlement...", "info");
+                      }
+                      openPaywall("full", undefined, activeQuery, selectedProviderId);
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <span>Unlock Verified Report (${quotedPrices.full ? quotedPrices.full.toFixed(3) : "0.005"} USDC)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="workspace-action-secondary"
+                    onClick={() => openPaywall("preview", undefined, activeQuery, selectedProviderId)}
+                  >
+                    <span>Preview Band (${quotedPrices.preview ? quotedPrices.preview.toFixed(3) : "0.001"} USDC)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="basic-toggle-fields-btn"
+                    onClick={() => setShowBasicFields(!showBasicFields)}
+                  >
+                    {showBasicFields ? "Hide fine-tuning" : "⚙️ Tune parameters"}
+                  </button>
+                </div>
+
+                <div className="workspace-split-guarantee">
+                  <span>80% Data Creator · 20% QMA Protocol · GenLayer Intelligent SLA · Settled on Arc in USDC</span>
+                </div>
               </div>
             ) : null}
 

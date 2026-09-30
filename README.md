@@ -8,11 +8,13 @@
 [![payments: Circle x402 & StableFX](https://img.shields.io/badge/payments-Circle_x402_%26_StableFX-2775CA)](https://docs.arc.network)
 [![yield: USYC ERC-4626](https://img.shields.io/badge/yield-USYC_ERC--4626_(5%25_APY)-F59E0B)](https://testnet.arcscan.app/address/0x934e7309d7fca371db946b0643f2136cc0a0fcb2)
 [![audit: Euthyna SHA-256](https://img.shields.io/badge/audit-Euthyna_Continuous_Proof-8B5CF6)](docs/audit/SECURITY_AND_AUDIT_REPORT.md)
+[![whitepaper: v2.0](https://img.shields.io/badge/whitepaper-v2.0_Arc_Micropayments-0284c7)](docs/whitepaper/QMA_WHITEPAPER.md)
 [![tests: 232+ passing](https://img.shields.io/badge/tests-232%2B_passing-success)](tests/)
 
 **A zero-person autonomous business and two-sided outcome marketplace for financial intelligence on Arc, where quant creators monetize signals, autonomous AI agents purchase verified reports per query via Circle x402/Gateway USDC micropayments, and onchain credit protocols access real-time collateral risk underwriting.**
 
 🔗 Live Marketplace: **[genqma.vercel.app](https://genqma.vercel.app)** — interactive Signal Explorer & Treasury Radar  
+&nbsp;·&nbsp; 📄 **[Technical Whitepaper](docs/whitepaper/QMA_WHITEPAPER.md)** — authoritative technical whitepaper (Arc L1, x402, GenLayer Shield)  
 &nbsp;·&nbsp; ⚡ Backend: **[qma-api.onrender.com](https://qma-api.onrender.com)** — live API & OpenAPI docs at `/docs`  
 &nbsp;·&nbsp; 🏛️ **[Arc RFB Alignment Audit](docs/arc/ARC_BUILDER_ALIGNMENT_AUDIT.md)** — strategic mapping against Circle Arc's Request for Builders  
 &nbsp;·&nbsp; 📖 Strategy: **[Positioning & Business Strategy](docs/business/POSITIONING_STRATEGY.md)** — two-sided business constitution  

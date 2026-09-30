@@ -2,57 +2,113 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
+  gap: 16px;
+  height: 64px;
+  padding: 0 32px;
   background: transparent;
   width: 100%;
   box-sizing: border-box;
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
 }
 
 .landing-nav-links {
   display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
 }
 
-.landing-nav-link {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  color: var(--t2, #8d95b0);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-  transition: color 0.2s;
+/* Base style for all items on the right: exact 36px optical height */
+.landing-nav-links .landing-nav-link,
+.landing-nav-links .network-badge-wrapper,
+.landing-nav-links .network-badge-btn,
+.landing-nav-links .nav-cta {
+  height: 36px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  vertical-align: middle !important;
 }
 
-.landing-nav-link:hover {
-  color: var(--t1, #ffffff);
+/* Clean, modern text links - no ugly gray border box */
+.landing-nav-links .landing-nav-link:not(.nav-cta) {
+  padding: 0 12px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  color: var(--t2, #8d95b0) !important;
+  font-family: var(--sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: color 0.15s ease, background 0.15s ease !important;
 }
 
-.landing-nav-link.nav-cta {
-  background: var(--accent, #7C6FFF);
-  color: #000;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-weight: 600;
+.landing-nav-links .landing-nav-link:not(.nav-cta):hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-.landing-nav-link.nav-cta:hover {
-  opacity: 0.9;
-  color: #000;
+.landing-nav-links .landing-nav-link:not(.nav-cta) svg {
+  width: 14px;
+  height: 14px;
+  color: var(--t3, #5a6482);
+  transition: color 0.15s ease;
+}
+
+.landing-nav-links .landing-nav-link:not(.nav-cta):hover svg {
+  color: var(--accent, #7C6FFF);
+}
+
+/* Network badge alignment */
+.landing-nav-links .network-badge-wrapper .network-badge-btn {
+  border-radius: 6px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+}
+
+/* Primary CTA button */
+.landing-nav-links .landing-nav-link.nav-cta {
+  background: linear-gradient(135deg, var(--accent-strong, #7C6FFF), var(--accent, #6355e0)) !important;
+  color: #ffffff !important;
+  padding: 0 16px !important;
+  border: 1px solid rgba(124, 111, 255, 0.45) !important;
+  border-radius: 6px !important;
+  font-family: var(--sans, 'Inter', sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 12px rgba(124, 111, 255, 0.22) !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+}
+
+.landing-nav-links .landing-nav-link.nav-cta:hover {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 4px 18px rgba(124, 111, 255, 0.38) !important;
+  border-color: rgba(124, 111, 255, 0.7) !important;
 }
 
 @media (max-width: 768px) {
   .landing-nav {
+    flex-wrap: wrap;
+    height: auto;
     padding: 12px 16px;
+    row-gap: 12px;
   }
-  
+
   .landing-nav-links {
-    gap: 12px;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .landing-nav-links .landing-nav-link.nav-cta {
+    width: 100%;
+    justify-content: center;
   }
 }

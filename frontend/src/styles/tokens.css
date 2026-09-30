@@ -1,0 +1,187 @@
+/* =============================================================================
+   QMA DESIGN TOKENS — Single Source of Truth
+   -----------------------------------------------------------------------------
+   Every color, font, spacing, radius, shadow, and motion value in the React
+   app must come from this file. Feature CSS may reference tokens, never raw
+   values, for anything a token already represents.
+
+   Accent contract (do not mix these up):
+   - --accent (violet)  : PRIMARY interactive color. Buttons, links, active
+                          nav, focus rings, selection. One primary action
+                          color across every page.
+   - --green (mint)     : SEMANTIC "live / success / verified" only. Status
+                          dots, network badges, positive deltas, settled rows.
+   - --red / --amber    : SEMANTIC danger / warning only.
+   - --brand-gradient   : Brand moments only (logo, hero highlight text).
+   ============================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    /* ----- Core background layers (deep space navy, never pure black) ----- */
+    --bg-0: #06080f;
+    --bg-1: #0a0d18;
+    --bg-2: #0f1220;
+    --bg-3: rgba(15, 18, 32, 0.7);
+
+    /* ----- Elevation surfaces (for cards sitting on bg-1/bg-2) ----- */
+    --surface-1: rgba(255, 255, 255, 0.02);
+    --surface-2: rgba(255, 255, 255, 0.035);
+    --surface-3: rgba(255, 255, 255, 0.055);
+    --surface-glass: rgba(13, 16, 28, 0.72);
+
+    /* ----- Borders ----- */
+    --bdr: rgba(255, 255, 255, 0.06);
+    --bdr-md: rgba(255, 255, 255, 0.10);
+    --bdr-hi: rgba(124, 111, 255, 0.35);
+
+    /* ----- Primary accent (violet/indigo) — interactive color ----- */
+    --accent: #7C6FFF;
+    --accent-hover: #8f84ff;
+    --accent-strong: #6a5ce8;
+    --accent-dim: rgba(124, 111, 255, 0.12);
+    --accent-glow: rgba(124, 111, 255, 0.25);
+
+    /* ----- Logo SVG Gradient tokens ----- */
+    --logo-grad-start: #6745FA;
+    --logo-grad-end: #30FCEB;
+    --logo-gradient: linear-gradient(135deg, #6745FA 0%, #30FCEB 100%);
+
+    /* ----- Brand gradient (hero highlight text, brand moments) ----- */
+    --brand-gradient: linear-gradient(92deg, #7c5cff 0%, #a78bfa 45%, #38e8c6 100%);
+
+    /* ----- Semantic status colors ----- */
+    --green: #22d3a0;
+    --green-dim: rgba(34, 211, 160, 0.12);
+    --red: #f4475b;
+    --red-dim: rgba(244, 71, 91, 0.12);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245, 158, 11, 0.10);
+    --purple: #a78bfa;
+    --purple-dim: rgba(167, 139, 250, 0.12);
+
+    /* ----- Text hierarchy ----- */
+    --t1: #e8eaf0;
+    --t2: #8d95b0;
+    --t3: #4a5270;
+
+    /* ----- Fonts ----- */
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --sans: 'Inter', sans-serif;
+
+    /* ----- Typography scale ----- */
+    --text-2xs: 0.62rem;  /* labels, badges, eyebrows          */
+    --text-xs: 0.68rem;   /* secondary meta, table headers     */
+    --text-sm: 0.76rem;   /* body-small, descriptions          */
+    --text-base: 0.84rem; /* body, nav links                   */
+    --text-md: 0.92rem;   /* card body, readable prose         */
+    --text-lg: 1.02rem;   /* section titles, card headings     */
+    --text-xl: 1.12rem;   /* prominent card values             */
+    --text-2xl: 1.5rem;   /* page titles                       */
+    --text-3xl: clamp(2rem, 4.5vw, 3.1rem); /* hero headlines  */
+
+    /* ----- Border-radius scale (Concentric Optical Hierarchy) ----- */
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 28px;
+    --radius-pill: 9999px;
+
+    /* ----- Spacing scale (4px base unit) ----- */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+    --space-20: 80px;
+
+    /* ----- Shadow & glow scale (layered depth, never flat grey boxes) ----- */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.32);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.42);
+    --glow-accent: 0 0 0 1px rgba(124, 111, 255, 0.32), 0 8px 32px rgba(124, 111, 255, 0.2);
+    --glow-green: 0 0 0 1px rgba(34, 211, 160, 0.32), 0 8px 32px rgba(34, 211, 160, 0.18);
+    --glow-cyan: 0 0 0 1px rgba(6, 182, 212, 0.35), 0 8px 32px rgba(6, 182, 212, 0.2);
+
+    /* ----- Glass & Luminous Elevation Tokens ----- */
+    --glass-card: rgba(14, 19, 36, 0.72);
+    --glass-card-hover: rgba(22, 30, 56, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-border-hover: rgba(124, 111, 255, 0.4);
+    --glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
+
+    /* ----- Motion ----- */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+    --dur-fast: 150ms;
+    --dur-base: 220ms;
+    --dur-slow: 420ms;
+
+    /* ----- Focus ring (a11y: visible keyboard focus everywhere) ----- */
+    --focus-ring: 0 0 0 2px var(--bg-0), 0 0 0 4px var(--accent);
+
+    /* ----- Layout containers ----- */
+    --container-max: 1240px;
+    --container-pad: clamp(16px, 4vw, 40px);
+    --header-h: 64px;
+
+    /* ----- Z-index scale ----- */
+    --z-base: 1;
+    --z-sticky: 100;
+    --z-dropdown: 200;
+    --z-modal: 300;
+    --z-toast: 400;
+}
+
+/* ----- Global Optical & Typographic Utilities ----- */
+.tabular-nums,
+.stat-value,
+.mono-td,
+.invoice-val,
+.pf-val,
+.terminal-line,
+[data-tabular] {
+    font-variant-numeric: tabular-nums;
+}
+
+.text-balance {
+    text-wrap: balance;
+}
+
+.text-pretty {
+    text-wrap: pretty;
+}
+
+/* ----- Tactile Feedback on Buttons ----- */
+button:active:not(:disabled),
+.btn-primary:active:not(:disabled),
+.landing-primary:active:not(:disabled),
+.landing-secondary:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+/* ----- Reduced motion: kill entrance animations & marquee, keep semantics ----- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ----- Keyboard focus visibility (global baseline) ----- */
+:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: var(--radius-sm);
+}
