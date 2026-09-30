@@ -10,6 +10,7 @@ import {
 import { getWalletReport } from "../../services/reports";
 import { Loader } from "../ui/Loader";
 import { GlobalHeader } from "../ui/GlobalHeader";
+import { StatusBadge } from "../ui/StatusBadge";
 import { WalletAppKitModal } from "../modals/WalletAppKitModal";
 import { shortAddress } from "../../services/wallet";
 import type { QmaRoute } from "../../app/routes";
@@ -565,15 +566,15 @@ export function ProfileOrdersPage({ onNavigate }: ProfileOrdersPageProps) {
   };
 
   const gatewayStatusBadge = (status?: string) => {
-    if (!status) return <span className="badge badge-muted">n/a</span>;
+    if (!status) return <StatusBadge status="n/a" tone="neutral" />;
     const s = String(status).toLowerCase();
     if (s === "completed" || s === "confirmed") {
-      return <span className="badge badge-confirmed">confirmed</span>;
+      return <StatusBadge status="confirmed" tone="green" />;
     }
     if (s === "received" || s === "batched") {
-      return <span className="badge badge-pending">pending batch</span>;
+      return <StatusBadge status="pending batch" tone="amber" />;
     }
-    return <span className="badge badge-muted">{status}</span>;
+    return <StatusBadge status={status} />;
   };
 
   const paymentRowId = (event: Payment, index: number) => {

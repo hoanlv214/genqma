@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { getClientConfig, API_BASE_URL } from "../../services/api";
 import { shortAddress, getInjectedWallet } from "../../services/wallet";
 import { submitWithdrawal } from "../../services/invoices";
-import { DepositModal } from "../modals/DepositModal";
 import { AutonomousAgentModal } from "../modals/AutonomousAgentModal";
 import { GlobalHeader } from "../ui/GlobalHeader";
 import { SignalSidebar } from "./SignalSidebar";
@@ -943,15 +942,6 @@ export function AppPage({
               activeQuery={activeQuery}
               genlayerReceipt={genlayerReceipt}
             />
-            <DepositModal
-              open={showDepositModal}
-              onClose={() => setShowDepositModal(false)}
-              depositAmountInput={depositAmountInput}
-              onDepositAmountChange={setDepositAmountInput}
-              exactCost={Number(currentInvoice?.amount || 0.005)}
-              payStatusText={payStatusText}
-              onDeposit={handleDepositToGateway}
-            />
 
             <ReportWorkspace
               activeQuery={activeQuery}
@@ -1010,8 +1000,11 @@ export function AppPage({
       />
 
       <UnifiedDepositModal
-        open={showFundArcModal}
-        onClose={() => setShowFundArcModal(false)}
+        open={showFundArcModal || showDepositModal}
+        onClose={() => {
+          setShowFundArcModal(false);
+          setShowDepositModal(false);
+        }}
         onNavigate={onNavigate}
         agentWalletAddress={agentWalletAddress}
         agentWalletBalance={agentWalletBalance}
