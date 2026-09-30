@@ -4,30 +4,28 @@
    Enhanced by UI/UX Pro Max Intelligence (Fintech / Crypto Institutional)
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700;800&display=swap');
-
 :root {
-  --arc-bg: #040814;
-  --arc-surface: #080d1e;
-  --arc-surface-elevated: #0d152a;
-  --arc-border: rgba(255, 255, 255, 0.08);
-  --arc-border-hover: rgba(255, 255, 255, 0.16);
-  --arc-border-active: #6366f1;
-  --arc-blue: #2563eb;
-  --arc-blue-hover: #1d4ed8;
-  --arc-blue-glow: rgba(37, 99, 235, 0.35);
-  --arc-purple-glow: rgba(99, 102, 241, 0.25);
-  --arc-green: #10b981;
-  --arc-green-bg: rgba(16, 185, 129, 0.1);
-  --arc-text-main: #f8fafc;
-  --arc-text-muted: #94a3b8;
-  --arc-text-dim: #64748b;
-  --arc-radius-lg: 20px;
-  --arc-radius-md: 12px;
-  --arc-radius-sm: 8px;
-  --arc-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --arc-font-heading: 'Space Grotesk', var(--arc-font-sans);
-  --arc-font-mono: 'JetBrains Mono', monospace;
+  --arc-bg: var(--bg-0);
+  --arc-surface: var(--bg-1);
+  --arc-surface-elevated: var(--bg-2);
+  --arc-border: var(--bdr);
+  --arc-border-hover: var(--bdr-md);
+  --arc-border-active: var(--accent);
+  --arc-blue: var(--accent);
+  --arc-blue-hover: var(--accent-hover);
+  --arc-blue-glow: var(--accent-glow);
+  --arc-purple-glow: var(--accent-glow);
+  --arc-green: var(--green);
+  --arc-green-bg: var(--green-dim);
+  --arc-text-main: var(--t1);
+  --arc-text-muted: var(--t2);
+  --arc-text-dim: var(--t3);
+  --arc-radius-lg: var(--radius-lg);
+  --arc-radius-md: var(--radius-md);
+  --arc-radius-sm: var(--radius-sm);
+  --arc-font-sans: var(--sans);
+  --arc-font-heading: var(--sans);
+  --arc-font-mono: var(--mono);
   --arc-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
