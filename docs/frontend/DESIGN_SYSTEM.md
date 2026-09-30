@@ -61,7 +61,17 @@ This document is the contract for every screen in the QMA React app. If a rule h
 - **Cards** — `--surface-*` background, `--bdr` border, `--radius-xl`, `--shadow-md`; hover lift `scale(1.01–1.02)` + border brighten within 220ms.
 - **Stats band** — responsive grid (4-col desktop → 2-col ≤900px), mono values with muted unit spans, real API values, no count-up-from-zero theater.
 - **Terminal/code windows** — `--mono`, mac-style header dots, violet glow shadow when featured. The animated agent demo respects reduced motion by rendering the finished state.
-- **Empty states** — centered card (max-width ~520px), icon or numbered steps, plain-language next actions. Every data-driven component covers loading / empty / error / success (see `frontend/AGENTS.md`).
+- **Empty states** — centered card (max-width ~520px), icon or numbered steps, plain-language next actions. Every data-driven component covers loading / empty / error / success (see `frontend/AGENTS.md`). Use `<EmptyState message="..." actionLabel="..." onAction={...} />`.
+- **Modal Dialogs** — `<Modal isOpen={isOpen} onClose={onClose} title="...">`: Accessible modal shell providing backdrop click dismiss, Escape key dismiss, body scroll lock, focus trapping, and WAI-ARIA `role="dialog"` + `aria-modal="true"` semantics.
+- **Status Badges** — `<StatusBadge status="..." tone="..." label="..." />`: Standardized status pill with dot indicator using canonical `resolveStatusTone()` mapping:
+  - `green` (`--green`): `confirmed`, `settled`, `completed`, `paid`, `active`, `live`, `success`
+  - `amber` (`--amber`): `pending`, `verifying`, `processing`, `estimated`, `warning`
+  - `red` (`--red`): `failed`, `rejected`, `expired`, `error`
+  - `purple` (`--purple`): `premium`, `guaranteed`
+  - `neutral` (`--t3`): default fallback
+- **Signal Ribbon / Ticker** — `<SignalRibbon signals={...} selectedSignal={...} onSelect={...} />`: Responsive horizontal ticker providing keyboard accessibility (`role="button"`, `tabIndex={0}`, Enter/Space handlers) and smooth scrolling without blocking vertical workspace layouts.
+- **Unified Deposit Modal** — `<UnifiedDepositModal isOpen={isOpen} onClose={onClose} onDepositSuccess={...} />`: Single source of truth for depositing USDC to Circle Gateway, handling direct and onramp/gateway flows with real-time balance refresh.
+- **Clipboard Utility** — `useCopyToClipboard({ timeout?: number })`: Shared hook returning `[copied, copyFn]` with automatic timeout reset for copying addresses, hashes, and report snippets.
 
 ---
 
@@ -75,9 +85,11 @@ The product speaks one name per surface — do not invent synonyms:
 | `/app` | **Market Workspace** | Core product: ranked signals → buy preview/full report |
 | `/marketplace` | **Creator Marketplace** | Providers apply; buyers see live providers |
 | `/traction` | **Live Proof & Ledger** | Settlement KPIs, SLA, audit trail |
-| `/swap` | Swap / StableFX | USDC/EURC settlement utilities |
-| `/profile` | Wallet History | Purchases & entitlements |
-| `/docs` | API Docs | OpenAPI viewer |
+| `/swap` | Swap / StableFX | USDC/EURC settlement utilities on Arc |
+| `/profile` | Wallet History | Purchases, verified access tokens & entitlements |
+| `/docs` | API Docs | OpenAPI interactive reference |
+| `/connect` | **Wallet Authorization** | Arc Agent Wallet authorization & key delegation |
+| `/404` | Not Found | Route fallback with recovery CTA to Market Workspace |
 
 Landing page narrative order: hero (what + proof terminal) → live stats → 3 capabilities → agent infrastructure → how it works (3 steps) → audiences → CLI/SDK → creators → open source → footer.
 
