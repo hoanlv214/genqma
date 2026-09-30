@@ -65,7 +65,7 @@ export function ProfileModal({
           <table className="activity-table">
             <thead><tr><th>Signal</th><th>Amount</th><th>Status</th><th>Settlement / Tx</th><th>Report</th></tr></thead>
             <tbody>
-              {profilePaymentsLoading ? <tr><td colSpan={5}><Loader label="Loading payments..." compact size="sm" className="table-loader" /></td></tr> : profilePaymentsError ? <tr><td colSpan={5} style={{ color: "var(--orange)", textAlign: "center" }}>{profilePaymentsError}</td></tr> : profileVerifiedPayments.length === 0 ? <tr><td colSpan={5} style={{ color: "var(--t3)", textAlign: "center" }}>No verified payments.</td></tr> : profileVerifiedPayments.map((payment, index) => {
+              {profilePaymentsLoading ? <tr><td colSpan={5}><Loader label="Loading payments..." compact size="sm" className="table-loader" /></td></tr> : profilePaymentsError ? <tr><td colSpan={5} style={{ color: "var(--amber)", textAlign: "center" }}>{profilePaymentsError}</td></tr> : profileVerifiedPayments.length === 0 ? <tr><td colSpan={5} style={{ color: "var(--t3)", textAlign: "center" }}>No verified payments.</td></tr> : profileVerifiedPayments.map((payment, index) => {
                 const status = payment.gateway_status || payment.status || "completed";
                 const amount = payment.amount_usdc ?? payment.amount ?? payment.price_usdc;
                 const txHash = payment.transaction_hash || payment.tx_hash || payment.settlement_tx_hash;

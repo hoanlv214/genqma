@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { apiUrl } from "../../services/api";
 import { ARC_CHAIN } from "../../config/network";
 
 interface SimulationStep {
@@ -91,7 +92,7 @@ export function InteractiveLiveSimulationWidget() {
 
     // Fetch real live position or sample tx if available
     try {
-      const posRes = await fetch("/api/v1/treasury/usyc/position");
+      const posRes = await fetch(apiUrl("/api/v1/treasury/usyc/position"));
       if (posRes.ok) {
         // Position available
       }

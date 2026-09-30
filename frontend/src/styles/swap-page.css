@@ -574,9 +574,15 @@
   font-weight: 700 !important;
   font-family: var(--arc-font-mono) !important;
   text-align: right !important;
-  outline: none !important;
-  box-shadow: none !important;
+  outline: none;
+  box-shadow: none;
   min-width: 0;
+}
+
+.swap-big-input:focus-visible {
+  outline: 2px solid var(--accent, #7c6fff) !important;
+  outline-offset: 2px;
+  border-radius: var(--radius-xs, 4px);
 }
 
 .swap-big-output {

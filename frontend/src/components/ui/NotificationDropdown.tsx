@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import type { QmaRoute } from "../../app/routes";
 import { shortAddress } from "../../services/wallet";
 import { formatDateTime } from "../../utils/format";
+import { apiUrl } from "../../services/api";
 
 export interface IncidentData {
   incident_id: string;
@@ -66,7 +67,7 @@ export function NotificationDropdown({
 
     // 0. Fetch Open Agent Incidents (Risk Governance)
     try {
-      const incRes = await fetch("/api/v1/agent/incidents?status=OPEN&limit=5");
+      const incRes = await fetch(apiUrl("/api/v1/agent/incidents?status=OPEN&limit=5"));
       if (incRes.ok) {
         const incidents = await incRes.json();
         if (Array.isArray(incidents)) {
@@ -106,7 +107,7 @@ export function NotificationDropdown({
     // 1. Fetch Creator Applications if wallet connected
     if (walletAddress) {
       try {
-        const res = await fetch(`/api/v1/creators/applications?wallet=${encodeURIComponent(walletAddress)}`);
+        const res = await fetch(apiUrl(`/api/v1/creators/applications?wallet=${encodeURIComponent(walletAddress)}`));
         if (res.ok) {
           const data = await res.json();
           const apps = Array.isArray(data.applications) ? data.applications : [];
@@ -139,7 +140,7 @@ export function NotificationDropdown({
     // 2. Fetch Admin pending applications if Admin
     if (isAdmin) {
       try {
-        const res = await fetch("/api/v1/creators/applications");
+        const res = await fetch(apiUrl("/api/v1/creators/applications"));
         if (res.ok) {
           const data = await res.json();
           const pending = (data.applications || []).filter((a: any) => a.status === "pending");
@@ -162,7 +163,7 @@ export function NotificationDropdown({
 
     // 3. Fetch recent Treasury / Euthyna audit actions
     try {
-      const res = await fetch("/api/v1/treasury/audit/euthyna?limit=3");
+      const res = await fetch(apiUrl("/api/v1/treasury/audit/euthyna?limit=3"));
       if (res.ok) {
         const audit = await res.json();
         if (Array.isArray(audit)) {
@@ -240,7 +241,7 @@ export function NotificationDropdown({
     setControlStatus((prev) => ({ ...prev, [incidentId]: `Executing ${action}...` }));
 
     try {
-      const res = await fetch(`/api/v1/agent/sessions/${encodeURIComponent(sessionId)}/control`, {
+      const res = await fetch(apiUrl(`/api/v1/agent/sessions/${encodeURIComponent(sessionId)}/control`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

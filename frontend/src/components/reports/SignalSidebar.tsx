@@ -124,7 +124,19 @@ export function SignalSidebar({ visible, activeQuery, normalizeSignal, entitleme
         const signal = normalizeSignal(item.query || { symbol: item.symbol });
         const entitlement = entitlementBadgeForSignal(signal, providerId);
         const exchange = item.exchange || item.live?.exchange || item.query?.exchange || "MEXC";
-        return <div className="agent-pick-card" key={index} onClick={() => onSelectRecommendation(item)}>
+        return <div
+          className="agent-pick-card"
+          key={index}
+          role="button"
+          tabIndex={0}
+          onClick={() => onSelectRecommendation(item)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelectRecommendation(item);
+            }
+          }}
+        >
           <div className="card-header">
             <div className="card-symbol-wrap">
               <span className="card-symbol">{item.symbol}</span>
@@ -172,7 +184,19 @@ export function SignalSidebar({ visible, activeQuery, normalizeSignal, entitleme
       const isCardActive = activeQuery?.symbol === item.symbol;
       const hasMultipleVenues = item.venues && item.venues.length > 1;
 
-      return <div className={`anomaly-card ${isCardActive ? "active" : ""}`} key={index} onClick={() => onSelectSignal(item)}>
+      return <div
+        className={`anomaly-card ${isCardActive ? "active" : ""}`}
+        key={index}
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelectSignal(item)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelectSignal(item);
+          }
+        }}
+      >
         <div className="card-header">
           <div className="card-symbol-wrap">
             <span className="card-symbol">{item.symbol}</span>

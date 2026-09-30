@@ -78,7 +78,7 @@ export function TractionPage({ onNavigate }: TractionPageProps) {
   const tabs: { id: TractionTab; label: string; badge?: string; badgeColor?: string; badgeBg?: string }[] = [
     { id: "overview", label: "Overview & KPIs" },
     { id: "simulation", label: "1-Click Live Loop", badge: "Interactive", badgeColor: "var(--accent, #7C6FFF)", badgeBg: "rgba(124, 111, 255, 0.15)" },
-    { id: "cfo", label: "Autonomous CFO (Morpho)", badge: "6.5% APY", badgeColor: "var(--amber, #f59e0b)", badgeBg: "rgba(245, 158, 11, 0.15)" },
+    { id: "cfo", label: "Autonomous CFO (Morpho)", badge: "6.5% APY (target)", badgeColor: "var(--amber, #f59e0b)", badgeBg: "rgba(245, 158, 11, 0.15)" },
     { id: "governance", label: "SLA & Circuit Breakers" },
     { id: "ledger", label: "Settlement Ledger" },
   ];

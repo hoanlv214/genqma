@@ -383,28 +383,9 @@
     white-space: nowrap;
 }
 
-.agent-picks-list {
-    display: grid;
-    gap: 8px;
-    overflow-y: auto;
-}
-
 .provider-marketplace-list {
     display: grid;
     gap: 8px;
-}
-
-.agent-pick-card {
-    border: 1px solid var(--bdr);
-    background: rgba(124, 111, 255, 0.05);
-    border-radius: 7px;
-    padding: 9px;
-    cursor: pointer;
-}
-
-.agent-pick-card:hover {
-    border-color: rgba(124, 111, 255, 0.36);
-    background: rgba(124, 111, 255, 0.09);
 }
 
 .provider-card {
@@ -6924,30 +6905,6 @@ body.basic-view .platform-stats-section {
     font-weight: 600;
     padding: 4px 8px;
     border-radius: 6px;
-}
-
-.badge .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-}
-
-.badge-success {
-    background: rgba(16, 185, 129, 0.1);
-    color: #34d399;
-}
-
-.badge-success .dot {
-    background: #34d399;
-}
-
-.badge-purple {
-    background: rgba(139, 92, 246, 0.1);
-    color: #a78bfa;
-}
-
-.badge-purple .dot {
-    background: #a78bfa;
 }
 
 .premium-provider-amount {

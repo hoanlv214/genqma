@@ -16,6 +16,7 @@ import {
 } from "../../services/circleAppKit";
 import "../../styles/swap-page.css";
 import { ARC_CHAIN, IS_TESTNET } from "../../config/network";
+import { apiUrl } from "../../services/api";
 
 interface SwapPageProps {
   onNavigate: (route: QmaRoute) => void;
@@ -149,7 +150,7 @@ export function SwapPage({ onNavigate }: SwapPageProps) {
 
   // Poll live recent settlements from Euthyna audit trail
   useEffect(() => {
-    fetch("/api/v1/treasury/audit/euthyna?limit=5")
+    fetch(apiUrl("/api/v1/treasury/audit/euthyna?limit=5"))
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {

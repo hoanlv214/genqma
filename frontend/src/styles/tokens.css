@@ -57,6 +57,7 @@
     --red-dim: rgba(244, 71, 91, 0.12);
     --amber: #f59e0b;
     --amber-dim: rgba(245, 158, 11, 0.10);
+    --orange: var(--amber);
     --purple: #a78bfa;
     --purple-dim: rgba(167, 139, 250, 0.12);
 

@@ -186,7 +186,15 @@ export function SignalRibbon({
                 <div
                   key={`rec-${idx}`}
                   className={`ribbon-card is-ranked ${isCardActive ? "active" : ""}`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onSelectRecommendation(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectRecommendation(item);
+                    }
+                  }}
                   title={item.reason || `Ranked Alpha Pick #${idx + 1}`}
                 >
                   <div className="ribbon-card-top">
@@ -241,7 +249,15 @@ export function SignalRibbon({
                 <div
                   key={`anom-${idx}`}
                   className={`ribbon-card ${isCardActive ? "active" : ""}`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onSelectSignal(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectSignal(item);
+                    }
+                  }}
                 >
                   <div className="ribbon-card-top">
                     <div className="ribbon-card-symbol-group">

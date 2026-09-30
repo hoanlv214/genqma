@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Loader } from "../ui/Loader";
 import { shortAddress } from "../../services/wallet";
+import { apiUrl } from "../../services/api";
 
 interface IncidentRecord {
   incident_id: string;
@@ -28,7 +29,7 @@ export function AgentRiskGovernancePanel() {
 
   const fetchIncidents = async () => {
     try {
-      const res = await fetch("/api/v1/agent/incidents?limit=50");
+      const res = await fetch(apiUrl("/api/v1/agent/incidents?limit=50"));
       if (res.ok) {
         const data = await res.json();
         setIncidents(Array.isArray(data) ? data : []);
@@ -53,7 +54,7 @@ export function AgentRiskGovernancePanel() {
     if (!resolveNote.trim()) return;
     setIsResolving(true);
     try {
-      const res = await fetch(`/api/v1/agent/incidents/${encodeURIComponent(incidentId)}/resolve`, {
+      const res = await fetch(apiUrl(`/api/v1/agent/incidents/${encodeURIComponent(incidentId)}/resolve`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -170,9 +171,9 @@ export function AgentRiskGovernancePanel() {
           <span style={{ fontSize: "11px", color: "var(--t3, #4a5270)", display: "block", marginBottom: "4px", fontFamily: "var(--mono, monospace)", textTransform: "uppercase" }}>
             Invariant Compliance
           </span>
-          <strong style={{ fontSize: "18px", color: "var(--green, #22d3a0)", fontFamily: "var(--mono, monospace)" }}>100% Guaranteed</strong>
+          <strong style={{ fontSize: "18px", color: "var(--green, #22d3a0)", fontFamily: "var(--mono, monospace)" }}>Contract Enforced</strong>
           <span style={{ fontSize: "11px", color: "var(--t2, #8d95b0)", display: "block", marginTop: "2px" }}>
-            Zero-Spend &amp; SLA Bound
+            Deterministic SLA Bound
           </span>
         </div>
 

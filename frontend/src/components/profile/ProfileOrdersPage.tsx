@@ -602,7 +602,7 @@ export function ProfileOrdersPage({ onNavigate }: ProfileOrdersPageProps) {
               : "Review purchased QMA previews, full reports, Arc settlement references, and local wallet actions."}
           </p>
           {privacyNotice ? (
-            <p className="profile-hero-desc" style={{ color: "var(--orange)" }}>{privacyNotice}</p>
+            <p className="profile-hero-desc" style={{ color: "var(--amber)" }}>{privacyNotice}</p>
           ) : null}
           {!isPublicProfile && wallet ? (
             <div style={{ marginTop: 14 }}>

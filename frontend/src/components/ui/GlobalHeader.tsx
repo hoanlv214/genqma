@@ -181,7 +181,7 @@ export function GlobalHeader({
                         )}
                       </div>
                     </div>
-                    <button className="copy-btn" onClick={handleCopy} title="Copy address">
+                    <button className="copy-btn" onClick={handleCopy} title="Copy address" aria-label="Copy wallet address">
                       {copySuccess ? (
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"></polyline></svg>
                       ) : (
@@ -268,7 +268,7 @@ export function GlobalHeader({
                     </div>
                     <div className="agent-wallet-address-row">
                       <span className="agent-wallet-address">{shortAddress(agentWalletAddress)}</span>
-                      <button className="copy-btn" onClick={handleAgentCopy} title="Copy Agent Address">
+                      <button className="copy-btn" onClick={handleAgentCopy} title="Copy Agent Address" aria-label="Copy agent wallet address">
                         {agentCopySuccess ? (
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         ) : (

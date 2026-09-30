@@ -3,6 +3,7 @@ import { Loader } from "../ui/Loader";
 import { ARC_CHAIN } from "../../config/network";
 import { shortAddress } from "../../services/wallet";
 import { formatDateTime, formatUsdc } from "../../utils/format";
+import { apiUrl } from "../../services/api";
 
 interface USYCPosition {
   account: string;
@@ -78,10 +79,10 @@ export function AutonomousCfoTreasuryRadar() {
   const loadTreasuryData = async () => {
     try {
       const [posRes, forecastRes, auditRes, verifyRes] = await Promise.all([
-        fetch("/api/v1/treasury/usyc/position"),
-        fetch("/api/v1/treasury/usyc/forecast?horizon_days=30"),
-        fetch("/api/v1/treasury/audit/euthyna?limit=50"),
-        fetch("/api/v1/treasury/audit/verify", { method: "POST" }),
+        fetch(apiUrl("/api/v1/treasury/usyc/position")),
+        fetch(apiUrl("/api/v1/treasury/usyc/forecast?horizon_days=30")),
+        fetch(apiUrl("/api/v1/treasury/audit/euthyna?limit=50")),
+        fetch(apiUrl("/api/v1/treasury/audit/verify"), { method: "POST" }),
       ]);
 
       if (posRes.ok) setPosition(await posRes.json());
