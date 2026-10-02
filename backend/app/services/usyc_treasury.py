@@ -10,11 +10,14 @@ Allows the AI CFO to:
 
 import json
 import logging
+import math
 import os
 from pathlib import Path
 import time
 from typing import Any, Dict, Optional
 import urllib.request
+
+import requests
 
 from backend.app.core.config import (
     ARC_CHAIN_ID,
@@ -26,6 +29,7 @@ from backend.app.core.config import (
     PLATFORM_TREASURY_ADDRESS,
     settings,
 )
+from backend.app.core.enums import CFODecisionAction, CreatorClaimStatus, DecisionSource
 from backend.app.schemas.treasury import CorporateTreasuryPolicy
 from backend.app.services.wallet_utils import normalize_address
 
@@ -170,6 +174,206 @@ def _rpc_eth_call(to_address: str, data: str) -> Optional[str]:
     return _rpc_generic("eth_call", [{"to": to_address, "data": data}, "latest"])
 
 
+def _get_storage():
+    try:
+        from backend.app.main import storage_backend
+        return storage_backend
+    except Exception:
+        return None
+
+
+def get_creator_claims_store() -> list:
+    """Retrieve creator claims from global state or storage backend."""
+    try:
+        from backend.app.core import state
+        if hasattr(state, "creator_claims_db") and state.creator_claims_db is not None:
+            return state.creator_claims_db
+    except Exception:
+        pass
+    st = _get_storage()
+    if st and hasattr(st, "load_creator_claims"):
+        try:
+            return st.load_creator_claims()
+        except Exception:
+            pass
+    return []
+
+
+# Alias for flexible test monkeypatching
+get_creator_claims_db = get_creator_claims_store
+
+
+def _fetch_creator_claims() -> list:
+    import sys
+    mod = sys.modules.get(__name__)
+    accessor = None
+    if mod:
+        mod_store = getattr(mod, "get_creator_claims_store", None)
+        mod_db = getattr(mod, "get_creator_claims_db", None)
+        if mod_store is not None and mod_store is not get_creator_claims_store:
+            accessor = mod_store
+        elif mod_db is not None and mod_db is not get_creator_claims_db:
+            accessor = mod_db
+    if accessor is None:
+        accessor = get_creator_claims_store
+    try:
+        records = accessor()
+        return records if isinstance(records, list) else []
+    except Exception as exc:
+        logger.warning("Failed to fetch creator claims: %s", exc)
+        return []
+
+
+def compute_claim_obligations() -> tuple[float, float, float]:
+    """Compute (obligations, open_claims_usdc, ops_baseline_usdc).
+
+    Sums allocations from open creator claims (status in {requested, submitted}),
+    plus ops baseline from QMA_TREASURY_OPS_BILLS_USDC (default 5.0).
+    If store is unavailable or has no open claims, logs INFO and uses ops baseline.
+    """
+    raw_baseline = os.getenv("QMA_TREASURY_OPS_BILLS_USDC", "5.0")
+    try:
+        ops_baseline = float(raw_baseline)
+    except (TypeError, ValueError):
+        ops_baseline = 5.0
+
+    claims = _fetch_creator_claims()
+    open_statuses = {CreatorClaimStatus.REQUESTED.value, CreatorClaimStatus.SUBMITTED.value}
+    open_claims_usdc = 0.0
+
+    if claims:
+        for record in claims:
+            if not isinstance(record, dict):
+                continue
+            status = str(record.get("status") or "").strip().lower()
+            if status in open_statuses:
+                allocations = record.get("allocations")
+                if isinstance(allocations, dict) and allocations:
+                    open_claims_usdc += sum(float(v or 0) for v in allocations.values())
+                elif record.get("amount_usdc") is not None:
+                    open_claims_usdc += float(record.get("amount_usdc") or 0)
+
+    open_claims_usdc = round(open_claims_usdc, 6)
+    if not claims or open_claims_usdc == 0.0:
+        logger.info(
+            "Creator claims store unavailable or has no open claims; using ops baseline of %s USDC",
+            ops_baseline,
+        )
+
+    total_obligations = round(open_claims_usdc + ops_baseline, 6)
+    return total_obligations, open_claims_usdc, ops_baseline
+
+
+def parse_and_clamp_cfo_proposal(
+    content: str,
+    policy: CorporateTreasuryPolicy,
+) -> Optional[Dict[str, Any]]:
+    """Defensively parse LLM proposal and clamp action/amounts to policy bounds."""
+    if not content or not isinstance(content, str):
+        return None
+
+    # Defensive JSON extraction on the first {...} block
+    start = content.find("{")
+    end = content.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+
+    try:
+        data = json.loads(content[start : end + 1])
+    except Exception:
+        return None
+
+    if not isinstance(data, dict):
+        return None
+
+    # Validate action
+    raw_action = str(data.get("action") or "").strip().upper()
+    valid_actions = {a.value for a in CFODecisionAction}
+    if raw_action not in valid_actions:
+        return None
+
+    # Validate amount_usdc: finite number >= 0
+    raw_amount = data.get("amount_usdc")
+    if isinstance(raw_amount, bool) or raw_amount is None:
+        return None
+    try:
+        amount = float(raw_amount)
+        if math.isnan(amount) or math.isinf(amount) or amount < 0:
+            return None
+    except (TypeError, ValueError):
+        return None
+
+    # Clamp amount
+    if raw_action == CFODecisionAction.SWEEP_IDLE.value:
+        clamped_amount = round(min(amount, policy.max_sweep_per_epoch_usdc), 4)
+    elif raw_action == CFODecisionAction.JIT_REDEEM.value:
+        clamped_amount = round(min(amount, policy.max_jit_redeem_per_epoch_usdc), 4)
+    else:
+        clamped_amount = 0.0
+
+    reasoning = str(data.get("reasoning") or "").strip()[:400]
+
+    raw_conf = data.get("confidence")
+    try:
+        if isinstance(raw_conf, bool) or raw_conf is None:
+            confidence = 1.0
+        else:
+            confidence = max(0.0, min(1.0, float(raw_conf)))
+    except (TypeError, ValueError):
+        confidence = 1.0
+
+    return {
+        "action": raw_action,
+        "amount_usdc": clamped_amount,
+        "reasoning": reasoning,
+        "confidence": confidence,
+    }
+
+
+def _request_cfo_llm_proposal(
+    context: Dict[str, Any],
+    api_key: str,
+    model: str,
+    endpoint: str,
+) -> Optional[str]:
+    """Request a proposal from the LLM endpoint (ONE attempt, timeout 4s)."""
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    prompt_msg = (
+        "You are an autonomous corporate CFO treasury agent for GenQMA. "
+        "Analyze the provided treasury metrics and propose an action. "
+        "You must respond with STRICT JSON ONLY matching this schema:\n"
+        '{"action": "SWEEP_IDLE" | "JIT_REDEEM" | "HOLD_AND_EARN" | "INSOLVENCY_ALERT", '
+        '"amount_usdc": number, '
+        '"reasoning": "string up to 400 characters", '
+        '"confidence": number between 0 and 1}\n'
+        "No prose, commentary, or markdown wrapping outside the JSON object."
+    )
+    body = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": prompt_msg},
+            {"role": "user", "content": json.dumps(context)},
+        ],
+        "temperature": 0,
+    }
+    try:
+        resp = requests.post(endpoint, json=body, headers=headers, timeout=4.0)
+        if resp.status_code == 200:
+            data = resp.json()
+            choices = data.get("choices") or []
+            if choices and isinstance(choices, list):
+                msg = choices[0].get("message") or {}
+                return msg.get("content")
+        else:
+            logger.warning("[CFO LLM] Endpoint returned HTTP %s: %s", resp.status_code, resp.text[:200])
+    except Exception as exc:
+        logger.warning("[CFO LLM] Request failed: %s", exc)
+    return None
+
+
 class USYCTreasuryService:
     """Enterprise AI Treasury & Yield Manager for USYC on Arc Testnet (ERC-4626)."""
 
@@ -179,6 +383,7 @@ class USYCTreasuryService:
         self.target_apy = 0.05  # 5.0% APY baseline
         self._w3 = None
         self._contract = None
+        self._custom_policy_file = policy_file is not None
         self._policy_file = policy_file if policy_file is not None else getattr(settings, "treasury_policy_path", Path("treasury_policy.json"))
         self._policy: Optional[CorporateTreasuryPolicy] = None
         self._last_rebalance_at: float = 0.0
@@ -194,10 +399,30 @@ class USYCTreasuryService:
             except Exception:
                 pass
 
+    def _is_custom_policy_file(self) -> bool:
+        if getattr(self, "_custom_policy_file", False):
+            return True
+        if self._policy_file is None:
+            return False
+        try:
+            return Path(self._policy_file).resolve() != Path("treasury_policy.json").resolve()
+        except Exception:
+            return False
+
     def get_policy(self) -> CorporateTreasuryPolicy:
-        """Retrieve active Corporate Treasury Policy, loading from disk if available."""
+        """Retrieve active Corporate Treasury Policy, loading from database or disk."""
         if self._policy is not None:
             return self._policy
+        if not self._is_custom_policy_file():
+            st = _get_storage()
+            if st and hasattr(st, "load_treasury_policy"):
+                try:
+                    data = st.load_treasury_policy()
+                    if data and isinstance(data, dict):
+                        self._policy = CorporateTreasuryPolicy(**data)
+                        return self._policy
+                except Exception as exc:
+                    logger.warning(f"[CFO AGENT POLICY] Could not load policy from storage backend: {exc}")
         if self._policy_file and self._policy_file.exists():
             try:
                 with open(self._policy_file, "r", encoding="utf-8") as f:
@@ -213,6 +438,15 @@ class USYCTreasuryService:
         """Update and persist Corporate Treasury Policy."""
         self._policy = new_policy
         self.target_apy = new_policy.target_apy_baseline
+        if not self._is_custom_policy_file():
+            st = _get_storage()
+            if st and hasattr(st, "save_treasury_policy"):
+                try:
+                    st.save_treasury_policy(new_policy.model_dump())
+                    logger.info(f"[CFO AGENT POLICY] Updated corporate treasury policy: {new_policy}")
+                    return self._policy
+                except Exception as exc:
+                    logger.warning(f"Could not persist policy to storage backend: {exc}")
         if self._policy_file:
             try:
                 self._policy_file.parent.mkdir(parents=True, exist_ok=True)
@@ -709,6 +943,7 @@ class USYCTreasuryService:
         upcoming_bills_usdc: Optional[float] = None,
         horizon_days: int = 30,
         execute_if_authorized: bool = False,
+        record_hold: bool = True,
     ) -> Dict[str, Any]:
         """Autonomous CFO multi-factor capital allocation and yield decision engine.
         
@@ -748,7 +983,9 @@ class USYCTreasuryService:
             usyc_assets = pos.get("usdc_equivalent", 0.0)
             usyc_shares = pos.get("usyc_shares", 0.0)
 
-        bills = upcoming_bills_usdc if upcoming_bills_usdc is not None else 5.0
+        # Ingest upcoming obligations: claim-aware liquidity when not explicitly provided
+        total_obligations, open_claims_amount, ops_baseline = compute_claim_obligations()
+        bills = upcoming_bills_usdc if upcoming_bills_usdc is not None else total_obligations
 
         total_assets = liquid + usyc_assets
         daily_yield_rate = (1.0 + self.target_apy) ** (1.0 / 365.0) - 1.0
@@ -756,7 +993,36 @@ class USYCTreasuryService:
         safety_buffer_ratio = round(total_assets / max(bills, 0.001), 2)
         required_reserve = max(policy.min_operating_reserve_usdc, bills * policy.target_safety_buffer_ratio)
 
-        decision = "HOLD_AND_EARN"
+        # Optional LLM proposal tier (stage active ONLY when env QMA_CFO_LLM_ENABLED=1 and API key is present)
+        decision_source = DecisionSource.HEURISTIC.value
+        llm_enabled = os.getenv("QMA_CFO_LLM_ENABLED", "0").strip() == "1"
+        api_key = os.getenv("QMA_CFO_LLM_API_KEY") or os.getenv("GROQ_API_KEY")
+        model_proposal = None
+        if llm_enabled and api_key:
+            llm_context = {
+                "liquid_usdc": round(liquid, 4),
+                "vault_assets_usdc": round(usyc_assets, 4),
+                "target_apy": round(self.target_apy, 4),
+                "obligations_usdc": round(bills, 4),
+                "open_claim_obligations_usdc": round(open_claims_amount, 4),
+                "policy_min_reserve_usdc": policy.min_operating_reserve_usdc,
+                "policy_safety_buffer_ratio": policy.target_safety_buffer_ratio,
+                "policy_min_sweep_threshold_usdc": policy.min_sweep_threshold_usdc,
+                "policy_max_sweep_per_epoch_usdc": policy.max_sweep_per_epoch_usdc,
+                "policy_max_jit_redeem_per_epoch_usdc": policy.max_jit_redeem_per_epoch_usdc,
+            }
+            model_name = os.getenv("QMA_CFO_LLM_MODEL", "llama-3.1-8b-instant")
+            endpoint = os.getenv("QMA_CFO_LLM_ENDPOINT", "https://api.groq.com/openai/v1/chat/completions")
+            raw_proposal = _request_cfo_llm_proposal(
+                llm_context,
+                api_key=api_key,
+                model=model_name,
+                endpoint=endpoint,
+            )
+            if raw_proposal:
+                model_proposal = parse_and_clamp_cfo_proposal(raw_proposal, policy)
+
+        decision = CFODecisionAction.HOLD_AND_EARN.value
         amount_usdc = 0.0
         action_recommended = "HOLD_AND_EARN"
         rationale = ""
@@ -764,53 +1030,72 @@ class USYCTreasuryService:
         tx_hash = None
         audit_record_id = None
 
-        # 1. Solvency constraint check
-        if total_assets < bills:
-            decision = "INSOLVENCY_ALERT"
-            amount_usdc = 0.0
-            action_recommended = "ALERT: Insolvent treasury, top-up required"
-            rationale = (
-                f"Solvency breach detected: Total treasury reserves ({total_assets:.4f} USDC) are insufficient "
-                f"to satisfy projected obligations ({bills:.4f} USDC). Immediate capital replenishment required."
-            )
-            execution_status = "ALERT_EMITTED"
-        # 2. Immediate operational deficit constraint
-        elif liquid < bills:
-            net_needed = bills - liquid
-            amount_usdc = round(min(net_needed, policy.max_jit_redeem_per_epoch_usdc), 4)
-            decision = "JIT_REDEEM"
-            action_recommended = f"REDEEM_JIT: Redeem {amount_usdc:.4f} USDC from {yield_rail}"
-            rationale = (
-                f"Operating liquidity ({liquid:.4f} USDC) is below immediate obligations ({bills:.4f} USDC). "
-                f"Autonomous CFO initiates Just-In-Time redemption of {amount_usdc:.4f} USDC from {yield_rail} to satisfy liabilities "
-                f"without liquidating excess yield-bearing principal."
-            )
-            execution_status = "PREPARED"
-        # 3. Surplus idle cash sweep constraint
-        elif liquid > (required_reserve + policy.min_sweep_threshold_usdc):
-            surplus = liquid - required_reserve
-            amount_usdc = round(min(surplus, policy.max_sweep_per_epoch_usdc), 4)
-            decision = "SWEEP_IDLE"
-            action_recommended = f"SWEEP_IDLE: Deposit {amount_usdc:.4f} USDC into {yield_rail} for {round(self.target_apy * 100, 1)}% APY"
-            rationale = (
-                f"Liquid cash ({liquid:.4f} USDC) exceeds operational reserve requirements ({required_reserve:.4f} USDC) "
-                f"by {surplus:.4f} USDC while maintaining a {safety_buffer_ratio}x safety coverage ratio. "
-                f"Sweeping {amount_usdc:.4f} USDC into {yield_rail} generates ~${round(amount_usdc * self.target_apy, 4)} annual yield on idle capital."
-            )
-            execution_status = "PREPARED"
+        if model_proposal is not None:
+            decision = model_proposal["action"]
+            amount_usdc = model_proposal["amount_usdc"]
+            rationale = model_proposal["reasoning"]
+            decision_source = DecisionSource.MODEL.value
+            if decision == CFODecisionAction.INSOLVENCY_ALERT.value:
+                action_recommended = "ALERT: Insolvent treasury, top-up required"
+                execution_status = "ALERT_EMITTED"
+            elif decision == CFODecisionAction.SWEEP_IDLE.value:
+                action_recommended = f"SWEEP_IDLE: Deposit {amount_usdc:.4f} USDC into {yield_rail} for {round(self.target_apy * 100, 1)}% APY"
+                execution_status = "PREPARED"
+            elif decision == CFODecisionAction.JIT_REDEEM.value:
+                action_recommended = f"REDEEM_JIT: Redeem {amount_usdc:.4f} USDC from {yield_rail}"
+                execution_status = "PREPARED"
+            else:
+                action_recommended = "HOLD_AND_EARN"
+                execution_status = "NO_ACTION_REQUIRED"
         else:
-            decision = "HOLD_AND_EARN"
-            amount_usdc = 0.0
-            action_recommended = "HOLD_AND_EARN"
-            rationale = (
-                f"Treasury capital allocation is in optimal equilibrium. Liquid buffer of {liquid:.4f} USDC satisfies "
-                f"operating requirements ({required_reserve:.4f} USDC), and {usyc_assets:.4f} USDC actively compounds yield in {yield_rail}."
-            )
-            execution_status = "NO_ACTION_REQUIRED"
+            # Deterministic heuristic ladder
+            # 1. Solvency constraint check
+            if total_assets < bills:
+                decision = CFODecisionAction.INSOLVENCY_ALERT.value
+                amount_usdc = 0.0
+                action_recommended = "ALERT: Insolvent treasury, top-up required"
+                rationale = (
+                    f"Solvency breach detected: Total treasury reserves ({total_assets:.4f} USDC) are insufficient "
+                    f"to satisfy projected obligations ({bills:.4f} USDC). Immediate capital replenishment required."
+                )
+                execution_status = "ALERT_EMITTED"
+            # 2. Immediate operational deficit constraint
+            elif liquid < bills:
+                net_needed = bills - liquid
+                amount_usdc = round(min(net_needed, policy.max_jit_redeem_per_epoch_usdc), 4)
+                decision = CFODecisionAction.JIT_REDEEM.value
+                action_recommended = f"REDEEM_JIT: Redeem {amount_usdc:.4f} USDC from {yield_rail}"
+                rationale = (
+                    f"Operating liquidity ({liquid:.4f} USDC) is below immediate obligations ({bills:.4f} USDC). "
+                    f"Autonomous CFO initiates Just-In-Time redemption of {amount_usdc:.4f} USDC from {yield_rail} to satisfy liabilities "
+                    f"without liquidating excess yield-bearing principal."
+                )
+                execution_status = "PREPARED"
+            # 3. Surplus idle cash sweep constraint
+            elif liquid > (required_reserve + policy.min_sweep_threshold_usdc):
+                surplus = liquid - required_reserve
+                amount_usdc = round(min(surplus, policy.max_sweep_per_epoch_usdc), 4)
+                decision = CFODecisionAction.SWEEP_IDLE.value
+                action_recommended = f"SWEEP_IDLE: Deposit {amount_usdc:.4f} USDC into {yield_rail} for {round(self.target_apy * 100, 1)}% APY"
+                rationale = (
+                    f"Liquid cash ({liquid:.4f} USDC) exceeds operational reserve requirements ({required_reserve:.4f} USDC) "
+                    f"by {surplus:.4f} USDC while maintaining a {safety_buffer_ratio}x safety coverage ratio. "
+                    f"Sweeping {amount_usdc:.4f} USDC into {yield_rail} generates ~${round(amount_usdc * self.target_apy, 4)} annual yield on idle capital."
+                )
+                execution_status = "PREPARED"
+            else:
+                decision = CFODecisionAction.HOLD_AND_EARN.value
+                amount_usdc = 0.0
+                action_recommended = "HOLD_AND_EARN"
+                rationale = (
+                    f"Treasury capital allocation is in optimal equilibrium. Liquid buffer of {liquid:.4f} USDC satisfies "
+                    f"operating requirements ({required_reserve:.4f} USDC), and {usyc_assets:.4f} USDC actively compounds yield in {yield_rail}."
+                )
+                execution_status = "NO_ACTION_REQUIRED"
 
         # 4. Policy Cooldown & Autonomous Execution Dispatch
         now = time.time()
-        if decision in {"SWEEP_IDLE", "JIT_REDEEM"}:
+        if decision in {CFODecisionAction.SWEEP_IDLE.value, CFODecisionAction.JIT_REDEEM.value}:
             if (now - self._last_rebalance_at) < policy.rebalance_cooldown_seconds:
                 cooldown_left = int(policy.rebalance_cooldown_seconds - (now - self._last_rebalance_at))
                 rationale += f" [Policy cooldown active: next autonomous rebalance permitted in {cooldown_left}s]"
@@ -818,7 +1103,7 @@ class USYCTreasuryService:
                 decision = "COOLDOWN_ACTIVE"
             elif execute_if_authorized and policy.autonomous_execution_enabled:
                 try:
-                    if decision == "SWEEP_IDLE":
+                    if decision == CFODecisionAction.SWEEP_IDLE.value:
                         if yield_rail == "EARN_KIT_MORPHO":
                             from backend.app.services.earn_kit import earn_kit_service
                             exec_res = earn_kit_service.deposit(
@@ -831,7 +1116,7 @@ class USYCTreasuryService:
                         else:
                             exec_res = self.execute_deposit(amount_usdc=amount_usdc, depositor=target_account, bypass_cooldown=True)
                             tx_hash = exec_res.get("tx_hash")
-                    elif decision == "JIT_REDEEM":
+                    elif decision == CFODecisionAction.JIT_REDEEM.value:
                         if yield_rail == "EARN_KIT_MORPHO":
                             from backend.app.services.earn_kit import earn_kit_service
                             exec_res = earn_kit_service.withdraw(
@@ -854,25 +1139,28 @@ class USYCTreasuryService:
                 execution_status = "PREPARED_INTENT"
 
         # 5. Continuous Athenian Euthyna audit trail
-        try:
-            from backend.app.services.euthyna_audit import euthyna_audit_engine
-            audit_entry = euthyna_audit_engine.record_action(
-                action=decision,
-                actor=target_account or "0x0000000000000000000000000000000000000000",
-                amount_usdc=amount_usdc,
-                balance_before=liquid,
-                balance_after=max(0.0, liquid - amount_usdc) if decision == "SWEEP_IDLE" else liquid + amount_usdc,
-                usyc_shares=usyc_shares,
-                tx_hash=tx_hash,
-                policy_rule=f"CFO_POLICY_{decision}",
-                reasoning=rationale,
-            )
-            audit_record_id = audit_entry.get("record_id")
-        except Exception as audit_exc:
-            logger.debug(f"[CFO AGENT] Euthyna audit logging skipped: {audit_exc}")
+        if record_hold or decision != CFODecisionAction.HOLD_AND_EARN.value:
+            try:
+                from backend.app.services.euthyna_audit import euthyna_audit_engine
+                source_prefix = "MODEL" if decision_source == DecisionSource.MODEL.value else "HEURISTIC"
+                audit_entry = euthyna_audit_engine.record_action(
+                    action=decision,
+                    actor=target_account or "0x0000000000000000000000000000000000000000",
+                    amount_usdc=amount_usdc,
+                    balance_before=liquid,
+                    balance_after=max(0.0, liquid - amount_usdc) if decision == CFODecisionAction.SWEEP_IDLE.value else liquid + amount_usdc,
+                    usyc_shares=usyc_shares,
+                    tx_hash=tx_hash,
+                    policy_rule=f"SRC={source_prefix}|CFO_POLICY_{decision}",
+                    reasoning=rationale,
+                )
+                audit_record_id = audit_entry.get("record_id")
+            except Exception as audit_exc:
+                logger.debug(f"[CFO AGENT] Euthyna audit logging skipped: {audit_exc}")
 
         return {
             "decision": decision,
+            "decision_source": decision_source,
             "amount_usdc": amount_usdc,
             "action_recommended": action_recommended,
             "rationale": rationale,

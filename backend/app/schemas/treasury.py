@@ -93,6 +93,7 @@ class CorporateTreasuryPolicy(BaseModel):
 
 class CFODecisionResult(BaseModel):
     decision: str = Field(..., description="Autonomous decision action: SWEEP_IDLE, JIT_REDEEM, HOLD_AND_EARN, COOLDOWN_ACTIVE, or INSOLVENCY_ALERT")
+    decision_source: str = Field("heuristic", description="Provenance of decision: heuristic or model")
     amount_usdc: float = Field(0.0, description="Recommended transaction amount in USDC")
     rationale: str = Field(..., description="Formal financial rationale and mathematical deduction")
     policy_applied: Dict[str, Any] = Field(..., description="Policy constraints evaluated")

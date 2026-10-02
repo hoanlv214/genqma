@@ -105,15 +105,33 @@ class MultiExchangeAggregator(MarketDataAdapter):
             # Determine whether token has an authoritative on-chain verifiable venue
             mexc_venue = next((v for v in venues if v.get("exchange") == "MEXC"), None)
             binance_venue = next((v for v in venues if v.get("exchange") == "BINANCE"), None)
+            bybit_venue = next((v for v in venues if v.get("exchange") == "BYBIT"), None)
 
-            if primary.get("exchange") == "MEXC" or mexc_venue:
+            primary_exchange = primary.get("exchange")
+            if primary_exchange == "BYBIT":
                 primary["verifiable"] = True
-                primary["verifiable_exchange"] = "MEXC"
-                primary["evidence_url"] = f"https://contract.mexc.com/api/v1/contract/funding_rate/{sym}_USDT"
-            elif primary.get("exchange") == "BINANCE" or binance_venue:
+                primary["verifiable_exchange"] = "BYBIT"
+                primary["evidence_url"] = f"https://api.bybit.com/v5/market/tickers?category=linear&symbol={sym}USDT"
+            elif primary_exchange == "BINANCE":
                 primary["verifiable"] = True
                 primary["verifiable_exchange"] = "BINANCE"
                 primary["evidence_url"] = f"https://api.binance.com/api/v3/ticker/24hr?symbol={sym}USDT"
+            elif primary_exchange == "MEXC":
+                primary["verifiable"] = True
+                primary["verifiable_exchange"] = "MEXC"
+                primary["evidence_url"] = f"https://contract.mexc.com/api/v1/contract/funding_rate/{sym}_USDT"
+            elif bybit_venue:
+                primary["verifiable"] = True
+                primary["verifiable_exchange"] = "BYBIT"
+                primary["evidence_url"] = f"https://api.bybit.com/v5/market/tickers?category=linear&symbol={sym}USDT"
+            elif binance_venue:
+                primary["verifiable"] = True
+                primary["verifiable_exchange"] = "BINANCE"
+                primary["evidence_url"] = f"https://api.binance.com/api/v3/ticker/24hr?symbol={sym}USDT"
+            elif mexc_venue:
+                primary["verifiable"] = True
+                primary["verifiable_exchange"] = "MEXC"
+                primary["evidence_url"] = f"https://contract.mexc.com/api/v1/contract/funding_rate/{sym}_USDT"
             else:
                 primary["verifiable"] = False
                 primary["verifiable_exchange"] = None

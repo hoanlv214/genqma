@@ -82,7 +82,7 @@ The product speaks one name per surface — do not invent synonyms:
 | Route | Name in UI | Purpose |
 | :--- | :--- | :--- |
 | `/` | Landing | Marketing: what QMA does, live traction, who it's for |
-| `/app` | **Market Workspace** | Core product: ranked signals → buy preview/full report |
+| `/app` | **Market Workspace** | Core product: featured signal → buy preview/full report → automate. Redesigned layout per `docs/frontend/DESIGN.md`; global header unchanged |
 | `/marketplace` | **Creator Marketplace** | Providers apply; buyers see live providers |
 | `/traction` | **Live Proof & Ledger** | Settlement KPIs, SLA, audit trail |
 | `/swap` | Swap / StableFX | USDC/EURC settlement utilities on Arc |
@@ -132,3 +132,40 @@ Landing page narrative order: hero (what + proof terminal) → live stats → 3 
 ---
 
 *Maintained alongside `frontend/AGENTS.md`. Changes to the token contract require updating this document in the same commit.*
+
+---
+
+## 9. UI Primitives Layer (`styles/ui.css`) — Added 2026-09-30
+
+`main.tsx` loads `tokens.css` → **`ui.css`** → feature sheets. `ui.css` owns the shared component recipes; feature CSS composes them instead of re-declaring.
+
+| Primitive | Classes | Notes |
+| :--- | :--- | :--- |
+| Buttons | `.btn` + `.btn-primary` / `.btn-secondary` / `.btn-ghost` / `.btn-danger`, sizes `.btn-sm` / `.btn-lg` | Sans 600; primary is the ONE violet CTA per view (gradient + glow + hover lift); `.btn-green` renders primary. |
+| Status chips | `.chip` + `.chip-live` / `.chip-pending` / `.chip-error` / `.chip-info` / `.chip-premium` / `.chip-neutral` | Pill + dot + text — never color alone. Map: live/success→live, pending/estimated→pending, failed→error, premium→premium. |
+| Skeletons | `.skeleton` | Shimmer block; respects reduced motion. |
+| Empty / onboarding | `.state-card`, `.state-icon`, `.state-steps` (`.step-num`), `.state-actions` | Numbered-step teaching pattern; used by the `/app` getting-started card. |
+| Stat tiles | `.stat-tile` (`.stat-value` mono, `.stat-label`) | Landing stats band + KPI rows. |
+| Eyebrow | `.eyebrow` | Mono uppercase section kicker. |
+
+**Token additions:** semantic aliases `--success/--warning/--danger` (+ `-dim`), `--skeleton-base/--skeleton-sheen`, `--shadow-violet`. `--orange` exists as an alias of `--amber`.
+
+**Workflow rules confirmed in code:** pay CTA (`.settle-pay-btn`) is violet primary (green = status only); preview tier button is a violet ghost (teal retired); Simple mode hides the duplicate Preview/Full/Run-Agent row; pre-connect `/app` renders the getting-started card instead of the query card and paywall viewport.
+
+---
+
+## 10. Evidence Paper Layer — Added 2026-09-30 (VX rebuild)
+
+QMA's proof language, learned from leading Arc agent products: light "printed document" artifacts set on the dark canvas — receipts, verdict stamps, and the agent loop.
+
+| Primitive | Classes | Notes |
+| :--- | :--- | :--- |
+| Display serif | `--font-display` (Newsreader), `.display-serif`, `.landing-section-title` (`.serif-accent`) | Editorial headlines; one italic accent phrase per title. Hero: sans line + italic serif gradient line. |
+| Receipt | `.receipt`, `.receipt-head/-row/-total/-foot`, `.receipt-no` | Cream "printed" card (`--paper*` tokens), perforated edges, mono rows. Used for the Decision Receipt on payment success. |
+| Stamp | `.stamp` + `.stamp-valid / .stamp-held / .stamp-refused` | Rotated verdict seal. VALID (mint) / held (amber) / refused (crimson) — always with adjacent text. |
+| Agent loop | `.loop-steps` > `.loop-step` (`.is-active`, `.is-done`) | Numbered 01–04 walk: Observe → Match → Enforce → Verify. |
+| Textures | `.hatch`, `.ledger-grid` | Sparingly, on proof surfaces only. |
+
+**Components:** `AgentLoopReplay` (landing hero — labeled "example · real settlement rails"), `DecisionReceipt` (renders from real payment state inside the paywall success view only — every field shown has settled).
+
+**Rule:** receipts and stamps are evidence, not decoration. A receipt may only render from real settlement data; demo replays must carry the "example" label. Semantic mapping on paper: `--paper-paid` mint = settled/valid, `--paper-held` amber = pending, `--paper-refused` crimson = refused.

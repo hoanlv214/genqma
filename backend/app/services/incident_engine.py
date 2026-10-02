@@ -22,7 +22,6 @@ from backend.app.services.euthyna_audit import euthyna_audit_engine
 logger = logging.getLogger("QMA-IncidentEngine")
 
 _INCIDENTS_LOCK = threading.Lock()
-_INCIDENTS_FILE = Path(os.getenv("QMA_INCIDENTS_PATH", "agent_incidents.json"))
 
 
 def _get_default_sessions_path() -> Path:
@@ -30,8 +29,9 @@ def _get_default_sessions_path() -> Path:
 
 
 def _load_sessions_list(storage: Optional[Any] = None) -> tuple[List[Dict[str, Any]], Optional[Path]]:
-    if storage and hasattr(storage, "sessions_path"):
-        return storage._load_json(storage.sessions_path, []), Path(storage.sessions_path)
+    st = storage or _get_storage()
+    if st and hasattr(st, "sessions_path"):
+        return st._load_json(st.sessions_path, []), Path(st.sessions_path)
     path = _get_default_sessions_path()
     if path.exists():
         try:
@@ -44,8 +44,9 @@ def _load_sessions_list(storage: Optional[Any] = None) -> tuple[List[Dict[str, A
 
 
 def _save_sessions_list(sessions: List[Dict[str, Any]], path: Optional[Path], storage: Optional[Any] = None) -> None:
-    if storage and hasattr(storage, "sessions_path"):
-        storage._save_json(storage.sessions_path, sessions)
+    st = storage or _get_storage()
+    if st and hasattr(st, "sessions_path"):
+        st._save_json(st.sessions_path, sessions)
         return
     if path:
         tmp = path.with_suffix(".tmp")
@@ -54,26 +55,38 @@ def _save_sessions_list(sessions: List[Dict[str, Any]], path: Optional[Path], st
         tmp.replace(path)
 
 
-def _load_incidents() -> List[Dict[str, Any]]:
-    if not _INCIDENTS_FILE.exists():
-        return []
+def _get_storage():
     try:
-        with open(_INCIDENTS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data if isinstance(data, list) else []
-    except Exception as exc:
-        logger.warning(f"Failed to load incidents from {_INCIDENTS_FILE}: {exc}")
-        return []
+        from backend.app.main import storage_backend
+        return storage_backend
+    except Exception:
+        return None
 
 
-def _save_incidents(records: List[Dict[str, Any]]) -> None:
-    try:
-        tmp_file = _INCIDENTS_FILE.with_suffix(".tmp")
-        with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(records, f, indent=2, ensure_ascii=False)
-        tmp_file.replace(_INCIDENTS_FILE)
-    except Exception as exc:
-        logger.error(f"Failed to save incidents to {_INCIDENTS_FILE}: {exc}")
+def _load_incidents(storage: Optional[Any] = None) -> List[Dict[str, Any]]:
+    st = storage or _get_storage()
+    if st and hasattr(st, "load_incidents"):
+        try:
+            records = st.load_incidents()
+            if isinstance(records, list):
+                return records
+            return []
+        except Exception as exc:
+            logger.critical(f"Failed to load incidents from storage backend: {exc}")
+            raise
+    return []
+
+
+def _save_incidents(records: List[Dict[str, Any]], storage: Optional[Any] = None) -> None:
+    st = storage or _get_storage()
+    if st and hasattr(st, "save_incident"):
+        try:
+            for rec in records:
+                st.save_incident(rec)
+            return
+        except Exception as exc:
+            logger.critical(f"Failed to save incidents to storage backend: {exc}")
+            raise
 
 
 def record_incident(
@@ -87,6 +100,7 @@ def record_incident(
     actor_address: Optional[str] = None,
     financial_context: Optional[Dict[str, Any]] = None,
     trace_id: Optional[str] = None,
+    storage: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Records an incident, links to Athenian Euthyna audit chain, and persists."""
     incident_id = f"inc_{uuid.uuid4().hex[:8]}"
@@ -111,7 +125,14 @@ def record_incident(
         provider_id=fin_ctx.get("provider_id"),
         genlayer_consensus="INVALID" if "SLA" in category else None,
     )
-    euthyna_hash = euthyna_entry.get("record_hash") or f"0x{uuid.uuid4().hex}"
+    integrity_digest = euthyna_entry.get("integrity_hash") if isinstance(euthyna_entry, dict) else None
+    if integrity_digest:
+        euthyna_hash = integrity_digest
+        euthyna_link_status = "LINKED"
+    else:
+        euthyna_hash = None
+        euthyna_link_status = "BROKEN"
+        logger.error(f"[INCIDENT ENGINE] Incident {incident_id} missing Euthyna audit integrity hash; link broken.")
 
     # 2. Structure incident record
     record = {
@@ -128,16 +149,17 @@ def record_incident(
         "actor_type": actor_type,
         "actor_address": actor_addr,
         "euthyna_hash": euthyna_hash,
+        "euthyna_link_status": euthyna_link_status,
         "admin_note": None,
     }
 
     with _INCIDENTS_LOCK:
-        incidents = _load_incidents()
+        incidents = _load_incidents(storage)
         incidents.append(record)
-        _save_incidents(incidents)
+        _save_incidents(incidents, storage)
 
     logger.warning(
-        f"[INCIDENT ENGINE] Recorded {severity} incident {incident_id} for session {session_id} | Euthyna: {euthyna_hash[:16]}"
+        f"[INCIDENT ENGINE] Recorded {severity} incident {incident_id} for session {session_id} | Euthyna: {euthyna_hash[:16] if euthyna_hash else 'NONE'}"
     )
     return record
 
@@ -148,10 +170,11 @@ def get_incidents(
     severity: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = 50,
+    storage: Optional[Any] = None,
 ) -> List[Dict[str, Any]]:
     """Retrieve filtered incidents ordered descending by timestamp."""
     with _INCIDENTS_LOCK:
-        incidents = _load_incidents()
+        incidents = _load_incidents(storage)
 
     results = incidents
     if session_id:
@@ -170,10 +193,11 @@ def resolve_incident(
     resolution: str = "RESOLVED",
     admin_note: str,
     admin_wallet: Optional[str] = None,
+    storage: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Marks an incident as RESOLVED or OVERRIDDEN with an audit trail."""
     with _INCIDENTS_LOCK:
-        incidents = _load_incidents()
+        incidents = _load_incidents(storage)
         target = None
         for inc in incidents:
             if inc.get("incident_id") == incident_id:
@@ -185,7 +209,7 @@ def resolve_incident(
 
         target["status"] = resolution
         target["admin_note"] = admin_note
-        _save_incidents(incidents)
+        _save_incidents(incidents, storage)
 
     # Record resolution in Euthyna audit
     euthyna_audit_engine.record_action(
@@ -278,10 +302,17 @@ def execute_session_control(
         policy_rule=f"ADMIN_CONTROL:{action.upper()}",
         reasoning=f"Admin control '{action}' applied to session {session_id}: {reason}",
     )
-    euthyna_hash = euthyna_entry.get("record_hash") or f"0x{uuid.uuid4().hex}"
+    integrity_digest = euthyna_entry.get("integrity_hash") if isinstance(euthyna_entry, dict) else None
+    if integrity_digest:
+        euthyna_hash = integrity_digest
+        euthyna_link_status = "LINKED"
+    else:
+        euthyna_hash = None
+        euthyna_link_status = "BROKEN"
+        logger.error(f"[INCIDENT ENGINE] Session {session_id} control action {action} missing Euthyna audit integrity hash; link broken.")
 
     logger.warning(
-        f"[INCIDENT ENGINE] Session {session_id} transitioned {curr_status} -> {next_status} (action={action}) | Euthyna: {euthyna_hash[:16]}"
+        f"[INCIDENT ENGINE] Session {session_id} transitioned {curr_status} -> {next_status} (action={action}) | Euthyna: {euthyna_hash[:16] if euthyna_hash else 'NONE'}"
     )
 
     return {
@@ -291,5 +322,6 @@ def execute_session_control(
         "status": next_status,
         "reason": reason,
         "euthyna_hash": euthyna_hash,
+        "euthyna_link_status": euthyna_link_status,
         "timestamp": now_iso,
     }

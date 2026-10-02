@@ -11,3 +11,4 @@ eth-account==0.13.7
 genlayer-py==0.18.0
 mcp>=1.10,<2
 starlette>=0.40,<1
+psycopg2-binary>=2.9

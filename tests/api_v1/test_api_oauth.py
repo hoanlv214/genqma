@@ -307,7 +307,7 @@ def test_connections_are_owner_scoped(client):
 
 
 class MissingTableStorage(InMemoryOAuthStorage):
-    """Mimics Supabase before scripts/migrations/20260826_mcp_oauth.sql."""
+    """Mimics Supabase before supabase/migrations/0006_mcp_oauth.sql."""
 
     def _request(self, method, table, params=None, json_body=None, prefer=""):
         raise RuntimeError(
@@ -349,7 +349,7 @@ def test_missing_migration_returns_actionable_503():
 
     listed = probe.get(f"/api/v1/oauth/connections?owner_wallet={OWNER}", headers=wallet_token())
     assert listed.status_code == 503
-    assert "20260826_mcp_oauth.sql" in listed.json()["detail"]
+    assert "0006_mcp_oauth.sql" in listed.json()["detail"] or "20260826_mcp_oauth.sql" in listed.json()["detail"]
 
     registered = probe.post("/api/v1/oauth/register", json={"client_name": "X", "redirect_uris": []})
     assert registered.status_code == 503

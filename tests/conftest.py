@@ -1,9 +1,29 @@
+import os
+import tempfile
+
+os.environ["QMA_STORAGE_BACKEND"] = "json"          # forces Priority 2 in create_storage_backend
+for _k in ("DATABASE_URL", "POSTGRES_URL", "QMA_DATABASE_URL"):
+    os.environ.pop(_k, None)                        # cannot fall through to Postgres
+_ISOLATION_DIR = tempfile.mkdtemp(prefix="qma_test_data_")
+os.environ["QMA_DATA_DIR"] = _ISOLATION_DIR         # JSON ledgers land here, not repo root
+
 """Global Pytest configuration and shared fixtures for QMA API tests."""
 
 import pytest
 from fastapi.testclient import TestClient
 
 import backend.app.main as app_module
+
+# Ensure any env vars re-loaded by backend.app.core.config.load_local_env() are purged
+for _k in ("DATABASE_URL", "POSTGRES_URL", "QMA_DATABASE_URL"):
+    os.environ.pop(_k, None)
+
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers", "storage_backend: mark test as requiring a real storage backend (Postgres/Supabase)"
+    )
 
 
 @pytest.fixture

@@ -167,11 +167,29 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_STORAGE_PATH = _REPO_ROOT / "earn_vault_positions.json"
 
 
+def _get_storage():
+    try:
+        from backend.app.main import storage_backend
+        return storage_backend
+    except Exception:
+        return None
+
+
 def _get_storage_path() -> Path:
     return getattr(settings, "earn_vault_positions_path", _DEFAULT_STORAGE_PATH)
 
 
-def _load_positions() -> None:
+def _load_positions(storage: Optional[Any] = None) -> None:
+    st = storage or _get_storage()
+    if st and hasattr(st, "load_earn_vault_positions"):
+        try:
+            records = st.load_earn_vault_positions()
+            if records and isinstance(records, dict):
+                _EARN_POSITIONS.update(records)
+                return
+        except Exception as exc:
+            logger.warning(f"Failed to load earn positions from storage backend: {exc}")
+
     p = _get_storage_path()
     if not p.exists():
         return
@@ -184,7 +202,23 @@ def _load_positions() -> None:
         logger.warning(f"Could not load earn positions: {exc}")
 
 
-def _save_positions() -> None:
+def _save_positions(storage: Optional[Any] = None) -> None:
+    st = storage or _get_storage()
+    if st and hasattr(st, "save_earn_vault_positions"):
+        try:
+            st.save_earn_vault_positions(_EARN_POSITIONS)
+            return
+        except Exception as exc:
+            logger.warning(f"Failed to save earn positions to storage backend: {exc}")
+    elif st and hasattr(st, "save_earn_vault_position"):
+        try:
+            for pos in _EARN_POSITIONS.values():
+                if isinstance(pos, dict):
+                    st.save_earn_vault_position(pos)
+            return
+        except Exception as exc:
+            logger.warning(f"Failed to save earn position to storage backend: {exc}")
+
     p = _get_storage_path()
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -274,7 +308,8 @@ class EarnKitService:
     Conforms to https://docs.arc.io/app-kit/earn
     """
 
-    def __init__(self):
+    def __init__(self, storage: Optional[Any] = None):
+        self.storage = storage
         self.w3 = Web3(
             Web3.HTTPProvider(
                 ARC_RPC_URL,
@@ -477,6 +512,7 @@ class EarnKitService:
         depositor: str,
         private_key: Optional[str] = None,
         bypass_cooldown: bool = False,
+        storage: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Execute or record a deposit into an Arc Earn Kit vault."""
         try:
@@ -606,7 +642,7 @@ class EarnKitService:
             current["last_deposit_at"] = now
             current["last_rebalance_at"] = now
             _EARN_POSITIONS[pos_key] = current
-            _save_positions()
+            _save_positions(storage=storage or getattr(self, "storage", None))
 
         # Record Athenian Euthyna audit entry
         try:
@@ -659,6 +695,7 @@ class EarnKitService:
         receiver: Optional[str] = None,
         private_key: Optional[str] = None,
         bypass_cooldown: bool = False,
+        storage: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Execute a JIT redemption or withdrawal from an Arc Earn Kit vault."""
         try:
@@ -763,7 +800,7 @@ class EarnKitService:
             balance_after = current["principal_usdc"]
             current["last_rebalance_at"] = now
             _EARN_POSITIONS[pos_key] = current
-            _save_positions()
+            _save_positions(storage=storage or getattr(self, "storage", None))
 
         # Record Euthyna audit
         try:
@@ -803,13 +840,23 @@ class EarnKitService:
             "timestamp": now,
         }
 
-    def get_position(self, vault_id: str, wallet: str) -> Dict[str, Any]:
+    def get_position(self, vault_id: str, wallet: str, storage: Optional[Any] = None) -> Dict[str, Any]:
         """Get live position matching App Kit getPosition spec with real-time continuous accrued yield."""
         opp = self.get_opportunity(vault_id)
         w_addr = normalize_address(wallet)
         pos_id = opp["vault_id"] if opp else vault_id
         pos_key = f"{w_addr}:{pos_id}"
         now = time.time()
+
+        st = storage or getattr(self, "storage", None) or _get_storage()
+        if st and hasattr(st, "load_earn_vault_positions"):
+            try:
+                db_positions = st.load_earn_vault_positions()
+                if isinstance(db_positions, dict) and db_positions:
+                    with _EARN_LOCK:
+                        _EARN_POSITIONS.update(db_positions)
+            except Exception as exc:
+                logger.debug(f"Could not refresh earn positions from storage: {exc}")
 
         with _EARN_LOCK:
             pos = _EARN_POSITIONS.get(
@@ -864,9 +911,19 @@ class EarnKitService:
     # Alias
     getPosition = get_position
 
-    def get_all_positions(self, wallet: str) -> Dict[str, Any]:
+    def get_all_positions(self, wallet: str, storage: Optional[Any] = None) -> Dict[str, Any]:
         """Aggregate all Earn Kit positions for a wallet."""
         w_addr = normalize_address(wallet)
+        st = storage or getattr(self, "storage", None) or _get_storage()
+        if st and hasattr(st, "load_earn_vault_positions"):
+            try:
+                db_positions = st.load_earn_vault_positions()
+                if isinstance(db_positions, dict) and db_positions:
+                    with _EARN_LOCK:
+                        _EARN_POSITIONS.update(db_positions)
+            except Exception as exc:
+                logger.debug(f"Could not refresh earn positions from storage: {exc}")
+
         positions = []
         total_deposited = 0.0
         total_yield = 0.0

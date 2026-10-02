@@ -313,8 +313,15 @@ _mcp_session_manager_holder: dict = {}
 async def _qma_lifespan(app):
     manager = _mcp_session_manager_holder.get("manager")
     reconcile_task = None
+    treasury_decide_task = None
     if ARC_GATEWAY_INTERNAL_SECRET:
         reconcile_task = asyncio.create_task(_arc_settlement_reconcile_loop())
+    try:
+        decide_interval = int(os.getenv("QMA_TREASURY_DECIDE_INTERVAL_SECONDS", "0"))
+    except (TypeError, ValueError):
+        decide_interval = 0
+    if decide_interval > 0:
+        treasury_decide_task = asyncio.create_task(_treasury_decide_loop())
     try:
         if manager is not None:
             async with manager.run():
@@ -326,6 +333,10 @@ async def _qma_lifespan(app):
             reconcile_task.cancel()
             with suppress(asyncio.CancelledError):
                 await reconcile_task
+        if treasury_decide_task is not None:
+            treasury_decide_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await treasury_decide_task
 
 
 app = FastAPI(
@@ -1197,6 +1208,15 @@ def create_invoice(req: InvoiceRequest):
         invoice["verification_report_hash"] = report_hash
     except Exception as exc:
         logger.debug("Immediate build_provider_report on create_invoice skipped: %s", exc)
+    evidence_url = _genlayer_evidence_url(invoice)
+    target_venue = _genlayer_target_exchange(evidence_url)
+    invoice["evidence_url"] = evidence_url
+    invoice["exchange"] = (invoice.get("query") or {}).get("exchange") or target_venue
+    if isinstance(invoice.get("query"), dict):
+        if not invoice["query"].get("evidence_url"):
+            invoice["query"]["evidence_url"] = evidence_url
+        if not invoice["query"].get("exchange"):
+            invoice["query"]["exchange"] = invoice["exchange"]
     
     state.invoices_db[invoice["invoice_id"]] = invoice
     _save_invoice(invoice)
@@ -1237,6 +1257,8 @@ def create_invoice(req: InvoiceRequest):
         "payment_requirement": requirement,
         "arc_gateway_url": requirement["resource"],
         "split_legs": invoice.get("split", {}).get("legs", []),
+        "evidence_url": evidence_url,
+        "exchange": invoice["exchange"],
     }
 
 
@@ -1960,6 +1982,8 @@ _PUBLIC_VERIFICATION_CLAIMS = (
 
 
 def _genlayer_target_exchange(evidence_url: str) -> str:
+    if "bybit.com" in evidence_url:
+        return "BYBIT"
     if "binance.com" in evidence_url:
         return "Binance"
     if "polymarket.com" in evidence_url:
@@ -2013,6 +2037,7 @@ def _genlayer_evidence_url(invoice):
         "https://gamma-api.polymarket.com/",
         "https://hermes.pyth.network/",
         "https://api.binance.com/",
+        "https://api.bybit.com/",
     )
     if q_url and any(q_url.startswith(prefix) for prefix in allowed_prefixes):
         return q_url
@@ -2025,6 +2050,9 @@ def _genlayer_evidence_url(invoice):
         clean_symbol = f"{clean_symbol[:-4]}_USDT"
 
     exchange = str((invoice.get("query") or {}).get("exchange") or invoice.get("exchange") or "").upper()
+    if exchange == "BYBIT":
+        bybit_sym = clean_symbol.replace("_USDT", "USDT")
+        return f"https://api.bybit.com/v5/market/tickers?category=linear&symbol={bybit_sym}"
     if exchange == "BINANCE":
         binance_sym = clean_symbol.replace("_USDT", "USDT")
         return f"https://api.binance.com/api/v3/ticker/24hr?symbol={binance_sym}"
@@ -2268,6 +2296,34 @@ async def _arc_settlement_reconcile_loop() -> None:
     while True:
         await asyncio.sleep(interval)
         await asyncio.to_thread(reconcile_arc_verdict_settlements_once)
+
+
+async def _treasury_decide_loop() -> None:
+    """Periodic autonomous CFO capital allocation and yield evaluation loop."""
+    try:
+        interval = int(os.getenv("QMA_TREASURY_DECIDE_INTERVAL_SECONDS", "0"))
+    except (TypeError, ValueError):
+        interval = 0
+    if interval <= 0:
+        return
+    while True:
+        try:
+            await asyncio.sleep(interval)
+            from backend.app.services.usyc_treasury import usyc_treasury_service
+            decision_res = await asyncio.to_thread(
+                usyc_treasury_service.evaluate_cfo_decision,
+                execute_if_authorized=False,
+                record_hold=False,
+            )
+            logger.info(
+                "Treasury periodic decide tick evaluated: action=%s amount=%s",
+                decision_res.get("decision"),
+                decision_res.get("amount_usdc"),
+            )
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            logger.exception("Treasury periodic decide loop tick failed")
 
 
 def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
@@ -2659,6 +2715,7 @@ app.include_router(create_platform_router(SimpleNamespace(
     paginate_items=paginate_items,
     payment_wallet_address=PAYMENT_WALLET_ADDRESS,
     summarize_payment_events=_summarize_payment_events,
+    storage_backend=storage_backend,
 )))
 
 app.include_router(create_market_router(SimpleNamespace(

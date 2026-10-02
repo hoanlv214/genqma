@@ -16,6 +16,14 @@ paid_reports.json
 invoices.json
 creator_applications.json
 creator_claims.json
+agent_incidents.json
+agent_sessions.json
+agent_session_events.json
+agent_wallets.json
+earn_vault_positions.json
+euthyna_audit_trail.json
+provider_controls.json
+treasury_policy.json
 private_data/
 data/cache/
 data/full_*.csv
@@ -64,4 +72,7 @@ tmp/
 # Private Grant Application & Confidential Proposal Materials
 grant_application/
 *.grant.md
-docs/private/
+docs/private/
+# local-only working artifacts
+data/*.csv
+scratch/

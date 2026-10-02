@@ -37,16 +37,47 @@ logger = logging.getLogger("QMA-Euthyna-Audit")
 _EUTHYNA_LOCK = threading.Lock()
 
 
+def _get_storage():
+    try:
+        from backend.app.main import storage_backend
+        return storage_backend
+    except Exception:
+        return None
+
+
 class EuthynaAuditEngine:
     """Continuous enterprise audit and regulatory compliance engine."""
 
     def __init__(self, audit_file: Optional[Path] = None):
+        self._custom_audit_file = audit_file is not None
         self._audit_file = audit_file or getattr(settings, "euthyna_audit_path", Path("euthyna_audit_trail.json"))
         self._records: List[Dict[str, Any]] = []
         self._load_records()
 
+    def _is_custom_audit_file(self) -> bool:
+        if getattr(self, "_custom_audit_file", False):
+            return True
+        if self._audit_file is None:
+            return False
+        try:
+            return Path(self._audit_file).resolve() != Path("euthyna_audit_trail.json").resolve()
+        except Exception:
+            return False
+
     def _load_records(self) -> None:
-        """Load persistent audit records from disk."""
+        """Load persistent audit records from disk or storage backend."""
+        if not self._is_custom_audit_file():
+            st = _get_storage()
+            if st and hasattr(st, "load_euthyna_records"):
+                try:
+                    db_recs = st.load_euthyna_records(limit=5000)
+                    if db_recs and isinstance(db_recs, list):
+                        self._records = list(reversed(db_recs))
+                        logger.info(f"[EUTHYNA AUDIT] Loaded {len(self._records)} persistent audit records from storage backend")
+                        return
+                except Exception as exc:
+                    logger.warning(f"[EUTHYNA AUDIT] Could not load records from storage backend: {exc}")
+
         if self._audit_file and self._audit_file.exists():
             try:
                 with open(self._audit_file, "r", encoding="utf-8") as f:
@@ -149,7 +180,17 @@ class EuthynaAuditEngine:
                 }
 
                 self._records.append(entry)
-                self._persist_records()
+                if not self._is_custom_audit_file():
+                    st = _get_storage()
+                    if st and hasattr(st, "save_euthyna_record"):
+                        try:
+                            st.save_euthyna_record(entry)
+                        except Exception as exc:
+                            logger.critical(f"[EUTHYNA AUDIT] Failed to save euthyna record to storage backend: {exc}")
+                            raise
+                else:
+                    self._persist_records()
+
                 logger.info(f"[EUTHYNA AUDIT] Recorded {action} [{status}] for {actor}: {amount_usdc} USDC -> {clean_tx or 'INTERNAL'}")
                 return entry
 
@@ -161,6 +202,22 @@ class EuthynaAuditEngine:
         only_live: bool = False,
     ) -> List[Dict[str, Any]]:
         """Retrieve historical audit trail sorted descending by timestamp."""
+        if not self._is_custom_audit_file():
+            st = _get_storage()
+            if st and hasattr(st, "load_euthyna_records"):
+                try:
+                    db_records = st.load_euthyna_records(
+                        limit=limit,
+                        action_filter=action_filter,
+                        actor_filter=actor_filter,
+                        only_live=only_live,
+                    )
+                    if db_records is not None:
+                        return db_records
+                except Exception as exc:
+                    logger.critical(f"[EUTHYNA AUDIT] Storage backend query failed: {exc}")
+                    raise
+
         with _EUTHYNA_LOCK:
             results = self._records
             if only_live:

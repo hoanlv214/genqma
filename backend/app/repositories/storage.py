@@ -390,3 +390,258 @@ def save_creator_claim_record(storage_backend, creator_claims_path: str, record:
         except Exception as exc:
             logger.warning(f"Could not save local creator claim: {exc}")
             return remote_saved
+
+
+# ---------------------------------------------------------------------------
+# Cryptographic Hash-Chained Ledger & Spending Policy RPCs
+# ---------------------------------------------------------------------------
+
+def append_ledger_entry(
+    storage_backend,
+    *,
+    actor: str,
+    domain: str,
+    action: str,
+    summary: str,
+    detail: dict,
+    body_hash: str,
+    signature: str,
+) -> Optional[dict]:
+    try:
+        if hasattr(storage_backend, "rpc"):
+            return storage_backend.rpc(
+                "append_qma_ledger_event",
+                {
+                    "p_actor": actor,
+                    "p_domain": domain,
+                    "p_action": action,
+                    "p_summary": summary,
+                    "p_detail": detail,
+                    "p_body_hash": body_hash,
+                    "p_signature": signature,
+                },
+            )
+    except Exception as exc:
+        logger.warning(f"Could not append cryptographic ledger entry: {exc}")
+    return None
+
+
+def reserve_agent_wallet_spend(
+    storage_backend,
+    *,
+    wallet_address: str,
+    amount: float,
+    spend_cap: float = 10000.0,
+) -> bool:
+    try:
+        if hasattr(storage_backend, "rpc"):
+            res = storage_backend.rpc(
+                "reserve_agent_wallet_spend",
+                {
+                    "p_wallet_address": wallet_address,
+                    "p_amount": amount,
+                    "p_spend_cap": spend_cap,
+                },
+            )
+            return bool(res)
+    except Exception as exc:
+        logger.warning(f"Could not reserve agent wallet spend: {exc}")
+    return False
+
+
+def release_agent_wallet_spend(
+    storage_backend,
+    *,
+    wallet_address: str,
+    amount: float,
+) -> bool:
+    try:
+        if hasattr(storage_backend, "rpc"):
+            storage_backend.rpc(
+                "release_agent_wallet_spend",
+                {
+                    "p_wallet_address": wallet_address,
+                    "p_amount": amount,
+                },
+            )
+            return True
+    except Exception as exc:
+        logger.warning(f"Could not release agent wallet spend: {exc}")
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Earn Vault Positions
+# ---------------------------------------------------------------------------
+
+def load_earn_vault_positions(storage_backend) -> dict:
+    try:
+        if hasattr(storage_backend, "load_earn_vault_positions"):
+            return storage_backend.load_earn_vault_positions()
+    except Exception as exc:
+        logger.warning(f"Could not load earn vault positions: {exc}")
+    return {}
+
+
+def save_earn_vault_position(storage_backend, position: dict) -> None:
+    try:
+        if hasattr(storage_backend, "save_earn_vault_position"):
+            storage_backend.save_earn_vault_position(position)
+    except Exception as exc:
+        logger.warning(f"Could not save earn vault position: {exc}")
+
+
+def save_earn_vault_positions(storage_backend, positions: dict) -> None:
+    try:
+        if hasattr(storage_backend, "save_earn_vault_positions"):
+            storage_backend.save_earn_vault_positions(positions)
+        elif hasattr(storage_backend, "save_earn_vault_position"):
+            for pos in positions.values():
+                if isinstance(pos, dict):
+                    storage_backend.save_earn_vault_position(pos)
+    except Exception as exc:
+        logger.warning(f"Could not save earn vault positions: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Euthyna Cryptographic Audit Trail
+# ---------------------------------------------------------------------------
+
+def load_euthyna_records(
+    storage_backend,
+    limit: int = 50,
+    action_filter: Optional[str] = None,
+    actor_filter: Optional[str] = None,
+    only_live: bool = False,
+) -> list:
+    try:
+        if hasattr(storage_backend, "load_euthyna_records"):
+            return storage_backend.load_euthyna_records(
+                limit=limit,
+                action_filter=action_filter,
+                actor_filter=actor_filter,
+                only_live=only_live,
+            )
+    except Exception as exc:
+        logger.warning(f"Could not load euthyna records: {exc}")
+    return []
+
+
+def save_euthyna_record(storage_backend, record: dict) -> None:
+    try:
+        if hasattr(storage_backend, "save_euthyna_record"):
+            storage_backend.save_euthyna_record(record)
+    except Exception as exc:
+        logger.warning(f"Could not save euthyna record: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Corporate Treasury Policy
+# ---------------------------------------------------------------------------
+
+def load_treasury_policy(storage_backend, policy_id: str = "default") -> Optional[dict]:
+    try:
+        if hasattr(storage_backend, "load_treasury_policy"):
+            return storage_backend.load_treasury_policy(policy_id=policy_id)
+    except Exception as exc:
+        logger.warning(f"Could not load treasury policy: {exc}")
+    return None
+
+
+def save_treasury_policy(storage_backend, policy: dict, policy_id: str = "default") -> None:
+    try:
+        if hasattr(storage_backend, "save_treasury_policy"):
+            storage_backend.save_treasury_policy(policy, policy_id=policy_id)
+    except Exception as exc:
+        logger.warning(f"Could not save treasury policy: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# High-Performance Analytical Views (Read-Only Offload)
+# ---------------------------------------------------------------------------
+
+def load_traction_daily_view(storage_backend, days: int = 14) -> list:
+    try:
+        if hasattr(storage_backend, "load_traction_daily_view"):
+            return storage_backend.load_traction_daily_view(days=days)
+    except Exception as exc:
+        logger.warning(f"Could not query daily traction view: {exc}")
+    return []
+
+
+def load_platform_metrics_summary_view(storage_backend) -> dict:
+    try:
+        if hasattr(storage_backend, "load_platform_metrics_summary_view"):
+            return storage_backend.load_platform_metrics_summary_view()
+    except Exception as exc:
+        logger.warning(f"Could not query platform metrics summary view: {exc}")
+    return {}
+
+
+def load_payer_leaderboard_view(storage_backend, limit: int = 50) -> list:
+    try:
+        if hasattr(storage_backend, "load_payer_leaderboard_view"):
+            return storage_backend.load_payer_leaderboard_view(limit=limit)
+    except Exception as exc:
+        logger.warning(f"Could not query payer leaderboard view: {exc}")
+    return []
+
+
+def load_provider_revenue_view(storage_backend) -> list:
+    try:
+        if hasattr(storage_backend, "load_provider_revenue_view"):
+            return storage_backend.load_provider_revenue_view()
+    except Exception as exc:
+        logger.warning(f"Could not query provider revenue view: {exc}")
+    return []
+
+
+def load_recent_settled_events(storage_backend, limit: int = 20) -> list:
+    try:
+        if hasattr(storage_backend, "load_recent_settled_events"):
+            return storage_backend.load_recent_settled_events(limit=limit)
+    except Exception as exc:
+        logger.warning(f"Could not load recent settled events: {exc}")
+    return []
+
+
+def load_incidents(storage_backend, limit: int = 500) -> list:
+    try:
+        if hasattr(storage_backend, "load_incidents"):
+            records = storage_backend.load_incidents()
+            if isinstance(records, list):
+                return records[:limit]
+            return []
+    except Exception as exc:
+        logger.warning(f"Could not load incidents: {exc}")
+    return []
+
+
+def save_incident(storage_backend, incident: dict) -> None:
+    try:
+        if hasattr(storage_backend, "save_incident"):
+            storage_backend.save_incident(incident)
+    except Exception as exc:
+        logger.warning(f"Could not save incident: {exc}")
+
+
+def load_earn_vault_positions(storage_backend) -> dict:
+    try:
+        if hasattr(storage_backend, "load_earn_vault_positions"):
+            return storage_backend.load_earn_vault_positions()
+    except Exception as exc:
+        logger.warning(f"Could not load earn vault positions: {exc}")
+    return {}
+
+
+def save_earn_vault_positions(storage_backend, positions: dict) -> None:
+    try:
+        if hasattr(storage_backend, "save_earn_vault_positions"):
+            storage_backend.save_earn_vault_positions(positions)
+    except Exception as exc:
+        logger.warning(f"Could not save earn vault positions: {exc}")
+
+
+
+
+

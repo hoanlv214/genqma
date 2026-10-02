@@ -106,9 +106,10 @@ class Contract(gl.contract.Contract):
             "https://gamma-api.polymarket.com/",
             "https://hermes.pyth.network/",
             "https://api.binance.com/",
+            "https://api.bybit.com/",
         )
         if not any(evidence_url.startswith(prefix) for prefix in ALLOWED_EVIDENCE_PREFIXES):
-            raise gl.vm.UserError("Evidence URL must use an authoritative whitelisted API (MEXC, Polymarket, Pyth, Binance)")
+            raise gl.vm.UserError("Evidence URL must use an authoritative whitelisted API (MEXC, Polymarket, Pyth, Binance, Bybit)")
 
         order = {
             "invoice_id": invoice_id,

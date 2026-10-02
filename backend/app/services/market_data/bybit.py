@@ -79,6 +79,9 @@ class BybitLinearAdapter(MarketDataAdapter):
             "adapter_version": "bybit_linear_v5",
             "openInterestEstimated": False,
             "openInterestMethod": "openInterestValue native",
+            "verifiable": True,
+            "verifiable_exchange": "BYBIT",
+            "evidence_url": f"https://api.bybit.com/v5/market/tickers?category=linear&symbol={raw_symbol}",
             "source_fields": {
                 "nextFundingTime": ticker.get("nextFundingTime"),
                 "fundingIntervalHour": ticker.get("fundingIntervalHour"),

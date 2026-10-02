@@ -4,7 +4,7 @@ Tokens reuse the repo's HMAC access-token format with a dedicated ``mcp``
 scope; PKCE S256 and single-use authorization codes follow the MCP
 authorization spec so Claude/ChatGPT connector flows work unmodified.
 Timestamps are stored as ISO-8601 strings to match the TIMESTAMPTZ columns
-in scripts/migrations/20260826_mcp_oauth.sql.
+in supabase/migrations/0006_mcp_oauth.sql.
 """
 
 import base64
@@ -74,7 +74,7 @@ def _storage_unavailable(exc: RuntimeError) -> HTTPException:
     if "404" in detail or "PGRST205" in detail or "Could not find the table" in detail:
         return HTTPException(
             status_code=503,
-            detail="MCP OAuth storage is not initialized. Apply scripts/migrations/20260826_mcp_oauth.sql in the Supabase SQL editor, then retry.",
+            detail="MCP OAuth storage is not initialized. Apply supabase/migrations/0006_mcp_oauth.sql (20260826_mcp_oauth.sql) or run 'python scripts/apply_migrations.py', then retry.",
         )
     return HTTPException(status_code=503, detail=f"MCP OAuth storage is unavailable: {detail[:200]}")
 

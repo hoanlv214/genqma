@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Body, HTTPException, status, Security
 
 from backend.app.schemas import ChatRequest, ChatResponse
+from backend.app.core.enums import DecisionSource
 from backend.app.core.openapi_responses import documented_errors
 from backend.app.core.security_schemes import qma_access_token_header
 from backend.app.core.x402_spec import build_402_challenge_payload
@@ -170,6 +171,6 @@ Feel free to ask me details about:
 
 Past performance does not guarantee future results."""
 
-        return {"answer": answer, "engine": "heuristic"}
+        return {"answer": answer, "engine": DecisionSource.HEURISTIC.value}
 
     return migrated

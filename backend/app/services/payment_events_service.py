@@ -453,3 +453,97 @@ def load_platform_payment_events(
         for item in load_paid_report_summaries_fn(limit=limit)
     ]
     return merge_payment_sources(report_events)
+
+
+def build_traction_snapshot_from_views(
+    storage,
+    compact_payment_event_fn,
+    *,
+    days: int = 14,
+    recent_limit: int = 20,
+    now: Optional[float] = None,
+) -> Optional[dict]:
+    """Fast-path traction snapshot generated directly from PostgreSQL analytical views.
+    
+    Avoids loading thousands of raw payment events and looping in Python,
+    preventing read/write resource contention.
+    """
+    if not storage or not hasattr(storage, "load_traction_daily_view"):
+        return None
+    try:
+        days = max(1, min(int(days), 30))
+        recent_limit = max(1, min(int(recent_limit), 50))
+        now_value = float(now if now is not None else datetime.now(timezone.utc).timestamp())
+        today = datetime.fromtimestamp(now_value, timezone.utc).date()
+        window_start = today - timedelta(days=days - 1)
+
+        daily_rows = storage.load_traction_daily_view(days=days)
+        summary_row = storage.load_platform_metrics_summary_view() if hasattr(storage, "load_platform_metrics_summary_view") else {}
+        recent_events = storage.load_recent_settled_events(limit=recent_limit) if hasattr(storage, "load_recent_settled_events") else []
+        provider_rows = storage.load_provider_revenue_view() if hasattr(storage, "load_provider_revenue_view") else []
+
+        day_map = {str(r.get("day_bucket")): r for r in (daily_rows or []) if r.get("day_bucket")}
+
+        daily_paid = []
+        daily_settled = []
+        for offset in range(days):
+            d_str = (window_start + timedelta(days=offset)).isoformat()
+            row = day_map.get(d_str, {})
+            tot_rep = int(row.get("total_reports") or 0)
+            tot_vol = float(row.get("total_volume_usdc") or 0.0)
+            set_rep = int(row.get("settled_reports") or 0)
+            set_vol = float(row.get("settled_volume_usdc") or 0.0)
+            daily_paid.append({"date": d_str, "reports": tot_rep, "volume_usdc": round(tot_vol, 6)})
+            daily_settled.append({"date": d_str, "reports": set_rep, "volume_usdc": round(set_vol, 6)})
+
+        tot_paid = int((summary_row or {}).get("total_paid_count") or sum(d["reports"] for d in daily_paid))
+        tot_settled = int((summary_row or {}).get("settled_count") or sum(d["reports"] for d in daily_settled))
+        tot_vol = float((summary_row or {}).get("total_revenue_usdc") or sum(d["volume_usdc"] for d in daily_paid))
+        settled_vol = float((summary_row or {}).get("settled_volume_usdc") or sum(d["volume_usdc"] for d in daily_settled))
+        unique_payers = int((summary_row or {}).get("unique_payers") or 0)
+
+        pending_rep = max(0, tot_paid - tot_settled)
+        pending_vol = round(max(0.0, tot_vol - settled_vol), 6)
+
+        avg_paid = round(tot_vol / tot_paid, 6) if tot_paid else 0.0
+        avg_settled = round(settled_vol / tot_settled, 6) if tot_settled else 0.0
+
+        providers = [
+            {
+                "provider_id": r.get("provider_id"),
+                "provider_name": r.get("provider_id", "").replace("_", " ").title(),
+                "payments": int(r.get("invoice_count") or 0),
+                "revenue_usdc": float(r.get("total_revenue_usdc") or 0.0),
+                "creator_earned_usdc": round(float(r.get("total_revenue_usdc") or 0.0) * 0.8, 6),
+                "platform_fee_usdc": round(float(r.get("total_revenue_usdc") or 0.0) * 0.2, 6),
+                "withdrawal_mode": "direct_gateway_split",
+                "settlement_currency": "USDC",
+            }
+            for r in (provider_rows or [])
+        ]
+
+        return {
+            "summary": {
+                "current_paid_reports": tot_paid,
+                "settled_reports": tot_settled,
+                "pending_batch_reports": pending_rep,
+                "current_revenue_usdc": round(tot_vol, 6),
+                "settled_volume_usdc": round(settled_vol, 6),
+                "pending_batch_volume_usdc": pending_vol,
+                "unique_payers": unique_payers,
+                "average_paid_report_usdc": avg_paid,
+                "average_settled_report_usdc": avg_settled,
+            },
+            "provenance": {
+                "human": {"reports": tot_paid, "volume_usdc": round(tot_vol, 6)},
+                "agent": {"reports": 0, "volume_usdc": 0.0},
+            },
+            "daily_paid": daily_paid,
+            "daily_settled": daily_settled,
+            "providers": providers,
+            "recent_settlements": [compact_payment_event_fn(e) for e in (recent_events or [])[:recent_limit]],
+            "generated_at": now_value,
+        }
+    except Exception:
+        return None
+

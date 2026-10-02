@@ -85,6 +85,8 @@ class MarketDataAdaptersTests(unittest.TestCase):
         self.assertEqual(sig["price"], 0.185)
         self.assertEqual(sig["openInterest"], 150000000.0)
         self.assertEqual(sig["volume24h"], 350000000.0)
+        self.assertEqual(sig["evidence_url"], "https://api.bybit.com/v5/market/tickers?category=linear&symbol=DOGEUSDT")
+        self.assertEqual(sig["verifiable_exchange"], "BYBIT")
 
     def test_okx_canonical_signal(self):
         adapter = OkxSwapAdapter()
@@ -204,6 +206,9 @@ class MarketDataAdaptersTests(unittest.TestCase):
         self.assertIn("MEXC", venue_exchanges)
         # Spread: |-0.0030 - (-0.0090)| = 0.0060
         self.assertAlmostEqual(sol_item["funding_spread"], 0.0060, places=4)
+        # Primary exchange (BYBIT) takes precedence for verifiable evidence URL
+        self.assertEqual(sol_item["verifiable_exchange"], "BYBIT")
+        self.assertEqual(sol_item["evidence_url"], "https://api.bybit.com/v5/market/tickers?category=linear&symbol=SOLUSDT")
 
 
 if __name__ == "__main__":

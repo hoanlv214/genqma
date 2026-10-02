@@ -192,6 +192,10 @@ class JsonStorage:
         self.sessions_path = os.path.join(base_dir, "agent_sessions.json")
         self.wallets_path = os.path.join(base_dir, "agent_wallets.json")
         self.session_events_path = os.path.join(base_dir, "agent_session_events.json")
+        self.incidents_path = os.path.join(base_dir, "agent_incidents.json")
+        self.vault_positions_path = os.path.join(base_dir, "earn_vault_positions.json")
+        self.euthyna_audit_path = os.path.join(base_dir, "euthyna_audit_trail.json")
+        self.treasury_policy_path = os.path.join(base_dir, "treasury_policy.json")
         self._rpc_lock = threading.Lock()
 
     @staticmethod
@@ -564,6 +568,74 @@ class JsonStorage:
                         by_id[sid] = {**existing, **r}
             self._save_json(self.sessions_path, list(by_id.values()))
 
+    def load_incidents(self) -> list:
+        data = self._load_json(self.incidents_path, [])
+        return data if isinstance(data, list) else []
+
+    def save_incident(self, incident: dict) -> None:
+        incidents = self.load_incidents()
+        inc_id = incident.get("incident_id")
+        updated = False
+        for idx, item in enumerate(incidents):
+            if item.get("incident_id") == inc_id:
+                incidents[idx] = incident
+                updated = True
+                break
+        if not updated:
+            incidents.append(incident)
+        self._save_json(self.incidents_path, incidents)
+
+    def save_incidents(self, incidents: list) -> None:
+        self._save_json(self.incidents_path, incidents)
+
+    def load_earn_vault_positions(self) -> dict:
+        data = self._load_json(self.vault_positions_path, {})
+        return data if isinstance(data, dict) else {}
+
+    def save_earn_vault_position(self, position: dict) -> None:
+        positions = self.load_earn_vault_positions()
+        wallet = position.get("wallet")
+        vault_id = position.get("vault_id")
+        key = f"{wallet}:{vault_id}"
+        positions[key] = position
+        self._save_json(self.vault_positions_path, positions)
+
+    def save_earn_vault_positions(self, positions: dict) -> None:
+        self._save_json(self.vault_positions_path, positions)
+
+    def load_euthyna_records(
+        self,
+        limit: int = 50,
+        action_filter: Optional[str] = None,
+        actor_filter: Optional[str] = None,
+        only_live: bool = False,
+    ) -> list:
+        records = self._load_json(self.euthyna_audit_path, [])
+        if not isinstance(records, list):
+            return []
+        results = records
+        if only_live:
+            results = [r for r in results if r.get("tx_hash")]
+        if action_filter:
+            results = [r for r in results if str(r.get("action", "")).lower() == action_filter.lower()]
+        if actor_filter:
+            norm_actor = normalize_address(actor_filter)
+            results = [r for r in results if normalize_address(r.get("actor", "")) == norm_actor]
+        return list(reversed(results))[:limit]
+
+    def save_euthyna_record(self, record: dict) -> None:
+        records = self._load_json(self.euthyna_audit_path, [])
+        if not isinstance(records, list):
+            records = []
+        records.append(record)
+        self._save_json(self.euthyna_audit_path, records)
+
+    def load_treasury_policy(self, policy_id: str = "default") -> Optional[dict]:
+        return self._load_json(self.treasury_policy_path, None)
+
+    def save_treasury_policy(self, policy: dict, policy_id: str = "default") -> None:
+        self._save_json(self.treasury_policy_path, policy)
+
     def _parse_ts(self, val) -> int:
         if not val:
             return 0
@@ -650,6 +722,76 @@ class JsonStorage:
                         self._save_json(self.sessions_path, sessions)
                         return True
                 return False
+
+            elif fn_name in ("append_qma_ledger_event", "append_ledger_entry"):
+                actor = payload.get("p_actor", "agent")
+                domain = payload.get("p_domain", "treasury")
+                action = payload.get("p_action", "settlement")
+                summary = payload.get("p_summary", "")
+                detail = payload.get("p_detail", {})
+                body_hash = payload.get("p_body_hash", "")
+                signature = payload.get("p_signature", "")
+                audit_path = os.path.join(os.path.dirname(self.invoices_path) or ".", "euthyna_audit_trail.json")
+                entries = self._load_json(audit_path, [])
+                if not isinstance(entries, list):
+                    entries = []
+                prev_hash = entries[-1].get("hash") if entries else ("0" * 64)
+                if not prev_hash:
+                    prev_hash = "0" * 64
+                import hashlib
+                comb = f"{prev_hash}{body_hash}{signature}".encode("utf-8")
+                entry_hash = hashlib.sha256(comb).hexdigest()
+                new_entry = {
+                    "seq": len(entries) + 1,
+                    "id": str(int(now * 1000)),
+                    "ts": now,
+                    "actor": actor,
+                    "domain": domain,
+                    "action": action,
+                    "summary": summary,
+                    "detail": detail,
+                    "body_hash": body_hash,
+                    "signature": signature,
+                    "prev_hash": prev_hash,
+                    "hash": entry_hash,
+                }
+                entries.append(new_entry)
+                self._save_json(audit_path, entries)
+                return new_entry
+
+            elif fn_name == "reserve_agent_wallet_spend":
+                addr = normalize_address(payload.get("p_wallet_address"))
+                amt = float(payload.get("p_amount", 0) or 0)
+                cap = float(payload.get("p_spend_cap", 10000) or 10000)
+                wallets = self._load_json(self.wallets_path, [])
+                if not isinstance(wallets, list):
+                    wallets = []
+                for w in wallets:
+                    if normalize_address(w.get("address")) == addr:
+                        bal = float(w.get("balance_usdc", 0) or 0)
+                        spent = float(w.get("spent_usdc", 0) or 0)
+                        if round(spent + amt, 6) <= cap and bal >= amt:
+                            w["spent_usdc"] = round(spent + amt, 6)
+                            w["balance_usdc"] = round(bal - amt, 6)
+                            self._save_json(self.wallets_path, wallets)
+                            return True
+                        return False
+                return False
+
+            elif fn_name == "release_agent_wallet_spend":
+                addr = normalize_address(payload.get("p_wallet_address"))
+                amt = float(payload.get("p_amount", 0) or 0)
+                wallets = self._load_json(self.wallets_path, [])
+                if isinstance(wallets, list):
+                    for w in wallets:
+                        if normalize_address(w.get("address")) == addr:
+                            spent = float(w.get("spent_usdc", 0) or 0)
+                            bal = float(w.get("balance_usdc", 0) or 0)
+                            w["spent_usdc"] = max(0.0, round(spent - amt, 6))
+                            w["balance_usdc"] = round(bal + amt, 6)
+                            self._save_json(self.wallets_path, wallets)
+                            return True
+                return True
 
             return None
 
@@ -1127,6 +1269,88 @@ class SupabaseStorage:
             "control": control,
         }], "provider_id")
 
+    def load_incidents(self) -> list:
+        try:
+            rows = self._request("GET", "agent_incidents", params={"order": "created_at.asc", "limit": "1000"}) or []
+            return [r.get("incident") or r for r in rows]
+        except Exception as exc:
+            logger.warning(f"Could not load incidents from Supabase: {exc}")
+            raise
+
+    def save_incident(self, incident: dict) -> None:
+        try:
+            self._upsert("agent_incidents", [incident], "incident_id")
+        except Exception as exc:
+            logger.warning(f"Could not save incident to Supabase: {exc}")
+            raise
+
+    def load_earn_vault_positions(self) -> dict:
+        try:
+            rows = self._request("GET", "earn_vault_positions", params={"limit": "1000"}) or []
+            positions = {}
+            for r in rows:
+                key = f"{r.get('wallet')}:{r.get('vault_id')}"
+                positions[key] = r
+            return positions
+        except Exception as exc:
+            logger.warning(f"Could not load earn vault positions from Supabase: {exc}")
+            return {}
+
+    def save_earn_vault_position(self, position: dict) -> None:
+        try:
+            key = f"{position.get('wallet')}:{position.get('vault_id')}"
+            row = dict(position)
+            row["position_id"] = key
+            self._upsert("earn_vault_positions", [row], "position_id")
+        except Exception as exc:
+            logger.warning(f"Could not save earn vault position to Supabase: {exc}")
+
+    def save_earn_vault_positions(self, positions: dict) -> None:
+        for pos in positions.values():
+            if isinstance(pos, dict):
+                self.save_earn_vault_position(pos)
+
+    def load_euthyna_records(
+        self,
+        limit: int = 50,
+        action_filter: Optional[str] = None,
+        actor_filter: Optional[str] = None,
+        only_live: bool = False,
+    ) -> list:
+        try:
+            params = {"order": "created_at.desc", "limit": str(limit)}
+            if only_live:
+                params["tx_hash"] = "neq."
+            if action_filter:
+                params["action"] = f"eq.{action_filter}"
+            if actor_filter:
+                params["actor"] = f"eq.{normalize_address(actor_filter)}"
+            return self._request("GET", "euthyna_audit_trail", params=params) or []
+        except Exception as exc:
+            logger.warning(f"Could not load euthyna records from Supabase: {exc}")
+            raise
+
+    def save_euthyna_record(self, record: dict) -> None:
+        try:
+            self._upsert("euthyna_audit_trail", [record], "record_id")
+        except Exception as exc:
+            logger.warning(f"Could not save euthyna record to Supabase: {exc}")
+            raise
+
+    def load_treasury_policy(self, policy_id: str = "default") -> Optional[dict]:
+        try:
+            rows = self._request("GET", "qma_treasury_policy", params={"policy_id": f"eq.{policy_id}"}) or []
+            return rows[0].get("policy") if rows else None
+        except Exception as exc:
+            logger.warning(f"Could not load treasury policy from Supabase: {exc}")
+            return None
+
+    def save_treasury_policy(self, policy: dict, policy_id: str = "default") -> None:
+        try:
+            self._upsert("qma_treasury_policy", [{"policy_id": policy_id, "policy": policy}], "policy_id")
+        except Exception as exc:
+            logger.warning(f"Could not save treasury policy to Supabase: {exc}")
+
 
 class PostgresStorage:
     """Native PostgreSQL storage engine for QMA."""
@@ -1161,7 +1385,12 @@ class PostgresStorage:
         self.session_events_path = "agent_session_events.json"
 
     def _load_json(self, path: str, fallback):
-        table = "agent_sessions" if "session" in str(path) else "agent_wallets" if "wallet" in str(path) else None
+        table = (
+            "agent_session_events" if "session_event" in str(path)
+            else "agent_sessions" if "session" in str(path)
+            else "agent_wallets" if "wallet" in str(path)
+            else None
+        )
         if table:
             rows = self.execute_query(f'SELECT * FROM public."{table}";', fetch_all=True) or []
             return list(rows)
@@ -1172,10 +1401,16 @@ class PostgresStorage:
             return fallback
 
     def _save_json(self, path: str, data):
-        table = "agent_sessions" if "session" in str(path) else "agent_wallets" if "wallet" in str(path) else None
+        table = (
+            "agent_session_events" if "session_event" in str(path)
+            else "agent_sessions" if "session" in str(path)
+            else "agent_wallets" if "wallet" in str(path)
+            else None
+        )
         if table and isinstance(data, list):
-            conflict = "id" if table == "agent_sessions" else "address"
+            conflict = "id" if table in ("agent_sessions", "agent_session_events") else "address"
             self._upsert(table, data, conflict)
+            return
         try:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
@@ -1602,6 +1837,320 @@ class PostgresStorage:
         except Exception:
             return []
 
+    def load_incidents(self) -> list:
+        try:
+            rows = self.execute_query(
+                "SELECT incident FROM public.agent_incidents ORDER BY created_at ASC LIMIT 1000;",
+                fetch_all=True
+            ) or []
+            res = []
+            for r in rows:
+                inc = r.get("incident")
+                if isinstance(inc, str):
+                    try:
+                        inc = json.loads(inc)
+                    except Exception:
+                        continue
+                if isinstance(inc, dict):
+                    res.append(inc)
+            return res
+        except Exception as exc:
+            logger.warning(f"Could not load incidents from Postgres: {exc}")
+            raise
+
+    def save_incident(self, incident: dict) -> None:
+        inc_id = incident.get("incident_id")
+        if not inc_id:
+            return
+        sess_id = incident.get("session_id")
+        trace_id = incident.get("trace_id")
+        sev = incident.get("severity", "P3_INFO")
+        status = incident.get("status", "OPEN")
+        cat = incident.get("category")
+        rule = incident.get("rule")
+        details = incident.get("details")
+        fin_ctx = incident.get("financial_context") or {}
+        actor_type = incident.get("actor_type")
+        actor_addr = incident.get("actor_address")
+        euthyna_hash = incident.get("euthyna_hash")
+        admin_note = incident.get("admin_note")
+        try:
+            self.execute_query(
+                """
+                INSERT INTO public.agent_incidents (
+                    incident_id, session_id, trace_id, severity, status, category, rule,
+                    details, financial_context, actor_type, actor_address, euthyna_hash,
+                    admin_note, incident, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (incident_id) DO UPDATE SET
+                    status = EXCLUDED.status,
+                    admin_note = EXCLUDED.admin_note,
+                    resolved_at = CASE WHEN EXCLUDED.status = 'RESOLVED' THEN NOW() ELSE public.agent_incidents.resolved_at END,
+                    incident = EXCLUDED.incident;
+                """,
+                (
+                    inc_id, sess_id, trace_id, sev, status, cat, rule,
+                    details, PgJson(fin_ctx), actor_type, actor_addr, euthyna_hash,
+                    admin_note, PgJson(incident)
+                )
+            )
+        except Exception as exc:
+            logger.warning(f"Could not save incident to Postgres: {exc}")
+            raise
+
+    def load_earn_vault_positions(self) -> dict:
+        try:
+            rows = self.execute_query(
+                "SELECT wallet, vault_id, vault_address, shares, principal_usdc, last_deposit_at, last_rebalance_at, metadata FROM public.earn_vault_positions;",
+                fetch_all=True
+            ) or []
+            positions = {}
+            for r in rows:
+                w = r.get("wallet")
+                v = r.get("vault_id")
+                if not w or not v:
+                    continue
+                key = f"{w}:{v}"
+                dep_at = r.get("last_deposit_at")
+                reb_at = r.get("last_rebalance_at")
+                positions[key] = {
+                    "wallet": w,
+                    "vault_id": v,
+                    "vaultAddress": r.get("vault_address"),
+                    "shares": float(r.get("shares") or 0.0),
+                    "principal_usdc": float(r.get("principal_usdc") or 0.0),
+                    "last_deposit_at": dep_at.timestamp() if hasattr(dep_at, "timestamp") else dep_at,
+                    "last_rebalance_at": reb_at.timestamp() if hasattr(reb_at, "timestamp") else reb_at,
+                    "metadata": r.get("metadata") or {},
+                }
+            return positions
+        except Exception as exc:
+            logger.warning(f"Could not load earn positions from Postgres: {exc}")
+            return {}
+
+    def save_earn_vault_position(self, position: dict) -> None:
+        w = position.get("wallet")
+        v = position.get("vault_id")
+        if not w or not v:
+            return
+        key = f"{w}:{v}"
+        v_addr = position.get("vaultAddress")
+        shares = float(position.get("shares") or 0.0)
+        princ = float(position.get("principal_usdc") or 0.0)
+        dep_at = position.get("last_deposit_at")
+        reb_at = position.get("last_rebalance_at")
+        meta = position.get("metadata") or {}
+        try:
+            self.execute_query(
+                """
+                INSERT INTO public.earn_vault_positions (
+                    position_id, wallet, vault_id, vault_address, shares, principal_usdc,
+                    last_deposit_at, last_rebalance_at, metadata, updated_at
+                ) VALUES (
+                    %s, %s, %s, %s, %s, %s,
+                    CASE WHEN %s::double precision > 0 THEN to_timestamp(%s::double precision) ELSE NULL END,
+                    CASE WHEN %s::double precision > 0 THEN to_timestamp(%s::double precision) ELSE NULL END,
+                    %s, NOW()
+                )
+                ON CONFLICT (wallet, vault_id) DO UPDATE SET
+                    vault_address = EXCLUDED.vault_address,
+                    shares = EXCLUDED.shares,
+                    principal_usdc = EXCLUDED.principal_usdc,
+                    last_deposit_at = EXCLUDED.last_deposit_at,
+                    last_rebalance_at = EXCLUDED.last_rebalance_at,
+                    metadata = EXCLUDED.metadata,
+                    updated_at = NOW();
+                """,
+                (
+                    key, w, v, v_addr, shares, princ,
+                    float(dep_at or 0), float(dep_at or 0),
+                    float(reb_at or 0), float(reb_at or 0),
+                    PgJson(meta)
+                )
+            )
+        except Exception as exc:
+            logger.warning(f"Could not save earn position to Postgres: {exc}")
+
+    def save_earn_vault_positions(self, positions: dict) -> None:
+        for pos in positions.values():
+            if isinstance(pos, dict):
+                self.save_earn_vault_position(pos)
+
+    # ---------------------------------------------------------------------------
+    # Euthyna Cryptographic Audit Trail
+    # ---------------------------------------------------------------------------
+    def load_euthyna_records(
+        self,
+        limit: int = 50,
+        action_filter: Optional[str] = None,
+        actor_filter: Optional[str] = None,
+        only_live: bool = False,
+    ) -> list:
+        try:
+            where_clauses = []
+            params = []
+            if only_live:
+                where_clauses.append("tx_hash IS NOT NULL AND tx_hash != ''")
+            if action_filter:
+                where_clauses.append("LOWER(action) = LOWER(%s)")
+                params.append(action_filter)
+            if actor_filter:
+                where_clauses.append("LOWER(actor) = LOWER(%s)")
+                params.append(actor_filter)
+
+            where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+            sql = f"""
+                SELECT record_id, previous_hash, timestamp, action, actor,
+                       amount_usdc::float, treasury_liquid_before::float, treasury_liquid_after::float,
+                       usyc_vault_shares::float, tx_hash, arcscan_url, policy_rule_applied,
+                       cfo_reasoning, provider_id, genlayer_consensus, integrity_hash, status
+                FROM public.euthyna_audit_trail
+                {where_sql}
+                ORDER BY sequence_id DESC
+                LIMIT %s;
+            """
+            params.append(limit)
+            rows = self.execute_query(sql, tuple(params), fetch_all=True) or []
+            return [dict(r) for r in rows]
+        except Exception as exc:
+            logger.warning(f"Could not load euthyna records from Postgres: {exc}")
+            raise
+
+    def save_euthyna_record(self, record: dict) -> None:
+        rec_id = record.get("record_id")
+        if not rec_id:
+            return
+        try:
+            self.execute_query(
+                """
+                INSERT INTO public.euthyna_audit_trail (
+                    record_id, previous_hash, timestamp, action, actor, amount_usdc,
+                    treasury_liquid_before, treasury_liquid_after, usyc_vault_shares,
+                    tx_hash, arcscan_url, policy_rule_applied, cfo_reasoning,
+                    provider_id, genlayer_consensus, integrity_hash, status, created_at
+                ) VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW()
+                )
+                ON CONFLICT (record_id) DO NOTHING;
+                """,
+                (
+                    rec_id,
+                    record.get("previous_hash"),
+                    record.get("timestamp"),
+                    record.get("action", "UNKNOWN"),
+                    record.get("actor", "0x0000000000000000000000000000000000000000"),
+                    float(record.get("amount_usdc") or 0.0),
+                    float(record.get("treasury_liquid_before") or 0.0),
+                    float(record.get("treasury_liquid_after") or 0.0),
+                    float(record.get("usyc_vault_shares") or 0.0),
+                    record.get("tx_hash"),
+                    record.get("arcscan_url"),
+                    record.get("policy_rule_applied"),
+                    record.get("cfo_reasoning"),
+                    record.get("provider_id"),
+                    record.get("genlayer_consensus"),
+                    record.get("integrity_hash"),
+                    record.get("status"),
+                )
+            )
+        except Exception as exc:
+            logger.warning(f"Could not save euthyna record to Postgres: {exc}")
+            raise
+
+    # ---------------------------------------------------------------------------
+    # Corporate Treasury Policy
+    # ---------------------------------------------------------------------------
+    def load_treasury_policy(self, policy_id: str = "default") -> Optional[dict]:
+        try:
+            row = self.execute_query(
+                "SELECT policy FROM public.qma_treasury_policy WHERE policy_id = %s;",
+                (policy_id,),
+                fetch_one=True
+            )
+            return row.get("policy") if row else None
+        except Exception as exc:
+            logger.warning(f"Could not load treasury policy from Postgres: {exc}")
+            return None
+
+    def save_treasury_policy(self, policy: dict, policy_id: str = "default") -> None:
+        try:
+            self.execute_query(
+                """
+                INSERT INTO public.qma_treasury_policy (policy_id, policy, updated_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (policy_id) DO UPDATE SET policy = EXCLUDED.policy, updated_at = NOW();
+                """,
+                (policy_id, PgJson(policy))
+            )
+        except Exception as exc:
+            logger.warning(f"Could not save treasury policy to Postgres: {exc}")
+
+    # ---------------------------------------------------------------------------
+    # High-Performance Analytical Views (Read-Only Offload)
+    # ---------------------------------------------------------------------------
+    def load_traction_daily_view(self, days: int = 14) -> list:
+        try:
+            rows = self.execute_query(
+                "SELECT * FROM public.v_platform_traction_daily LIMIT %s;",
+                (days,),
+                fetch_all=True
+            ) or []
+            return [dict(r) for r in rows]
+        except Exception as exc:
+            logger.warning(f"Could not query v_platform_traction_daily: {exc}")
+            return []
+
+    def load_platform_metrics_summary_view(self) -> dict:
+        try:
+            row = self.execute_query(
+                "SELECT * FROM public.v_platform_metrics_summary;",
+                fetch_one=True
+            )
+            return dict(row) if row else {}
+        except Exception as exc:
+            logger.warning(f"Could not query v_platform_metrics_summary: {exc}")
+            return {}
+
+    def load_payer_leaderboard_view(self, limit: int = 50) -> list:
+        try:
+            rows = self.execute_query(
+                "SELECT * FROM public.v_payer_traction_leaderboard LIMIT %s;",
+                (limit,),
+                fetch_all=True
+            ) or []
+            return [dict(r) for r in rows]
+        except Exception as exc:
+            logger.warning(f"Could not query v_payer_traction_leaderboard: {exc}")
+            return []
+
+    def load_provider_revenue_view(self) -> list:
+        try:
+            rows = self.execute_query(
+                "SELECT * FROM public.v_provider_revenue_breakdown;",
+                fetch_all=True
+            ) or []
+            return [dict(r) for r in rows]
+        except Exception as exc:
+            logger.warning(f"Could not query v_provider_revenue_breakdown: {exc}")
+            return []
+
+    def load_recent_settled_events(self, limit: int = 20) -> list:
+        try:
+            rows = self.execute_query(
+                """
+                SELECT event FROM public.qma_payment_events
+                WHERE (gateway_status IN ('SETTLED', 'COMPLETED', 'completed', 'ACCEPTED', 'accepted') OR transaction_hash IS NOT NULL)
+                ORDER BY paid_at DESC NULLS LAST, created_at DESC
+                LIMIT %s;
+                """,
+                (limit,),
+                fetch_all=True
+            ) or []
+            return [r["event"] for r in rows if "event" in r]
+        except Exception as exc:
+            logger.warning(f"Could not load recent settled events from Postgres: {exc}")
+            return []
+
     def save_creator_claim(self, record: dict) -> None:
         try:
             self._upsert("qma_creator_claims", [{
@@ -1628,11 +2177,74 @@ class PostgresStorage:
         return result
 
     def reserve_withdrawal(self, operation_id: str, operation: dict) -> dict:
+        try:
+            row = self.execute_query(
+                "SELECT operation FROM public.qma_withdrawals WHERE operation_id = %s;",
+                (operation_id,),
+                fetch_one=True
+            )
+            if row and "operation" in row:
+                op = row["operation"]
+                if isinstance(op, str):
+                    try:
+                        op = json.loads(op)
+                    except Exception:
+                        pass
+                if isinstance(op, dict):
+                    return op
+        except Exception as exc:
+            logger.warning(f"Could not load withdrawal from Postgres: {exc}")
+
+        wallet_address = operation.get("wallet_address") or operation.get("address")
+        amount = float(operation.get("amount_usdc") or operation.get("amount") or 0.0)
+        try:
+            self.execute_query(
+                """
+                INSERT INTO public.qma_withdrawals (operation_id, wallet_address, amount_usdc, operation, created_at)
+                VALUES (%s, %s, %s, %s, NOW())
+                ON CONFLICT (operation_id) DO NOTHING;
+                """,
+                (operation_id, wallet_address, amount, PgJson(operation) if PgJson else json.dumps(operation))
+            )
+            row = self.execute_query(
+                "SELECT operation FROM public.qma_withdrawals WHERE operation_id = %s;",
+                (operation_id,),
+                fetch_one=True
+            )
+            if row and "operation" in row:
+                op = row["operation"]
+                if isinstance(op, str):
+                    try:
+                        op = json.loads(op)
+                    except Exception:
+                        pass
+                if isinstance(op, dict):
+                    return op
+        except Exception as exc:
+            logger.warning(f"Could not reserve withdrawal in Postgres: {exc}")
+
         if not hasattr(self, "_withdrawals"):
             self._withdrawals = {}
         return self._withdrawals.setdefault(operation_id, operation)
 
     def save_withdrawal(self, operation_id: str, operation: dict) -> None:
+        wallet_address = operation.get("wallet_address") or operation.get("address")
+        amount = float(operation.get("amount_usdc") or operation.get("amount") or 0.0)
+        try:
+            self.execute_query(
+                """
+                INSERT INTO public.qma_withdrawals (operation_id, wallet_address, amount_usdc, operation, created_at)
+                VALUES (%s, %s, %s, %s, NOW())
+                ON CONFLICT (operation_id) DO UPDATE SET
+                    wallet_address = EXCLUDED.wallet_address,
+                    amount_usdc = EXCLUDED.amount_usdc,
+                    operation = EXCLUDED.operation;
+                """,
+                (operation_id, wallet_address, amount, PgJson(operation) if PgJson else json.dumps(operation))
+            )
+        except Exception as exc:
+            logger.warning(f"Could not save withdrawal in Postgres: {exc}")
+
         if not hasattr(self, "_withdrawals"):
             self._withdrawals = {}
         self._withdrawals[operation_id] = operation
@@ -1825,6 +2437,72 @@ class PostgresStorage:
                     )
                     conn.commit()
                     return True
+                elif fn_name in ("append_qma_ledger_event", "append_ledger_entry"):
+                    actor = payload.get("p_actor", "agent")
+                    domain = payload.get("p_domain", "treasury")
+                    action = payload.get("p_action", "settlement")
+                    summary = payload.get("p_summary", "")
+                    detail = PgJson(payload.get("p_detail", {})) if PgJson else json.dumps(payload.get("p_detail", {}))
+                    body_hash = payload.get("p_body_hash", "")
+                    signature = payload.get("p_signature", "")
+                    cur.execute(
+                        "SELECT * FROM public.append_qma_ledger_event(%s, %s, %s, %s, %s, %s, %s);",
+                        (actor, domain, action, summary, detail, body_hash, signature)
+                    )
+                    conn.commit()
+                    res = cur.fetchone()
+                    return dict(res) if res else None
+                elif fn_name == "reserve_agent_wallet_spend":
+                    addr = payload.get("p_wallet_address")
+                    amt = payload.get("p_amount", 0)
+                    cap = payload.get("p_spend_cap", 10000)
+                    cur.execute(
+                        "SELECT public.reserve_agent_wallet_spend(%s, %s, %s);",
+                        (addr, amt, cap)
+                    )
+                    conn.commit()
+                    res = cur.fetchone()
+                    return bool(res and list(res.values())[0]) if isinstance(res, dict) else bool(res and res[0])
+                elif fn_name == "release_agent_wallet_spend":
+                    addr = payload.get("p_wallet_address")
+                    amt = payload.get("p_amount", 0)
+                    cur.execute(
+                        "SELECT public.release_agent_wallet_spend(%s, %s);",
+                        (addr, amt)
+                    )
+                    conn.commit()
+                    return True
+                elif fn_name == "checkpoint_session_tick":
+                    sid = payload.get("p_session_id") or payload.get("session_id")
+                    worker_id = payload.get("p_worker_id") or payload.get("worker_id") or "worker_1"
+                    run_gen = int(payload.get("p_run_generation") or payload.get("run_generation") or 1)
+                    st = payload.get("p_status") or payload.get("status") or "running"
+                    rs = payload.get("p_runtime_state") if "p_runtime_state" in payload else payload.get("runtime_state", {})
+                    rs_json = PgJson(rs) if PgJson else json.dumps(rs)
+                    next_sec = int(payload.get("p_next_run_in_sec") or payload.get("next_run_in_sec") or 15)
+                    cur.execute(
+                        "SELECT public.checkpoint_session_tick(%s, %s, %s, %s, %s, %s);",
+                        (sid, worker_id, run_gen, st, rs_json, next_sec)
+                    )
+                    conn.commit()
+                    res = cur.fetchone()
+                    return bool(res and list(res.values())[0]) if isinstance(res, dict) else bool(res and res[0])
+                elif fn_name == "reclaim_expired_leases":
+                    try:
+                        cur.execute("SELECT public.reclaim_expired_leases();")
+                        conn.commit()
+                        res = cur.fetchone()
+                        val = list(res.values())[0] if isinstance(res, dict) else (res[0] if res else 0)
+                        return int(val or 0)
+                    except Exception:
+                        conn.rollback()
+                        cur.execute(
+                            "UPDATE public.agent_sessions SET lease_owner = NULL, lease_expires_at = NULL, updated_at = NOW() "
+                            "WHERE lease_owner IS NOT NULL AND lease_expires_at < NOW() AND status NOT IN ('completed', 'failed', 'stopped');"
+                        )
+                        count = cur.rowcount
+                        conn.commit()
+                        return int(count or 0)
                 return None
         finally:
             self.put_connection(conn)
@@ -1838,20 +2516,18 @@ def create_storage_backend(
     creators_path: str,
     provider_controls_path: str,
 ):
-    storage_backend = os.getenv("QMA_STORAGE_BACKEND", "").lower()
+    """Factory to instantiate the appropriate persistence storage backend.
+
+    Selection hierarchy:
+    1. QMA_STORAGE_BACKEND == "json" -> JsonStorage (for testing and local offline suites).
+    2. QMA_STORAGE_BACKEND == "postgres" or database URL configured -> PostgresStorage.
+       Fails loudly (RuntimeError) if psycopg2 is missing, DB is unreachable, or URL is empty.
+    3. Otherwise -> raises RuntimeError requiring DATABASE_URL or explicit QMA_STORAGE_BACKEND=json.
+    """
+    storage_backend = os.getenv("QMA_STORAGE_BACKEND", "").lower().strip()
     database_url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or os.getenv("QMA_DATABASE_URL")
 
-    # Priority 1: PostgreSQL if configured
-    if (database_url and storage_backend != "json") or storage_backend == "postgres":
-        if database_url:
-            try:
-                return PostgresStorage(database_url)
-            except Exception as exc:
-                logger.warning(f"Could not connect to Postgres database ({exc}), falling back.")
-        else:
-            logger.warning("QMA_STORAGE_BACKEND=postgres requested but DATABASE_URL is not set.")
-
-    # Priority 2: Explicit JSON
+    # Priority 1: Explicit JSON (tests only)
     if storage_backend == "json":
         return JsonStorage(
             ledger_path=ledger_path,
@@ -1861,18 +2537,22 @@ def create_storage_backend(
             provider_controls_path=provider_controls_path,
         )
 
-    # Priority 3: Supabase REST
-    supabase_url = os.getenv("SUPABASE_URL") or os.getenv("QMA_SUPABASE_URL")
-    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("QMA_SUPABASE_SERVICE_ROLE_KEY")
-    schema = os.getenv("SUPABASE_SCHEMA", "public")
-    if supabase_url and service_key:
-        return SupabaseStorage(url=supabase_url, service_role_key=service_key, schema=schema)
+    # Priority 2: PostgreSQL (production target)
+    if storage_backend == "postgres" or database_url:
+        if not database_url:
+            raise RuntimeError(
+                "QMA_STORAGE_BACKEND=postgres requested but DATABASE_URL (or POSTGRES_URL / QMA_DATABASE_URL) is not set."
+            )
+        try:
+            return PostgresStorage(database_url)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to initialize PostgresStorage: {exc}. Ensure psycopg2 is installed, "
+                "DATABASE_URL is set, and the PostgreSQL database is reachable."
+            ) from exc
 
-    # Default fallback: JsonStorage
-    return JsonStorage(
-        ledger_path=ledger_path,
-        reports_path=reports_path,
-        invoices_path=invoices_path,
-        creators_path=creators_path,
-        provider_controls_path=provider_controls_path,
+    # Priority 3: Otherwise fail-fast (no silent fallback)
+    raise RuntimeError(
+        "Local PostgreSQL storage requires DATABASE_URL, POSTGRES_URL, or QMA_DATABASE_URL to be set, "
+        "or explicit QMA_STORAGE_BACKEND=json for tests."
     )
