@@ -9,7 +9,7 @@ from backend.app.services.laya_decision import LayaDecisionEngine, predict_laya_
 
 class FakeProvider:
     def quote_price(self, query, tier):
-        return {"amount_usdc": 0.001 if tier == "preview" else 0.005}
+        return {"amount_usdc": 0.002 if tier == "preview" else 0.005}
 
 
 class FakeRegistry:
@@ -59,7 +59,7 @@ class LayaDecisionTests(unittest.TestCase):
     def test_laya_english_purchase_decision(self):
         candidates = [
             {"candidate_id": "cand-btc", "provider_id": "funding_memory", "symbol": "BTC", "score": 92.5, "agent_price": 0.005},
-            {"candidate_id": "cand-eth", "provider_id": "funding_memory", "symbol": "ETH", "score": 75.0, "agent_price": 0.001},
+            {"candidate_id": "cand-eth", "provider_id": "funding_memory", "symbol": "ETH", "score": 75.0, "agent_price": 0.002},
         ]
         plan = predict_laya_plan(
             prompt="I need to purchase the highest scoring BTC intelligence report",

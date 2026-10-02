@@ -26,7 +26,7 @@ def test_extensible_list_items_preserve_unknown_runtime_fields():
         return [{
             "payer_address": "0x1111111111111111111111111111111111111111",
             "payments": 1,
-            "spent_usdc": 0.001,
+            "spent_usdc": 0.002,
             "symbols": ["B3"],
             "providers": ["funding_memory"],
             "preview_count": 1,

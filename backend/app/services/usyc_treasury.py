@@ -990,7 +990,7 @@ class USYCTreasuryService:
         total_assets = liquid + usyc_assets
         daily_yield_rate = (1.0 + self.target_apy) ** (1.0 / 365.0) - 1.0
         projected_yield_earned = usyc_assets * daily_yield_rate * horizon_days
-        safety_buffer_ratio = round(total_assets / max(bills, 0.001), 2)
+        safety_buffer_ratio = round(total_assets / max(bills, 0.002), 2)
         required_reserve = max(policy.min_operating_reserve_usdc, bills * policy.target_safety_buffer_ratio)
 
         # Optional LLM proposal tier (stage active ONLY when env QMA_CFO_LLM_ENABLED=1 and API key is present)

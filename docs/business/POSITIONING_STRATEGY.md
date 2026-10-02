@@ -57,7 +57,7 @@ The platform resolves this by establishing an open, two-sided protocol:
                              │
             1. Discover Live Anomaly Signals (Free)
             2. Request Specific Provider Report
-            3. Pay Per Query ($0.001 - $0.01 USDC) via x402
+            3. Pay Per Query ($0.002 - $0.01 USDC) via x402
             4. Receive Cryptographically Verified Intel
                              │
  ┌───────────────────────────┴────────────────────────────┐
@@ -73,7 +73,7 @@ The platform resolves this by establishing an open, two-sided protocol:
 - **Quality Accountability:** Providers stake capital or reputation. If a provider supplies falsified or deviating market data, GenLayer consensus slashes their stake.
 
 ### B. Demand Side: Autonomous Agents & Algorithmic Buyers
-- **Zero-Subscription Pay-Per-Query:** Agents pay per query ($0.001000 - $0.010000 USDC) directly over HTTP via Circle Gateway x402 / MPP headers. No API keys, no monthly credit cards, no pre-funded SaaS accounts.
+- **Zero-Subscription Pay-Per-Query:** Agents pay per query ($0.002000 - $0.010000 USDC) directly over HTTP via Circle Gateway x402 / MPP headers. No API keys, no monthly credit cards, no pre-funded SaaS accounts.
 - **Deterministic Spending Guardrails:** Agents operate under strict local and server-validated spending policies (`GET /api/v1/agent/spending-policy`): per-tx cap, daily cap, hourly budget, and allowed provider filters.
 - **Open Discovery Standards:** Fully compliant with **ERC-8004** (`/.well-known/agent.json`), **Circle Agent Marketplace** (`/.well-known/circle-service.json`), and **ERC-8183** Escrowed Task Dispatch (`POST /api/v1/agent/jobs`).
 

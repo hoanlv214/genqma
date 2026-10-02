@@ -34,7 +34,7 @@ introduction and marketing; the workspace is pure transaction:
 | :-- | :-- |
 | Signal card grid | Every ranked signal with its basic facts (funding, edge rating, volume, AI score, price) |
 | Card click | Jumps straight to the paywall for the suggested tier — the normal purchase flow |
-| Card actions | `Preview $0.001` · `Full $0.005` · `⚡ Auto` (opens the agent modal). Owned cards show `Open Report` + `Auto` instead |
+| Card actions | `Preview $0.002` · `Full $0.005` · `⚡ Auto` (opens the agent modal). Owned cards show `Open Report` + `Auto` instead |
 | Unlocked report | Renders above the grid after purchase / when an owned report is opened |
 | Trust line | "Verified on Arc… audit trail and payment receipt." — the only non-transaction element |
 

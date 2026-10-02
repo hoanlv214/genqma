@@ -90,7 +90,7 @@ a delivered but unpaid report.
 **Recommendation:** This is an explicit design trade-off (speed vs. finality)
 documented in PAYMENT_FLOW.md. For production, set `REQUIRE_COMPLETED_SETTLEMENT=true`
 for Full Report tier (price ≥ $0.005), and consider leaving it `false` only for
-Preview tier (price = $0.001). Document this in the provider agreement.
+Preview tier (price = $0.002). Document this in the provider agreement.
 
 ---
 

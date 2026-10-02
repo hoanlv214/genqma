@@ -99,7 +99,7 @@ Returns provider metadata plus creator-facing stats:
       "provider_name": "Funding Memory Provider",
       "status": "approved",
       "pricing": {
-        "preview": {"amount_usdc": 0.001},
+        "preview": {"amount_usdc": 0.002},
         "full": {"amount_usdc": 0.005}
       }
     }

@@ -7,8 +7,8 @@
   "payment_rail": "x402",
   "currency": "USDC",
   "pricing": {
-    "funding_memory": "0.001",
-    "oi_memory": "0.001",
+    "funding_memory": "0.002",
+    "oi_memory": "0.002",
     "polymarket_divergence": "0.002",
     "pyth_stress_band": "0.003",
     "preview_report": "0.002",

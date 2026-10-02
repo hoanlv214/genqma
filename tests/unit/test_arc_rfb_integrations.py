@@ -212,7 +212,7 @@ class TestApiEndpoints:
         assert data["recipient_address"] == "0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4"
 
     def test_api_credit_risk_score(self, client):
-        res = client.get("/api/v1/market/credit-risk-score?symbol=ETH&funding_rate=-0.001")
+        res = client.get("/api/v1/market/credit-risk-score?symbol=ETH&funding_rate=-0.002")
         assert res.status_code == 200
         data = res.json()
         assert data["symbol"] == "ETH"

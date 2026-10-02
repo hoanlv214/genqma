@@ -88,7 +88,7 @@ class ApiPlatformAndCreatorsTests(unittest.TestCase):
     def setUpClass(cls):
         cls.events = [
             event("inv_final", "settle_creator", 0.004, "completed", "agent", NOW - 86400, {"role": "creator"}),
-            event("inv_final", "settle_platform", 0.001, "completed", "agent", NOW - 86400, {"role": "platform"}),
+            event("inv_final", "settle_platform", 0.002, "completed", "agent", NOW - 86400, {"role": "platform"}),
             event("inv_pending", "settle_pending", 0.005, "received", "human", NOW - 3600),
         ]
         summary = {

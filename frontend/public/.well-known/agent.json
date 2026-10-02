@@ -27,9 +27,9 @@
   "pricing_model": {
     "currency": "USDC",
     "payment_rail": "x402",
-    "min_call_cost": 0.001,
+    "min_call_cost": 0.002,
     "tiers": {
-      "preview": "0.001-0.003 USDC",
+      "preview": "0.002-0.003 USDC",
       "full": "0.005-0.015 USDC"
     }
   },

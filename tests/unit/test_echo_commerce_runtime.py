@@ -68,7 +68,7 @@ class EchoProvider:
             offer=OfferRef(offer_id=offer_id),
             input=dict(input_value),
             input_hash=_fingerprint(input_value),
-            amount_usdc=0.001,
+            amount_usdc=0.002,
         )
 
     def execute(self, input_value: dict[str, Any]) -> dict[str, Any]:

@@ -29,7 +29,7 @@ This document is the official submission and verification package for registerin
 > Real-time quantitative market intelligence, cross-exchange funding rate arbitrage signals, and prediction market divergence with sub-second Circle USDC micropayments on Arc and on-chain GenLayer SLA settlement verification.
 
 **Detailed Description:**
-GenQMA enables autonomous trading agents, algorithmic treasuries, and risk engines to query institutional-grade quantitative intelligence on demand. By leveraging Circle Gateway Nanopayments (x402), external agents can purchase single-query intelligence reports ($0.001 - $0.005 USDC) with sub-second finality without managing API keys, subscriptions, or credit card accounts.
+GenQMA enables autonomous trading agents, algorithmic treasuries, and risk engines to query institutional-grade quantitative intelligence on demand. By leveraging Circle Gateway Nanopayments (x402), external agents can purchase single-query intelligence reports ($0.002 - $0.005 USDC) with sub-second finality without managing API keys, subscriptions, or credit card accounts.
 
 Every delivered signal report is anchored to on-chain SLA verification contracts on Arc (Circle's USDC-as-gas blockchain) and verified via GenLayer Intelligent Contract consensus.
 
@@ -60,7 +60,7 @@ GenQMA exposes machine-readable descriptors for automated agent crawling:
 | **Preview Report** | `POST /api/v1/providers/{provider_id}/preview` | `$0.002` | Top 3 nearest quant analogs, funding rate disparity, and rough win-rate |
 | **Full Alpha Report** | `POST /api/v1/providers/{provider_id}/full-report` | `$0.005` | 25 analogs, bootstrap confidence intervals, regime clustering, OOD score |
 | **Escrow Task (ERC-8183)** | `POST /api/v1/agent/jobs` | `$0.010` | Escrowed intelligence delivery with GenLayer consensus SLA verification |
-| **LLM Quant Chat** | `POST /api/v1/chat` | `$0.001` | Conversational quantitative anomaly analysis |
+| **LLM Quant Chat** | `POST /api/v1/chat` | `$0.002` | Conversational quantitative anomaly analysis |
 
 ### Supported Networks (Circle Gateway)
 

@@ -42,7 +42,7 @@ Faucet USDC lands in the wallet first. QMA may still ask for an approve/deposit 
 Optional overrides:
 
 ```env
-QMA_PRICE_PREVIEW_USDC=0.001
+QMA_PRICE_PREVIEW_USDC=0.002
 QMA_PRICE_FULL_USDC=0.005
 QMA_PAYMENT_AMOUNT_USDC=0.005
 QMA_PLATFORM_TREASURY_ADDRESS=0x23e7c029a287a83d80b2e084e008211658dda11d
@@ -99,7 +99,7 @@ For UX, QMA preloads Gateway balance instead of depositing exactly one report at
 
 - Default deposit: `1.00 USDC`
 - Default allowance approval: `10.00 USDC`
-- Preview price: `0.001 USDC`
+- Preview price: `0.002 USDC`
 - Full report price: `0.005 USDC`
 
 After the first preload, each report needs one x402 signature until the buyer's

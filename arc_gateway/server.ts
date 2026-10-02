@@ -96,7 +96,7 @@ if (CIRCLE_CONSOLE_API_KEY && CIRCLE_ENTITY_SECRET) {
     apiKey: CIRCLE_CONSOLE_API_KEY,
     entitySecret: CIRCLE_ENTITY_SECRET,
   });
-  
+
   if (TREASURY_WALLET_ID) {
     circleClient.getWallet({ id: TREASURY_WALLET_ID })
       .then((resp: any) => {
@@ -436,7 +436,7 @@ function amountForRequest(req: express.Request) {
   }
   const tier = String(req.query.tier ?? "full").toLowerCase();
   if (tier === "preview") {
-    return `$${process.env.QMA_PRICE_PREVIEW_USDC ?? "0.001"}`;
+    return `$${process.env.QMA_PRICE_PREVIEW_USDC ?? "0.002"}`;
   }
   if (tier === "full") {
     return `$${process.env.QMA_PRICE_FULL_USDC ?? AMOUNT.replace(/^\$/, "")}`;
@@ -949,21 +949,21 @@ app.post("/api/creator/claim", async (req, res) => {
     if (!circleClient || !TREASURY_WALLET_ID) {
       throw new RelayHttpError("circle treasury wallet is not configured (missing TREASURY_WALLET_ID or api keys)", 503);
     }
-    
+
     console.log(`[Claim] Using Circle Paymaster for claim ${claimId}`);
-    
+
     const response = await circleClient.createTransaction({
       idempotencyKey: crypto.randomUUID(),
       walletId: TREASURY_WALLET_ID,
       destinationAddress: recipient,
       amount: [amountUsdc],
       tokenId: "ef87c8c3-85de-598a-af50-c5135eecfa74", // ARC-TESTNET USDC Token ID
-      fee: { 
+      fee: {
         type: "level",
         config: { feeLevel: "MEDIUM" }
       }
     });
-    
+
     res.json({
       status: "success",
       claimId,
@@ -1049,7 +1049,7 @@ app.post("/api/wallet/create", async (req, res) => {
     }
     const isMainnet = process.env.QMA_NETWORK_MODE === "mainnet";
     const blockchain = isMainnet ? "ARC" : "ARC-TESTNET";
-    
+
     console.log(`[Circle] Creating a new session wallet on ${blockchain}...`);
     const walletsResponse = await circleClient.createWallets({
       accountType: "EOA",
@@ -1057,7 +1057,7 @@ app.post("/api/wallet/create", async (req, res) => {
       count: 1,
       walletSetId,
     });
-    
+
     const wallets = walletsResponse.data?.wallets ?? [];
     if (wallets.length === 0) {
       throw new RelayHttpError("Failed to create wallet", 500);
@@ -1084,17 +1084,17 @@ app.post("/api/wallet/sign-typed-data", async (req, res) => {
     }
     const walletId = String(req.body?.walletId ?? "");
     const data = req.body?.data;
-    
+
     if (!walletId || !data) {
       throw new RelayHttpError("walletId and data are required", 400);
     }
-    
+
     console.log(`[Sign] Requesting EIP-712 signature from wallet ${walletId}`);
     const signResponse = await circleClient.signTypedData({
       walletId,
       data: JSON.stringify(data),
     });
-    
+
     res.json({
       status: "success",
       signature: signResponse.data?.signature,
@@ -1113,16 +1113,16 @@ app.post("/api/wallet/deposit", async (req, res) => {
     }
     const walletId = String(req.body?.walletId ?? "");
     const amountUsdc = String(req.body?.amountUsdc ?? "");
-    
+
     if (!walletId || !amountUsdc) {
       throw new RelayHttpError("walletId and amountUsdc are required", 400);
     }
-    
+
     const rawAmount = parseUnits(amountUsdc, 6).toString();
     const rawApproveAmount = parseUnits("1000", 6).toString(); // Approve a large amount to prevent repeating
-    
+
     console.log(`[Deposit] Depositing ${amountUsdc} USDC from wallet ${walletId} into Gateway`);
-    
+
     // 1. Approve Gateway to spend USDC from the wallet
     const approveTx = await circleClient.createContractExecutionTransaction({
       walletId,
@@ -1134,10 +1134,10 @@ app.post("/api/wallet/deposit", async (req, res) => {
         config: { feeLevel: "MEDIUM" }
       }
     });
-    
+
     // Wait a brief moment for the approval transaction to be processed
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    
+
     // 2. Deposit into Gateway
     const depositTx = await circleClient.createContractExecutionTransaction({
       walletId,
@@ -1149,7 +1149,7 @@ app.post("/api/wallet/deposit", async (req, res) => {
         config: { feeLevel: "MEDIUM" }
       }
     });
-    
+
     res.json({
       status: "success",
       approveTxId: approveTx.data?.id,
@@ -1170,18 +1170,18 @@ app.post("/api/wallet/withdraw", async (req, res) => {
     const sourceWalletId = String(req.body?.walletId ?? "");
     const destinationAddress = String(req.body?.destinationAddress ?? "");
     const amountUsdc = String(req.body?.amountUsdc ?? req.body?.amount_usdc ?? "");
-    
+
     if (!sourceWalletId || !destinationAddress || !amountUsdc) {
       throw new RelayHttpError("walletId, destinationAddress, and amountUsdc are required", 400);
     }
-    
+
     const isMainnet = process.env.QMA_NETWORK_MODE === "mainnet";
     const tokenId = isMainnet
       ? "usdc-token-id-on-arc-mainnet" // Replace with actual Token ID on mainnet
       : "ef87c8c3-85de-598a-af50-c5135eecfa74"; // ARC-TESTNET USDC Token ID
-      
+
     console.log(`[Withdraw] Transferring ${amountUsdc} USDC from ${sourceWalletId} to ${destinationAddress}`);
-    
+
     // Prefer the backend-supplied idempotency key so retries after a timed-out
     // response collapse into the original Circle transaction instead of
     // double-sending funds; fall back to a random key for legacy callers.
@@ -1192,12 +1192,12 @@ app.post("/api/wallet/withdraw", async (req, res) => {
       destinationAddress,
       amount: [amountUsdc],
       tokenId,
-      fee: { 
+      fee: {
         type: "level",
         config: { feeLevel: "MEDIUM" }
       }
     });
-    
+
     res.json({
       status: "success",
       transactionId: response.data?.id,

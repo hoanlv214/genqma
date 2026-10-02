@@ -22,7 +22,7 @@ const report = await runAutonomousSession(policy, {
         symbol: "SXT",
         tier: "preview",
         score: 80,
-        price_usdc: 0.001,
+        price_usdc: 0.002,
       }],
     };
   },
@@ -34,7 +34,7 @@ assert.equal(report.status, "completed");
 assert.equal(report.stop_reason, "max_purchases_reached");
 assert.equal(report.purchase_count, 1);
 assert.equal(report.candidates_evaluated, 4);
-assert.equal(report.spent_usdc, 0.001);
+assert.equal(report.spent_usdc, 0.002);
 assert.equal(report.remaining_budget_usdc, 0.009);
 console.log("bounded session smoke PASS");
 
@@ -63,7 +63,7 @@ const fallbackReport = await runAutonomousSession(fallbackPolicy, {
           symbol: "SXT",
           tier: "preview",
           score: 90,
-          price_usdc: 0.001,
+          price_usdc: 0.002,
           preferred: true,
         },
         {
@@ -72,7 +72,7 @@ const fallbackReport = await runAutonomousSession(fallbackPolicy, {
           symbol: "SXT",
           tier: "preview",
           score: 80,
-          price_usdc: 0.001,
+          price_usdc: 0.002,
         },
       ],
     };
@@ -82,7 +82,7 @@ const fallbackReport = await runAutonomousSession(fallbackPolicy, {
     fallbackPurchases.push(candidate.candidate_id);
     return { status: "completed", amount_usdc: candidate.price_usdc, report_unlocked: true };
   },
-  sleep: async () => {},
+  sleep: async () => { },
 });
 
 assert.equal(fallbackPolls, 2);
@@ -106,7 +106,7 @@ const pausedReport = await runAutonomousSession(pausePolicy, {
     return { candidates: [], candidateCount: 0 };
   },
   purchase: async () => ({ status: "failed" }),
-  sleep: async () => {},
+  sleep: async () => { },
   onStateChange: (state) => { pausedState = structuredClone(state); },
 }, abortController.signal);
 
@@ -123,11 +123,11 @@ const resumedReport = await runAutonomousSession(pausePolicy, {
       symbol: "BTC",
       tier: "preview",
       score: 90,
-      price_usdc: 0.001,
+      price_usdc: 0.002,
     }],
   }),
   purchase: async (candidate) => ({ status: "completed", amount_usdc: candidate.price_usdc, report_unlocked: true }),
-  sleep: async () => {},
+  sleep: async () => { },
 }, pausedState);
 
 assert.equal(resumedReport.status, "completed");

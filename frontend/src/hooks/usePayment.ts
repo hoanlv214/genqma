@@ -80,7 +80,7 @@ export function usePayment({
 
   const recommendationTierPrice = (pick: any, tier: string, pricing: Record<string, number>) => {
     const baseKey = `${pick.provider_id || "funding_memory"}_${tier}`;
-    return pricing[baseKey] || (tier === "preview" ? 0.001 : 0.005);
+    return pricing[baseKey] || (tier === "preview" ? 0.002 : 0.005);
   };
 
   const recommendationTier = (pick: any): "preview" | "full" => {
@@ -580,10 +580,9 @@ export function usePayment({
         }));
         setPayStatusText("");
         setPayErrorText(
-          `GenLayer validators rejected this report: ${glReceipt?.reasoning || "The report did not match authoritative evidence"}. Access is blocked and no report was issued. ${
-            verifyData.status === "refunded" || verifyData.arc_settlement?.status === "confirmed"
-              ? "The full payment has been refunded to the settlement payer."
-              : "The full refund is being processed on Arc; completion will be shown only after Circle confirms it."
+          `GenLayer validators rejected this report: ${glReceipt?.reasoning || "The report did not match authoritative evidence"}. Access is blocked and no report was issued. ${verifyData.status === "refunded" || verifyData.arc_settlement?.status === "confirmed"
+            ? "The full payment has been refunded to the settlement payer."
+            : "The full refund is being processed on Arc; completion will be shown only after Circle confirms it."
           }`
         );
         showToast("GenLayer Shield rejected the report. Access remains blocked.", "error");

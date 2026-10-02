@@ -94,7 +94,7 @@ def legacy_invoice() -> dict:
                     "leg_id": "platform",
                     "role": "platform",
                     "pay_to": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                    "amount_usdc": "0.001",
+                    "amount_usdc": "0.002",
                     "amount_raw": "1000",
                     "status": "paid",
                     "settlement_id": "settlement_roundtrip_platform",

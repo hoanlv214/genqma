@@ -142,21 +142,21 @@ describe("useAgentBuyer Hook Test Suite", () => {
     let currentInv: any = null;
     return {
       wallet: "0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4",
-      setActiveQuery: mock(() => {}),
+      setActiveQuery: mock(() => { }),
       selectedProviderId: "funding_memory",
-      setSelectedProviderId: mock(() => {}),
+      setSelectedProviderId: mock(() => { }),
       currentInvoice: currentInv,
       setCurrentInvoice: mock((inv: any) => {
         currentInv = inv;
       }),
-      clearUnlockedReport: mock(() => {}),
-      setReportCollapsed: mock(() => {}),
-      fetchReportContent: mock(async () => {}),
+      clearUnlockedReport: mock(() => { }),
+      setReportCollapsed: mock(() => { }),
+      fetchReportContent: mock(async () => { }),
       recommendationTier: () => "full" as const,
       recommendationTierPrice: () => 0.005,
       refreshPendingInvoice: mock(async () => null),
-      rememberPendingInvoice: mock(() => {}),
-      clearPendingInvoice: mock(() => {}),
+      rememberPendingInvoice: mock(() => { }),
+      clearPendingInvoice: mock(() => { }),
       getCachedReport: () => null,
       getCachedReportsForSymbol: () => [],
     };
@@ -290,9 +290,9 @@ describe("useAgentBuyer Hook Test Suite", () => {
         action: "skip",
         candidate_id: null,
         requested_tier: "auto",
-        budget_usdc: 0.001,
-        max_price_usdc: 0.001,
-        reason: "All available reports exceed budget of 0.001 USDC",
+        budget_usdc: 0.002,
+        max_price_usdc: 0.002,
+        reason: "All available reports exceed budget of 0.002 USDC",
         rejected_candidate_ids: ["cand_ava"],
       },
       validation: { valid: true, errors: [], warnings: [] },
@@ -316,7 +316,7 @@ describe("useAgentBuyer Hook Test Suite", () => {
     const { result } = renderHook(() => useAgentBuyer(props));
 
     act(() => {
-      result.current.setAgentPrompt("Scan best anomalies within 0.001 USDC");
+      result.current.setAgentPrompt("Scan best anomalies within 0.002 USDC");
     });
 
     await act(async () => {

@@ -14,7 +14,7 @@ const decision = {
     symbol: "BTC",
     tier: "preview",
     score: 90,
-    price_usdc: 0.001,
+    price_usdc: 0.002,
     canonical_query: { symbol: "BTC" },
   },
   evaluated_candidates: [{
@@ -23,7 +23,7 @@ const decision = {
     symbol: "BTC",
     tier: "preview",
     score: 90,
-    price_usdc: 0.001,
+    price_usdc: 0.002,
     eligible: true,
   }],
   candidate_count: 1,
@@ -32,7 +32,7 @@ const decision = {
 const invoice = {
   invoice_id: "inv_reconcile",
   invoice_secret: "invoice_secret_for_smoke",
-  amount: 0.001,
+  amount: 0.002,
   arc_gateway_url: "https://gateway.test/report",
   wallet_address: "0x3333333333333333333333333333333333333333",
   split_legs: [],
@@ -53,7 +53,7 @@ globalThis.fetch = async (input, options = {}) => {
   if (url.pathname === "/api/v1/payment/verify") {
     const payload = JSON.parse(String(options.body || "{}"));
     assert.equal(payload.settlement_id, "settled_single");
-    assert.equal(payload.amount_usdc, 0.001);
+    assert.equal(payload.amount_usdc, 0.002);
     assert.equal("split_settlements" in payload, false);
     return Response.json({ detail: "temporary verification failure" }, { status: 503 });
   }
@@ -90,13 +90,13 @@ const signer = {
     paymentCalls += 1;
     assert.equal(legId, "single");
     assert.equal(resourceUrl, invoice.arc_gateway_url);
-    assert.equal(amountUsdc, 0.001);
+    assert.equal(amountUsdc, 0.002);
     return {
       leg_id: legId,
       settlement_id: "settled_single",
       pay_to: invoice.wallet_address,
       amount_raw: "1000",
-      amount_usdc: 0.001,
+      amount_usdc: 0.002,
       sidecar_receipt: "receipt_single_long_enough_for_smoke",
     };
   },
@@ -115,7 +115,7 @@ try {
   });
   assert.equal(recovered.status, "completed");
   assert.equal(recovered.purchase_count, 1);
-  assert.equal(recovered.spent_usdc, 0.001);
+  assert.equal(recovered.spent_usdc, 0.002);
   assert.equal(deliveryCalls, 1);
 
   reconcileStatus = "partial_paid";

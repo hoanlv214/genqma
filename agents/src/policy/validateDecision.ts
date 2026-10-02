@@ -4,7 +4,7 @@ export function candidatePrice(candidate: QmaCandidate, tier: AgentTier, pricing
   const raw = candidate.raw;
   const direct = [raw.agent_price, raw.price_usdc, raw.price].find((value) => value !== undefined);
   if (direct !== undefined && Number.isFinite(Number(direct))) return Number(direct);
-  return pricing[`${candidate.providerId}_${tier}`] ?? (tier === "preview" ? 0.001 : 0.005);
+  return pricing[`${candidate.providerId}_${tier}`] ?? (tier === "preview" ? 0.002 : 0.005);
 }
 
 export function hasEntitlement(context: DecisionContext, candidate: QmaCandidate, tier: AgentTier): boolean {

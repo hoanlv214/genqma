@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary & Problem Context
 
-Autonomous intelligence agents operating on Arc execute micro-transactions ($0.001 preview / $0.005 full report) without continuous human checkout. While Circle Agent Wallet policies (`circle wallet limit set`) enforce monotonic spending caps (per-tx, daily, weekly, monthly), granting programmatic spending authority creates acute operational risks:
+Autonomous intelligence agents operating on Arc execute micro-transactions ($0.002 preview / $0.005 full report) without continuous human checkout. While Circle Agent Wallet policies (`circle wallet limit set`) enforce monotonic spending caps (per-tx, daily, weekly, monthly), granting programmatic spending authority creates acute operational risks:
 1. **SLA Dispute / Data Spoofing**: An upstream intelligence provider could deliver corrupted or unverified data, which is flagged by the GenLayer intelligent contract arbiter as `INVALID`.
 2. **Velocity Drain & Looping Anomaly**: An agent encountering repeated transient errors could drain committed session USDC in an uncontrolled retry storm.
 3. **Absence of Real-Time Administrative Circuit Breaker**: Previously, if an anomaly occurred, an operator had no immediate UI kill-switch or actionable notification to freeze the agent's spending loop, requiring manual database surgery or server restarts.

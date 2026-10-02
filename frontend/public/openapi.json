@@ -18060,7 +18060,7 @@
           },
           "max_budget_usdc": {
             "type": "number",
-            "minimum": 0.001,
+            "minimum": 0.002,
             "title": "Max Budget Usdc",
             "description": "Maximum budget allocated in USDC",
             "default": 0.01,

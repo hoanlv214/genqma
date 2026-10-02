@@ -247,7 +247,7 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
                   <h3 className="tier-title">Preview Report</h3>
                 </div>
                 <div className="tier-price">
-                  <span className="price-num">$0.001</span>
+                  <span className="price-num">$0.002</span>
                   <span className="price-unit">USDC</span>
                 </div>
               </div>
@@ -273,7 +273,7 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
                 className="btn-unlock-tier preview"
                 onClick={() => onOpenPaywall?.("preview")}
               >
-                Unlock Preview — $0.001 USDC
+                Unlock Preview — $0.002 USDC
               </button>
             </div>
 

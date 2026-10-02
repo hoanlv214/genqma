@@ -67,7 +67,7 @@ class ERC8183JobRequest(BaseModel):
     provider_id: str = Field(..., description="Intelligence provider identifier", examples=["polymarket_divergence"])
     query: dict = Field(..., description="Task input parameters query", examples=[{"symbol": "BTC"}])
     tier: Literal["preview", "full"] = Field(default="preview", description="Delivery tier", examples=["preview"])
-    max_budget_usdc: float = Field(default=0.01, ge=0.001, allow_inf_nan=False, description="Maximum budget allocated in USDC", examples=[0.01])
+    max_budget_usdc: float = Field(default=0.01, ge=0.002, allow_inf_nan=False, description="Maximum budget allocated in USDC", examples=[0.01])
     buyer_agent_id: Optional[str] = Field(default=None, description="Requesting agent identifier", examples=["claude-external-agent"])
     escrow_contract: Optional[str] = Field(
         default=None,

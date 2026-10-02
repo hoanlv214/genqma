@@ -29,8 +29,8 @@ const context = {
   ],
   entitlements: [],
   pricing: {
-    "funding_memory_preview": 0.001,
-    "oi_memory_preview": 0.001,
+    "funding_memory_preview": 0.002,
+    "oi_memory_preview": 0.002,
   }
 };
 

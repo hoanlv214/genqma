@@ -96,9 +96,9 @@ def _get_agent_identity() -> dict:
         "pricing_model": {
             "currency": "USDC",
             "payment_rail": "x402",
-            "min_call_cost": 0.001,
+            "min_call_cost": 0.002,
             "tiers": {
-                "preview": "0.001-0.003 USDC",
+                "preview": "0.002-0.003 USDC",
                 "full": "0.005-0.015 USDC",
             },
         },
@@ -151,8 +151,8 @@ def _get_circle_service_card() -> dict:
         "payment_rail": "x402",
         "currency": "USDC",
         "pricing": {
-            "funding_memory": "0.001",
-            "oi_memory": "0.001",
+            "funding_memory": "0.002",
+            "oi_memory": "0.002",
             "polymarket_divergence": "0.002",
             "pyth_stress_band": "0.003",
             "preview_report": "0.002",

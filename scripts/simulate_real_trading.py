@@ -442,7 +442,7 @@ claim_issued_at = int(time.time())
 claim_msg = build_creator_claim_message(
     claimant_address=charlie["address"],
     provider_ids=["funding_memory"],
-    amount_usdc=0.001,
+    amount_usdc=0.002,
     nonce=claim_nonce,
     issued_at=claim_issued_at,
 )
@@ -451,7 +451,7 @@ signed_claim = Account.sign_message(encode_defunct(text=claim_msg), private_key=
 claim_payload = {
     "claimant_address": charlie["address"],
     "provider_ids": ["funding_memory"],
-    "amount_usdc": 0.001,
+    "amount_usdc": 0.002,
     "nonce": claim_nonce,
     "issued_at": claim_issued_at,
     "signature": signed_claim.signature.hex(),

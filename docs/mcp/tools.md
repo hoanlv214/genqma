@@ -72,7 +72,7 @@ worker uses, with identical safeguards.
 | --- | --- | --- | --- |
 | `symbol` | string | `""` (auto) | Detected token symbol from `qma_scan_anomalies` (e.g. `"PUFFER"`, `"IOST"`). Do NOT guess generic tokens like BTC/ETH. Leave empty (`""`) to auto-select the #1 live anomaly |
 | `query` | string | `""` (auto) | Description of the anomaly. Leave empty to auto-generate from the signal |
-| `tier` | string | `"preview"` | `"preview"` (~$0.001) or `"full"` (~$0.05, provider-priced) |
+| `tier` | string | `"preview"` | `"preview"` (~$0.002) or `"full"` (~$0.05, provider-priced) |
 | `max_price_usdc` | number | connection cap | Per-call cap; cannot exceed connection caps |
 | `provider_id` | string | auto | Omit to let QMA rank providers (`"funding_memory"`) |
 

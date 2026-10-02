@@ -20,7 +20,7 @@ globalThis.fetch = async (input) => {
         suggested_tier: "preview",
         query: { symbol: "BTC" },
       }],
-      pricing: { funding_memory_preview: 0.001 },
+      pricing: { funding_memory_preview: 0.002 },
     }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   throw new Error(`Unexpected request: ${url.pathname}`);

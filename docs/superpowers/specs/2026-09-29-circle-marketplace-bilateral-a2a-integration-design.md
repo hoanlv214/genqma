@@ -83,13 +83,13 @@ class SmartMarketDataProvider:
         except (RateLimitException, CloudflareBlockedException):
             pass
 
-        # Layer 3: Circle Marketplace x402 Micropayment Fallback ($0.001 USDC)
+        # Layer 3: Circle Marketplace x402 Micropayment Fallback ($0.002 USDC)
         # Guarantees zero rate-limiting, sub-500ms latency, and high-depth orderbooks
         paid_res = await self.circle.services_pay(
             service="polymarket",
             endpoint=f"/markets/{condition_id}/orderbook",
             chain="MATIC", # Polygon Gateway Nanopayments
-            amount="$0.001"
+            amount="$0.002"
         )
         self.cache[condition_id] = paid_res.data
         return paid_res.data

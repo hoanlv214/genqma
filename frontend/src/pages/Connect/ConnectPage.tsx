@@ -554,7 +554,7 @@ export function ConnectPage(_props?: ConnectProps) {
               <input
                 id="max-price-input"
                 type="number"
-                min={0.001}
+                min={0.002}
                 step={0.01}
                 value={maxPriceUsdc}
                 onChange={(e) => setMaxPriceUsdc(e.target.value)}

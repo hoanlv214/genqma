@@ -16,7 +16,7 @@ QMA uses this kit as its local example app. The kit is intentionally storage-lig
 ## Default QMA Tiers
 
 ```env
-QMA_PRICE_PREVIEW_USDC=0.001
+QMA_PRICE_PREVIEW_USDC=0.002
 QMA_PRICE_FULL_USDC=0.005
 ```
 

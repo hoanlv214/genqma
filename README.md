@@ -38,7 +38,7 @@ The platform operates as a decentralized, two-sided protocol:
    - Monetize directly per query in USDC with automatic revenue sharing.
    - Claim accrued earnings non-custodially via signed cryptographic proofs (`POST /api/v1/creators/claim`).
 2. **Demand Side (Autonomous Agents & Algorithmic Buyers):**
-   - Pay-per-query ($0.001 - $0.010 USDC) over HTTP via Circle Gateway x402 / MPP headers with zero subscription lock-in.
+   - Pay-per-query ($0.002 - $0.010 USDC) over HTTP via Circle Gateway x402 / MPP headers with zero subscription lock-in.
    - Enforce mathematical spending guardrails via agent spending policies (`GET /api/v1/agent/spending-policy`).
    - Discover providers via **ERC-8004** (`/.well-known/agent.json`) and **ERC-8183** escrow tasks (`POST /api/v1/agent/jobs`).
 3. **Decentralized SLA & Verification (GenLayer Shield):**

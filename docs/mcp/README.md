@@ -25,7 +25,7 @@ analog reports with USDC — from within a chat.
 | --- | --- | --- |
 | `qma_scan_anomalies` | **Free** | Live funding/OI/volatility anomalies from QMA providers |
 | `qma_check_budget` | **Free** | Connection caps, spend to date, Agent Wallet balances |
-| `qma_query_market_memory` | ~$0.001–0.05 (tier) | Starts a purchase (blocks ≤40s); returns the report, or `status: pending` + `session_id` |
+| `qma_query_market_memory` | ~$0.002–0.05 (tier) | Starts a purchase (blocks ≤40s); returns the report, or `status: pending` + `session_id` |
 | `qma_get_purchase` | **Free** | Collects the report from a pending `session_id` |
 
 ## How authorization works (no email needed)

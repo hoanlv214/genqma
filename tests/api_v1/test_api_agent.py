@@ -12,7 +12,7 @@ from backend.app.schemas.agent import AgentDecisionRequest
 
 class FakeProvider:
     def quote_price(self, query, tier):
-        return {"amount_usdc": 0.001 if tier == "preview" else 0.005}
+        return {"amount_usdc": 0.002 if tier == "preview" else 0.005}
 
 
 class FakeRegistry:
@@ -68,7 +68,7 @@ class AgentDecisionApiTests(unittest.TestCase):
         self.assertEqual(body["decision_source"], "deterministic_policy")
         self.assertEqual(body["plan"]["candidate_id"], "candidate-1")
         self.assertEqual(body["resolved_candidate"]["tier"], "preview")
-        self.assertEqual(body["resolved_candidate"]["price_usdc"], 0.001)
+        self.assertEqual(body["resolved_candidate"]["price_usdc"], 0.002)
 
     def test_endpoint_skips_full_entitlement(self):
         import time
@@ -277,7 +277,7 @@ class AgentDecisionApiTests(unittest.TestCase):
         self.assertEqual(body["plan"]["action"], "purchase")
         self.assertEqual(body["decision_source"], "fast_parser")
         self.assertEqual(body["plan"]["candidate_id"], "apd")
-        self.assertEqual(body["resolved_candidate"]["price_usdc"], 0.001)
+        self.assertEqual(body["resolved_candidate"]["price_usdc"], 0.002)
 
     def test_fast_parser_requires_an_explicit_whole_word_purchase_command(self):
         recommendations = [

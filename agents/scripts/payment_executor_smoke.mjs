@@ -4,7 +4,7 @@ import { createCircleAgentWalletExecutor } from "../dist/wallets/circleSigner.js
 
 const invoice = {
   invoice_id: "inv_smoke",
-  amount: 0.001,
+  amount: 0.002,
   split_legs: [
     {
       leg_id: "creator",
@@ -129,7 +129,7 @@ await assert.rejects(
     signLeg: async () => ({ paymentHeader: "unused" }),
   }).execute({
     invoice,
-    limits: { expectedAmountUsdc: 0.0005, maxAmountUsdc: 0.001 },
+    limits: { expectedAmountUsdc: 0.0005, maxAmountUsdc: 0.002 },
   }),
   /differs from expected/,
 );

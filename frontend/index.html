@@ -1,49 +1,45 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#06080f" />
-    <link rel="icon" href="/assets/favicon.ico" sizes="any" />
-    <link rel="icon" type="image/svg+xml" href="/assets/branding/qma-logo-mark.svg" />
-    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
 
-    <title>QMA — Autonomous Market Intelligence for On-Chain Agents</title>
-    <meta
-      name="description"
-      content="QMA matches live funding and open-interest anomalies against historical market regimes and sells the statistical evidence as per-query reports. Pay per query in USDC, settled on Arc via Circle Gateway, with cryptographic SLA verification."
-    />
-    <meta name="keywords" content="market intelligence, autonomous agents, x402, USDC, Arc, Circle Gateway, historical regime matching, funding rate, open interest, quant data API" />
-    <link rel="canonical" href="https://genqma.vercel.app/" />
-    <meta name="robots" content="index, follow" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#06080f" />
+  <link rel="icon" href="/assets/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/svg+xml" href="/assets/branding/qma-logo-mark.svg" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
 
-    <!-- Open Graph -->
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="QMA" />
-    <meta property="og:url" content="https://genqma.vercel.app/" />
-    <meta property="og:title" content="QMA — Autonomous Market Intelligence for On-Chain Agents" />
-    <meta
-      property="og:description"
-      content="Before your agent acts on a market signal, show it what happened last time. Historical regime evidence, paid per query in USDC on Arc."
-    />
-    <meta property="og:image" content="https://genqma.vercel.app/og-image.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="QMA — Autonomous Market Intelligence for On-Chain Agents" />
+  <title>QMA — Autonomous Market Intelligence for On-Chain Agents</title>
+  <meta name="description"
+    content="QMA matches live funding and open-interest anomalies against historical market regimes and sells the statistical evidence as per-query reports. Pay per query in USDC, settled on Arc via Circle Gateway, with cryptographic SLA verification." />
+  <meta name="keywords"
+    content="market intelligence, autonomous agents, x402, USDC, Arc, Circle Gateway, historical regime matching, funding rate, open interest, quant data API" />
+  <link rel="canonical" href="https://genqma.vercel.app/" />
+  <meta name="robots" content="index, follow" />
 
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="QMA — Autonomous Market Intelligence for On-Chain Agents" />
-    <meta
-      name="twitter:description"
-      content="Historical regime evidence for autonomous agents. Per-query USDC settlement on Arc via Circle Gateway."
-    />
-    <meta name="twitter:image" content="https://genqma.vercel.app/og-image.png" />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="QMA" />
+  <meta property="og:url" content="https://genqma.vercel.app/" />
+  <meta property="og:title" content="QMA — Autonomous Market Intelligence for On-Chain Agents" />
+  <meta property="og:description"
+    content="Before your agent acts on a market signal, show it what happened last time. Historical regime evidence, paid per query in USDC on Arc." />
+  <meta property="og:image" content="https://genqma.vercel.app/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="QMA — Autonomous Market Intelligence for On-Chain Agents" />
 
-    <!-- Structured data -->
-    <script type="application/ld+json">
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="QMA — Autonomous Market Intelligence for On-Chain Agents" />
+  <meta name="twitter:description"
+    content="Historical regime evidence for autonomous agents. Per-query USDC settlement on Arc via Circle Gateway." />
+  <meta name="twitter:image" content="https://genqma.vercel.app/og-image.png" />
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
@@ -54,9 +50,9 @@
         "description": "Autonomous market intelligence: matches live funding and open-interest anomalies against historical regimes and delivers the statistical evidence as per-query reports, settled in USDC on Arc.",
         "offers": {
           "@type": "Offer",
-          "price": "0.001",
+          "price": "0.002",
           "priceCurrency": "USD",
-          "description": "Pay per query: preview reports from $0.001, full reports from $0.005 in USDC."
+          "description": "Pay per query: preview reports from $0.002, full reports from $0.005 in USDC."
         },
         "publisher": {
           "@type": "Organization",
@@ -66,11 +62,13 @@
       }
     </script>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

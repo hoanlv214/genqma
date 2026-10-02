@@ -111,12 +111,12 @@ class QMAEngine:
         token_groups = self.db.groupby('symbol')['fundingRate']
         self.token_counts = token_groups.size().to_dict()
         self.token_means = token_groups.mean().to_dict()
-        self.token_stds = token_groups.std().fillna(0.001).to_dict()
+        self.token_stds = token_groups.std().fillna(0.002).to_dict()
         
         self.global_mean_fr = self.db['fundingRate'].mean()
         self.global_std_fr = self.db['fundingRate'].std()
         if not np.isfinite(self.global_std_fr) or self.global_std_fr == 0:
-            self.global_std_fr = 0.001
+            self.global_std_fr = 0.002
 
         # Compute log-scaled features
         self.db['log_mc'] = np.log(self.db['marketCap'])
@@ -171,7 +171,7 @@ class QMAEngine:
             std = self.global_std_fr
         
         if std == 0:
-            std = 0.001
+            std = 0.002
         return (funding_rate - mean) / std
 
     def transform_features(self, raw_features):

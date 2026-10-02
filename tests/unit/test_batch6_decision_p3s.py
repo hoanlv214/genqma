@@ -17,7 +17,7 @@ from backend.app.services.market_data.base import MarketDataAdapter
 def test_agent_purchase_rejected_when_price_exceeds_plan_max():
     """Change A: Price ceiling from decision plan is enforced before invoice creation/settlement."""
     client = TestClient(app_module.app)
-    # The default full report costs 0.005 USDC. We provide plan with max_price_usdc=0.001.
+    # The default full report costs 0.005 USDC. We provide plan with max_price_usdc=0.002.
     res = client.post(
         "/api/v1/payment/invoice",
         json={
@@ -25,7 +25,7 @@ def test_agent_purchase_rejected_when_price_exceeds_plan_max():
             "tier": "full",
             "provider_id": "funding_memory",
             "plan": {
-                "max_price_usdc": 0.001,
+                "max_price_usdc": 0.002,
                 "action": "purchase",
             },
         },
@@ -33,8 +33,8 @@ def test_agent_purchase_rejected_when_price_exceeds_plan_max():
     assert res.status_code == 409
     data = res.json()
     assert data["detail"]["error"] == "quoted_price_exceeds_policy_max"
-    assert float(data["detail"]["max"]) == 0.001
-    assert float(data["detail"]["quoted"]) > 0.001
+    assert float(data["detail"]["max"]) == 0.002
+    assert float(data["detail"]["quoted"]) > 0.002
 
 
 def test_scan_anomalies_survives_slow_adapter():
