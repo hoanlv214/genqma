@@ -7,6 +7,67 @@
 
 ---
 
+## 0. PALETTE v2 - TREASURY OPERATING SYSTEM (chosen 2026-10-02, NOT yet implemented)
+
+**Decision (operator)**: drop the violet "quant marketplace" skin. The product
+is an **AI-native treasury operating system**, not a crypto dashboard.
+Inspiration set: Linear (hierarchy), Stripe (fintech trust), Mercury
+(treasury), Ramp / Brex (finance operations). Explicitly NOT: Binance,
+GMGN, TradingView.
+
+### The 5 colors (everything else is banned)
+
+| Role | Token target | Hex |
+| --- | --- | --- |
+| Background | `--bg-base` | `#09090B` |
+| Surface | `--surface-1/2/3` | `#111827` |
+| Border | `--bdr` | `#1F2937` |
+| Primary (brand, actions, focus) | `--accent` | `#6366F1` |
+| Success (semantic ONLY, never brand) | `--green` | `#10B981` |
+| Danger (semantic) | `--red` | `#EF4444` |
+
+No cyan, no second purple, no pink, no orange, no yellow as system colors.
+
+### Governing rules (operator-authored)
+
+1. **One accent.** Primary = indigo `#6366F1`. Success is NOT the brand:
+   `Success #10B981` and `Danger #EF4444` are semantic only. This also resolves
+   the receipt-island problem: the paper receipt's green stamp is now a native
+   status color of the system, not a foreign accent.
+2. **Badge rationing.** Status badges shrink to the minimum that carries
+   meaning (target set: Verified, Paid, Draft). Marketing chips ("HIGH
+   CONVICTION", "AI VERIFIED", "PREMIUM", "SMART") are banned.
+3. **Icon policy (supersedes the 2026-10-02 absolute no-icon ban).** Icons come
+   from ONE library - Lucide or Phosphor - and appear in exactly three places:
+   navigation/sidebar, action buttons, status indicators. No icon before every
+   title, no emoji, no hand-rolled SVG.
+4. **Concept pivot for IA**: navigation and page language move from
+   "Marketplace / Swap / Traction" toward **Overview / Treasury / Decisions /
+   Receipts / Agents**. The money loop is the product: money enters treasury,
+   AI evaluates, AI proposes, human approves, execution, immutable receipt,
+   audit trail. The report marketplace remains a revenue surface inside that
+   story, not the story itself.
+
+### Migration phases (each requires operator approval before execution)
+
+- **Phase A - tokens**: swap `tokens.css` v1 values to the 5-color table;
+  sweep hardcoded violet literals (`rgba(124, 111, 255, *)`, `#7c6fff`) to the
+  indigo token; glow/radial orbs re-tinted.
+- **Phase B - IA**: navigation labels to the Treasury OS set; page slugs
+  preserved (`/operations` = Overview candidate); no route breaks.
+- **Phase C - badge purge**: keep Verified / Paid / Draft (+ semantic
+  pending/danger); demote everything else to plain text.
+- **Phase D - icon restore**: introduce Lucide (or Phosphor) in the three
+  allowed places only.
+- **Phase E - Receipts surface**: elevate the per-action receipt (decision
+  hash, created by, approved by, executed on, status) into a first-class page
+  fed by the euthyna ledger.
+
+**v1 content below is retained for migration reference; where v1 conflicts
+with this section, this section wins.**
+
+---
+
 ## 1. Design Read
 
 QMA is an autonomous intelligence platform for machines, quants, and the
