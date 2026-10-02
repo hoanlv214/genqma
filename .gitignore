@@ -76,3 +76,6 @@ docs/private/
 # local-only working artifacts
 data/*.csv
 scratch/
+.claude/
+agent/skills/
+data/skills/
