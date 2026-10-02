@@ -9,6 +9,50 @@
 
 ## 0. PALETTE v2 - TREASURY OPERATING SYSTEM (chosen 2026-10-02, NOT yet implemented)
 
+### 0.1 Competitor recon (2026-10-02) and the Two-Worlds decision
+
+Both reference systems were extracted token-by-token:
+
+- **vestiarion** - "Verifiable Ledger": warm ledger paper ground (`#f3f0e7`),
+  blue-black ink (`#18211c`), cobalt agent accent (`#3048c9`), proof jade /
+  held saffron / refused vermilion semantics, Geist + Newsreader-italic,
+  `rounded-2xl`, ledger-grid motif, perforated-receipt mask, 3-layer shadows.
+- **tang-vu-keryx ("The Mint")** - "Engraved Banknote": cotton paper
+  (`#f1e9d7`), oak ink (`#1b1712`), vermilion seal (`#c0381c`), treasury green
+  (`#1c5d45`), brass, Bodoni Moda display + Spectral + Spline Sans Mono, sharp
+  corners, double-frame panels, letterpress, microprint strips, guilloche
+  rosettes.
+
+**Read**: both competitors own the warm-paper ledger aesthetic, because their
+story is verifiable records. If QMA pivots to warm paper too, a judge who has
+just seen the prior-art list sees "vestiarion-lite". Converging makes us
+invisible.
+
+**The asymmetric asset we already hold**: our Decision Receipt (white
+perforated slip, green/red stamps, mono ink) is the strongest visual on the
+landing - and neither competitor has it inside a dark system. We own a concept
+they do not: **the machine is dark graphite; everything it asserts is printed
+on paper.** Digital autonomy, physical proof.
+
+**Decision - Two-Worlds system** (extends Palette v2, does not replace it):
+
+1. **Machine chrome stays dark**: Palette v2 five colors (`#09090B` /
+   `#111827` / `#1F2937` / indigo `#6366F1` / emerald `#10B981`) govern
+   navigation, dashboards, controls.
+2. **New Paper Artifact token family** for evidence surfaces only (Decision
+   Receipt, reports, verdict documents, future Receipts page):
+   `--paper: #FDFCF7`, `--paper-ink: #111827`, `--paper-ink-2: #4B5563`,
+   stamps reuse semantic success/danger. Paper surfaces are the ONLY light
+   surfaces allowed on the site (Theme Lock exception, one exception total).
+3. **Honest borrow list**: vestiarion's ledger-grid background motif
+   (re-tinted to indigo at ~7%), layered soft shadows, hover lift
+   (`-translate-y-0.5`); keryx's microprint strip on receipt edges (8px mono
+   repeating line), guilloche rosette at <= 0.1 opacity on report panels,
+   double-frame nesting for printed panels. Letterpress reserved for money
+   numerals on paper only.
+
+**Decision (operator)**: drop the violet
+
 **Decision (operator)**: drop the violet "quant marketplace" skin. The product
 is an **AI-native treasury operating system**, not a crypto dashboard.
 Inspiration set: Linear (hierarchy), Stripe (fintech trust), Mercury
