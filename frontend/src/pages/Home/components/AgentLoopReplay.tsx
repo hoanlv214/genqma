@@ -56,7 +56,7 @@ const SCENARIOS: Record<DecisionOutcome, ReplayScenario> = {
       action: "PURCHASE",
       confidence: "0.91",
       argument:
-        "No cached report exists for this query hash — settling the invoice is within the payer budget and unlocks the report immediately.",
+        "No cached report exists for this query hash. Settling the invoice is within the payer budget and unlocks the report immediately.",
     },
     checks: [
       { rule: "spend_guard.circuit_breaker", passed: true, note: "SpendLimitGuard armed, payer within per-payer caps" },
@@ -85,7 +85,7 @@ const SCENARIOS: Record<DecisionOutcome, ReplayScenario> = {
       action: "SKIP",
       confidence: "0.97",
       argument:
-        "Requested price exceeds the payer spend limit — the guard veto is deterministic and cannot be overridden by the model.",
+        "Requested price exceeds the payer spend limit. The guard veto is deterministic and cannot be overridden by the model.",
     },
     checks: [
       { rule: "spend_guard.spend_limit", passed: false, note: "Requested price exceeds the payer spend cap" },
@@ -176,7 +176,7 @@ export function AgentLoopReplay() {
       : null;
 
   const shortHash = (value: string) =>
-    value && value.length >= 16 ? `${value.slice(0, 4)}...${value.slice(-4)}` : value || "—";
+    value && value.length >= 16 ? `${value.slice(0, 4)}...${value.slice(-4)}` : value || "····";
 
   const base = SCENARIOS[activeTab];
   const scenario: ReplayScenario =
@@ -335,7 +335,7 @@ export function AgentLoopReplay() {
             : [{ action: "awaiting records", hash: "", timestamp: "" }]
           ).map((block, index) => (
             <div key={`${block.timestamp}-${index}`} className={`ledger-block-item${index > 0 ? " ledger-block-dim" : ""}`}>
-              <span className="block-seq">{block.timestamp ? block.timestamp.slice(11, 19) : "—"}</span>
+              <span className="block-seq">{block.timestamp ? block.timestamp.slice(11, 19) : "····"}</span>
               <span className="block-desc">{block.action || "system · idle"}</span>
               <span className="block-hash">{shortHash(block.hash)}</span>
             </div>
