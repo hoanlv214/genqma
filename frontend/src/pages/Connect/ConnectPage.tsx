@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import type { QmaRoute } from "@/app/routes";
+import { GlobalHeader } from "@/components/layout/GlobalHeader";
+import { useWalletStore } from "@/state/walletStore";
 import { Zap, Bot, Check, Clipboard, Link2, X } from "lucide-react";
 import { requestJson, API_BASE_URL } from "@/services/api";
 import {
@@ -44,7 +47,8 @@ function readOAuthParams(): OAuthParams | null {
   };
 }
 
-export function ConnectPage(_props?: ConnectProps) {
+export function ConnectPage({ onNavigate }: ConnectProps) {
+  const { address: walletAddress, disconnect } = useWalletStore();
   const [oauthParams] = useState<OAuthParams | null>(() => readOAuthParams());
   const [account, setAccount] = useState<string>(() => localStorage.getItem("qma_connected_wallet") || "");
   const [maxPriceUsdc, setMaxPriceUsdc] = useState("0.05");
@@ -214,31 +218,13 @@ export function ConnectPage(_props?: ConnectProps) {
   if (!oauthParams) {
     return (
       <div className="connect-page-root">
-        {/* Navigation */}
-        <nav className="connect-nav">
-          <a href="/app" className="connect-nav-brand">
-            <div className="connect-logo-badge">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-                <path d="M2 12h20" />
-              </svg>
-            </div>
-            <div className="connect-brand-info">
-              <strong className="connect-brand-name">QMA</strong>
-              <span className="connect-brand-tag">Intelligence Exchange</span>
-            </div>
-          </a>
-
-          <div className="connect-nav-actions">
-            <a href="/app" className="btn btn-secondary btn-sm connect-nav-btn">
-              ← Open GenQMA App
-            </a>
-            <a href="/app" className="btn btn-ghost btn-sm connect-nav-btn">
-              Classic App
-            </a>
-          </div>
-        </nav>
+        <GlobalHeader
+          activePage="connect"
+          onNavigate={onNavigate}
+          walletAddress={walletAddress}
+          onConnect={() => onNavigate("app")}
+          onDisconnect={disconnect}
+        />
 
         {/* Content Container */}
         <div className="connect-container">

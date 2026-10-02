@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Play, Pause } from "lucide-react";
 import { ARC_CHAIN } from "@/config/network";
 
 export type DecisionOutcome = "paid" | "refused";
@@ -216,7 +217,11 @@ export function AgentLoopReplay() {
           title={isPlaying ? "Pause auto-replay" : "Resume auto-replay"}
           aria-label={isPlaying ? "Pause replay" : "Play replay"}
         >
-          {isPlaying ? "Pause" : "Play"}
+          {isPlaying ? (
+            <Pause size={13} className="fill-current" />
+          ) : (
+            <Play size={13} className="fill-current ml-0.5" />
+          )}
         </button>
       </div>
 

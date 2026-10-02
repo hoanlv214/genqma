@@ -73,7 +73,7 @@ export function AppRoutes() {
       <ThemeSwitcher />
       {route === "landing" && <HomePage onNavigate={navigate} />}
       {route === "app" && <IntelligencePage onNavigate={navigate} />}
-      {route === "connect" && <ConnectPage />}
+      {route === "connect" && <ConnectPage onNavigate={navigate} />}
       {route === "marketplace" && <MarketplacePage onNavigate={navigate} />}
       {route === "profile" && <ProfilePage onNavigate={navigate} />}
       {route === "traction" && <TractionPage onNavigate={navigate} />}

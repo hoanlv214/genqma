@@ -9,8 +9,7 @@ import { GlobalHeader } from "@/components/layout/GlobalHeader";
 import { getAgentRecommendations } from "@/services/providers";
 import { ReportWorkspace, PaywallPanel, SignalReportsView } from "./components";
 import { ProfileModal } from "@/components/modals/ProfileModal";
-import { UnifiedDepositModal } from "@/components/modals/UnifiedDepositModal";
-import { UnifiedWithdrawModal } from "@/components/modals/UnifiedWithdrawModal";
+import { UnifiedFundsModal } from "@/components/modals/UnifiedFundsModal";
 import { WalletAppKitModal } from "@/components/modals/WalletAppKitModal";
 import { TokenIcon } from "@/components/TokenIcon";
 import { usePendingInvoiceCache } from "@/hooks/usePendingInvoiceCache";
@@ -339,6 +338,19 @@ export function IntelligencePage({
       refreshFundingReadiness();
     }
   }, [showFundArcModal, refreshFundingReadiness]);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("deposit") === "true") {
+        setShowDepositModal(true);
+      } else if (params.get("withdraw") === "true") {
+        setAgentOpMode("withdraw");
+      }
+    } catch {
+      // Ignored
+    }
+  }, []);
 
   const {
     profileChainUsdc,
@@ -750,11 +762,15 @@ export function IntelligencePage({
         }}
       />
 
-      <UnifiedDepositModal
-        open={showFundArcModal || showDepositModal}
+      <UnifiedFundsModal
+        open={showFundArcModal || showDepositModal || agentOpMode === "deposit" || agentOpMode === "withdraw"}
+        defaultTab={agentOpMode === "withdraw" ? "withdraw" : "deposit"}
         onClose={() => {
           setShowFundArcModal(false);
           setShowDepositModal(false);
+          setAgentOpMode(null);
+          setAgentOpAmount("");
+          setGatewayWithdrawAmount("");
         }}
         onNavigate={onNavigate}
         agentWalletAddress={agentWalletAddress}
@@ -763,11 +779,16 @@ export function IntelligencePage({
         setAgentOpAmount={setAgentOpAmount}
         agentOpLoading={agentOpLoading}
         handleFundAgent={handleFundAgent}
+        handleWithdrawAgent={handleWithdrawAgent}
         gatewayDepositAmount={depositAmountInput}
         setGatewayDepositAmount={setDepositAmountInput}
         gatewayDepositLoading={gatewayDepositLoading}
         gatewayDepositStatus={gatewayDepositStatus}
         handleGatewayDeposit={handleManualGatewayDeposit}
+        gatewayWithdrawAmount={gatewayWithdrawAmount}
+        setGatewayWithdrawAmount={setGatewayWithdrawAmount}
+        gatewayWithdrawLoading={gatewayWithdrawLoading}
+        handleGatewayWithdraw={handleGatewayWithdraw}
         fundReadinessTone={fundReadinessTone}
         fundReadinessStatus={fundReadinessStatus}
         fundGatewayBalance={fundGatewayBalance}
@@ -778,25 +799,6 @@ export function IntelligencePage({
         fundChainStatus={fundChainStatus}
         fundWalletUsdc={fundWalletUsdc}
         refreshFundingReadiness={refreshFundingReadiness}
-      />
-
-      <UnifiedWithdrawModal
-        open={agentOpMode === "withdraw"}
-        onClose={() => { setAgentOpMode(null); setAgentOpAmount(""); setGatewayWithdrawAmount(""); }}
-        agentWalletAddress={agentWalletAddress}
-        agentWalletBalance={agentWalletBalance}
-        agentOpAmount={agentOpAmount}
-        setAgentOpAmount={setAgentOpAmount}
-        agentOpLoading={agentOpLoading}
-        handleWithdrawAgent={handleWithdrawAgent}
-        wallet={wallet}
-        fundGatewayBalance={fundGatewayBalance}
-        fundChainStatus={fundChainStatus}
-        refreshFundingReadiness={refreshFundingReadiness}
-        gatewayWithdrawAmount={gatewayWithdrawAmount}
-        setGatewayWithdrawAmount={setGatewayWithdrawAmount}
-        gatewayWithdrawLoading={gatewayWithdrawLoading}
-        handleGatewayWithdraw={handleGatewayWithdraw}
         walletRole={walletRole}
         ownedProviders={ownedProviders}
         openProviderEarningsModal={openProviderEarningsModal}

@@ -6,6 +6,7 @@
 /* Page Shell & Ambient Gradient */
 .connect-page-root {
   min-height: 100vh;
+  padding-top: var(--header-h, 60px);
   background-color: var(--bg-0);
   background-image:
     radial-gradient(circle at 50% -8%, var(--accent-dim), transparent 50%),

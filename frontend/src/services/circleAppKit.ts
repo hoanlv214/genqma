@@ -35,17 +35,40 @@ export const SUPPORTED_CCTP_CHAINS: SupportedCrossChain[] = SUPPORTED_CROSS_CHAI
 /**
  * Maps frontend chain identifier to Circle App Kit canonical Blockchain name.
  */
+/**
+ * Maps frontend chain identifier to Circle App Kit canonical Blockchain name.
+ */
 export function mapSourceChainToAppKitChain(chainId: string | number): BridgeChain {
   if (typeof chainId === "number") {
     const found = SUPPORTED_CROSS_CHAINS.find((c) => c.chainId === chainId);
     if (found) chainId = found.id;
   }
   const normalized = String(chainId || "").toLowerCase().replace(/[- ]/g, "_");
-  if (normalized.includes("base")) return BridgeChain.Base_Sepolia;
-  if (normalized.includes("arbitrum")) return BridgeChain.Arbitrum_Sepolia;
-  if (normalized.includes("sepolia") || normalized.includes("eth")) return BridgeChain.Ethereum_Sepolia;
+  if (normalized.includes("base")) return IS_MAINNET ? BridgeChain.Base : BridgeChain.Base_Sepolia;
+  if (normalized.includes("arbitrum")) return IS_MAINNET ? BridgeChain.Arbitrum : BridgeChain.Arbitrum_Sepolia;
+  if (normalized.includes("sepolia") || normalized.includes("eth")) return IS_MAINNET ? BridgeChain.Ethereum : BridgeChain.Ethereum_Sepolia;
   if (normalized.includes("arc")) return IS_MAINNET ? BridgeChain.Arc : BridgeChain.Arc_Testnet;
-  return BridgeChain.Base_Sepolia;
+  return IS_MAINNET ? BridgeChain.Base : BridgeChain.Base_Sepolia;
+}
+
+/**
+ * Robust chain resolver matching ID, chainId, or canonical name against supported cross chains.
+ */
+export function findSupportedChain(idOrName: string | number): SupportedCrossChain | undefined {
+  if (typeof idOrName === "number") {
+    return SUPPORTED_CCTP_CHAINS.find((c) => c.chainId === idOrName) || (idOrName === ARC_CHAIN.chainId ? ARC_CHAIN : undefined);
+  }
+  const needle = String(idOrName || "").toLowerCase().trim();
+  if (!needle) return undefined;
+  const exact = SUPPORTED_CCTP_CHAINS.find((c) => c.id.toLowerCase() === needle);
+  if (exact) return exact;
+  if (needle === "arc" || needle === "arc_testnet" || needle === "arc_mainnet") {
+    return SUPPORTED_CCTP_CHAINS.find((c) => c.id.toLowerCase().includes("arc")) || ARC_CHAIN;
+  }
+  return SUPPORTED_CCTP_CHAINS.find((c) => {
+    const cId = c.id.toLowerCase();
+    return cId.includes(needle) || needle.includes(cId);
+  });
 }
 
 const ERC20_ABI = parseAbi([
@@ -74,6 +97,7 @@ export interface BridgeProgressEvent {
 
 export interface BridgeExecutionParams {
   sourceChainId: string;
+  destinationChainId?: string;
   amountUsdc: string;
   recipientAddress: string;
   provider: Eip1193Provider;
@@ -81,23 +105,37 @@ export interface BridgeExecutionParams {
 }
 
 /**
- * Execute a REAL Crosschain CCTP V2 Bridge transfer into Arc Testnet using Circle App Kit:
- * 1. Switches to source chain (Base Sepolia, Arbitrum Sepolia, or Sepolia).
+ * Execute a REAL Bidirectional Crosschain CCTP V2 Bridge transfer using Circle App Kit:
+ * 1. Switches to source chain (Arc, Base, Arbitrum, or Ethereum).
  * 2. Uses official Circle App Kit bridge orchestration (`circleAppKit.bridge()`).
- * 3. Enables Circle CCTP Forwarding Service (`useForwarder: true`) so destination minting on Arc
+ * 3. Enables Circle CCTP Forwarding Service (`useForwarder: true`) so destination minting
  *    is handled seamlessly by Circle without requiring a 2nd wallet network switch or signature.
  * 4. Yields genuine on-chain TX hashes and real-time step progress events.
  */
-export async function executeCctpBridgeToArc({
+export async function executeCctpBridge({
   sourceChainId,
+  destinationChainId = "arc",
   amountUsdc,
   recipientAddress,
   provider,
   onProgress,
 }: BridgeExecutionParams): Promise<{ success: boolean; txHash?: string; explorerUrl?: string; error?: string }> {
-  const source = SUPPORTED_CCTP_CHAINS.find((c) => c.id === sourceChainId);
+  const source = findSupportedChain(sourceChainId);
   if (!source) {
     const err = `Unsupported source chain ${sourceChainId}`;
+    onProgress?.({ step: "error", message: err, error: err });
+    return { success: false, error: err };
+  }
+
+  const destination = findSupportedChain(destinationChainId);
+  if (!destination) {
+    const err = `Unsupported destination chain ${destinationChainId}`;
+    onProgress?.({ step: "error", message: err, error: err });
+    return { success: false, error: err };
+  }
+
+  if (source.id === destination.id || source.chainId === destination.chainId) {
+    const err = "Source and destination networks cannot be the same.";
     onProgress?.({ step: "error", message: err, error: err });
     return { success: false, error: err };
   }
@@ -120,7 +158,7 @@ export async function executeCctpBridgeToArc({
               {
                 chainId: source.chainIdHex,
                 chainName: source.name,
-                nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+                nativeCurrency: source.nativeCurrency,
                 rpcUrls: [source.rpcUrl],
                 blockExplorerUrls: [source.explorerUrl],
               },
@@ -139,8 +177,8 @@ export async function executeCctpBridgeToArc({
       throw new Error("No connected wallet address found.");
     }
 
-    const sourceChainName = mapSourceChainToAppKitChain(sourceChainId);
-    const destChainName: BridgeChain = IS_MAINNET ? BridgeChain.Arc : BridgeChain.Arc_Testnet;
+    const sourceChainName = mapSourceChainToAppKitChain(source.id);
+    const destChainName = mapSourceChainToAppKitChain(destination.id);
 
     // 2. Initialize official Circle App Kit Viem Adapter
     const adapter = await createViemAdapterFromProvider({ provider: provider as any });
@@ -173,7 +211,7 @@ export async function executeCctpBridgeToArc({
     const onAttestation = () => {
       onProgress?.({
         step: "fetching_attestation",
-        message: `Circle Iris attestation verified! Forwarding native USDC mint to ${ARC_CHAIN.name}...`,
+        message: `Circle Iris attestation verified! Forwarding native USDC mint to ${destination.name}...`,
         txHash: burnTxHash,
         explorerUrl: burnTxHash ? `${source.explorerUrl}/tx/${burnTxHash}` : undefined,
       });
@@ -184,9 +222,9 @@ export async function executeCctpBridgeToArc({
       if (tx) mintTxHash = tx;
       onProgress?.({
         step: "minting",
-        message: `Native USDC minted on ${ARC_CHAIN.name}!`,
+        message: `Native USDC minted on ${destination.name}!`,
         txHash: tx,
-        explorerUrl: tx ? `${ARC_CHAIN.explorerUrl}/tx/${tx}` : undefined,
+        explorerUrl: tx ? `${destination.explorerUrl}/tx/${tx}` : undefined,
       });
     };
 
@@ -198,7 +236,7 @@ export async function executeCctpBridgeToArc({
     try {
       onProgress?.({
         step: "approving",
-        message: `Initiating Circle App Kit CCTP bridge (${amountUsdc} USDC from ${source.name} to ${ARC_CHAIN.name})...`,
+        message: `Initiating Circle App Kit CCTP bridge (${amountUsdc} USDC from ${source.name} to ${destination.name})...`,
       });
 
       const bridgeResult = await circleAppKit.bridge({
@@ -217,7 +255,7 @@ export async function executeCctpBridgeToArc({
       const explorerUrl = burnStep?.txHash
         ? `${source.explorerUrl}/tx/${burnStep.txHash}`
         : mintStep?.txHash
-        ? `${ARC_CHAIN.explorerUrl}/tx/${mintStep.txHash}`
+        ? `${destination.explorerUrl}/tx/${mintStep.txHash}`
         : undefined;
 
       if (bridgeResult.state === "error") {
@@ -228,7 +266,7 @@ export async function executeCctpBridgeToArc({
 
       onProgress?.({
         step: "completed",
-        message: `Successfully bridged ${amountUsdc} USDC to ${ARC_CHAIN.name} via Circle CCTP V2!`,
+        message: `Successfully bridged ${amountUsdc} USDC from ${source.name} to ${destination.name} via Circle CCTP V2!`,
         txHash: finalTxHash,
         explorerUrl,
       });
@@ -245,10 +283,19 @@ export async function executeCctpBridgeToArc({
       circleAppKit.off("bridge.mint", onMint);
     }
   } catch (err: any) {
-    const errMsg = err?.message || "CCTP Bridge transaction failed.";
+    const errMsg = err?.shortMessage || err?.message || "CCTP Bridge transaction failed.";
     onProgress?.({ step: "error", message: errMsg, error: errMsg });
     return { success: false, error: errMsg };
   }
+}
+
+/**
+ * Backward-compatible wrapper for bridging specifically to Arc.
+ */
+export async function executeCctpBridgeToArc(
+  params: BridgeExecutionParams
+): Promise<{ success: boolean; txHash?: string; explorerUrl?: string; error?: string }> {
+  return executeCctpBridge({ ...params, destinationChainId: "arc" });
 }
 
 export interface StableFxQuote {
@@ -545,6 +592,7 @@ export async function executeGatewayDeposit({
 }
 
 export interface CrossChainBalanceItem {
+  id: string;
   chainId: number;
   name: string;
   balanceUsdc: string;
@@ -575,6 +623,7 @@ export const GATEWAY_WALLET_ABI = parseAbi([
  */
 export async function getCrossChainUsdcBalances(address: string): Promise<UnifiedBalanceOverview> {
   const chainsConfig = SUPPORTED_CROSS_CHAINS.map((c) => ({
+    id: c.id,
     chainId: c.chainId,
     name: c.name,
     tokenAddress: c.usdcAddress,

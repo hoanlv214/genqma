@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Landmark, Layers, ArrowLeftRight, TrendingUp, Store } from "lucide-react";
+import { Landmark, Layers, ArrowLeftRight, TrendingUp, Store, Bot } from "lucide-react";
 import { shortAddress } from "../../services/wallet";
 import type { QmaRoute } from "../../app/routes";
 import { useAgentWalletStore } from "../../state/agentWalletStore";
@@ -272,6 +272,11 @@ export function GlobalHeader({
 
                 {/* 3. Actions Block */}
                 <div className="dropdown-actions">
+                  <button className="dropdown-action-btn" onClick={() => { onNavigate("connect"); setDropdownOpen(false); }}>
+                    <Bot size={16} strokeWidth={1.75} />
+                    Connect AI Assistant
+                  </button>
+
                   <button className="dropdown-action-btn" onClick={() => { onNavigate("profile"); setDropdownOpen(false); }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
                     Profile & History

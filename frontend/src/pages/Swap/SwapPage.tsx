@@ -7,10 +7,12 @@ import { useWalletStore } from "@/state/walletStore";
 import { getWalletProvider, ensureArcTestnet, shortAddress } from "@/services/wallet";
 import {
   SUPPORTED_CCTP_CHAINS,
+  executeCctpBridge,
   executeCctpBridgeToArc,
   executeStableFxSwap,
   getStableFxQuote,
   getArcErc20Balance,
+  getCrossChainUsdcBalances,
   ARC_TOKENS,
   type StableFxQuote,
   type BridgeProgressEvent,
@@ -143,6 +145,8 @@ export function SwapPage({ onNavigate }: SwapProps) {
   const [fxError, setFxError] = useState("");
   const [eurcBalance, setEurcBalance] = useState("0.00");
   const [usdcBalance, setUsdcBalance] = useState("0.00");
+  const [chainBalances, setChainBalances] = useState<Record<string, string>>({});
+  const [balancesLoading, setBalancesLoading] = useState(false);
   const [fxQuote, setFxQuote] = useState<StableFxQuote | null>(null);
   const [fxQuoteLoading, setFxQuoteLoading] = useState(false);
   const [quoteSecondsLeft, setQuoteSecondsLeft] = useState(24);
@@ -210,20 +214,34 @@ export function SwapPage({ onNavigate }: SwapProps) {
     };
   }, [wallet]);
 
-  // Fetch balances on Arc
+  // Fetch balances on Arc and Cross-Chain networks
   const fetchBalances = useCallback(async () => {
     if (!wallet) return;
     const provider = getWalletProvider();
-    if (!provider) return;
+    setBalancesLoading(true);
     try {
-      const [eurcBal, usdcBal] = await Promise.all([
-        getArcErc20Balance(ARC_TOKENS.EURC.address, wallet, provider),
-        getArcErc20Balance(ARC_TOKENS.USDC.address, wallet, provider),
+      const [eurcBal, usdcBal, crossRes] = await Promise.all([
+        provider ? getArcErc20Balance(ARC_TOKENS.EURC.address, wallet, provider).catch(() => "0.00") : Promise.resolve("0.00"),
+        provider ? getArcErc20Balance(ARC_TOKENS.USDC.address, wallet, provider).catch(() => "0.00") : Promise.resolve("0.00"),
+        getCrossChainUsdcBalances(wallet).catch(() => null),
       ]);
       setEurcBalance(eurcBal);
       setUsdcBalance(usdcBal);
+
+      const map: Record<string, string> = {};
+      if (crossRes?.chains) {
+        for (const item of crossRes.chains) {
+          map[item.id] = item.balanceUsdc;
+        }
+      }
+      if (usdcBal && usdcBal !== "0.00") {
+        map["arc"] = usdcBal;
+      }
+      setChainBalances(map);
     } catch {
       // Ignored
+    } finally {
+      setBalancesLoading(false);
     }
   }, [wallet]);
 
@@ -300,6 +318,17 @@ export function SwapPage({ onNavigate }: SwapProps) {
       setTransferError("Please enter a valid transfer amount.");
       return;
     }
+    if (originChain === destinationChain) {
+      setTransferError("Source and Destination networks must be different.");
+      return;
+    }
+    const avail = parseFloat(originBalance || "0");
+    if (amt > avail) {
+      setTransferError(
+        `Insufficient USDC balance on ${originNetObj.name}. Available: ${originBalance} USDC, entered: ${transferAmount} USDC.`
+      );
+      return;
+    }
     setTransferError("");
     setShowReviewModal(true);
   };
@@ -313,16 +342,31 @@ export function SwapPage({ onNavigate }: SwapProps) {
       return;
     }
 
+    if (originChain === destinationChain) {
+      setTransferError("Source and Destination networks must be different.");
+      return;
+    }
+
+    const amt = parseFloat(transferAmount);
+    const avail = parseFloat(originBalance || "0");
+    if (amt > avail) {
+      setTransferError(
+        `Insufficient USDC balance on ${originNetObj.name}. Available: ${originBalance} USDC.`
+      );
+      return;
+    }
+
     setTransferLoading(true);
     setTransferError("");
-    setTransferMessage("Locking USDC on source chain...");
+    setTransferMessage(`Switching to ${originNetObj.name} and initiating CCTP transfer...`);
     setTransferStep(1); // Lock on Origin
     setTransferTxHash("");
     setTransferExplorerUrl("");
 
     try {
-      const res = await executeCctpBridgeToArc({
-        sourceChainId: originChain === "arc" ? "base_sepolia" : originChain,
+      const res = await executeCctpBridge({
+        sourceChainId: originChain,
+        destinationChainId: destinationChain,
         amountUsdc: transferAmount,
         recipientAddress: wallet,
         provider,
@@ -342,7 +386,9 @@ export function SwapPage({ onNavigate }: SwapProps) {
         setTransferError(res.error || "Transfer failed.");
       } else {
         setTransferStep(4);
-        setTransferMessage("CCTP V2 Transfer settled successfully.");
+        setTransferMessage(
+          `CCTP V2 Transfer settled successfully from ${originNetObj.name} to ${destNetObj.name}.`
+        );
         await fetchBalances();
       }
     } catch (err: any) {
@@ -413,6 +459,10 @@ export function SwapPage({ onNavigate }: SwapProps) {
 
   const originNetObj = NETWORKS_LIST.find((n) => n.id === originChain) || NETWORKS_LIST[0];
   const destNetObj = NETWORKS_LIST.find((n) => n.id === destinationChain) || NETWORKS_LIST[3] || NETWORKS_LIST[0];
+
+  const originBalance = chainBalances[originChain] ?? (originChain === "arc" ? usdcBalance : "0.00");
+  const destBalance = chainBalances[destinationChain] ?? (destinationChain === "arc" ? usdcBalance : "0.00");
+  const isTransferInsufficient = parseFloat(transferAmount || "0") > parseFloat(originBalance || "0");
 
   return (
     <div className="swap-body">
@@ -511,12 +561,12 @@ export function SwapPage({ onNavigate }: SwapProps) {
                               type="button"
                               className="swap-balance-trigger"
                               onClick={() => {
-                                const b = parseFloat(usdcBalance || "0");
-                                if (b > 0) setTransferAmount(usdcBalance);
+                                const b = parseFloat(originBalance || "0");
+                                if (b > 0) setTransferAmount(originBalance);
                               }}
                               title="Click to use MAX balance"
                             >
-                              {usdcBalance} USDC
+                              {balancesLoading ? "..." : `${originBalance} USDC`}
                             </button>
                           </span>
                         </div>
@@ -565,7 +615,9 @@ export function SwapPage({ onNavigate }: SwapProps) {
                                           <div className="dropdown-chain-logo">{net.logo}</div>
                                           <div className="dropdown-chain-info">
                                             <span className="dropdown-chain-title">{net.name}</span>
-                                            <span className="dropdown-chain-sub">Domain {net.domain} • {net.latency}</span>
+                                            <span className="dropdown-chain-sub">
+                                              Domain {net.domain} • Balance: {chainBalances[net.id] ?? (net.id === "arc" ? usdcBalance : "0.00")} USDC
+                                            </span>
                                           </div>
                                         </div>
                                         {isSelected && <span className="dropdown-chain-check"><Check size={14} /></span>}
@@ -606,7 +658,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                               type="button"
                               className="preset-btn"
                               onClick={() => {
-                                const b = parseFloat(usdcBalance || "0");
+                                const b = parseFloat(originBalance || "0");
                                 if (b > 0) setTransferAmount((b * 0.25).toFixed(2));
                               }}
                             >
@@ -616,7 +668,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                               type="button"
                               className="preset-btn"
                               onClick={() => {
-                                const b = parseFloat(usdcBalance || "0");
+                                const b = parseFloat(originBalance || "0");
                                 if (b > 0) setTransferAmount((b * 0.5).toFixed(2));
                               }}
                             >
@@ -626,7 +678,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                               type="button"
                               className="preset-btn"
                               onClick={() => {
-                                const b = parseFloat(usdcBalance || "0");
+                                const b = parseFloat(originBalance || "0");
                                 if (b > 0) setTransferAmount(b.toString());
                               }}
                             >
@@ -658,7 +710,12 @@ export function SwapPage({ onNavigate }: SwapProps) {
                       <div className="swap-field-group">
                         <div className="swap-field-meta">
                           <span>Destination Network</span>
-                          <span className="chip chip-live">1:1 Native USDC</span>
+                          <span className="swap-balance-row">
+                            Balance:{" "}
+                            <span className="tabular-nums font-mono text-[11px] text-[var(--t2)]">
+                              {balancesLoading ? "..." : `${destBalance} USDC`}
+                            </span>
+                          </span>
                         </div>
 
                         <div className="swap-field-interactive">
@@ -705,7 +762,9 @@ export function SwapPage({ onNavigate }: SwapProps) {
                                           <div className="dropdown-chain-logo">{net.logo}</div>
                                           <div className="dropdown-chain-info">
                                             <span className="dropdown-chain-title">{net.name}</span>
-                                            <span className="dropdown-chain-sub">Domain {net.domain} • {net.latency}</span>
+                                            <span className="dropdown-chain-sub">
+                                              Domain {net.domain} • Balance: {chainBalances[net.id] ?? (net.id === "arc" ? usdcBalance : "0.00")} USDC
+                                            </span>
                                           </div>
                                         </div>
                                         {isSelected && <span className="dropdown-chain-check"><Check size={14} /></span>}
@@ -770,11 +829,15 @@ export function SwapPage({ onNavigate }: SwapProps) {
                     ) : (
                       <button
                         type="button"
-                        className="btn btn-primary btn-lg swap-cta-btn"
+                        className={`btn btn-primary btn-lg swap-cta-btn ${isTransferInsufficient ? "btn-warning" : ""}`}
                         onClick={handleContinueToReview}
-                        disabled={transferLoading || !transferAmount || parseFloat(transferAmount) <= 0}
+                        disabled={transferLoading || !transferAmount || parseFloat(transferAmount) <= 0 || isTransferInsufficient}
                       >
-                        {transferLoading ? "Broadcasting CCTP Transfer..." : "Review Transfer →"}
+                        {transferLoading
+                          ? "Broadcasting CCTP Transfer..."
+                          : isTransferInsufficient
+                          ? `Insufficient USDC on ${originNetObj.name}`
+                          : "Review Transfer →"}
                       </button>
                     )}
 
