@@ -70,6 +70,30 @@ export function getInjectedWallet(rdns?: string): Eip1193Provider | null {
   );
 }
 
+// Single source of truth for the ACTIVE wallet provider.
+// Reown AppKit owns the connection (injected, WalletConnect, QR, ...); its
+// module registers the active EIP-1193 provider here at boot via
+// registerAppKitProviderSource. Callers must use getWalletProvider() — never
+// window.ethereum or getInjectedWallet directly — so signatures always go to
+// the wallet the user actually connected with.
+let appKitProviderSource: (() => Eip1193Provider | null) | null = null;
+
+export function registerAppKitProviderSource(source: (() => Eip1193Provider | null) | null): void {
+  appKitProviderSource = source;
+}
+
+export function getWalletProvider(): Eip1193Provider | null {
+  if (appKitProviderSource) {
+    try {
+      const active = appKitProviderSource();
+      if (active && typeof active.request === "function") return active;
+    } catch {
+      // fall through to injected detection
+    }
+  }
+  return getInjectedWallet();
+}
+
 export async function connectWallet(rdns?: string): Promise<string> {
   const provider = getInjectedWallet(rdns);
   if (!provider) throw new Error("No EVM wallet provider found. Please install a Web3 wallet (MetaMask, Rabby, OKX, etc.).");
@@ -78,7 +102,7 @@ export async function connectWallet(rdns?: string): Promise<string> {
 }
 
 export async function ensureArcTestnet(providerOrRdns?: Eip1193Provider | string): Promise<void> {
-  const provider = typeof providerOrRdns === "string" ? getInjectedWallet(providerOrRdns) : (providerOrRdns || getInjectedWallet());
+  const provider = typeof providerOrRdns === "string" ? getInjectedWallet(providerOrRdns) : (providerOrRdns || getWalletProvider());
   if (!provider) throw new Error("No EVM wallet provider found.");
   const chainId = await provider.request<string>({ method: "eth_chainId" });
   if (String(chainId).toLowerCase() === ARC_CHAIN.chainIdHex.toLowerCase()) return;
@@ -119,7 +143,7 @@ export const ensureArcNetwork = ensureArcTestnet;
  */
 export async function getArcNativeUsdcBalance(address: string, providerOrRdns?: Eip1193Provider | string): Promise<string> {
   if (!address) return "0.00";
-  const provider = typeof providerOrRdns === "string" ? getInjectedWallet(providerOrRdns) : (providerOrRdns || getInjectedWallet());
+  const provider = typeof providerOrRdns === "string" ? getInjectedWallet(providerOrRdns) : (providerOrRdns || getWalletProvider());
   if (!provider) return "0.00";
   try {
     const rawBalance = await provider.request<string>({
@@ -143,7 +167,7 @@ export function subscribeWalletEvents(
   onChainChanged: (chainId: string) => void,
   provider?: Eip1193Provider
 ): () => void {
-  const p = provider || getInjectedWallet();
+  const p = provider || getWalletProvider();
   if (!p || !p.on) return () => {};
 
   const handleAccounts = (...args: unknown[]) => {

@@ -1,0 +1,816 @@
+/* =============================================================================
+   QMA USER PROFILE & INTELLIGENCE HISTORY STYLES
+   -----------------------------------------------------------------------------
+   Design system compliance: tokens.css + ui.css primitives.
+   Surfaces: --surface-1/2/3, --glass-card
+   Typography: Inter (--sans) headings/labels, JetBrains Mono (--mono) figures
+   Accent: --accent (violet) primary, --green (mint) verified/settled only
+   ============================================================================= */
+
+.profile-body {
+    min-height: 100vh;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    font-family: var(--sans);
+    background:
+        radial-gradient(ellipse 70% 40% at 50% 0%, rgba(124, 111, 255, 0.08), transparent 60%),
+        radial-gradient(ellipse 50% 30% at 85% 10%, rgba(34, 211, 160, 0.04), transparent 50%),
+        linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 35%, var(--bg-0) 100%);
+    color: var(--t1);
+}
+
+.profile-shell {
+    position: relative;
+    z-index: 1;
+    width: min(var(--container-max), calc(100% - var(--space-8)));
+    margin: 0 auto;
+    padding: calc(var(--header-h) + var(--space-8)) 0 var(--space-16);
+    box-sizing: border-box;
+}
+
+/* ----- Page Title Area ----- */
+.profile-hero {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-6);
+    border-bottom: 1px solid var(--bdr);
+}
+
+.profile-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.profile-title-group {
+    max-width: 680px;
+}
+
+.profile-hero-title {
+    font-family: var(--sans);
+    font-size: var(--text-3xl);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--t1);
+    margin: var(--space-1) 0 var(--space-2);
+}
+
+.profile-hero-desc {
+    color: var(--t2);
+    font-size: var(--text-md);
+    line-height: 1.55;
+    margin: 0;
+}
+
+/* Identity chip & actions */
+.profile-identity-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.wallet-identity-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-2);
+    border: 1px solid var(--bdr-md);
+    border-radius: var(--radius-sm);
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    color: var(--t1);
+}
+
+.wallet-chip-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px rgba(34, 211, 160, 0.5);
+    flex-shrink: 0;
+}
+
+.wallet-chip-addr {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.wallet-chip-copy {
+    background: transparent;
+    border: 0;
+    padding: 2px;
+    color: var(--t3);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-xs);
+    transition: color var(--dur-fast) var(--ease-out-expo);
+}
+
+.wallet-chip-copy:hover {
+    color: var(--t1);
+}
+
+.wallet-chip-copy svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Privacy notice banner */
+.profile-notice-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--amber-dim);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: var(--radius-sm);
+    color: var(--amber);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+}
+
+/* ----- Summary Stats Grid ----- */
+.profile-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-3);
+}
+
+.profile-stats-grid .stat-tile {
+    position: relative;
+    padding: var(--space-5) var(--space-6);
+    background: var(--glass-card);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.profile-stats-grid .stat-tile:hover {
+    border-color: var(--glass-border-hover);
+    box-shadow: var(--shadow-md);
+}
+
+.profile-stats-grid .stat-label {
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--t3);
+}
+
+.profile-stats-grid .stat-value {
+    font-family: var(--mono);
+    font-size: clamp(1.35rem, 2.2vw, 1.85rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--t1);
+    line-height: 1.15;
+    margin-top: var(--space-1);
+}
+
+.stat-value-highlight {
+    color: var(--green);
+}
+
+.profile-tier-chips {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-8);
+    padding: 0 var(--space-1);
+}
+
+.profile-tier-chips .chip {
+    font-size: var(--text-2xs);
+}
+
+/* ----- Sections ----- */
+.profile-section {
+    margin-bottom: var(--space-10);
+}
+
+.profile-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.profile-section-head .eyebrow {
+    color: var(--accent);
+}
+
+/* Purchased Signals Chips */
+.profile-signals-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    background: var(--surface-1);
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-md);
+}
+
+.signal-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px 12px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(124, 111, 255, 0.25);
+    border-radius: var(--radius-sm);
+    color: #cfc9ff;
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    transition:
+        border-color var(--dur-fast) var(--ease-out-expo),
+        background var(--dur-fast) var(--ease-out-expo);
+}
+
+.signal-chip:hover {
+    border-color: rgba(124, 111, 255, 0.5);
+    background: rgba(124, 111, 255, 0.18);
+}
+
+.signal-chip-empty {
+    color: var(--t3);
+    font-size: var(--text-sm);
+    font-family: var(--sans);
+    padding: var(--space-1) var(--space-2);
+}
+
+/* ----- Payment Row Cards List ----- */
+.payment-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.payment-card {
+    background: var(--surface-glass);
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    transition:
+        border-color var(--dur-fast) var(--ease-out-expo),
+        background var(--dur-fast) var(--ease-out-expo),
+        box-shadow var(--dur-fast) var(--ease-out-expo);
+}
+
+.payment-card:hover {
+    border-color: var(--bdr-md);
+}
+
+.payment-card.is-expanded {
+    border-color: rgba(124, 111, 255, 0.35);
+    background: var(--surface-2);
+    box-shadow: var(--shadow-md);
+}
+
+/* Summary Bar (collapsed view) */
+.payment-card-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    cursor: pointer;
+    user-select: none;
+}
+
+.payment-card-identity {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+}
+
+.payment-symbol-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.payment-symbol {
+    font-family: var(--mono);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--t1);
+    letter-spacing: -0.01em;
+}
+
+.split-legs-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    color: var(--t2);
+    background: var(--surface-3);
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-pill);
+    padding: 3px 8px;
+    cursor: pointer;
+    transition:
+        color var(--dur-fast) var(--ease-out-expo),
+        border-color var(--dur-fast) var(--ease-out-expo);
+}
+
+.split-legs-toggle-btn:hover {
+    color: var(--t1);
+    border-color: var(--bdr-hi);
+}
+
+.payment-meta-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--t3);
+    flex-wrap: wrap;
+}
+
+.payment-provider {
+    color: var(--t2);
+    font-weight: 500;
+}
+
+.payment-meta-divider {
+    color: var(--bdr-md);
+}
+
+.payment-buyer {
+    color: var(--t3);
+}
+
+.payment-date {
+    color: var(--t3);
+}
+
+/* Metrics and Right Side */
+.payment-card-metrics {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-shrink: 0;
+}
+
+.payment-amount-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    min-width: 110px;
+}
+
+.payment-amount {
+    font-family: var(--mono);
+    font-size: var(--text-base);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--t1);
+}
+
+.payment-ref-wrap {
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    color: var(--t3);
+}
+
+.payment-ref-wrap a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.payment-ref-wrap a:hover {
+    text-decoration: underline;
+}
+
+.payment-status-col {
+    min-width: 90px;
+    display: flex;
+    justify-content: center;
+}
+
+.payment-action-col {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.report-hint-text {
+    font-size: var(--text-2xs);
+    color: var(--t3);
+    white-space: nowrap;
+}
+
+.payment-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    color: var(--t3);
+    transition:
+        transform var(--dur-fast) var(--ease-out-expo),
+        color var(--dur-fast) var(--ease-out-expo);
+}
+
+.payment-card:hover .payment-chevron {
+    color: var(--t2);
+}
+
+.payment-chevron.is-open {
+    transform: rotate(180deg);
+    color: var(--accent);
+}
+
+/* ----- Split Legs Container (Indented Rail) ----- */
+.split-legs-container {
+    padding: 0 var(--space-5) var(--space-4) var(--space-5);
+    background: rgba(0, 0, 0, 0.15);
+    border-top: 1px dashed var(--bdr);
+}
+
+.split-legs-rail {
+    position: relative;
+    padding-left: var(--space-4);
+    border-left: 2px solid rgba(124, 111, 255, 0.3);
+    margin-top: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.split-leg-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-1);
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+}
+
+.split-leg-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--t2);
+}
+
+.split-leg-role {
+    font-family: var(--mono);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: var(--text-2xs);
+    letter-spacing: 0.05em;
+    color: var(--accent);
+}
+
+.split-leg-dest {
+    font-family: var(--mono);
+    color: var(--t3);
+}
+
+.split-leg-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.split-leg-amount {
+    font-weight: 700;
+    color: var(--t1);
+    font-variant-numeric: tabular-nums;
+}
+
+.split-leg-ref a {
+    color: var(--accent);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+}
+
+/* ----- Expanded 2-Column Receipt Panels ----- */
+.payment-card-expanded {
+    padding: var(--space-5);
+    background: var(--surface-1);
+    border-top: 1px solid var(--bdr-md);
+}
+
+.receipt-expanded-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--bdr);
+}
+
+.receipt-expanded-title {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--t1);
+}
+
+.receipt-expanded-subtitle {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-xs);
+    color: var(--t3);
+}
+
+.receipt-expanded-loading,
+.receipt-expanded-empty {
+    padding: var(--space-8);
+    text-align: center;
+    color: var(--t3);
+    font-size: var(--text-sm);
+}
+
+.receipt-panels-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-5);
+}
+
+.receipt-panels-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.receipt-panel {
+    background: var(--glass-card);
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-md);
+    padding: var(--space-4) var(--space-5);
+}
+
+.receipt-panel-receipt {
+    border-color: rgba(124, 111, 255, 0.25);
+    background: linear-gradient(180deg, rgba(22, 26, 44, 0.8) 0%, rgba(14, 17, 30, 0.9) 100%);
+}
+
+.receipt-panel-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px dashed var(--bdr-md);
+}
+
+.receipt-panel-heading {
+    margin: 0 0 var(--space-3);
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+}
+
+.receipt-panel-top .receipt-panel-heading {
+    margin-bottom: 0;
+}
+
+.receipt-kv {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-top: 1px solid var(--bdr);
+    font-size: var(--text-xs);
+}
+
+.receipt-kv:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.receipt-kv-label {
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--t3);
+    flex-shrink: 0;
+}
+
+.receipt-kv-value {
+    color: var(--t1);
+    font-weight: 600;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.receipt-amount-highlight {
+    color: var(--green);
+    font-size: var(--text-sm);
+}
+
+.receipt-explorer-btn {
+    width: 100%;
+    margin-top: var(--space-3);
+}
+
+/* ----- Minimal Pagination ----- */
+.profile-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+    padding-top: var(--space-4);
+}
+
+.pagination-info {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--t2);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ----- Local Wallet Actions List ----- */
+.local-actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.local-action-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-glass);
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-sm);
+    transition: border-color var(--dur-fast) var(--ease-out-expo);
+}
+
+.local-action-card:hover {
+    border-color: var(--bdr-md);
+}
+
+.local-action-main {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.local-action-symbol {
+    font-family: var(--mono);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--t1);
+}
+
+.local-action-time {
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    color: var(--t3);
+}
+
+.local-action-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.local-action-amount {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--t2);
+}
+
+.local-action-ref a {
+    color: var(--accent);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+}
+
+.local-action-ref a:hover {
+    text-decoration: underline;
+}
+
+/* ----- Utility & Micro Classes ----- */
+.mono-text {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.chip-2xs {
+    font-size: var(--text-2xs);
+    padding: 2px 7px;
+}
+
+/* ----- Responsive Breakpoints ----- */
+@media (max-width: 900px) {
+    .profile-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .receipt-panels-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .profile-shell {
+        width: calc(100% - var(--space-4));
+        padding-top: calc(var(--header-h) + var(--space-4));
+        padding-bottom: var(--space-10);
+    }
+
+    .profile-hero-top {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .profile-identity-bar {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .payment-card-summary {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-3);
+    }
+
+    .payment-card-metrics {
+        justify-content: space-between;
+        width: 100%;
+        padding-top: var(--space-2);
+        border-top: 1px solid var(--bdr);
+    }
+
+    .payment-amount-col {
+        align-items: flex-start;
+        min-width: 0;
+    }
+
+    .local-action-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-2);
+    }
+
+    .local-action-meta {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .payment-card,
+    .stat-tile,
+    .signal-chip,
+    .payment-chevron,
+    .btn {
+        transition: none !important;
+        transform: none !important;
+    }
+}

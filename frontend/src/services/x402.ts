@@ -1,4 +1,4 @@
-import { getInjectedWallet } from "./wallet";
+import { getWalletProvider } from "./wallet";
 
 function b64decode(value: string) {
   return JSON.parse(atob(value));
@@ -56,7 +56,7 @@ function getFetchHeaders(resourceUrl: string, additionalHeaders: Record<string, 
 }
 
 export async function prepareX402Payment(resourceUrl: string, account: string): Promise<PreparedX402Payment> {
-  const provider = getInjectedWallet();
+  const provider = getWalletProvider();
   if (!provider) throw new Error("No EVM wallet provider found.");
 
   const targetUrl = normalizeResourceUrl(resourceUrl);

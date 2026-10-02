@@ -16,7 +16,11 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "types": ["bun"],
-    "composite": true
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": [
     "src"

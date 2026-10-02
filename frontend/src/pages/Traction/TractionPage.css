@@ -1,0 +1,1094 @@
+/* =============================================================================
+   QMA Autonomous Intelligence Protocol — Traction & Live Proof Styles
+   -----------------------------------------------------------------------------
+   Strictly bound to design tokens from tokens.css and UI primitives from ui.css.
+   - Primary action color: --accent (violet #7C6FFF)
+   - Semantic status: --green (live/settled), --amber (pending), --red (danger)
+   - Fonts: --sans (Inter) for copy, --mono (JetBrains Mono) for numbers/hashes
+   - Surfaces: --surface-1, --surface-2, --surface-3, --surface-glass
+   - Zero decorative semantic colors; zero raw font/color declarations
+   ============================================================================= */
+
+/* ----- Body & Page Shell -------------------------------------------------- */
+.traction-body {
+  height: auto;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: block;
+}
+
+.traction-page {
+  min-height: 100vh;
+  color: var(--t1);
+  background-color: var(--bg-0);
+  background-image:
+    radial-gradient(ellipse 900px 520px at 50% -10%, rgba(124, 111, 255, 0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 700px 400px at 85% 25%, rgba(34, 211, 160, 0.04) 0%, transparent 60%);
+  background-attachment: fixed;
+  font-family: var(--sans);
+  padding-bottom: var(--space-16);
+}
+
+.traction-container {
+  max-width: var(--container-max, 1180px);
+  margin: 0 auto;
+  padding: 0 var(--container-pad, 20px);
+}
+
+/* ----- Hero Section ------------------------------------------------------- */
+.traction-hero {
+  max-width: var(--container-max, 1180px);
+  margin: 0 auto;
+  padding: calc(var(--header-h, 60px) + var(--space-8)) var(--container-pad, 20px) var(--space-8);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.traction-hero-text {
+  max-width: 680px;
+}
+
+.traction-hero-text .eyebrow {
+  margin-bottom: var(--space-2);
+}
+
+.traction-title {
+  margin: 0 0 var(--space-3);
+  font-size: clamp(2rem, 4.5vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  color: #ffffff;
+}
+
+.traction-intro {
+  margin: 0;
+  color: var(--t2);
+  font-size: var(--text-md);
+  line-height: 1.6;
+  max-width: 620px;
+}
+
+.traction-live-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  flex-shrink: 0;
+}
+
+/* ----- Segmented Tab Navigation Bar --------------------------------------- */
+.traction-tab-bar {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  max-width: var(--container-max, 1180px);
+  margin: 0 auto var(--space-6);
+  padding: 4px;
+  background: var(--surface-glass);
+  border: 1px solid var(--bdr);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.traction-tab-btn {
+  flex: 1 1 auto;
+  min-width: 140px;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--t2);
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: var(--text-sm);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition:
+    background var(--dur-fast) var(--ease-out-expo),
+    border-color var(--dur-fast) var(--ease-out-expo),
+    color var(--dur-fast) var(--ease-out-expo),
+    box-shadow var(--dur-fast) var(--ease-out-expo);
+}
+
+.traction-tab-btn:hover {
+  color: var(--t1);
+  background: var(--surface-2);
+}
+
+.traction-tab-btn.is-active {
+  color: #ffffff;
+  font-weight: 600;
+  background: var(--accent-dim);
+  border-color: rgba(124, 111, 255, 0.35);
+  box-shadow: 0 2px 10px rgba(124, 111, 255, 0.12);
+}
+
+.traction-tab-btn .chip {
+  padding: 2px 7px;
+  font-size: 10px;
+}
+
+/* ----- Headline Band (3 Dominant Stat Cards) ------------------------------ */
+.traction-headline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.traction-headline-card {
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  position: relative;
+  background: var(--surface-glass);
+  border: 1px solid var(--bdr);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition:
+    border-color var(--dur-base) var(--ease-out-expo),
+    transform var(--dur-base) var(--ease-out-expo),
+    box-shadow var(--dur-base) var(--ease-out-expo);
+}
+
+.traction-headline-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--bdr-md);
+  box-shadow: var(--shadow-md);
+}
+
+.traction-headline-card.card-streams {
+  border-color: rgba(124, 111, 255, 0.22);
+  background: linear-gradient(135deg, rgba(124, 111, 255, 0.08) 0%, var(--surface-glass) 100%);
+}
+
+.traction-headline-card.card-streams:hover {
+  border-color: rgba(124, 111, 255, 0.45);
+}
+
+.traction-headline-card.card-settled {
+  border-color: rgba(34, 211, 160, 0.22);
+  background: linear-gradient(135deg, rgba(34, 211, 160, 0.08) 0%, var(--surface-glass) 100%);
+}
+
+.traction-headline-card.card-settled:hover {
+  border-color: rgba(34, 211, 160, 0.45);
+}
+
+.traction-headline-card.card-yield {
+  border-color: rgba(245, 158, 11, 0.22);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, var(--surface-glass) 100%);
+}
+
+.traction-headline-card.card-yield:hover {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.traction-headline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.traction-headline-label {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.traction-headline-card.card-streams .traction-headline-label {
+  color: var(--accent);
+}
+
+.traction-headline-card.card-settled .traction-headline-label {
+  color: var(--green);
+}
+
+.traction-headline-card.card-yield .traction-headline-label {
+  color: var(--amber);
+}
+
+.traction-headline-val {
+  font-family: var(--mono);
+  font-size: clamp(1.75rem, 2.5vw, 2.25rem);
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  margin: var(--space-1) 0 0;
+}
+
+.traction-headline-desc {
+  font-size: var(--text-sm);
+  color: var(--t2);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.traction-headline-footer {
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--bdr);
+}
+
+.traction-tag-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.traction-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  letter-spacing: 0.02em;
+  background: var(--surface-2);
+  color: var(--t2);
+  border: 1px solid var(--bdr);
+}
+
+.traction-tag-accent {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: rgba(124, 111, 255, 0.25);
+}
+
+.traction-tag-purple {
+  background: var(--purple-dim);
+  color: var(--purple);
+  border-color: rgba(167, 139, 250, 0.25);
+}
+
+.traction-tag-amber {
+  background: var(--amber-dim);
+  color: var(--amber);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.traction-tag-green {
+  background: var(--green-dim);
+  color: var(--green);
+  border-color: rgba(34, 211, 160, 0.25);
+}
+
+/* ----- Teaser / Interactive Simulation Banner ----------------------------- */
+.traction-teaser-card {
+  background: linear-gradient(135deg, rgba(124, 111, 255, 0.07) 0%, var(--surface-glass) 100%);
+  border: 1px solid rgba(124, 111, 255, 0.2);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4) var(--space-6);
+  margin-bottom: var(--space-6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.traction-teaser-text strong {
+  color: #ffffff;
+  font-size: var(--text-md);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.traction-teaser-text span {
+  font-size: var(--text-sm);
+  color: var(--t2);
+  line-height: 1.45;
+}
+
+/* ----- Detailed Metrics Grid (7 Items) ----------------------------------- */
+.traction-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.traction-metric {
+  background: var(--surface-glass);
+  border: 1px solid var(--bdr);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 96px;
+  transition:
+    border-color var(--dur-fast) var(--ease-out-expo),
+    background var(--dur-fast) var(--ease-out-expo);
+}
+
+.traction-metric:hover {
+  border-color: var(--bdr-md);
+  background: var(--surface-2);
+}
+
+.traction-metric span {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: block;
+}
+
+.traction-metric strong {
+  font-family: var(--mono);
+  font-size: clamp(1.15rem, 1.8vw, 1.35rem);
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  margin: var(--space-2) 0 var(--space-1);
+  display: block;
+  line-height: 1.1;
+}
+
+.traction-metric small {
+  font-family: var(--sans);
+  font-size: var(--text-2xs);
+  color: var(--t2);
+  display: block;
+}
+
+/* ----- Settled Provenance Section ----------------------------------------- */
+.traction-provenance {
+  background: var(--surface-glass);
+  border: 1px solid var(--bdr);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.traction-provenance-head {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: var(--space-5);
+  align-items: center;
+}
+
+.traction-provenance-intro p {
+  margin: var(--space-1) 0 0;
+  color: var(--t2);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.traction-provenance-item {
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--bdr);
+}
+
+.traction-provenance-item span {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: block;
+}
+
+.traction-provenance-item strong {
+  font-family: var(--mono);
+  font-size: clamp(1.4rem, 2vw, 1.75rem);
+  font-weight: 700;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  display: block;
+  margin: var(--space-1) 0 2px;
+}
+
+.traction-provenance-item small {
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+  display: block;
+}
+
+/* Ledger-line styling for per-purchase settlements */
+.traction-provenance-ledger {
+  border-top: 1px solid var(--bdr);
+  padding-top: var(--space-4);
+}
+
+.traction-provenance-ledger-title {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--t2);
+  margin-bottom: var(--space-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.traction-ledger-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bdr);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.traction-ledger-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px var(--space-4);
+  border-bottom: 1px solid var(--bdr);
+  font-size: var(--text-xs);
+  transition: background var(--dur-fast) var(--ease-out-expo);
+}
+
+.traction-ledger-row:last-child {
+  border-bottom: none;
+}
+
+.traction-ledger-row:hover {
+  background: var(--surface-2);
+}
+
+.traction-ledger-row .mono-cell {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----- Panels & Cards (Shared Language) ----------------------------------- */
+.traction-panel {
+  background: var(--surface-glass);
+  border: 1px solid var(--bdr);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-sm);
+}
+
+.traction-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--bdr);
+}
+
+.traction-panel-heading h2 {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.traction-panel-meta {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ----- 14-Day Payment Activity Chart -------------------------------------- */
+.traction-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 150px;
+  padding: var(--space-6) 0 0;
+}
+
+.traction-bar-wrap {
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  border-bottom: 1px solid var(--bdr-md);
+  cursor: pointer;
+}
+
+.traction-bar {
+  width: 100%;
+  min-height: 4px;
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  background: linear-gradient(180deg, var(--green) 0%, rgba(34, 211, 160, 0.22) 100%);
+  transition: opacity var(--dur-fast) var(--ease-out-expo), transform var(--dur-fast) var(--ease-out-expo);
+}
+
+.traction-bar-wrap:hover .traction-bar {
+  opacity: 0.85;
+  transform: scaleY(1.05);
+  box-shadow: 0 -2px 8px rgba(34, 211, 160, 0.35);
+}
+
+.traction-chart-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  color: var(--t3);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ----- Institutional Table Styling ---------------------------------------- */
+.table-scroll-x {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.traction-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-xs);
+  text-align: left;
+}
+
+.traction-table th {
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--t3);
+  border-bottom: 1px solid var(--bdr);
+  white-space: nowrap;
+}
+
+.traction-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--bdr);
+  color: var(--t1);
+  vertical-align: middle;
+}
+
+.traction-table tr:hover td {
+  background: var(--surface-1);
+}
+
+.traction-table .mono-td {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.traction-table .table-meta {
+  font-size: 10px;
+  color: var(--t3);
+  font-family: var(--mono);
+  margin-top: 2px;
+}
+
+.traction-table .table-empty-cell {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--t3);
+  font-style: normal;
+}
+
+.tx-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-family: var(--mono);
+  font-weight: 600;
+  transition: color var(--dur-fast) var(--ease-out-expo);
+}
+
+.tx-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+.provider-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  color: var(--t2);
+  border: 1px solid var(--bdr);
+}
+
+.settlement-status-note {
+  font-size: 10px;
+  font-family: var(--mono);
+  margin-top: 2px;
+}
+
+.settlement-status-note.is-final {
+  color: var(--t3);
+}
+
+.settlement-status-note.is-pending {
+  color: var(--amber);
+}
+
+/* ----- Split Tables & Section Dividers ------------------------------------ */
+.split-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+}
+
+.split-table-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.subsection-title {
+  font-family: var(--sans);
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-count {
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  color: var(--t3);
+  font-weight: 500;
+}
+
+.creator-split-ledger {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--bdr);
+}
+
+/* ----- Balance Tiles (Seller Gateway) ------------------------------------- */
+.seller-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.balance-tile {
+  background: var(--surface-1);
+  border: 1px solid var(--bdr);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.balance-tile.green {
+  border-color: rgba(34, 211, 160, 0.25);
+  background: linear-gradient(135deg, rgba(34, 211, 160, 0.05) 0%, var(--surface-1) 100%);
+}
+
+.balance-tile.amber {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, var(--surface-1) 100%);
+}
+
+.balance-tile.neutral {
+  border-color: var(--bdr-md);
+}
+
+.balance-tile-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--t3);
+}
+
+.balance-tile.green .balance-tile-label {
+  color: var(--green);
+}
+
+.balance-tile.amber .balance-tile-label {
+  color: var(--amber);
+}
+
+.balance-tile-val {
+  font-family: var(--mono);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  margin: 2px 0;
+}
+
+.balance-tile-sub {
+  font-size: var(--text-2xs);
+  color: var(--t2);
+}
+
+/* ----- Pagination Controls ------------------------------------------------ */
+.table-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--bdr);
+  flex-wrap: wrap;
+}
+
+.table-page-label {
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  color: var(--t2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----- Interactive Live Simulation Widget --------------------------------- */
+.interactive-simulation-panel {
+  border-color: rgba(124, 111, 255, 0.25);
+  box-shadow: 0 8px 32px rgba(124, 111, 255, 0.08);
+}
+
+.simulation-progress-track {
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+  height: 4px;
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+}
+
+.simulation-progress-bar {
+  background: linear-gradient(90deg, var(--accent) 0%, var(--green) 60%, var(--amber) 100%);
+  height: 100%;
+  transition: width 0.4s var(--ease-out-expo);
+}
+
+.simulation-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.simulation-step-card {
+  background: var(--surface-1);
+  border: 1px solid var(--bdr);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition:
+    border-color var(--dur-base) var(--ease-out-expo),
+    transform var(--dur-base) var(--ease-out-expo),
+    box-shadow var(--dur-base) var(--ease-out-expo),
+    background var(--dur-base) var(--ease-out-expo);
+}
+
+.simulation-step-card.is-current {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 111, 255, 0.2);
+}
+
+.simulation-step-card.is-passed {
+  background: rgba(34, 211, 160, 0.04);
+  border-color: rgba(34, 211, 160, 0.3);
+}
+
+.simulation-step-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.simulation-step-num {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--t3);
+}
+
+.simulation-step-card.is-passed .simulation-step-num {
+  color: var(--green);
+}
+
+.simulation-step-card.is-current .simulation-step-num {
+  color: var(--accent);
+}
+
+.simulation-step-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.simulation-step-desc {
+  font-size: var(--text-xs);
+  color: var(--t2);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.simulation-details-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--bdr);
+  border-radius: var(--radius-xs);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-family: var(--mono);
+  margin-top: auto;
+}
+
+.simulation-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.simulation-detail-key {
+  color: var(--t3);
+}
+
+.simulation-detail-val {
+  color: var(--t1);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.simulation-completion-banner {
+  margin-top: var(--space-5);
+  background: rgba(34, 211, 160, 0.08);
+  border: 1px solid rgba(34, 211, 160, 0.28);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.simulation-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid #ffffff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ----- Autonomous CFO Treasury Radar -------------------------------------- */
+.cfo-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.cfo-corridor-bar {
+  background: var(--surface-1);
+  border: 1px solid var(--bdr);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.cfo-corridor-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--t2);
+  margin-bottom: 8px;
+}
+
+.cfo-corridor-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.cfo-corridor-item {
+  padding: 8px 10px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  border: 1px solid var(--bdr);
+}
+
+.cfo-corridor-item strong {
+  display: block;
+  font-size: 11px;
+}
+
+.cfo-corridor-item span {
+  display: block;
+  font-size: 10px;
+  color: var(--t2);
+  margin-top: 2px;
+}
+
+/* ----- Agent Risk Governance Panel --------------------------------------- */
+.agent-risk-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.resolution-modal-box {
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-1);
+  border: 1px solid rgba(124, 111, 255, 0.4);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.traction-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--bdr-md);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  font-size: var(--text-xs);
+  font-family: var(--sans);
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out-expo);
+}
+
+.traction-input:focus {
+  border-color: var(--accent);
+}
+
+/* ----- Error & Disclaimer ------------------------------------------------- */
+.traction-error {
+  max-width: var(--container-max, 1180px);
+  margin: 0 auto var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  color: var(--red);
+  border: 1px solid rgba(244, 71, 91, 0.3);
+  background: var(--red-dim);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+.traction-disclaimer {
+  max-width: var(--container-max, 1180px);
+  margin: var(--space-8) auto 0;
+  color: var(--t3);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* ----- Responsive Adaptations --------------------------------------------- */
+@media (max-width: 900px) {
+  .traction-provenance-head {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+  .traction-provenance-item {
+    padding-left: 0;
+    padding-top: var(--space-3);
+    border-left: none;
+    border-top: 1px solid var(--bdr);
+  }
+  .split-tables {
+    grid-template-columns: 1fr;
+  }
+  .traction-ledger-row {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+  }
+}
+
+@media (max-width: 680px) {
+  .traction-hero {
+    padding: calc(var(--header-h, 60px) + var(--space-4)) var(--container-pad, 16px) var(--space-5);
+  }
+  .traction-container {
+    padding: 0 16px;
+  }
+  .traction-tab-bar {
+    gap: 2px;
+    padding: 2px;
+  }
+  .traction-tab-btn {
+    min-width: 110px;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+  .traction-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ----- Accessibility & Reduced Motion ------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .traction-headline-card,
+  .traction-tab-btn,
+  .simulation-step-card,
+  .traction-bar {
+    transition: none !important;
+    transform: none !important;
+  }
+  .simulation-spinner {
+    animation: none !important;
+  }
+}

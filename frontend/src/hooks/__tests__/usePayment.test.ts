@@ -76,6 +76,7 @@ mock.module("../../services/reports", () => ({
 mock.module("../../services/wallet", () => ({
   ensureArcTestnet: mockEnsureArcTestnet,
   getInjectedWallet: mockGetInjectedWallet,
+  getWalletProvider: mockGetInjectedWallet,
   shortAddress: (addr: string) => (addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : ""),
 }));
 

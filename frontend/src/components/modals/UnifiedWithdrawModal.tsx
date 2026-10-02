@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { FundArcWalletModal } from "../wallet/FundArcWalletModal";
+import { FundArcWalletModal } from "./FundArcWalletModal";
 import { Loader } from "../ui/Loader";
 import { formatUsdc } from "../../utils/format";
 import { ensureArcTestnet } from "../../services/wallet";
 import { ARC_CHAIN } from "../../config/network";
+import "./UnifiedTransferModal.css";
 
 interface UnifiedWithdrawModalProps {
   open: boolean;
@@ -148,7 +149,7 @@ export function UnifiedWithdrawModal({
             <div>
               <div className="modal-title">Withdraw</div>
               <div className="modal-subtitle">
-                Withdraw <span className="accent-text" style={{ fontWeight: 700 }}>USDC</span> back to your wallet
+                Withdraw <span className="accent-text font-bold">USDC</span> back to your wallet
               </div>
             </div>
           </div>
@@ -163,7 +164,7 @@ export function UnifiedWithdrawModal({
           <div className="funding-modal-sidebar">
             {withdrawTab === "gateway" ? (
               <div className="funding-sidebar-wallet-card">
-                <div className="funding-sidebar-wallet-icon-wrapper" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }}>
+                <div className="funding-sidebar-wallet-icon-wrapper bg-blue-500/15 text-blue-500">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V9z" /><path d="M22 9V8a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v1" /><path d="M7 15h0M11 15h0M15 15h0" /></svg>
                 </div>
                 <div className="funding-sidebar-wallet-details">
@@ -186,7 +187,7 @@ export function UnifiedWithdrawModal({
               </div>
             ) : (
               <div className="funding-sidebar-wallet-card">
-                <div className="funding-sidebar-wallet-icon-wrapper" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+                <div className="funding-sidebar-wallet-icon-wrapper bg-emerald-500/15 text-emerald-500">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                 </div>
                 <div className="funding-sidebar-wallet-details">
@@ -212,7 +213,7 @@ export function UnifiedWithdrawModal({
                   }
                 </span>
                 <div className="funding-sidebar-usdc-badge">
-                  <img src="/usdc-logo.svg" style={{ width: '14px', height: '14px' }} alt="USDC" />
+                  <img src="/usdc-logo.svg" width={14} height={14} alt="USDC" className="w-3.5 h-3.5" />
                   <span>USDC</span>
                 </div>
               </div>
@@ -239,20 +240,10 @@ export function UnifiedWithdrawModal({
           <div className="funding-modal-main-panel">
             {/* Wrong Network Notice Banner */}
             {fundChainStatus && fundChainStatus !== ARC_CHAIN.name && (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 14px",
-                background: "rgba(245, 158, 11, 0.1)",
-                border: "1px solid rgba(245, 158, 11, 0.25)",
-                borderRadius: "8px",
-                marginBottom: "14px",
-                gap: "10px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "16px" }}>⚠️</span>
-                  <span style={{ fontSize: "12px", color: "#fbbf24" }}>
+              <div className="flex items-center justify-between px-3.5 py-2.5 bg-amber-500/10 border border-amber-500/25 rounded-lg mb-3.5 gap-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">⚠️</span>
+                  <span className="text-xs text-amber-400">
                     Connected to <strong>{fundChainStatus}</strong>. Switch to {ARC_CHAIN.name} to process Gateway refund.
                   </span>
                 </div>
@@ -260,17 +251,7 @@ export function UnifiedWithdrawModal({
                   type="button"
                   onClick={handleSwitchToArc}
                   disabled={switchingNetwork}
-                  style={{
-                    padding: "6px 12px",
-                    background: "#f59e0b",
-                    color: "#000",
-                    fontWeight: 700,
-                    fontSize: "11px",
-                    borderRadius: "6px",
-                    border: "none",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
+                  className="px-3 py-1.5 bg-amber-500 text-black font-bold text-[11px] rounded-md border-none cursor-pointer whitespace-nowrap hover:bg-amber-400 transition-colors"
                 >
                   {switchingNetwork ? "Switching..." : `Switch to ${ARC_CHAIN.name}`}
                 </button>
@@ -330,7 +311,7 @@ export function UnifiedWithdrawModal({
                     <span className="funding-address-text">{wallet}</span>
                   </div>
                   <div className="funding-address-help">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent)' }}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--accent)]"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
                     <span>USDC will be returned to this connected address.</span>
                   </div>
                 </div>
@@ -351,7 +332,7 @@ export function UnifiedWithdrawModal({
                         required
                       />
                       <div className="funding-amount-input-badge-wrapper">
-                        <img src="/usdc-logo.svg" style={{ width: '16px', height: '16px' }} alt="USDC" />
+                        <img src="/usdc-logo.svg" width={16} height={16} alt="USDC" className="w-4 h-4" />
                         <select className="funding-token-select" defaultValue="USDC">
                           <option value="USDC">USDC</option>
                           <option value="EURC" disabled>EURC (Soon)</option>
@@ -389,7 +370,7 @@ export function UnifiedWithdrawModal({
                     <span className="funding-address-text">{wallet}</span>
                   </div>
                   <div className="funding-address-help">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent)' }}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--accent)]"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
                     <span>USDC will be withdrawn to this connected address.</span>
                   </div>
                 </div>
@@ -410,7 +391,7 @@ export function UnifiedWithdrawModal({
                         required
                       />
                       <div className="funding-amount-input-badge-wrapper">
-                        <img src="/usdc-logo.svg" style={{ width: '16px', height: '16px' }} alt="USDC" />
+                        <img src="/usdc-logo.svg" width={16} height={16} alt="USDC" className="w-4 h-4" />
                         <select className="funding-token-select" defaultValue="USDC">
                           <option value="USDC">USDC</option>
                           <option value="EURC" disabled>EURC (Soon)</option>

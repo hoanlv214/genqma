@@ -1,4 +1,4 @@
-import React from "react";
+import { cn } from "../../utils/cn";
 
 export interface EmptyStateProps {
   title?: string;
@@ -19,41 +19,17 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className={`empty-state-unified ${className}`}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: compact ? "16px 20px" : "32px 24px",
-        textAlign: "center",
-        borderRadius: "var(--radius-sm, 6px)",
-        border: "1px dashed var(--bdr, rgba(255, 255, 255, 0.08))",
-        background: "rgba(255, 255, 255, 0.015)",
-        gap: "8px",
-      }}
+      className={cn(
+        "empty-state-unified flex flex-col items-center justify-center text-center rounded-md border border-dashed border-[var(--bdr)] bg-white/[0.015] gap-2",
+        compact ? "py-4 px-5" : "py-8 px-6",
+        className
+      )}
     >
-      <span
-        style={{
-          fontFamily: "var(--sans, 'Inter', sans-serif)",
-          fontWeight: 600,
-          fontSize: compact ? "0.82rem" : "0.92rem",
-          color: "var(--t1, #e8eaf0)",
-        }}
-      >
+      <span className={cn("font-semibold text-[var(--t1)]", compact ? "text-[0.82rem]" : "text-[0.92rem]")}>
         {title}
       </span>
       {description && (
-        <p
-          style={{
-            fontFamily: "var(--sans, 'Inter', sans-serif)",
-            fontSize: "0.78rem",
-            color: "var(--t3, #8d95b0)",
-            maxWidth: "380px",
-            margin: 0,
-            lineHeight: 1.4,
-          }}
-        >
+        <p className="text-[0.78rem] text-[var(--t3)] max-w-sm m-0 leading-snug">
           {description}
         </p>
       )}
@@ -61,8 +37,7 @@ export function EmptyState({
         <button
           type="button"
           onClick={onAction}
-          className="btn-primary"
-          style={{ marginTop: "6px" }}
+          className="btn-primary mt-1.5"
         >
           {actionText}
         </button>

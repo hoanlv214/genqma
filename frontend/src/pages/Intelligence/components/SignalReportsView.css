@@ -1,0 +1,379 @@
+/* =============================================================================
+   QMA SIGNAL REPORTS — the /app surface
+   -----------------------------------------------------------------------------
+   One grid of signal cards, one trust line. Tokens only (styles/tokens.css).
+   Prefixed `xp-` to avoid legacy collisions.
+   ============================================================================= */
+
+.xp-shell {
+    max-width: min(var(--container-max, 1680px), calc(100vw - 32px));
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4) var(--space-16);
+}
+
+.xp-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+/* ----- List header ----- */
+.xp-list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.xp-list-title {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    color: var(--t1);
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+
+.xp-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    color: var(--t3);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: default;
+}
+
+.xp-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: xp-pulse 2.4s infinite;
+}
+
+@keyframes xp-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(34, 211, 160, 0.45);
+    }
+
+    70% {
+        box-shadow: 0 0 0 5px rgba(34, 211, 160, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(34, 211, 160, 0);
+    }
+}
+
+button.xp-live-badge.xp-live-error {
+    color: var(--red);
+    cursor: pointer;
+}
+
+/* ----- Signal card grid ----- */
+.xp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-4);
+}
+
+.xp-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    background: var(--surface-1);
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: border-color var(--dur-fast) var(--ease-out-expo),
+        box-shadow var(--dur-fast) var(--ease-out-expo);
+}
+
+.xp-card:hover {
+    border-color: var(--bdr-md);
+    box-shadow: var(--shadow-md);
+}
+
+.xp-card.is-skeleton {
+    height: 220px;
+    cursor: default;
+    background: linear-gradient(90deg, var(--skeleton-base) 25%, var(--skeleton-sheen) 50%, var(--skeleton-base) 75%);
+    background-size: 200% 100%;
+    animation: xp-shimmer 1.4s infinite linear;
+}
+
+@keyframes xp-shimmer {
+    from {
+        background-position: 200% 0;
+    }
+
+    to {
+        background-position: -200% 0;
+    }
+}
+
+.xp-card-top {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.xp-card-rank {
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    color: var(--t3);
+}
+
+.xp-card-symbol {
+    font-size: var(--text-lg);
+    font-weight: 800;
+    color: var(--t1);
+    letter-spacing: 0.01em;
+}
+
+.xp-card-exchange {
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    color: var(--t3);
+    letter-spacing: 0.5px;
+}
+
+.xp-card-score {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 1px solid rgba(124, 111, 255, 0.3);
+    border-radius: var(--radius-pill);
+    padding: 2px 10px;
+}
+
+.xp-card-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+}
+
+.xp-fact {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.xp-fact-lbl {
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--t3);
+}
+
+.xp-fact-val {
+    font-family: var(--mono);
+    font-size: var(--text-md);
+    font-weight: 700;
+    color: var(--t1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.xp-fact-val.is-negative {
+    color: var(--red);
+}
+
+.xp-fact-val.is-positive {
+    color: var(--green);
+}
+
+.xp-card-reason {
+    font-size: var(--text-xs);
+    color: var(--t3);
+    line-height: 1.5;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.xp-card-owned {
+    margin: 0;
+}
+
+.xp-entitlement {
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+}
+
+.xp-entitlement.paid {
+    background: var(--green-dim);
+    color: var(--green);
+}
+
+.xp-entitlement.history {
+    background: var(--amber-dim);
+    color: var(--amber);
+}
+
+.xp-entitlement.unpaid {
+    background: var(--surface-2);
+    color: var(--t2);
+}
+
+.xp-card-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-top: auto;
+}
+
+.xp-card-actions .btn {
+    width: 100%;
+    padding-left: 4px;
+    padding-right: 4px;
+    white-space: nowrap;
+}
+
+.xp-card-note {
+    font-size: var(--text-2xs);
+    color: var(--t3);
+    margin: 0;
+}
+
+/* ----- Empty state ----- */
+.xp-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-12) var(--space-6);
+    text-align: center;
+    background: var(--surface-1);
+    border: 1px dashed var(--bdr);
+    border-radius: var(--radius-xl);
+}
+
+.xp-empty-title {
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--t2);
+}
+
+.xp-empty-sub {
+    font-size: var(--text-sm);
+    color: var(--t3);
+    max-width: 46ch;
+    line-height: 1.5;
+}
+
+/* ----- Unlocked report holder (renders the existing ReportWorkspace) ----- */
+.xp-report-holder {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.qma-report-wrapper {
+    background: var(--surface-1);
+    border: 1px solid rgba(34, 211, 160, 0.28);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+}
+
+.qma-report-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--bdr);
+    background: rgba(34, 211, 160, 0.04);
+}
+
+.qma-report-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-md);
+    font-weight: 700;
+    color: var(--t1);
+}
+
+.qma-report-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--green);
+    background: var(--green-dim);
+    border: 1px solid rgba(34, 211, 160, 0.28);
+    border-radius: var(--radius-xs);
+    padding: 2px 8px;
+}
+
+/* ----- Responsive ----- */
+@media (max-width: 900px) {
+    .xp-shell {
+        padding-top: var(--space-6);
+    }
+
+    .xp-grid {
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+
+    /* Bottom nav bar occupies 64px (global-header.css) */
+    .xp-shell {
+        padding-bottom: 96px;
+    }
+
+    .xp-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 420px) {
+    .xp-card-facts {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .xp-card-actions {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .xp-card-actions .btn-ghost {
+        grid-column: 1 / -1;
+    }
+}
+
+/* ----- Reduced motion ----- */
+@media (prefers-reduced-motion: reduce) {
+    .xp-card.is-skeleton {
+        animation: none;
+    }
+
+    .xp-live-dot {
+        animation: none;
+    }
+}

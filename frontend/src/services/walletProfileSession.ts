@@ -1,5 +1,5 @@
 import { requestJson, API_BASE_URL } from "./api";
-import { getInjectedWallet } from "./wallet";
+import { getWalletProvider } from "./wallet";
 
 interface WalletProfileCache {
   token: string;
@@ -66,7 +66,7 @@ export async function requestWalletProfileSession(account: string) {
   const cached = getCachedWalletProfileToken(normalized);
   if (cached) return cached;
 
-  const provider = getInjectedWallet();
+  const provider = getWalletProvider();
   if (!provider) throw new Error("Connect the wallet owner to unlock private report snapshots.");
 
   const accounts = await provider.request<string[]>({ method: "eth_requestAccounts" });

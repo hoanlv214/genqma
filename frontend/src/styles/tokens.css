@@ -15,7 +15,7 @@
    - --brand-gradient   : Brand moments only (logo, hero highlight text).
    ============================================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500;1,6..72,600&display=swap');
 
 :root {
     /* ----- Core background layers (deep space navy, never pure black) ----- */
@@ -61,6 +61,19 @@
     --purple: #a78bfa;
     --purple-dim: rgba(167, 139, 250, 0.12);
 
+    /* ----- Semantic aliases (new markup may use either name) ----- */
+    --success: var(--green);
+    --success-dim: var(--green-dim);
+    --warning: var(--amber);
+    --warning-dim: var(--amber-dim);
+    --danger: var(--red);
+    --danger-dim: var(--red-dim);
+
+    /* ----- Loading skeleton ----- */
+    --skeleton-base: rgba(255, 255, 255, 0.05);
+    --skeleton-sheen: rgba(255, 255, 255, 0.10);
+    --shadow-violet: 0 12px 40px rgba(9, 10, 20, 0.55), 0 4px 24px rgba(124, 111, 255, 0.10);
+
     /* ----- Text hierarchy ----- */
     --t1: #e8eaf0;
     --t2: #8d95b0;
@@ -69,6 +82,47 @@
     /* ----- Fonts ----- */
     --mono: 'JetBrains Mono', 'Fira Code', monospace;
     --sans: 'Inter', sans-serif;
+
+    /* ----- Display serif (editorial headlines, receipt accents) ----- */
+    --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+
+    /* ----- Evidence paper & QMA Ledger (Single-unit receipts & treasury slips) ----- */
+    --qma-ground: #faf9f2;
+    --qma-frame: #faf9f2;
+    --qma-paper: #fffefa;
+    --qma-raised: #f0efe7;
+    --qma-line: #d8d6c9;
+    --qma-line-soft: #deddd2;
+    --qma-line-dashed: #c7c6b9;
+
+    --qma-ink: #18211c;
+    --qma-ink-2: #4f5954;
+    --qma-ink-3: #68736e;
+
+    --qma-emerald: #087a63;
+    --qma-emerald-dim: rgba(8, 122, 99, 0.12);
+    --qma-emerald-glow: rgba(8, 122, 99, 0.25);
+
+    --qma-cobalt: #3654be;
+    --qma-cobalt-dim: rgba(54, 84, 190, 0.12);
+
+    --qma-held: #9f5b08;
+    --qma-held-dim: rgba(159, 91, 8, 0.12);
+
+    --qma-refused: #dc2626;
+    --qma-refused-dim: rgba(220, 38, 38, 0.12);
+
+    /* Legacy paper aliases */
+    --paper: var(--qma-ground);
+    --paper-2: var(--qma-raised);
+    --paper-ink: var(--qma-ink);
+    --paper-ink-2: var(--qma-ink-2);
+    --paper-ink-3: var(--qma-ink-3);
+    --paper-line: var(--qma-line);
+    --paper-line-soft: var(--qma-line-soft);
+    --paper-paid: var(--qma-emerald);
+    --paper-held: var(--qma-held);
+    --paper-refused: var(--qma-refused);
 
     /* ----- Typography scale ----- */
     --text-2xs: 0.62rem;  /* labels, badges, eyebrows          */
@@ -129,9 +183,9 @@
     --focus-ring: 0 0 0 2px var(--bg-0), 0 0 0 4px var(--accent);
 
     /* ----- Layout containers ----- */
-    --container-max: 1240px;
-    --container-pad: clamp(16px, 4vw, 40px);
-    --header-h: 64px;
+    --container-max: 1680px;
+    --container-pad: clamp(16px, 3vw, 32px);
+    --header-h: 60px;
 
     /* ----- Z-index scale ----- */
     --z-base: 1;

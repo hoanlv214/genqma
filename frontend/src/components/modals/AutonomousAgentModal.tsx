@@ -15,8 +15,10 @@ import {
 } from "../../services/walletProfileSession";
 import { useAgentWalletStore } from "../../state/agentWalletStore";
 import { ARC_CHAIN } from "../../config/network";
-import { ensureArcTestnet, getInjectedWallet } from "../../services/wallet";
+import { ensureArcTestnet, getWalletProvider } from "../../services/wallet";
 import { encodeErc20TransferCalldata } from "../../services/gatewayCrypto";
+import { cn } from "../../utils/cn";
+import "./AutonomousAgentModal.css";
 
 interface AutonomousAgentModalProps {
   open: boolean;
@@ -255,7 +257,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                   addIfUnique(
                     `action-${data.id}-${index}`,
                     <div>
-                      ❌ Purchase failed: <span style={{ color: 'var(--c-red, #ff5c5c)', fontFamily: 'monospace' }}>{String(a.reason)}</span>
+                      ❌ Purchase failed: <span className="text-red-400 font-mono">{String(a.reason)}</span>
                       <div className="agent-runner-purchase-time">{timeStr}</div>
                     </div>
                   );
@@ -269,7 +271,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 addIfUnique(
                   `failure-${data.id}-${fIdx}`,
                   <div>
-                    ❌ <span style={{ color: 'var(--c-red, #ff5c5c)', fontFamily: 'monospace' }}>{String(f.error || f.message || "Execution error")}</span>
+                    ❌ <span className="text-red-400 font-mono">{String(f.error || f.message || "Execution error")}</span>
                     {timeStr && <div className="agent-runner-purchase-time">{timeStr}</div>}
                   </div>
                 );
@@ -277,15 +279,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
               if (data.status === "paused") {
                 addIfUnique(`status-paused-${data.id}`, (
-                  <div style={{
-                    background: "rgba(255, 179, 0, 0.08)",
-                    border: "1px solid rgba(255, 179, 0, 0.25)",
-                    borderRadius: "6px",
-                    padding: "8px 10px",
-                    color: "#ffb300",
-                    fontSize: "12px",
-                    marginTop: "4px"
-                  }}>
+                  <div className="bg-amber-500/[0.08] border border-amber-500/25 rounded-md px-2.5 py-2 text-amber-400 text-xs mt-1">
                     ⏸️ <strong>Session Auto-Paused</strong>: Risk Governance Circuit Breaker triggered. Zero-spend invariant active on Arc.
                   </div>
                 ));
@@ -308,33 +302,33 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 addIfUnique(`status-completed-${data.id}`, (
                   <div className="agent-runner-complete-card">
                     <h3>🎉 Session Completed!</h3>
-                    <p style={{ color: "var(--t2)" }}>I've finished researching and executing purchases based on your prompt.</p>
+                    <p className="text-t-secondary">I've finished researching and executing purchases based on your prompt.</p>
 
-                    <div className="agent-runner-complete-stats" style={{ gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--t3)', textTransform: 'uppercase' }}>Target Budget</span>
-                        <strong style={{ color: '#fff' }}>${Number(data.budget_usdc || 0).toFixed(4)} USDC</strong>
+                    <div className="agent-runner-complete-stats grid grid-cols-2 gap-2">
+                      <div className="flex flex-col">
+                        <span className="text-[11px] text-t-tertiary uppercase">Target Budget</span>
+                        <strong className="text-white">${Number(data.budget_usdc || 0).toFixed(4)} USDC</strong>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--t3)', textTransform: 'uppercase' }}>Actually Spent</span>
-                        <strong style={{ color: 'var(--accent)' }}>${currentSpent.toFixed(4)} USDC</strong>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] text-t-tertiary uppercase">Actually Spent</span>
+                        <strong className="text-brand-cyan">${currentSpent.toFixed(4)} USDC</strong>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--t3)', textTransform: 'uppercase' }}>Purchased Reports</span>
-                        <strong style={{ color: '#fff' }}>{data.runtime_state.purchaseCount || 0}</strong>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] text-t-tertiary uppercase">Purchased Reports</span>
+                        <strong className="text-white">{data.runtime_state.purchaseCount || 0}</strong>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--t3)', textTransform: 'uppercase' }}>Duration</span>
-                        <strong style={{ color: '#fff' }}>{durationStr}</strong>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] text-t-tertiary uppercase">Duration</span>
+                        <strong className="text-white">{durationStr}</strong>
                       </div>
 
                       {data.runtime_state.candidatesEvaluated > 0 && (
-                        <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', marginTop: '4px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                          <span style={{ fontSize: '11px', color: 'var(--t3)', textTransform: 'uppercase' }}>Evaluated Candidates</span>
-                          <span style={{ fontSize: '12px', color: 'var(--t2)' }}>Analyzed {data.runtime_state.candidatesEvaluated} reports before making decisions.</span>
+                        <div className="col-span-2 flex flex-col mt-1 pt-2 border-t border-white/5">
+                          <span className="text-[11px] text-t-tertiary uppercase">Evaluated Candidates</span>
+                          <span className="text-xs text-t-secondary">Analyzed {data.runtime_state.candidatesEvaluated} reports before making decisions.</span>
                         </div>
                       )}
                     </div>
@@ -345,16 +339,9 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 const lastFail = failures.length > 0 ? failures[failures.length - 1]?.error : null;
                 const errMsg = data.runtime_state?.lastError || lastFail || "Session execution failed.";
                 addIfUnique(`status-failed-${data.id}`, (
-                  <div className="agent-runner-failure-card" style={{
-                    background: 'rgba(255, 92, 92, 0.08)',
-                    border: '1px solid rgba(255, 92, 92, 0.2)',
-                    borderRadius: '8px',
-                    padding: '10px 12px',
-                    marginTop: '8px',
-                    color: 'var(--c-red, #ff5c5c)'
-                  }}>
-                    <strong style={{ display: 'block', marginBottom: '4px' }}>❌ Session Stopped / Failed</strong>
-                    <span style={{ fontSize: '12px', wordBreak: 'break-word', color: 'var(--t2)' }}>{String(errMsg)}</span>
+                  <div className="agent-runner-failure-card bg-red-500/[0.08] border border-red-500/20 rounded-lg px-3 py-2.5 mt-2 text-red-400">
+                    <strong className="block mb-1">❌ Session Stopped / Failed</strong>
+                    <span className="text-xs break-words text-t-secondary">{String(errMsg)}</span>
                   </div>
                 ));
               }
@@ -375,43 +362,28 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
     const defaultAmount = Math.max(0.01, Number((requiredAmount - (globalBalance + gatewayBalance)).toFixed(2))).toString();
 
     return (
-      <div className="agent-funding-widget" style={{
-        background: 'rgba(255,255,255,0.02)',
-        border: '1px solid rgba(255,255,255,0.05)',
-        borderRadius: '8px',
-        padding: '12px',
-        marginTop: '8px'
-      }}>
-        <p style={{ margin: '0 0 12px 0', fontSize: '13px', lineHeight: 1.5 }}>
+      <div className="agent-funding-widget bg-white/[0.02] border border-white/5 rounded-lg p-3 mt-2">
+        <p className="m-0 mb-3 text-[13px] leading-normal">
           {messageText}
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <div style={{ position: 'relative', width: '90px' }}>
+        <div className="flex flex-col gap-2.5">
+          <div className="flex gap-2 items-center">
+            <div className="relative w-[90px]">
               <input
                 id={`fund-input-${targetAddress}`}
                 type="number"
                 step="0.01"
                 min="0.01"
                 defaultValue={defaultAmount}
-                style={{
-                  width: '100%',
-                  background: 'rgba(0,0,0,0.3)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '4px',
-                  padding: '6px 8px',
-                  color: '#fff',
-                  fontSize: '12px',
-                  outline: 'none'
-                }}
+                className="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-white text-xs outline-none focus:border-brand-cyan/50"
               />
-              <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '9px', color: 'var(--t3)' }}>USDC</span>
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-t-tertiary pointer-events-none">USDC</span>
             </div>
 
             <button
               type="button"
-              className="connect-btn-primary"
+              className="connect-btn-primary flex-1 py-2 px-3 text-[11px] font-semibold flex items-center justify-center gap-1.5 border-none rounded cursor-pointer bg-brand-cyan text-black hover:opacity-90 transition-opacity"
               onClick={() => {
                 const inputEl = document.getElementById(`fund-input-${targetAddress}`) as HTMLInputElement;
                 const amt = inputEl ? parseFloat(inputEl.value) : parseFloat(defaultAmount);
@@ -421,48 +393,21 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 }
                 handleMetaMaskTransfer(targetAddress, amt);
               }}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                fontSize: '11px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                background: 'var(--accent)',
-                color: '#000'
-              }}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               Deposit via Wallet ({ARC_CHAIN.name})
             </button>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={handleManualRefreshBalance}
               disabled={refreshCooldown || isRefreshingBal}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                fontSize: '11px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '4px',
-                cursor: (refreshCooldown || isRefreshingBal) ? 'not-allowed' : 'pointer',
-                background: 'rgba(255,255,255,0.05)',
-                color: '#fff',
-                opacity: (refreshCooldown || isRefreshingBal) ? 0.6 : 1
-              }}
+              className={cn(
+                "flex-1 py-2 px-3 text-[11px] font-semibold flex items-center justify-center gap-1.5 border border-white/10 rounded bg-white/5 text-white transition-opacity",
+                (refreshCooldown || isRefreshingBal) ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-white/10"
+              )}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -471,7 +416,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 strokeWidth="2.5"
                 width="12"
                 height="12"
-                style={{ animation: isRefreshingBal ? "qma-spin 1s linear infinite" : "none" }}
+                className={isRefreshingBal ? "animate-spin" : ""}
               >
                 <path d="M23 4v6h-6"></path>
                 <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
@@ -484,22 +429,11 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               onClick={() => {
                 const qrEl = document.getElementById(`qr-container-${targetAddress}`);
                 if (qrEl) {
-                  qrEl.style.display = qrEl.style.display === 'none' ? 'flex' : 'none';
+                  qrEl.classList.toggle("hidden");
+                  qrEl.classList.toggle("flex");
                 }
               }}
-              style={{
-                padding: '8px 12px',
-                fontSize: '11px',
-                fontWeight: 600,
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                background: 'rgba(255,255,255,0.05)',
-                color: 'var(--t2)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
+              className="py-2 px-3 text-[11px] font-semibold border border-white/10 rounded cursor-pointer bg-white/5 text-t-secondary flex items-center gap-1 hover:bg-white/10 transition-colors"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
               Show QR
@@ -508,26 +442,18 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
           <div
             id={`qr-container-${targetAddress}`}
-            style={{
-              display: 'none',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '16px',
-              background: 'rgba(0,0,0,0.2)',
-              borderRadius: '6px',
-              marginTop: '6px',
-              border: '1px dashed rgba(255,255,255,0.1)'
-            }}
+            className="hidden flex-col items-center justify-center p-4 bg-black/20 rounded-md mt-1.5 border border-dashed border-white/10"
           >
             <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${targetAddress}`}
               alt="QR Code"
-              style={{ width: '120px', height: '120px', borderRadius: '4px', background: '#fff', padding: '6px', marginBottom: '10px' }}
+              width={120}
+              height={120}
+              className="w-[120px] h-[120px] rounded bg-white p-1.5 mb-2.5"
             />
-            <span style={{ fontSize: '11px', color: '#fff', fontWeight: 600, marginBottom: '2px' }}>{ARC_CHAIN.name} (Chain: {ARC_CHAIN.chainId})</span>
-            <span style={{ fontSize: '10px', color: 'var(--t3)', marginBottom: '8px' }}>Scan with Mobile Wallet</span>
-            <span className="mono" style={{ fontSize: '10px', color: 'var(--accent)', wordBreak: 'break-all', textAlign: 'center' }}>{targetAddress}</span>
+            <span className="text-[11px] text-white font-semibold mb-0.5">{ARC_CHAIN.name} (Chain: {ARC_CHAIN.chainId})</span>
+            <span className="text-[10px] text-t-tertiary mb-2">Scan with Mobile Wallet</span>
+            <span className="font-mono text-[10px] text-brand-cyan break-all text-center">{targetAddress}</span>
           </div>
         </div>
       </div>
@@ -580,7 +506,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
   };
 
   const handleMetaMaskTransfer = async (toAddress: string, amount: number) => {
-    const provider = window.ethereum || (window as any).rabby || (window as any).okxwallet;
+    const provider = getWalletProvider();
     if (!provider) {
       alert("Please install MetaMask or another EVM wallet to fund your Agent Wallet.");
       return;
@@ -765,28 +691,15 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
           role: "agent",
           content: (
             <div>
-              <p style={{ margin: '0 0 10px 0' }}>
-                ℹ️ Agent Wallet created at <span className="mono" style={{ color: 'var(--accent)', fontSize: '11px', fontWeight: 'bold' }}>{createdWalletAddress || "..."}</span>.
+              <p className="m-0 mb-2.5">
+                ℹ️ Agent Wallet created at <span className="mono text-brand-cyan text-[11px] font-bold">{createdWalletAddress || "..."}</span>.
                 Please fund at least <strong>${parsedBudget.toFixed(2)} USDC</strong> to this address to start.
               </p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div className="flex gap-2 flex-wrap">
                 <button
                   type="button"
-                  className="connect-btn-primary"
+                  className="connect-btn-primary px-3 py-2 text-[11px] font-semibold flex items-center gap-1.5 border-none rounded cursor-pointer bg-brand-cyan text-black hover:opacity-90 transition-opacity"
                   onClick={() => handleMetaMaskTransfer(createdWalletAddress, parsedBudget)}
-                  style={{
-                    padding: '8px 12px',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    background: 'var(--accent)',
-                    color: '#000'
-                  }}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                   Fund ${parsedBudget.toFixed(2)} USDC via MetaMask
@@ -795,20 +708,10 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                   type="button"
                   onClick={handleManualRefreshBalance}
                   disabled={refreshCooldown || isRefreshingBal}
-                  style={{
-                    padding: '8px 12px',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '4px',
-                    cursor: (refreshCooldown || isRefreshingBal) ? 'not-allowed' : 'pointer',
-                    background: 'rgba(255,255,255,0.05)',
-                    color: '#fff',
-                    opacity: (refreshCooldown || isRefreshingBal) ? 0.6 : 1
-                  }}
+                  className={cn(
+                    "px-3 py-2 text-[11px] font-semibold flex items-center gap-1.5 border border-white/10 rounded bg-white/5 text-white transition-opacity",
+                    (refreshCooldown || isRefreshingBal) ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-white/10"
+                  )}
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -817,7 +720,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                     strokeWidth="2.5"
                     width="12"
                     height="12"
-                    style={{ animation: isRefreshingBal ? "qma-spin 1s linear infinite" : "none" }}
+                    className={isRefreshingBal ? "animate-spin" : ""}
                   >
                     <path d="M23 4v6h-6"></path>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
@@ -897,7 +800,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
   const curStage = stageIndex(status, purchases);
   const stageFailed = status === "error" || status === "stopped" || status === "failed" || status === "paused";
-  const stageProgressPct = (curStage / (STAGE_LABELS.length - 1)) * 100;
+  const stageWidthClass = curStage <= 0 ? "w-0" : curStage === 1 ? "w-1/3" : curStage === 2 ? "w-2/3" : "w-full";
 
   const renderMessage = (msg: ChatMessage) => {
     const speaker = msg.role === "user" ? "You" : "Agent";
@@ -932,10 +835,9 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
         {/* Session stage strip */}
         <div className="agent-session-stage stage-count-4">
-          <div className="agent-stage-progress-bar" style={{ left: "12.5%", right: "12.5%" }}>
+          <div className="agent-stage-progress-bar left-[12.5%] right-[12.5%]">
             <div
-              className={`agent-stage-progress-fill${stageFailed ? " is-failed" : ""}`}
-              style={{ width: `${stageProgressPct}%` }}
+              className={cn("agent-stage-progress-fill", stageWidthClass, stageFailed && "is-failed")}
             />
           </div>
           {STAGE_LABELS.map((label, i) => {
@@ -963,62 +865,29 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
             </div>
 
             {status === "paused" && (
-              <div style={{
-                background: "linear-gradient(135deg, rgba(255, 179, 0, 0.12) 0%, rgba(255, 107, 122, 0.08) 100%)",
-                border: "1px solid rgba(255, 179, 0, 0.35)",
-                borderRadius: "8px",
-                padding: "10px 14px",
-                margin: "12px 16px 4px 16px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#ffb300", fontWeight: 600, fontSize: "12px" }}>
-                    <i className="ti ti-alert-triangle" style={{ fontSize: "16px" }} />
+              <div className="bg-gradient-to-br from-amber-500/[0.12] to-red-400/[0.08] border border-amber-500/35 rounded-lg px-3.5 py-2.5 mx-4 mt-3 mb-1 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs">
+                    <i className="ti ti-alert-triangle text-base" />
                     <span>Circuit Breaker Active · Auto-Paused</span>
                   </div>
-                  <span style={{ fontSize: "10px", color: "var(--t3)", fontFamily: "var(--mono)" }}>Zero-Spend Enforced</span>
+                  <span className="text-[10px] text-t-tertiary font-mono">Zero-Spend Enforced</span>
                 </div>
-                <p style={{ margin: 0, fontSize: "11px", color: "var(--t2)", lineHeight: 1.4 }}>
+                <p className="m-0 text-[11px] text-t-secondary leading-snug">
                   Session has been halted by the Autonomous Risk Governance Engine. Any payment requests on Arc are rejected fast with HTTP 403.
                 </p>
-                <div style={{ display: "flex", gap: "8px", marginTop: "2px" }}>
+                <div className="flex gap-2 mt-0.5">
                   <button
                     type="button"
                     onClick={() => handleControl("resume", "Manual resume from Circuit Breaker banner")}
-                    style={{
-                      padding: "4px 10px",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      borderRadius: "4px",
-                      background: "#ffb300",
-                      color: "#000",
-                      border: "none",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px"
-                    }}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded bg-amber-500 text-black border-none cursor-pointer flex items-center gap-1 hover:bg-amber-400 transition-colors"
                   >
                     <i className="ti ti-player-play" /> Resume Execution
                   </button>
                   <button
                     type="button"
                     onClick={() => handleControl("kill", "Emergency Kill from Circuit Breaker banner")}
-                    style={{
-                      padding: "4px 10px",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      borderRadius: "4px",
-                      background: "rgba(255, 92, 92, 0.15)",
-                      color: "#ff5c5c",
-                      border: "1px solid rgba(255, 92, 92, 0.3)",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px"
-                    }}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded bg-red-500/15 text-red-400 border border-red-500/30 cursor-pointer flex items-center gap-1 hover:bg-red-500/25 transition-colors"
                   >
                     <i className="ti ti-power" /> Emergency Terminate
                   </button>
@@ -1066,11 +935,11 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                   <span className="agent-funding-label">Gateway Prepaid</span>
                   <span className="agent-funding-val">${gatewayBalance.toFixed(4)} USDC</span>
                 </div>
-                <div className="agent-funding-row" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "6px", marginTop: "4px" }}>
-                  <span className="agent-funding-label" style={{ fontWeight: 600 }}>Total Balance</span>
-                  <span className="agent-funding-val" style={{ fontWeight: 600, color: "var(--accent)" }}>${(globalBalance + gatewayBalance).toFixed(4)} USDC</span>
+                <div className="agent-funding-row border-t border-white/[0.08] pt-1.5 mt-1">
+                  <span className="agent-funding-label font-semibold">Total Balance</span>
+                  <span className="agent-funding-val font-semibold text-brand-cyan">${(globalBalance + gatewayBalance).toFixed(4)} USDC</span>
                 </div>
-                <div className="agent-funding-row" style={{ marginTop: "4px" }}>
+                <div className="agent-funding-row mt-1">
                   <span className="agent-funding-label">Session Budget</span>
                   <span className="agent-funding-val">${spent.toFixed(4)} / ${budget.toFixed(2)} USDC</span>
                 </div>
@@ -1085,17 +954,14 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
             {/* Spending Policy & Limits */}
             <div className="agent-dp-block">
-              <div className="agent-dp-block-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div className="agent-dp-block-label flex justify-between items-center">
                 <span>Spending Policy & Limits</span>
-                <span style={{
-                  fontSize: "10px",
-                  color: spendingPolicy?.source === "circle_cli" ? "var(--accent)" : "var(--t3)",
-                  textTransform: "none",
-                  fontWeight: 600,
-                  background: spendingPolicy?.source === "circle_cli" ? "rgba(0, 255, 178, 0.12)" : "rgba(255, 255, 255, 0.05)",
-                  padding: "1px 6px",
-                  borderRadius: "4px",
-                }}>
+                <span className={cn(
+                  "text-[10px] normal-case font-semibold px-1.5 py-0.5 rounded",
+                  spendingPolicy?.source === "circle_cli"
+                    ? "text-brand-cyan bg-[rgba(0,255,178,0.12)]"
+                    : "text-t-tertiary bg-white/5"
+                )}>
                   {spendingPolicy?.source === "circle_cli" ? "Circle MPC Policy" : "Default Caps"}
                 </span>
               </div>
@@ -1112,29 +978,18 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                     ${spendingPolicy?.weekly_cap_usdc?.toFixed(2) ?? "5.00"} / ${spendingPolicy?.monthly_cap_usdc?.toFixed(2) ?? "20.00"} USDC
                   </span>
                 </div>
-                <div style={{ marginTop: "8px" }}>
+                <div className="mt-2">
                   <button
                     type="button"
                     onClick={handleCopyCircleCliCommand}
                     disabled={!agentWalletAddress}
-                    style={{
-                      width: "100%",
-                      padding: "5px 8px",
-                      fontSize: "11px",
-                      fontWeight: 500,
-                      borderRadius: "4px",
-                      border: "1px solid rgba(255, 255, 255, 0.12)",
-                      background: "rgba(255, 255, 255, 0.03)",
-                      color: "var(--t2)",
-                      cursor: !agentWalletAddress ? "not-allowed" : "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "5px",
-                    }}
+                    className={cn(
+                      "w-full px-2 py-1.5 text-[11px] font-medium rounded border border-white/10 bg-white/[0.03] text-t-secondary flex items-center justify-center gap-1.5 transition-colors",
+                      !agentWalletAddress ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-white/[0.06]"
+                    )}
                     title="Copy verbatim Circle CLI command to inspect or configure wallet limits with OTP"
                   >
-                    <i className={cliCopied ? "ti ti-check" : "ti ti-terminal"} style={{ color: cliCopied ? "var(--accent)" : "inherit" }} />
+                    <i className={cn(cliCopied ? "ti ti-check text-brand-cyan" : "ti ti-terminal")} />
                     {cliCopied ? "Circle CLI command copied!" : "Copy Circle CLI Limit Command"}
                   </button>
                 </div>
@@ -1143,37 +998,29 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
             {/* Risk Governance & Invariants */}
             <div className="agent-dp-block">
-              <div className="agent-dp-block-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div className="agent-dp-block-label flex justify-between items-center">
                 <span>Risk Governance & Invariants</span>
-                <span style={{
-                  fontSize: "10px",
-                  color: "var(--green)",
-                  textTransform: "none",
-                  fontWeight: 600,
-                  background: "rgba(34, 211, 160, 0.12)",
-                  padding: "1px 6px",
-                  borderRadius: "4px",
-                }}>
+                <span className="text-[10px] text-[var(--green)] normal-case font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded">
                   Circuit Breaker Active
                 </span>
               </div>
               <div className="agent-funding-bar">
                 <div className="agent-funding-row">
                   <span className="agent-funding-label">Zero-Spend Guard</span>
-                  <span className="agent-funding-val" style={{ color: "var(--green)" }}>HTTP 403 on Arc</span>
+                  <span className="agent-funding-val text-[var(--green)]">HTTP 403 on Arc</span>
                 </div>
                 <div className="agent-funding-row">
                   <span className="agent-funding-label">GenLayer SLA Oracle</span>
-                  <span className="agent-funding-val" style={{ color: "var(--green)" }}>Fail-Closed</span>
+                  <span className="agent-funding-val text-[var(--green)]">Fail-Closed</span>
                 </div>
                 <div className="agent-funding-row">
                   <span className="agent-funding-label">Athenian Euthyna</span>
-                  <span className="agent-funding-val" style={{ color: "var(--accent)", fontFamily: "var(--mono)", fontSize: "10px" }}>SHA-256 Audit Trail</span>
+                  <span className="agent-funding-val text-brand-cyan font-mono text-[10px]">SHA-256 Audit Trail</span>
                 </div>
               </div>
             </div>
 
-            <div className="agent-dp-block" style={{ flex: 1, minHeight: 0 }}>
+            <div className="agent-dp-block flex-1 min-h-0">
               <div className="agent-dp-block-label">Purchases ({purchases})</div>
               {purchasedItems.length === 0 ? (
                 <div className="agent-empty-card">No purchases yet — the agent will list each report here as it buys.</div>
@@ -1192,33 +1039,32 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
             {(status === "queued" || status === "running" || status === "paused" || status === "stopped" || status === "error" || status === "failed" || status === "completed") && (
               <div className="agent-modal-actions">
                 {status === "queued" || status === "running" ? (
-                  <div style={{ display: "flex", gap: "10px", width: "100%" }}>
-                    <button className="agent-modal-cancel" style={{ flex: 1 }} onClick={handleStop}>
+                  <div className="flex gap-2.5 w-full">
+                    <button className="agent-modal-cancel flex-1" onClick={handleStop}>
                       Pause Agent
                     </button>
-                    <button className="agent-modal-cancel" style={{ flex: 1, borderColor: "rgba(255, 92, 92, 0.4)", color: "#ff5c5c" }} onClick={() => handleControl("kill", "Emergency Kill from modal")}>
+                    <button className="agent-modal-cancel flex-1 border-red-500/40 text-red-400 hover:bg-red-500/10" onClick={() => handleControl("kill", "Emergency Kill from modal")}>
                       Emergency Kill
                     </button>
                   </div>
                 ) : status === "paused" ? (
-                  <div style={{ display: "flex", gap: "10px", width: "100%" }}>
-                    <button className="agent-modal-primary" style={{ flex: 1 }} onClick={handleResume}>
+                  <div className="flex gap-2.5 w-full">
+                    <button className="agent-modal-primary flex-1" onClick={handleResume}>
                       Resume Agent
                     </button>
-                    <button className="agent-modal-cancel" style={{ flex: 1, borderColor: "rgba(255, 92, 92, 0.4)", color: "#ff5c5c" }} onClick={() => handleControl("kill", "Emergency Kill from modal")}>
+                    <button className="agent-modal-cancel flex-1 border-red-500/40 text-red-400 hover:bg-red-500/10" onClick={() => handleControl("kill", "Emergency Kill from modal")}>
                       Emergency Kill
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                  <div className="flex gap-2.5 w-full">
                     {status === "stopped" && (
-                      <button className="agent-modal-primary" style={{ flex: 1 }} onClick={handleResume}>
+                      <button className="agent-modal-primary flex-1" onClick={handleResume}>
                         Resume Agent
                       </button>
                     )}
                     <button
-                      className="agent-modal-cancel"
-                      style={{ flex: 1 }}
+                      className="agent-modal-cancel flex-1"
                       onClick={() => {
                         setSessionId(null);
                         setStatus("idle");

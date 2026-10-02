@@ -8,7 +8,7 @@ interface QmaLogoProps {
 
 export function QmaLogo({ size = 26, className = "", showText = true }: QmaLogoProps) {
   return (
-    <div className={`logo-item qma-logo-item ${className}`} style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
+    <div className={`logo-item qma-logo-item ${className}`}>
       <svg
         width={size}
         height={Math.round(size * (700 / 743))}
@@ -16,7 +16,6 @@ export function QmaLogo({ size = 26, className = "", showText = true }: QmaLogoP
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className="qma-logo-svg flex-shrink-0"
-        style={{ width: `${size}px`, height: "auto" }}
       >
         <defs>
           <linearGradient id="qma-logo-ring-grad" x1="0" y1="0" x2="743" y2="700" gradientUnits="userSpaceOnUse">

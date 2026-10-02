@@ -1,5 +1,6 @@
 import { Loader } from "../ui/Loader";
 import { shortAddress } from "../../utils/format";
+import "./ProfileModal.css";
 
 interface ProfileModalProps {
   open: boolean;
@@ -41,8 +42,8 @@ export function ProfileModal({
   if (!open) return null;
 
   return (
-    <div className="modal-backdrop open" style={{ display: "flex" }}>
-      <div className="wallet-profile-modal quick-profile-modal" role="dialog" aria-modal="true" aria-labelledby="wallet-profile-title" style={{ display: "block" }}>
+    <div className="modal-backdrop open flex" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="wallet-profile-modal quick-profile-modal block" role="dialog" aria-modal="true" aria-labelledby="wallet-profile-title">
         <div className="modal-header">
           <div>
             <div className="modal-title" id="wallet-profile-title">Wallet Profile</div>
@@ -65,7 +66,7 @@ export function ProfileModal({
           <table className="activity-table">
             <thead><tr><th>Signal</th><th>Amount</th><th>Status</th><th>Settlement / Tx</th><th>Report</th></tr></thead>
             <tbody>
-              {profilePaymentsLoading ? <tr><td colSpan={5}><Loader label="Loading payments..." compact size="sm" className="table-loader" /></td></tr> : profilePaymentsError ? <tr><td colSpan={5} style={{ color: "var(--amber)", textAlign: "center" }}>{profilePaymentsError}</td></tr> : profileVerifiedPayments.length === 0 ? <tr><td colSpan={5} style={{ color: "var(--t3)", textAlign: "center" }}>No verified payments.</td></tr> : profileVerifiedPayments.map((payment, index) => {
+              {profilePaymentsLoading ? <tr><td colSpan={5}><Loader label="Loading payments..." compact size="sm" className="table-loader" /></td></tr> : profilePaymentsError ? <tr><td colSpan={5} className="text-center text-amber-400">{profilePaymentsError}</td></tr> : profileVerifiedPayments.length === 0 ? <tr><td colSpan={5} className="text-center text-t-tertiary">No verified payments.</td></tr> : profileVerifiedPayments.map((payment, index) => {
                 const status = payment.gateway_status || payment.status || "completed";
                 const amount = payment.amount_usdc ?? payment.amount ?? payment.price_usdc;
                 const txHash = payment.transaction_hash || payment.tx_hash || payment.settlement_tx_hash;
@@ -83,7 +84,7 @@ export function ProfileModal({
         </div>
         <div className="table-pager profile-pager">
           <button type="button" className="refresh-btn" disabled={profileVerifiedPaymentsPage <= 1} onClick={onPreviousPage}>Prev</button>
-          <span style={{ margin: "0 10px", fontSize: "0.8rem" }}>Page {profileVerifiedPaymentsPage} / {profileVerifiedPaymentsTotalPages}</span>
+          <span className="mx-2.5 text-xs text-t-secondary">Page {profileVerifiedPaymentsPage} / {profileVerifiedPaymentsTotalPages}</span>
           <button type="button" className="refresh-btn" disabled={profileVerifiedPaymentsPage >= profileVerifiedPaymentsTotalPages} onClick={onNextPage}>Next</button>
         </div>
       </div>

@@ -1,0 +1,668 @@
+/* ==========================================================================
+   SignalSidebar Stylesheet
+   ========================================================================== */
+
+.live-feed-sidebar {
+    width: 100%;
+    border-right: 1px solid var(--bdr);
+    background: rgba(8, 10, 18, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    height: 100%;
+}
+
+.sidebar-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--bdr);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(10, 13, 24, 0.6);
+    gap: 8px;
+}
+
+.sidebar-title {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 0.7rem;
+    color: var(--t2);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    min-width: 0;
+}
+
+.refresh-btn {
+    background: none;
+    border: 1px solid var(--bdr);
+    color: var(--t3);
+    padding: 3px 8px;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.3px;
+    transition: all 0.15s;
+}
+
+.refresh-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ===== ANOMALY CARDS ===== */
+.anomaly-card {
+    background: var(--bg-2);
+    border: 1px solid var(--bdr);
+    border-left: 2px solid var(--bdr);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.anomaly-card:hover {
+    border-color: var(--bdr-md);
+    border-left-color: var(--accent);
+    background: rgba(124, 111, 255, 0.03);
+}
+
+.anomaly-card.active {
+    border-color: rgba(124, 111, 255, 0.2);
+    border-left-color: var(--accent);
+    background: var(--accent-dim);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.card-symbol-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.card-symbol {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--t1);
+    letter-spacing: 0.5px;
+}
+
+.exchange-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    border: 1px solid var(--bdr);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--t2);
+    line-height: 1.2;
+}
+
+.exchange-logo-icon {
+    width: 12px;
+    height: 12px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.exchange-badge-xs .exchange-logo-icon {
+    width: 11px;
+    height: 11px;
+}
+
+.exchange-badge-sm .exchange-logo-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.exchange-badge-md .exchange-logo-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.sidebar-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: rgba(10, 13, 24, 0.5);
+    border-bottom: 1px solid var(--bdr);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.sidebar-filter-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-pill-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--bdr);
+    color: var(--t3);
+    border-radius: var(--radius-xs);
+    padding: 3px 7px;
+    font-size: 0.65rem;
+    font-family: var(--mono);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+
+.filter-pill-btn:hover {
+    color: var(--t1);
+    border-color: var(--bdr-md);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.filter-pill-btn.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    font-weight: 600;
+}
+
+.card-venues-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.07);
+    font-size: 0.65rem;
+}
+
+.venues-label {
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.venues-list-tags {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.venue-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--bdr);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 0.62rem;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.venue-tag:hover {
+    border-color: var(--accent);
+    background: rgba(124, 111, 255, 0.08);
+}
+
+.venue-tag.is-primary {
+    border-color: rgba(124, 111, 255, 0.35);
+    background: rgba(124, 111, 255, 0.08);
+}
+
+.venue-funding {
+    color: var(--red);
+    font-weight: 600;
+}
+
+.spread-pill {
+    margin-left: auto;
+    color: #00E5FF;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    font-weight: 600;
+    background: rgba(0, 229, 255, 0.08);
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    border-radius: 3px;
+    padding: 1px 4px;
+    white-space: nowrap;
+}
+
+.exchange-pill.exchange-binance {
+    border-color: rgba(243, 186, 47, 0.4);
+    background: rgba(243, 186, 47, 0.12);
+    color: #f3ba2f;
+}
+
+.exchange-pill.exchange-bybit {
+    border-color: rgba(247, 166, 15, 0.4);
+    background: rgba(247, 166, 15, 0.12);
+    color: #f7a60f;
+}
+
+.exchange-pill.exchange-okx {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.exchange-pill.exchange-mexc {
+    border-color: rgba(33, 150, 243, 0.4);
+    background: rgba(33, 150, 243, 0.12);
+    color: #64b5f6;
+}
+
+.card-funding {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--red);
+    background: var(--red-dim);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.card-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    font-size: var(--text-xs);
+    color: var(--t3);
+    font-family: var(--mono);
+}
+
+.card-stat-label {
+    color: var(--t3);
+}
+
+.card-stat-val {
+    color: var(--t2);
+}
+
+/* --- High contrast premium styled anomaly card rules --- */
+.anomaly-card {
+    background: #0f1324;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 3px solid rgba(124, 111, 255, 0.4);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.anomaly-card:hover {
+    background: #161c36;
+    border-color: rgba(124, 111, 255, 0.5);
+    border-left-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.anomaly-card.active {
+    background: #18223d;
+    border-color: rgba(34, 211, 160, 0.5);
+    border-left-color: var(--green);
+    box-shadow: 0 6px 20px rgba(34, 211, 160, 0.1);
+}
+
+.card-symbol {
+    color: #fff;
+}
+
+.card-funding {
+    color: #f4475b;
+    background: rgba(244, 71, 91, 0.14);
+    border: 1px solid rgba(244, 71, 91, 0.3);
+    font-weight: 700;
+}
+
+.card-stats {
+    color: var(--t2);
+}
+
+.card-stat-val {
+    color: #fff;
+}
+
+/* --- Layout & Responsiveness --- */
+/* NOTE: The grid layout is now handled in app.css .app-workspace-layout.
+   The sidebar fills its grid column via width:100% set above. */
+
+.agent-picks-panel {
+    height: 385px;
+    max-height: 385px;
+    min-height: 385px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(10, 13, 24, 0.6);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 12px 10px;
+}
+
+.agent-picks-list {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    max-height: 330px;
+    padding-right: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.agent-pick-card {
+    background: rgba(124, 111, 255, 0.08);
+    border: 1px solid rgba(124, 111, 255, 0.2);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.agent-pick-card:hover {
+    background: rgba(124, 111, 255, 0.14);
+    border-color: rgba(124, 111, 255, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(124, 111, 255, 0.15);
+}
+
+.agent-pick-symbol {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: #fff;
+}
+
+.agent-pick-score {
+    color: var(--green);
+    font-weight: 700;
+}
+
+.agent-pick-reasons {
+    color: var(--t2);
+    font-size: 0.72rem;
+    line-height: 1.4;
+    margin-top: 6px;
+}
+
+/* Custom styled scrollbars for list components inside sidebar */
+.agent-picks-list::-webkit-scrollbar,
+.anomalies-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.agent-picks-list::-webkit-scrollbar-track,
+.anomalies-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.agent-picks-list::-webkit-scrollbar-thumb,
+.anomalies-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+}
+
+.agent-picks-list::-webkit-scrollbar-thumb:hover,
+.anomalies-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(124, 111, 255, 0.45);
+}
+
+/* Make anomalies-list scroll area take all remaining height and behave correctly */
+.anomalies-list {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.agent-mode-pill {
+    background: rgba(124, 111, 255, 0.15);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+.agent-empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--t3);
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+.pick-reason {
+    font-size: 0.75rem;
+    margin: 6px 0;
+    line-height: 1.4;
+}
+
+.pick-reason-muted {
+    color: var(--t2);
+}
+
+.card-score {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.card-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.7rem;
+    color: var(--t3);
+}
+
+.signal-badge {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.anomalies-header {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(10, 13, 24, 0.7);
+    padding: 10px 14px;
+}
+
+.anomalies-count-pill {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: var(--green);
+    background: rgba(34, 211, 160, 0.12);
+    border: 1px solid rgba(34, 211, 160, 0.25);
+    border-radius: var(--radius-xs);
+    padding: 2px 6px;
+    text-transform: uppercase;
+}
+
+.anomalies-count-pill.is-refreshing {
+    color: var(--accent);
+    background: rgba(124, 111, 255, 0.12);
+    border-color: rgba(124, 111, 255, 0.25);
+}
+
+.anomalies-count-pill.is-error {
+    color: var(--red);
+    background: rgba(244, 71, 91, 0.12);
+    border-color: rgba(244, 71, 91, 0.25);
+}
+
+.agent-picks-panel .agent-pick-card {
+    display: block;
+    min-height: 74px;
+    overflow: hidden;
+    padding: 12px 13px;
+}
+
+.agent-picks-panel .card-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 7px;
+}
+
+.agent-picks-panel .card-symbol,
+.agent-picks-panel .card-score {
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.agent-picks-panel .card-symbol {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.agent-picks-panel .card-score {
+    color: var(--t1);
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.agent-picks-panel .pick-reason {
+    display: -webkit-box;
+    margin: 0 0 8px !important;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.agent-picks-panel .signal-badge {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- Additional Responsive Layout Rules --- */
+
+@media (max-width: 900px) {
+    .live-feed-sidebar {
+        width: 100%;
+        max-height: none;
+        border-right: 0;
+        border-bottom: 1px solid var(--bdr);
+        overflow: visible;
+    }
+
+    .agent-picks-list {
+        max-height: 140px;
+    }
+
+    .anomalies-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-height: 260px;
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .live-feed-sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .live-feed-sidebar:not(.mobile-visible) {
+        display: none;
+    }
+}
+
+/* Enhancements for live signal cards and headers */
+.sidebar-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sidebar-header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.live-pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+    display: inline-block;
+}
+
+.sidebar-section-title {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 0.68rem;
+    color: var(--t2);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+}
+
+.card-rank-badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 1px solid rgba(124, 111, 255, 0.3);
+    border-radius: 3px;
+    padding: 1px 4px;
+    line-height: 1;
+}
+
+.anomalies-total-badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--t3);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.card-tier-text {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--t3);
+}
+
+.card-funding.is-negative {
+    color: #f43f5e !important;
+    font-weight: 700;
+}
+
+.card-funding.is-positive {
+    color: #10b981 !important;
+    font-weight: 700;
+}

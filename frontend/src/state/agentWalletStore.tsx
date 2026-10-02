@@ -78,7 +78,7 @@ export function AgentWalletProvider({
     void refresh();
     const interval = window.setInterval(() => {
       void refresh({ silent: true });
-    }, 15_000);
+    }, 30_000);
 
     return () => {
       requestVersion.current += 1;

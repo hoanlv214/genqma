@@ -1,0 +1,596 @@
+/* =============================================================================
+   QMA UI PRIMITIVES — shared component layer
+   -----------------------------------------------------------------------------
+   Loaded right after tokens.css and before every feature stylesheet. Owns the
+   shared recipes: buttons, status chips, skeletons, empty/onboarding states.
+   Feature CSS may compose these classes; never re-declare raw values for
+   anything a token already represents.
+   ============================================================================= */
+
+/* ----- Buttons (one system, four intents) --------------------------------
+   `.btn-primary`  : the ONE violet CTA per view (gradient + glow + lift)
+   `.btn-secondary`: outlined surface button
+   `.btn-ghost`    : borderless quiet action
+   `.btn-danger`   : destructive only
+------------------------------------------------------------------------- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: var(--text-base);
+    line-height: 1;
+    border-radius: var(--radius-sm);
+    padding: 11px 18px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        background var(--dur-fast) var(--ease-out-expo),
+        border-color var(--dur-fast) var(--ease-out-expo),
+        box-shadow var(--dur-fast) var(--ease-out-expo),
+        transform var(--dur-fast) var(--ease-out-expo),
+        color var(--dur-fast) var(--ease-out-expo);
+}
+
+.btn svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+    border-color: rgba(124, 111, 255, 0.45);
+    color: #fff;
+    box-shadow: 0 2px 14px rgba(124, 111, 255, 0.22);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    border-color: rgba(124, 111, 255, 0.65);
+    box-shadow: var(--glow-accent);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--surface-2);
+    border-color: var(--bdr-md);
+    color: var(--t1);
+}
+
+.btn-secondary:hover {
+    border-color: var(--glass-border-hover);
+    background: var(--surface-3);
+    color: #fff;
+}
+
+.btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--t2);
+}
+
+.btn-ghost:hover {
+    color: var(--t1);
+    background: var(--surface-2);
+}
+
+.btn-danger {
+    background: var(--red-dim);
+    border-color: rgba(244, 71, 91, 0.35);
+    color: var(--red);
+}
+
+.btn-danger:hover {
+    background: rgba(244, 71, 91, 0.2);
+    border-color: rgba(244, 71, 91, 0.55);
+}
+
+.btn-sm {
+    padding: 7px 12px;
+    font-size: var(--text-sm);
+}
+
+.btn-lg {
+    padding: 13px 24px;
+    font-size: var(--text-md);
+    border-radius: var(--radius-md);
+}
+
+/* Legacy alias: old `.btn-green` markup renders the violet primary. */
+button.btn-green {
+    background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+    border-color: rgba(124, 111, 255, 0.45);
+    color: #fff;
+}
+
+/* ----- Status chips (color + text + dot — never color alone) ------------- */
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--sans);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    line-height: 1;
+    padding: 5px 11px;
+    border-radius: var(--radius-pill);
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.chip::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+}
+
+.chip-live {
+    color: var(--green);
+    background: var(--green-dim);
+    border-color: rgba(34, 211, 160, 0.28);
+}
+
+.chip-pending {
+    color: var(--amber);
+    background: var(--amber-dim);
+    border-color: rgba(245, 158, 11, 0.28);
+}
+
+.chip-error {
+    color: var(--red);
+    background: var(--red-dim);
+    border-color: rgba(244, 71, 91, 0.28);
+}
+
+.chip-info {
+    color: var(--accent);
+    background: var(--accent-dim);
+    border-color: rgba(124, 111, 255, 0.28);
+}
+
+.chip-premium {
+    color: var(--purple);
+    background: var(--purple-dim);
+    border-color: rgba(167, 139, 250, 0.28);
+}
+
+.chip-neutral {
+    color: var(--t2);
+    background: var(--surface-2);
+    border-color: var(--bdr);
+}
+
+/* ----- Loading skeletons (shape-matching, shimmer) ------------------------ */
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--skeleton-base);
+    border-radius: var(--radius-xs);
+    pointer-events: none;
+}
+
+.skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, var(--skeleton-sheen), transparent);
+    animation: skeleton-sheen 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-sheen {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton::after {
+        animation: none;
+    }
+}
+
+/* ----- Empty & onboarding states (empty states teach) --------------------- */
+.state-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-4);
+    max-width: 560px;
+    margin: 0 auto;
+    padding: var(--space-10) var(--space-8);
+    background: var(--glass-card);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.state-card .state-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-md);
+    background: var(--accent-dim);
+    border: 1px solid rgba(124, 111, 255, 0.3);
+    color: var(--accent);
+}
+
+.state-card .state-icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.state-card h2,
+.state-card h3 {
+    margin: 0;
+    font-family: var(--sans);
+    font-weight: 700;
+    color: var(--t1);
+    text-wrap: balance;
+}
+
+.state-card p {
+    margin: 0;
+    color: var(--t2);
+    font-size: var(--text-md);
+    line-height: 1.6;
+    text-wrap: pretty;
+}
+
+.state-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+}
+
+.state-steps li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface-1);
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-sm);
+    color: var(--t2);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+}
+
+.state-steps .step-num {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border-radius: var(--radius-xs);
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.state-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: var(--space-2);
+}
+
+/* ----- Eyebrow label (section kickers) ------------------------------------ */
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+/* ----- Stat tile (stats bands / KPI cards) -------------------------------- */
+.stat-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: var(--space-5) var(--space-6);
+    background: var(--surface-glass);
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: border-color var(--dur-base) var(--ease-out-expo), transform var(--dur-base) var(--ease-out-expo);
+}
+
+.stat-tile:hover {
+    border-color: var(--bdr-md);
+    transform: translateY(-2px);
+}
+
+.stat-tile .stat-value {
+    font-family: var(--mono);
+    font-size: clamp(1.5rem, 2.6vw, 2rem);
+    font-weight: 700;
+    color: var(--t1);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.05;
+}
+
+.stat-tile .stat-label {
+    font-family: var(--sans);
+    font-size: var(--text-xs);
+    color: var(--t2);
+    letter-spacing: 0.3px;
+}
+
+/* =============================================================================
+   EVIDENCE PAPER — receipt, stamp, agent loop (the QMA proof language)
+   Light "printed document" artifacts set on the dark canvas. Inspired by
+   engraved-banknote / ledger design systems; serif display + mono figures.
+   ============================================================================= */
+
+.display-serif {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+.display-serif em,
+.display-serif .serif-accent {
+    font-style: italic;
+    font-weight: 500;
+}
+
+/* ----- Agent loop steps ---------------------------------------------------- */
+.loop-steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-2);
+    width: 100%;
+    margin: 0 0 var(--space-4);
+    padding: 0;
+    list-style: none;
+    counter-reset: loop;
+}
+
+@media (max-width: 860px) {
+    .loop-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.loop-step {
+    counter-increment: loop;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+    background: var(--surface-1);
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-sm);
+    transition: border-color var(--dur-base) var(--ease-out-expo), background var(--dur-base) var(--ease-out-expo);
+}
+
+.loop-step::before {
+    content: counter(loop, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: var(--text-2xs);
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--t3);
+}
+
+.loop-step strong {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--t2);
+}
+
+.loop-step span {
+    font-family: var(--sans);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    color: var(--t3);
+}
+
+.loop-step.is-active {
+    background: var(--accent-dim);
+    border-color: rgba(124, 111, 255, 0.4);
+}
+
+.loop-step.is-active::before,
+.loop-step.is-active strong {
+    color: var(--accent);
+}
+
+.loop-step.is-done {
+    border-color: rgba(34, 211, 160, 0.3);
+}
+
+.loop-step.is-done::before,
+.loop-step.is-done strong {
+    color: var(--green);
+}
+
+/* ----- Decision receipt (cream evidence document) --------------------------- */
+.receipt {
+    position: relative;
+    width: 100%;
+    max-width: 460px;
+    margin: 0 auto;
+    padding: 22px 24px 18px;
+    background:
+        repeating-linear-gradient(0deg, transparent 0 27px, var(--paper-line-soft) 27px 28px),
+        var(--paper);
+    color: var(--paper-ink);
+    border-radius: 2px;
+    box-shadow: var(--shadow-violet), 0 1px 0 rgba(255, 255, 255, 0.06);
+    font-family: var(--mono);
+    text-align: left;
+}
+
+.receipt::before,
+.receipt::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 7px;
+    background-image: radial-gradient(circle at 5px 0px, var(--bg-0) 3.5px, transparent 4px);
+    background-size: 11px 7px;
+    background-repeat: repeat-x;
+}
+
+.receipt::before {
+    top: -1px;
+}
+
+.receipt::after {
+    bottom: -1px;
+    transform: scaleY(-1);
+}
+
+.receipt-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--paper-line);
+}
+
+.receipt-title {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+.receipt-no {
+    font-size: 0.62rem;
+    color: var(--paper-ink-3);
+}
+
+.receipt-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 7px 0;
+    font-size: 0.72rem;
+    border-bottom: 1px solid var(--paper-line-soft);
+}
+
+.receipt-row dt {
+    color: var(--paper-ink-3);
+    letter-spacing: 0.4px;
+    flex-shrink: 0;
+}
+
+.receipt-row dd {
+    margin: 0;
+    color: var(--paper-ink);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.receipt-row dd a {
+    color: var(--paper-paid);
+    text-decoration: underline;
+}
+
+.receipt-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 12px 0 4px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-top: 1px dashed var(--paper-line);
+    border-bottom: none;
+}
+
+.receipt-foot {
+    padding-top: 10px;
+    font-size: 0.6rem;
+    line-height: 1.6;
+    color: var(--paper-ink-3);
+    text-align: center;
+    letter-spacing: 0.3px;
+}
+
+/* ----- Stamp (verdict seal, slightly rotated) ------------------------------- */
+.stamp {
+    display: inline-block;
+    padding: 5px 12px;
+    transform: rotate(-4deg);
+    border: 2px solid currentColor;
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+}
+
+.stamp-paid,
+.stamp-valid {
+    color: var(--paper-paid);
+}
+
+.stamp-held {
+    color: var(--paper-held);
+}
+
+.stamp-refused {
+    color: var(--paper-refused);
+}
+
+/* ----- Hatch texture (used sparingly on proof surfaces) --------------------- */
+.hatch {
+    background-image: repeating-linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.05) 0 1px,
+        transparent 1px 8px
+    );
+}
+
+/* ----- Ledger grid (proof sections) ----------------------------------------- */
+.ledger-grid {
+    background-image:
+        linear-gradient(rgba(124, 111, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124, 111, 255, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+}

@@ -1,0 +1,326 @@
+/* =============================================================================
+   LANDING HEADER — sticky table of contents (vestiarion-style section tabs)
+   Tokens only. Mobile ≤1024px collapses to a numbered menu panel.
+   ============================================================================= */
+
+.landing-header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky, 100);
+    display: block; /* a legacy bare `header { display: flex }` rule would otherwise split nav + menu side by side */
+    width: 100%;
+    box-sizing: border-box;
+    background: color-mix(in srgb, var(--bg-0, #06080f) 82%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid transparent;
+    transition: border-color var(--dur-base, 220ms) var(--ease-out-expo, ease),
+                background var(--dur-base, 220ms) ease;
+}
+
+.landing-header.is-scrolled {
+    border-bottom-color: var(--bdr, rgba(255, 255, 255, 0.06));
+}
+
+.landing-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4, 16px);
+    height: 60px;
+    padding: 0 var(--container-pad, 32px);
+    width: 100%;
+    max-width: var(--container-max, 1240px);
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.landing-nav .logo-item {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+}
+
+/* ----- Table of contents tabs ----- */
+.landing-toc {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.landing-toc::-webkit-scrollbar {
+    display: none;
+}
+
+.landing-toc-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 11px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill, 999px);
+    background: transparent;
+    color: var(--t2, #8d95b0);
+    font-family: var(--sans, "Inter", sans-serif);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color var(--dur-fast, 150ms) ease,
+                background var(--dur-fast, 150ms) ease,
+                border-color var(--dur-fast, 150ms) ease;
+}
+
+.landing-toc-tab:hover {
+    color: var(--t1, #e8eaf0);
+    background: var(--surface-2, rgba(255, 255, 255, 0.035));
+}
+
+.landing-toc-tab.is-active {
+    color: var(--t1, #e8eaf0);
+    background: var(--accent-dim, rgba(124, 111, 255, 0.12));
+    border-color: rgba(124, 111, 255, 0.32);
+}
+
+.landing-toc-num {
+    display: none; /* numbered style lives in the mobile menu; desktop stays lean */
+    font-family: var(--mono, monospace);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: var(--t3, #4a5270);
+    transition: color var(--dur-fast, 150ms) ease;
+}
+
+.landing-toc-tab:hover .landing-toc-num,
+.landing-toc-tab.is-active .landing-toc-num {
+    color: var(--accent, #7C6FFF);
+}
+
+/* ----- Right cluster ----- */
+.landing-nav-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 8px);
+    flex: none;
+}
+
+.landing-icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm, 8px);
+    color: var(--t2, #8d95b0);
+    transition: color var(--dur-fast, 150ms) ease,
+                background var(--dur-fast, 150ms) ease;
+}
+
+.landing-icon-link:hover {
+    color: var(--t1, #e8eaf0);
+    background: var(--surface-2, rgba(255, 255, 255, 0.035));
+}
+
+.landing-cta {
+    display: inline-flex;
+    align-items: center;
+    height: 34px;
+    padding: 0 14px;
+    border: 1px solid rgba(124, 111, 255, 0.45);
+    border-radius: var(--radius-sm, 8px);
+    background: linear-gradient(135deg, var(--accent-strong, #6a5ce8), var(--accent, #7C6FFF));
+    color: #ffffff;
+    font-family: var(--sans, "Inter", sans-serif);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(124, 111, 255, 0.22);
+    transition: box-shadow var(--dur-fast, 150ms) ease, filter var(--dur-fast, 150ms) ease;
+}
+
+.landing-cta:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 18px rgba(124, 111, 255, 0.38);
+}
+
+/* Hamburger — hidden on desktop */
+.landing-menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--bdr, rgba(255, 255, 255, 0.06));
+    border-radius: var(--radius-sm, 8px);
+    background: var(--surface-1, rgba(255, 255, 255, 0.02));
+    color: var(--t1, #e8eaf0);
+    cursor: pointer;
+}
+
+/* ----- Mobile menu panel ----- */
+.landing-mobile-menu {
+    border-top: 1px solid var(--bdr, rgba(255, 255, 255, 0.06));
+    background: var(--bg-0, #06080f);
+    padding: var(--space-4, 16px) var(--container-pad, 32px) var(--space-5, 20px);
+    max-height: calc(100dvh - 60px);
+    overflow-y: auto;
+}
+
+.landing-mobile-toc {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.landing-mobile-toc button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 12px;
+    border: none;
+    border-radius: var(--radius-md, 12px);
+    background: transparent;
+    color: var(--t2, #8d95b0);
+    font-family: var(--sans, "Inter", sans-serif);
+    font-size: 15px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--dur-fast, 150ms) ease, color var(--dur-fast, 150ms) ease;
+}
+
+.landing-mobile-toc button:hover,
+.landing-mobile-toc button.is-active {
+    background: var(--surface-2, rgba(255, 255, 255, 0.035));
+    color: var(--t1, #e8eaf0);
+}
+
+.landing-mobile-toc .landing-toc-num {
+    font-size: 11px;
+}
+
+.landing-mobile-toc .is-active .landing-toc-num {
+    color: var(--accent, #7C6FFF);
+}
+
+.landing-mobile-here {
+    margin-left: auto;
+    font-size: 8px;
+    color: var(--accent, #7C6FFF);
+}
+
+.landing-mobile-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: var(--space-4, 16px);
+    padding-top: var(--space-4, 16px);
+    border-top: 1px solid var(--bdr, rgba(255, 255, 255, 0.06));
+}
+
+.landing-mobile-group-label {
+    font-family: var(--mono, monospace);
+    font-size: var(--text-2xs, 0.62rem);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--t3, #4a5270);
+    padding: 0 12px 6px;
+}
+
+.landing-mobile-group button,
+.landing-mobile-group a {
+    padding: 10px 12px;
+    border: none;
+    border-radius: var(--radius-md, 12px);
+    background: transparent;
+    color: var(--t2, #8d95b0);
+    font-family: var(--sans, "Inter", sans-serif);
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background var(--dur-fast, 150ms) ease, color var(--dur-fast, 150ms) ease;
+}
+
+.landing-mobile-group button:hover,
+.landing-mobile-group a:hover {
+    background: var(--surface-2, rgba(255, 255, 255, 0.035));
+    color: var(--t1, #e8eaf0);
+}
+
+.landing-mobile-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 44px;
+    margin-top: var(--space-4, 16px);
+    border: 1px solid rgba(124, 111, 255, 0.45);
+    border-radius: var(--radius-md, 12px);
+    background: linear-gradient(135deg, var(--accent-strong, #6a5ce8), var(--accent, #7C6FFF));
+    color: #ffffff;
+    font-family: var(--sans, "Inter", sans-serif);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(124, 111, 255, 0.22);
+}
+
+/* ----- Anchored sections clear the sticky header ----- */
+#live-proof,
+#why-qma,
+#how-it-works,
+#audiences,
+#builders,
+#source-code {
+    scroll-margin-top: 76px;
+}
+
+/* ----- Responsive ----- */
+@media (max-width: 1024px) {
+    .landing-toc {
+        display: none;
+    }
+
+    .landing-menu-btn {
+        display: inline-flex;
+    }
+
+    .landing-mobile-menu {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
+
+@media (max-width: 560px) {
+    .landing-nav {
+        height: 56px;
+    }
+
+    .landing-icon-link {
+        display: none;
+    }
+
+    .landing-cta {
+        padding: 0 12px;
+        font-size: 12.5px;
+    }
+}
+
+/* ----- Reduced motion: no smooth scrolling ----- */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}

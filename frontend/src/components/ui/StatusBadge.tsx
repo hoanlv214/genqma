@@ -1,4 +1,4 @@
-import React from "react";
+import { cn } from "../../utils/cn";
 
 export type BadgeTone = "green" | "amber" | "red" | "purple" | "neutral";
 
@@ -28,32 +28,12 @@ export function resolveStatusTone(status: string): BadgeTone {
   return "neutral";
 }
 
-const TONE_STYLES: Record<BadgeTone, { color: string; bg: string; border: string }> = {
-  green: {
-    color: "var(--green, #22d3a0)",
-    bg: "rgba(34, 211, 160, 0.12)",
-    border: "rgba(34, 211, 160, 0.28)",
-  },
-  amber: {
-    color: "var(--amber, #f59e0b)",
-    bg: "rgba(245, 158, 11, 0.10)",
-    border: "rgba(245, 158, 11, 0.28)",
-  },
-  red: {
-    color: "var(--red, #f4475b)",
-    bg: "rgba(244, 71, 91, 0.12)",
-    border: "rgba(244, 71, 91, 0.28)",
-  },
-  purple: {
-    color: "var(--purple, #a78bfa)",
-    bg: "rgba(167, 139, 250, 0.12)",
-    border: "rgba(167, 139, 250, 0.28)",
-  },
-  neutral: {
-    color: "var(--t3, #8d95b0)",
-    bg: "rgba(255, 255, 255, 0.04)",
-    border: "var(--bdr, rgba(255, 255, 255, 0.06))",
-  },
+const TONE_CLASSES: Record<BadgeTone, string> = {
+  green: "text-[var(--green,#22d3a0)] bg-[rgba(34,211,160,0.12)] border-[rgba(34,211,160,0.28)]",
+  amber: "text-[var(--amber,#f59e0b)] bg-[rgba(245,158,11,0.10)] border-[rgba(245,158,11,0.28)]",
+  red: "text-[var(--red,#f4475b)] bg-[rgba(244,71,91,0.12)] border-[rgba(244,71,91,0.28)]",
+  purple: "text-[var(--purple,#a78bfa)] bg-[rgba(167,139,250,0.12)] border-[rgba(167,139,250,0.28)]",
+  neutral: "text-[var(--t3,#8d95b0)] bg-white/[0.04] border-[var(--bdr,rgba(255,255,255,0.06))]",
 };
 
 export function StatusBadge({
@@ -65,43 +45,22 @@ export function StatusBadge({
   className = "",
 }: StatusBadgeProps) {
   const activeTone = tone || resolveStatusTone(status);
-  const styleTokens = TONE_STYLES[activeTone] || TONE_STYLES.neutral;
+  const toneClass = TONE_CLASSES[activeTone] || TONE_CLASSES.neutral;
   const displayText = label || status || "n/a";
 
-  const padding = size === "xs" ? "1px 5px" : size === "md" ? "4px 10px" : "2px 7px";
-  const fontSize = size === "xs" ? "0.6rem" : size === "md" ? "0.75rem" : "0.66rem";
+  const sizeClass = size === "xs" ? "py-px px-1.5 text-[0.6rem]" : size === "md" ? "py-1 px-2.5 text-[0.75rem]" : "py-0.5 px-1.5 text-[0.66rem]";
 
   return (
     <span
-      className={`status-badge-unified ${className}`}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "5px",
-        padding,
-        fontSize,
-        fontFamily: "var(--mono, monospace)",
-        fontWeight: 600,
-        textTransform: "uppercase",
-        letterSpacing: "0.5px",
-        borderRadius: "var(--radius-xs, 4px)",
-        color: styleTokens.color,
-        background: styleTokens.bg,
-        border: `1px solid ${styleTokens.border}`,
-        lineHeight: 1.2,
-        whiteSpace: "nowrap",
-      }}
+      className={cn(
+        "status-badge-unified inline-flex items-center gap-[5px] font-mono font-semibold uppercase tracking-[0.5px] rounded border leading-tight whitespace-nowrap",
+        toneClass,
+        sizeClass,
+        className
+      )}
     >
       {showDot && (
-        <span
-          style={{
-            width: "5px",
-            height: "5px",
-            borderRadius: "50%",
-            background: "currentColor",
-            flexShrink: 0,
-          }}
-        />
+        <span className="w-[5px] h-[5px] rounded-full bg-current shrink-0" />
       )}
       {displayText}
     </span>

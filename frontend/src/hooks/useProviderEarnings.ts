@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getProviderStats, claimCreatorEarnings } from "../services/providers";
 import { submitWithdrawal } from "../services/invoices";
-import { ensureArcTestnet, getInjectedWallet } from "../services/wallet";
+import { ensureArcTestnet, getWalletProvider } from "../services/wallet";
 import {
   buildCreatorClaimMessage,
   buildGatewayWithdrawIntent,
@@ -164,7 +164,7 @@ export function useProviderEarnings({
       setProviderEarningsError(creatorClaimConfig?.error || "Creator claim payout executor is not configured yet.");
       return;
     }
-    const provider = getInjectedWallet();
+    const provider = getWalletProvider();
     if (!provider?.request) {
       setProviderEarningsError("EVM wallet provider required for claim signature.");
       return;
@@ -251,7 +251,7 @@ export function useProviderEarnings({
     if (providerEarningsTotals.hasExternalGatewayBalance && providerEarningsTotals.gatewayAvailable <= 0) return setProviderEarningsError("Connect the provider revenue wallet to withdraw its direct Gateway balance.");
     const amount = Number(providerWithdrawAmount);
     if (!Number.isFinite(amount) || amount <= 0 || amount > providerGatewayWithdrawMax) return setProviderEarningsError(`Enter an amount between 0 and ${providerGatewayWithdrawMax.toFixed(6)} USDC.`);
-    const provider = getInjectedWallet();
+    const provider = getWalletProvider();
     if (!provider?.request) return setProviderEarningsError("EVM wallet provider required for Gateway withdrawal.");
 
     const useRelayer = ["platform_relayed", "relayed", "gasless"].includes(String(withdrawMode || "").toLowerCase());

@@ -49,7 +49,15 @@ export function useProviders({ activeQuery, setActiveQuery }: UseProvidersOption
   const loadProviders = async () => {
     try {
       const data = await listProviders();
-      setProviders((data.providers as unknown as Provider[]) || []);
+      const raw = (data.providers as Provider[]) || [];
+      // Deduplicate by provider_id (backend may return duplicates)
+      const seen = new Set<string>();
+      const unique = raw.filter((p) => {
+        if (seen.has(p.provider_id)) return false;
+        seen.add(p.provider_id);
+        return true;
+      });
+      setProviders(unique.length > 0 ? unique : DEFAULT_PROVIDERS);
     } catch (err) {
       console.warn("Failed to load providers list", err);
     }

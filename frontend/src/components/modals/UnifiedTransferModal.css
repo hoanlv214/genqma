@@ -1,0 +1,844 @@
+/* --- High-end Premium Unified Deposit/Withdraw Modal --- */
+.wallet-profile-modal.funding-modal {
+    max-width: 880px;
+    width: 100%;
+    max-height: min(720px, calc(100vh - 40px));
+    background: #090a12;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.funding-layout-wrapper {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Left panel (sidebar inside modal) */
+.funding-modal-sidebar {
+    width: 290px;
+    background: #0b0c16;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 24px 24px 170px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.funding-sidebar-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--t3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Wallet Card */
+.funding-sidebar-wallet-card {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    height: 94px;
+}
+
+.funding-sidebar-wallet-icon-wrapper {
+    width: 36px;
+    height: 36px;
+    background: rgba(124, 111, 255, 0.15);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.funding-sidebar-wallet-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.funding-sidebar-wallet-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.funding-sidebar-wallet-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.funding-sidebar-wallet-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--t2);
+    font-size: 9px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.funding-sidebar-wallet-desc {
+    font-size: 11px;
+    color: var(--t3);
+    line-height: 1.4;
+}
+
+/* Sidebar Divider */
+.funding-sidebar-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    width: 100%;
+}
+
+/* Current Balance section */
+.funding-sidebar-balance-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: left;
+}
+
+.funding-sidebar-balance-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--t3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.funding-sidebar-balance-amount-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.funding-sidebar-balance-amount {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    font-family: var(--sans);
+}
+
+.funding-sidebar-usdc-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+}
+
+.funding-sidebar-usdc-icon {
+    width: 14px;
+    height: 14px;
+    background: #2775ca;
+    color: #fff;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+/* Sidebar Muted Info Box */
+.funding-sidebar-info-box {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.funding-sidebar-info-icon {
+    color: var(--green);
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.funding-sidebar-info-text {
+    font-size: 11px;
+    color: var(--t3);
+    line-height: 1.45;
+}
+
+/* Sidebar Illustration container */
+.funding-sidebar-illustration-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 160px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    pointer-events: none;
+}
+
+.funding-sidebar-illustration {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.95;
+}
+
+/* Right Panel */
+.funding-modal-main-panel {
+    flex: 1;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.funding-main-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.funding-section-header {
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    text-align: left;
+}
+
+/* Source Selection Buttons/Cards */
+.funding-source-cards {
+    display: flex;
+    gap: 14px;
+}
+
+.funding-source-card {
+    flex: 1;
+    background: #0f1019;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+}
+
+.funding-source-card:hover {
+    background: #141624;
+    border-color: rgba(124, 111, 255, 0.3);
+}
+
+.funding-source-card.active {
+    background: rgba(124, 111, 255, 0.05);
+    border-color: var(--accent);
+    box-shadow: 0 0 16px rgba(124, 111, 255, 0.1);
+}
+
+.funding-source-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.funding-source-card.active .funding-source-title {
+    color: var(--accent);
+}
+
+.funding-source-sub {
+    font-size: 11px;
+    color: var(--t3);
+}
+
+.funding-source-desc {
+    font-size: 12px;
+    color: var(--t2);
+    text-align: left;
+    line-height: 1.4;
+}
+
+/* Address container */
+.funding-address-input-wrapper {
+    background: #06070c;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.funding-address-text {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #fff;
+    word-break: break-all;
+    text-align: left;
+}
+
+.funding-copy-btn {
+    background: transparent;
+    border: none;
+    color: var(--t3);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
+}
+
+.funding-copy-btn:hover {
+    color: #fff;
+}
+
+.funding-address-help {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--t3);
+    text-align: left;
+}
+
+/* Amount Input field */
+.funding-amount-input-box {
+    background: #06070c;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 2px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.funding-amount-input-box input {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 600;
+    flex: 1;
+    min-width: 0;
+    outline: none;
+    padding: 12px 0;
+}
+
+/* Hide WebKit spin buttons */
+.funding-amount-input-box input::-webkit-outer-spin-button,
+.funding-amount-input-box input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Hide Firefox spin-button */
+.funding-amount-input-box input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.funding-amount-input-badge-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--t2);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Quick Preset Row */
+.funding-presets-row {
+    display: flex;
+    gap: 8px;
+}
+
+.funding-preset-btn {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--t2);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.funding-preset-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.funding-preset-btn.preset-max {
+    color: var(--accent);
+}
+
+.funding-preset-btn.preset-max:hover {
+    background: rgba(124, 111, 255, 0.08);
+    border-color: rgba(124, 111, 255, 0.2);
+    color: var(--accent);
+}
+
+/* Sparkle warning alert */
+.funding-sparkle-alert {
+    background: rgba(124, 111, 255, 0.06);
+    border: 1px solid rgba(124, 111, 255, 0.15);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    text-align: left;
+}
+
+.funding-sparkle-icon {
+    color: var(--accent);
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.funding-sparkle-text {
+    font-size: 12px;
+    color: var(--t2);
+    line-height: 1.45;
+}
+
+/* Bottom Actions Footer */
+.funding-modal-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 24px 32px;
+    background: #07080f;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.funding-modal-footer-buttons {
+    display: flex;
+    gap: 16px;
+}
+
+.funding-btn-cancel {
+    flex: 1;
+    background: #121320;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    height: 44px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.funding-btn-cancel:hover {
+    background: #171828;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.funding-btn-submit {
+    flex: 1;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    height: 44px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);
+    transition: all 0.2s;
+}
+
+.funding-btn-submit:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+    transform: translateY(-1px);
+}
+
+.funding-btn-submit:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.funding-secured-icon {
+    font-size: 12px;
+}
+
+.funding-modal-main-panel .funding-modal-header {
+    display: none !important;
+}
+
+.funding-modal-main-panel .funding-body.funding-modal-body {
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.funding-modal-main-panel .funding-section {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    padding: 16px !important;
+    border-radius: 12px !important;
+}
+
+.funding-modal-main-panel .funding-actions-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+    gap: 12px !important;
+    margin-top: 10px !important;
+}
+
+.funding-modal-main-panel .funding-btn-primary {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    border: none !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    border-radius: 999px !important;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3) !important;
+}
+
+.funding-modal-main-panel .funding-btn-outline {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    border-radius: 999px !important;
+}
+
+.funding-modal-main-panel .funding-advanced-toggle {
+    margin-top: 10px !important;
+    font-size: 12px !important;
+    color: var(--accent) !important;
+}
+
+.funding-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.funding-header-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(124, 111, 255, 0.1);
+    border: 1px solid rgba(124, 111, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+}
+
+.funding-modal-header .modal-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #fff;
+    text-align: left;
+    margin: 0;
+}
+
+.funding-modal-header .modal-subtitle {
+    font-size: 12px;
+    color: var(--t3);
+    text-align: left;
+    margin-top: 2px;
+}
+
+.funding-close-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--t2);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.funding-close-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+/* Sidebar items */
+.funding-sidebar-wallet-name {
+    color: #fff;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+/* Form Styles */
+.funding-modal-main-panel form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    flex: 1;
+}
+
+.funding-amount-input-badge-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.funding-preset-btn.preset-max {
+    flex: none;
+    width: 80px;
+}
+
+.funding-modal-footer {
+    border: none;
+    background: transparent;
+    padding: 16px 0 0 0;
+    margin-top: auto;
+}
+
+/* Creator Tab Styles inside Modal */
+.funding-creator-wrapper {
+    background: transparent;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 1;
+}
+
+.funding-creator-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 1;
+}
+
+.premium-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+}
+
+.premium-stat-card {
+    padding: 12px;
+}
+
+.premium-stat-card .stat-label {
+    font-size: 9px;
+}
+
+.premium-stat-card .stat-value {
+    font-size: 16px;
+}
+
+.premium-stat-card .stat-sub {
+    font-size: 10px;
+}
+
+.funding-error-message {
+    color: var(--danger);
+    font-size: 12px;
+    text-align: left;
+}
+
+.premium-providers-list {
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.premium-provider-card {
+    padding: 10px;
+    margin-bottom: 8px;
+}
+
+.premium-provider-header {
+    gap: 10px;
+}
+
+.premium-provider-info {
+    text-align: left;
+}
+
+.premium-provider-info h3 {
+    font-size: 12px;
+    margin: 0 0 2px 0;
+}
+
+.premium-provider-info .provider-subtitle {
+    font-size: 10px;
+}
+
+.premium-provider-amount {
+    margin-left: auto;
+    text-align: right;
+}
+
+.premium-provider-amount .amount-value {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.premium-provider-amount .amount-label {
+    font-size: 9px;
+}
+
+.premium-providers-list .empty-state-card {
+    padding: 20px;
+}
+
+.premium-providers-list .empty-title {
+    font-size: 12px;
+}
+
+.premium-withdraw-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+    padding: 8px 16px;
+    margin-top: auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.premium-withdraw-actions .premium-btn {
+    padding: 6px 16px;
+    font-size: 11px;
+    height: 32px;
+    border-radius: 999px;
+}
+
+.premium-withdraw-actions .actions-right {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+}
+
+.premium-withdraw-actions .actions-right .premium-btn {
+    flex: 1;
+}
+
+.premium-refresh-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--t2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.premium-refresh-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+/* Custom premium token select styles */
+.funding-token-select {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    /* remove default arrow */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right center;
+    padding-right: 18px;
+    /* space for custom arrow */
+}
+
+.funding-token-select option {
+    background: #0f1019;
+    color: #fff;
+}
+
+.funding-token-select option:disabled {
+    color: var(--t3);
+}
+
+/* Field Group layout for Input and external MAX button */
+.funding-amount-field-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+}
+
+.funding-amount-field-group .funding-amount-input-box {
+    flex: 1;
+}
+
+/* Premium MAX button next to input box */
+.funding-input-max-btn {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 8px;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    height: 48px;
+    /* match the input box vertical height including paddings */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+.funding-input-max-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.45);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+}
+

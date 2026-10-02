@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getInjectedWallet, shortAddress, ensureArcTestnet } from "../services/wallet";
+import { getWalletProvider, shortAddress, ensureArcTestnet } from "../services/wallet";
 import { extractGatewayBalanceUsdc, getOnChainUsdcBalance } from "../services/gatewayCrypto";
 import { ARC_CHAIN } from "../config/network";
 
@@ -49,7 +49,7 @@ export function useFundArcWallet({ wallet, arcGatewayUrl }: UseFundArcWalletOpti
     let error: any = null;
 
     try {
-      provider = getInjectedWallet();
+      provider = getWalletProvider();
       if (provider) {
         const pAny = provider as any;
         if (pAny.isMetaMask) providerLabel = "MetaMask";
@@ -147,7 +147,7 @@ export function useFundArcWallet({ wallet, arcGatewayUrl }: UseFundArcWalletOpti
   }, [refreshFundingReadiness]);
 
   useEffect(() => {
-    const provider = getInjectedWallet();
+    const provider = getWalletProvider();
     if (provider?.on) {
       const handleChainOrAccountChange = () => {
         refreshFundingReadiness();

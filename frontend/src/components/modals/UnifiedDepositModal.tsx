@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { FundArcWalletModal } from "../wallet/FundArcWalletModal";
-import { getInjectedWallet, ensureArcTestnet } from "../../services/wallet";
+import { FundArcWalletModal } from "./FundArcWalletModal";
+import { getWalletProvider, ensureArcTestnet } from "../../services/wallet";
 import { ARC_CHAIN } from "../../config/network";
+import { cn } from "../../utils/cn";
 import {
   getCrossChainUsdcBalances,
   executeCrossChainGatewayDeposit,
   executeAddDelegate,
   type UnifiedBalanceOverview,
 } from "../../services/circleAppKit";
+import "./UnifiedTransferModal.css";
 
 interface UnifiedDepositModalProps {
   open: boolean;
@@ -96,7 +98,7 @@ export function UnifiedDepositModal({
   // Check connected network
   useEffect(() => {
     if (!open) return;
-    const provider = getInjectedWallet();
+    const provider = getWalletProvider();
     if (!provider) return;
 
     provider.request<string>({ method: "eth_chainId" }).then((hexId) => {
@@ -130,7 +132,7 @@ export function UnifiedDepositModal({
   const isArcChain = currentChainId === targetArcChainId;
 
   const handleSwitchToArc = async () => {
-    const provider = getInjectedWallet();
+    const provider = getWalletProvider();
     if (!provider) return;
     setSwitchingNetwork(true);
     try {
@@ -145,7 +147,7 @@ export function UnifiedDepositModal({
   };
 
   const handleFastExternalDeposit = async (chainId: number, amount: string = "1.0") => {
-    const provider = getInjectedWallet();
+    const provider = getWalletProvider();
     if (!provider || !wallet) return;
     setCrossChainLoading(true);
     setCrossChainStatus(`Initiating Gateway deposit from chain ${chainId}...`);
@@ -173,7 +175,7 @@ export function UnifiedDepositModal({
   };
 
   const handleAuthorizeDelegate = async () => {
-    const provider = getInjectedWallet();
+    const provider = getWalletProvider();
     if (!provider || !wallet || !agentWalletAddress) return;
     setDelegateLoading(true);
     setDelegateStatus("Authorizing Agent...");
@@ -255,13 +257,13 @@ export function UnifiedDepositModal({
           <div className="funding-modal-sidebar">
             {depositTab === "gateway" ? (
               <div className="funding-sidebar-wallet-card">
-                <div className="funding-sidebar-wallet-icon-wrapper" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }}>
+                <div className="funding-sidebar-wallet-icon-wrapper bg-blue-500/15 text-blue-500">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V9z" /><path d="M22 9V8a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v1" /><path d="M7 15h0M11 15h0M15 15h0" /></svg>
                 </div>
                 <div className="funding-sidebar-wallet-details">
                   <div className="funding-sidebar-wallet-title-row">
                     <span className="funding-sidebar-wallet-name">Gateway Prepaid</span>
-                    <span className="funding-sidebar-wallet-badge" style={{ background: "rgba(59, 130, 246, 0.2)", color: "#60a5fa" }}>Circle Gateway</span>
+                    <span className="funding-sidebar-wallet-badge bg-blue-500/20 text-blue-400">Circle Gateway</span>
                   </div>
                   <span className="funding-sidebar-wallet-desc">Zero-gas nanopayments pre-funded on Circle Gateway contract.</span>
                 </div>
@@ -293,7 +295,7 @@ export function UnifiedDepositModal({
                   }
                 </span>
                 <div className="funding-sidebar-usdc-badge">
-                  <img src="/usdc-logo.svg" style={{ width: '14px', height: '14px' }} alt="USDC" />
+                  <img src="/usdc-logo.svg" width={14} height={14} alt="USDC" className="w-3.5 h-3.5" />
                   <span>USDC</span>
                 </div>
               </div>
@@ -320,20 +322,10 @@ export function UnifiedDepositModal({
           <div className="funding-modal-main-panel">
             {/* Wrong Network Notice Banner */}
             {!isArcChain && (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 14px",
-                background: "rgba(245, 158, 11, 0.1)",
-                border: "1px solid rgba(245, 158, 11, 0.25)",
-                borderRadius: "8px",
-                marginBottom: "14px",
-                gap: "10px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "16px" }}>⚠️</span>
-                  <span style={{ fontSize: "12px", color: "#fbbf24" }}>
+              <div className="flex items-center justify-between px-3.5 py-2.5 bg-amber-500/10 border border-amber-500/25 rounded-lg mb-3.5 gap-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">⚠️</span>
+                  <span className="text-xs text-amber-400">
                     Connected to <strong>{fundChainStatus}</strong>. Switch to {ARC_CHAIN.name} to deposit.
                   </span>
                 </div>
@@ -341,17 +333,7 @@ export function UnifiedDepositModal({
                   type="button"
                   onClick={handleSwitchToArc}
                   disabled={switchingNetwork}
-                  style={{
-                    padding: "6px 12px",
-                    background: "#f59e0b",
-                    color: "#000",
-                    fontWeight: 700,
-                    fontSize: "11px",
-                    borderRadius: "6px",
-                    border: "none",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
+                  className="px-3 py-1.5 bg-amber-500 text-black font-bold text-[11px] rounded-md border-none cursor-pointer whitespace-nowrap hover:bg-amber-400 transition-colors"
                 >
                   {switchingNetwork ? "Switching..." : `Switch to ${ARC_CHAIN.name}`}
                 </button>
@@ -360,47 +342,26 @@ export function UnifiedDepositModal({
 
             {/* Cross-chain Unified Balance Auto-Detection Banner */}
             {multiChainOverview?.detectedExternalBalance && multiChainOverview?.bestExternalChain && (
-              <div style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-                padding: "12px 14px",
-                background: "linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(99, 102, 241, 0.16))",
-                border: "1px solid rgba(99, 102, 241, 0.35)",
-                borderRadius: "8px",
-                marginBottom: "14px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "16px" }}>⚡</span>
-                    <span style={{ fontSize: "12px", color: "#93c5fd", fontWeight: 700 }}>
+              <div className="flex flex-col gap-2 p-3 bg-gradient-to-br from-blue-500/10 to-indigo-500/20 border border-indigo-500/35 rounded-lg mb-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">⚡</span>
+                    <span className="text-xs text-blue-300 font-bold">
                       Unified Balance Cross-Chain Auto-Detect
                     </span>
                   </div>
-                  <span style={{ fontSize: "10px", color: "#60a5fa", background: "rgba(59, 130, 246, 0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: 600 }}>
+                  <span className="text-[10px] text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full font-semibold">
                     Circle Gateway
                   </span>
                 </div>
-                <p style={{ margin: 0, fontSize: "11px", color: "#cbd5e1", lineHeight: 1.4 }}>
+                <p className="m-0 text-[11px] text-slate-300 leading-snug">
                   Arc wallet balance is 0, but we detected <strong>{multiChainOverview.bestExternalChain.balanceUsdc} USDC</strong> on <strong>{multiChainOverview.bestExternalChain.name}</strong>. You can deposit directly into your Unified Gateway Balance without bridging!
                 </p>
                 <button
                   type="button"
                   disabled={crossChainLoading}
                   onClick={() => handleFastExternalDeposit(multiChainOverview.bestExternalChain!.chainId, "1.0")}
-                  style={{
-                    alignSelf: "flex-start",
-                    marginTop: "4px",
-                    padding: "6px 14px",
-                    background: "#3b82f6",
-                    color: "#ffffff",
-                    fontWeight: 700,
-                    fontSize: "11px",
-                    borderRadius: "6px",
-                    border: "none",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
-                  }}
+                  className="self-start mt-1 px-3.5 py-1.5 bg-blue-500 text-white font-bold text-[11px] rounded-md border-none cursor-pointer shadow-md shadow-blue-500/30 hover:bg-blue-400 transition-colors"
                 >
                   {crossChainLoading ? "Processing Deposit..." : `Deposit 1.0 USDC from ${multiChainOverview.bestExternalChain.name} →`}
                 </button>
@@ -410,7 +371,7 @@ export function UnifiedDepositModal({
             {/* Section 1: Choose Deposit Method */}
             <div className="funding-main-section">
               <span className="funding-section-header">1. Choose Deposit Target</span>
-              <div className="funding-source-cards" style={{ gridTemplateColumns: agentWalletAddress ? "1fr 1fr" : "1fr" }}>
+              <div className={cn("funding-source-cards grid gap-3", agentWalletAddress ? "grid-cols-2" : "grid-cols-1")}>
                 <div
                   className={`funding-source-card ${depositTab === "gateway" ? "active" : ""}`}
                   onClick={() => setDepositTab("gateway")}
@@ -458,13 +419,17 @@ export function UnifiedDepositModal({
                     <span>target balance {fundRequiredAmount || "0.005 USDC"}</span>
                   </div>
                   <div className={`funding-progress ${fundReadinessTone}`}>
-                    <span
-                      style={{
-                        width: requiredAmountNum > 0
-                          ? `${Math.min((gatewayBalanceNum / requiredAmountNum) * 100, 100)}%`
-                          : "0%",
-                      }}
-                    />
+                    <svg className="w-full h-full block" preserveAspectRatio="none">
+                      <rect
+                        x="0"
+                        y="0"
+                        width={`${requiredAmountNum > 0 ? Math.min((gatewayBalanceNum / requiredAmountNum) * 100, 100) : 0}%`}
+                        height="100%"
+                        rx="3"
+                        fill={fundReadinessTone === "ready" ? "var(--green)" : "#f59e0b"}
+                        className="transition-all duration-300"
+                      />
+                    </svg>
                   </div>
                 </div>
 
@@ -472,11 +437,11 @@ export function UnifiedDepositModal({
                   <span className="funding-section-header">3. Deposit from Connected Wallet</span>
 
                   {/* Multi-Chain Source Network Selector */}
-                  <div style={{ marginBottom: "12px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", display: "block", marginBottom: "6px", letterSpacing: "0.05em" }}>
+                  <div className="mb-3">
+                    <span className="block mb-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       Source Network For Gateway Funding
                     </span>
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <div className="flex gap-2 flex-wrap">
                       {multiChainOverview?.chains?.map((chain) => {
                         const isSelected = selectedSourceChainId === chain.chainId;
                         return (
@@ -484,33 +449,25 @@ export function UnifiedDepositModal({
                             key={chain.chainId}
                             type="button"
                             onClick={() => setSelectedSourceChainId(chain.chainId)}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              padding: "6px 12px",
-                              borderRadius: "6px",
-                              fontSize: "11px",
-                              fontWeight: 700,
-                              cursor: "pointer",
-                              background: isSelected ? "rgba(59, 130, 246, 0.25)" : "rgba(255, 255, 255, 0.05)",
-                              border: isSelected ? "1px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.12)",
-                              color: isSelected ? "#60a5fa" : "#cbd5e1",
-                              transition: "all 0.15s ease",
-                            }}
+                            className={cn(
+                              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold cursor-pointer transition-all duration-150 border",
+                              isSelected
+                                ? "bg-blue-500/25 border-blue-500 text-blue-400"
+                                : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                            )}
                           >
                             <span>{chain.name}</span>
-                            <span style={{ opacity: 0.8, fontFamily: "monospace" }}>({chain.balanceUsdc} USDC)</span>
+                            <span className="opacity-80 font-mono">({chain.balanceUsdc} USDC)</span>
                           </button>
                         );
                       }) || (
-                        <span style={{ fontSize: "12px", color: "#94a3b8" }}>{ARC_CHAIN.name} ({fundWalletUsdc})</span>
+                        <span className="text-xs text-slate-400">{ARC_CHAIN.name} ({fundWalletUsdc})</span>
                       )}
                     </div>
                   </div>
 
                   <div className="funding-wallet-identity">
-                    <img src={selectedSourceChainId === ARC_CHAIN.chainId ? "/arc-logo.svg" : "/usdc-logo.svg"} alt="Chain" style={{ width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0, display: 'inline-block' }} />
+                    <img src={selectedSourceChainId === ARC_CHAIN.chainId ? "/arc-logo.svg" : "/usdc-logo.svg"} alt="Chain" width={22} height={22} className="w-[22px] h-[22px] rounded-full shrink-0 inline-block" />
                     <div>
                       <strong title={wallet}>{fundWalletStatus}</strong>
                       <span>{fundProviderStatus} · {selectedSourceChainId === ARC_CHAIN.chainId ? fundChainStatus : multiChainOverview?.chains.find(c => c.chainId === selectedSourceChainId)?.name || fundChainStatus}</span>
@@ -534,7 +491,7 @@ export function UnifiedDepositModal({
                         required
                       />
                       <div className="funding-amount-input-badge-wrapper">
-                        <img src="/usdc-logo.svg" style={{ width: '16px', height: '16px' }} alt="USDC" />
+                        <img src="/usdc-logo.svg" width={16} height={16} alt="USDC" className="w-4 h-4" />
                         <span className="funding-token-select">USDC</span>
                       </div>
                     </div>
@@ -557,24 +514,18 @@ export function UnifiedDepositModal({
                   </div>
 
                   {(gatewayDepositStatus || crossChainStatus) && (
-                    <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--accent, #60a5fa)' }}>
+                    <div className="mt-2.5 text-xs text-blue-400">
                       {crossChainStatus || gatewayDepositStatus}
                     </div>
                   )}
 
                   {/* Autonomous Agent Auto-Pay Delegation */}
                   {agentWalletAddress && (
-                    <div style={{
-                      marginTop: "14px",
-                      padding: "10px 14px",
-                      background: "rgba(59, 130, 246, 0.06)",
-                      border: "1px dashed rgba(99, 102, 241, 0.35)",
-                      borderRadius: "8px",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                    <div className="mt-3.5 px-3.5 py-2.5 bg-blue-500/[0.06] border border-dashed border-indigo-500/35 rounded-lg">
+                      <div className="flex items-center justify-between gap-2.5">
                         <div>
-                          <div style={{ fontSize: "12px", fontWeight: 700, color: "#e2e8f0" }}>Agent Auto-Pay Delegation</div>
-                          <div style={{ fontSize: "11px", color: "#94a3b8", lineHeight: 1.3 }}>
+                          <div className="text-xs font-bold text-slate-200">Agent Auto-Pay Delegation</div>
+                          <div className="text-[11px] text-slate-400 leading-snug">
                             Authorize your Agent to spend from Unified Balance (&lt;500ms) without popups.
                           </div>
                         </div>
@@ -582,17 +533,7 @@ export function UnifiedDepositModal({
                           type="button"
                           onClick={handleAuthorizeDelegate}
                           disabled={delegateLoading}
-                          style={{
-                            padding: "6px 12px",
-                            background: "rgba(59, 130, 246, 0.2)",
-                            border: "1px solid rgba(59, 130, 246, 0.4)",
-                            color: "#60a5fa",
-                            fontWeight: 700,
-                            borderRadius: "6px",
-                            fontSize: "11px",
-                            cursor: "pointer",
-                            whiteSpace: "nowrap",
-                          }}
+                          className="px-3 py-1.5 bg-blue-500/20 border border-blue-500/40 text-blue-400 font-bold rounded-md text-[11px] cursor-pointer whitespace-nowrap hover:bg-blue-500/30 transition-colors"
                         >
                           {delegateLoading ? "Authorizing..." : delegateStatus || "Authorize Agent"}
                         </button>
@@ -636,14 +577,14 @@ export function UnifiedDepositModal({
                       title="Copy Address"
                     >
                       {copied ? (
-                        <span style={{ fontSize: '11px', color: 'var(--green)', fontWeight: 600 }}>Copied!</span>
+                        <span className="text-[11px] text-[var(--green)] font-semibold">Copied!</span>
                       ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
                       )}
                     </button>
                   </div>
                   <div className="funding-address-help">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent)' }}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--accent)]"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
                     <span>Send USDC (via Arc) to this address.</span>
                   </div>
                 </div>
@@ -662,7 +603,7 @@ export function UnifiedDepositModal({
                         required
                       />
                       <div className="funding-amount-input-badge-wrapper">
-                        <img src="/usdc-logo.svg" style={{ width: '16px', height: '16px' }} alt="USDC" />
+                        <img src="/usdc-logo.svg" width={16} height={16} alt="USDC" className="w-4 h-4" />
                         <span className="funding-token-select">USDC</span>
                       </div>
                     </div>
@@ -702,22 +643,12 @@ export function UnifiedDepositModal({
             )}
 
             {/* Shortcut Banner to dedicated Swap & Bridge page */}
-            <div style={{
-              marginTop: "20px",
-              padding: "12px 16px",
-              background: "rgba(124, 111, 255, 0.08)",
-              border: "1px solid rgba(124, 111, 255, 0.2)",
-              borderRadius: "10px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "12px",
-            }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "#ffffff" }}>
+            <div className="mt-5 px-4 py-3 bg-[rgba(124,111,255,0.08)] border border-[rgba(124,111,255,0.2)] rounded-[10px] flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-semibold text-white">
                   Need to exchange EURC or bridge from another chain?
                 </span>
-                <span style={{ fontSize: "11px", color: "var(--t2, #94a3b8)" }}>
+                <span className="text-[11px] text-slate-400">
                   Visit the Arc StableFX &amp; CCTP V2 Bridge Desk.
                 </span>
               </div>
@@ -727,18 +658,7 @@ export function UnifiedDepositModal({
                   onClose();
                   onNavigate?.("swap");
                 }}
-                style={{
-                  padding: "6px 14px",
-                  background: "rgba(124, 111, 255, 0.2)",
-                  border: "1px solid rgba(124, 111, 255, 0.4)",
-                  borderRadius: "6px",
-                  color: "#c7d2fe",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  transition: "all 0.15s ease",
-                }}
+                className="px-3.5 py-1.5 bg-[rgba(124,111,255,0.2)] border border-[rgba(124,111,255,0.4)] rounded-md text-indigo-200 text-[11px] font-semibold cursor-pointer whitespace-nowrap transition-all duration-150 hover:bg-[rgba(124,111,255,0.3)]"
               >
                 Open Swap &amp; Bridge →
               </button>

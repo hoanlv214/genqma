@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { API_BASE_URL, ApiError } from "../services/api";
-import { ensureArcTestnet, getInjectedWallet, shortAddress } from "../services/wallet";
+import { ensureArcTestnet, getWalletProvider, shortAddress } from "../services/wallet";
 import { ARC_CHAIN } from "../config/network";
 import { payX402Resource, prepareX402Payment, submitX402Payment, X402PaymentError, type PreparedX402Payment } from "../services/x402";
 import { createInvoice, verifyPayment } from "../services/invoices";
@@ -128,7 +128,7 @@ export function usePayment({
     });
 
     try {
-      const provider = getInjectedWallet();
+      const provider = getWalletProvider();
       if (!provider) throw new Error("Wallet not found.");
       const chainId = await provider.request<string>({ method: "eth_chainId" });
       if (String(chainId).toLowerCase() !== ARC_CHAIN.chainIdHex.toLowerCase()) {
@@ -153,6 +153,8 @@ export function usePayment({
           ...invoiceData,
           query: invoiceData.query || effectiveQuery,
           symbol: invoiceData.symbol || effectiveQuery.symbol || (invoiceData.payment_requirement as any)?.symbol,
+          evidence_url: invoiceData.evidence_url || invoiceData.query?.evidence_url || effectiveQuery?.evidence_url,
+          exchange: invoiceData.exchange || invoiceData.query?.exchange || effectiveQuery?.exchange,
         };
         setCurrentInvoice(fullInvoice);
         if (invoiceData.genlayer) {
@@ -200,6 +202,8 @@ export function usePayment({
         ...invoiceData,
         query: invoiceData.query || effectiveQuery,
         symbol: invoiceData.symbol || effectiveQuery.symbol || (invoiceData.payment_requirement as any)?.symbol,
+        evidence_url: invoiceData.evidence_url || invoiceData.query?.evidence_url || effectiveQuery?.evidence_url,
+        exchange: invoiceData.exchange || invoiceData.query?.exchange || effectiveQuery?.exchange,
       };
       setCurrentInvoice(fullInvoice);
       rememberPendingInvoice(fullInvoice, effectiveQuery, tier, effectiveProviderId, wallet);
@@ -266,7 +270,7 @@ export function usePayment({
   };
 
   const waitForTxReceipt = async (hash: string) => {
-    const provider = getInjectedWallet();
+    const provider = getWalletProvider();
     if (!provider) return;
     for (let i = 0; i < 45; i++) {
       try {
@@ -349,7 +353,7 @@ export function usePayment({
       const data = await calldataResp.json();
       if (!calldataResp.ok) throw new Error(data.error || "Deposit calldata failed");
 
-      const provider = getInjectedWallet();
+      const provider = getWalletProvider();
       if (!provider) throw new Error("No wallet injection found.");
       const allowance = Number(statusData?.allowance?.formatted || 0);
       if (allowance < amount) {
@@ -814,7 +818,6 @@ export function usePayment({
         query: reportData.query || normalizedReportQuery,
       };
       setUnlockedReport(cachedReportData);
-      setPaywallOpen(false);
       setReportCollapsed(false);
       const key = signalCacheKey(normalizedReportQuery, reportTier, providerForReport);
       localStorage.setItem(key, JSON.stringify({

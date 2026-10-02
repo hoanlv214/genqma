@@ -1,0 +1,365 @@
+/* ==========================================================================
+   SignalRibbon Stylesheet — High-Density Horizontal Ticker Tape
+   ========================================================================== */
+
+.signal-ribbon-bar {
+    width: 100%;
+    background: var(--bg-1);
+    border-bottom: 1px solid var(--bdr);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 10;
+    user-select: none;
+}
+
+/* --- Control Strip (Top Row) --- */
+.ribbon-control-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 16px;
+    background: rgba(8, 10, 18, 0.85);
+    border-bottom: 1px solid var(--bdr);
+    min-height: 34px;
+    gap: 12px;
+}
+
+.ribbon-left-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.ribbon-stream-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: var(--t2);
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.ribbon-stream-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: ribbonPulse 2s infinite ease-in-out;
+}
+
+@keyframes ribbonPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.ribbon-filters {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.ribbon-filters::-webkit-scrollbar {
+    display: none;
+}
+
+.ribbon-filter-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--bdr);
+    color: var(--t3);
+    border-radius: var(--radius-xs);
+    padding: 2px 7px;
+    font-size: 0.65rem;
+    font-family: var(--mono);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.ribbon-filter-btn:hover {
+    color: var(--t1);
+    border-color: var(--bdr-md);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.ribbon-filter-btn.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    font-weight: 600;
+}
+
+.ribbon-right-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.ribbon-refresh-info {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--t3);
+    font-variant-numeric: tabular-nums;
+}
+
+.ribbon-btn-action {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--bdr);
+    color: var(--t2);
+    padding: 3px 9px;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.3px;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.ribbon-btn-action:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+}
+
+/* --- Ticker Track Container (Bottom Row) --- */
+.ribbon-track-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    overflow: hidden;
+    background: rgba(10, 13, 24, 0.5);
+    padding: 6px 0;
+}
+
+.ribbon-track {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 0 16px;
+    scroll-behavior: smooth;
+    width: 100%;
+}
+
+.ribbon-track::-webkit-scrollbar {
+    display: none;
+}
+
+.ribbon-scroll-nav {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 13, 24, 0.88);
+    border: none;
+    color: var(--t2);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    z-index: 5;
+    transition: all 0.15s ease;
+    backdrop-filter: blur(4px);
+}
+
+.ribbon-scroll-nav:hover {
+    color: var(--accent);
+    background: rgba(15, 18, 32, 0.96);
+}
+
+.ribbon-scroll-prev {
+    left: 0;
+    border-right: 1px solid var(--bdr);
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.4);
+}
+
+.ribbon-scroll-next {
+    right: 0;
+    border-left: 1px solid var(--bdr);
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Individual Ticker Cards --- */
+.ribbon-card {
+    flex: 0 0 216px;
+    height: 60px;
+    background: var(--bg-2);
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-sm);
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    text-align: left;
+}
+
+.ribbon-card:hover {
+    border-color: var(--bdr-md);
+    background: rgba(124, 111, 255, 0.04);
+    transform: translateY(-1px);
+}
+
+.ribbon-card.active {
+    border: 1.5px solid var(--amber);
+    background: var(--amber-dim);
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.16);
+}
+
+.ribbon-card.is-ranked {
+    border-left: 2px solid var(--purple);
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.05) 0%, var(--bg-2) 100%);
+}
+
+.ribbon-card.is-ranked.active {
+    border-color: var(--accent);
+    border-left-color: var(--accent);
+}
+
+.ribbon-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.ribbon-card-symbol-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.ribbon-card-symbol {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--t1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ribbon-card-rate {
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.ribbon-card-rate.is-negative {
+    color: var(--red);
+}
+
+.ribbon-card-rate.is-positive {
+    color: var(--green);
+}
+
+.ribbon-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.64rem;
+    font-family: var(--mono);
+    color: var(--t3);
+    gap: 6px;
+}
+
+.ribbon-card-substat {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+}
+
+.ribbon-card-badge {
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.ribbon-card-badge.badge-ranked {
+    background: rgba(167, 139, 250, 0.15);
+    color: var(--purple);
+    border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+.ribbon-card-badge.badge-unpaid {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--t3);
+    border: 1px solid var(--bdr);
+}
+
+.ribbon-card-badge.badge-unlocked {
+    background: var(--green-dim);
+    color: var(--green);
+    border: 1px solid rgba(34, 211, 160, 0.3);
+}
+
+.ribbon-empty-state {
+    padding: 14px 20px;
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+
+/* --- Layout Toggle Button in Sidebar --- */
+.layout-toggle-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--bdr);
+    color: var(--t3);
+    padding: 3px 8px;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.3px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.layout-toggle-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+}
+
+/* --- Workspace in Ribbon Layout --- */
+.workspace.is-ribbon-layout {
+    width: 100%;
+    display: flex;
+}
+
+.workspace.is-ribbon-layout .main-panel {
+    width: 100%;
+    flex: 1 1 100%;
+}

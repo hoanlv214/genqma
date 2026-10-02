@@ -2,6 +2,7 @@ import { createAppKit } from "@reown/appkit/react";
 import { defineChain } from "@reown/appkit/networks";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { ARC_CHAIN } from "./network";
+import { registerAppKitProviderSource, type Eip1193Provider } from "../services/wallet";
 
 export const arcTestnetChain = defineChain({
   id: ARC_CHAIN.chainId,
@@ -78,3 +79,18 @@ export function getAppKitAccount() {
     address: address || account?.address || "",
   };
 }
+
+// Register the ACTIVE AppKit provider as the app's single wallet source.
+// Signing and transaction code reads it through getWalletProvider()
+// (services/wallet) so WalletConnect / QR connections sign with the right
+// wallet — not just whatever extension sits on window.ethereum.
+registerAppKitProviderSource(() => {
+  try {
+    const provider = (appKit as unknown as { getWalletProvider?: () => unknown }).getWalletProvider?.();
+    return provider && typeof (provider as { request?: unknown }).request === "function"
+      ? (provider as Eip1193Provider)
+      : null;
+  } catch {
+    return null;
+  }
+});

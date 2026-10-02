@@ -1,0 +1,384 @@
+﻿.quick-profile-modal {
+    width: min(980px, calc(100vw - 32px));
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at 18% 0%, rgba(124, 111, 255, 0.08), transparent 34%),
+        rgba(15, 17, 26, 0.98);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.62);
+}
+
+.quick-profile-modal .modal-header {
+    align-items: flex-start;
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.quick-profile-modal .modal-title {
+    color: var(--t1);
+    font-family: var(--sans);
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.quick-profile-modal .modal-subtitle {
+    max-width: min(680px, 74vw);
+    margin-top: 6px;
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.quick-profile-modal .icon-button {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.quick-profile-modal .profile-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.quick-profile-modal .profile-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    min-height: 94px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.quick-profile-modal .profile-tile:hover {
+    border-color: rgba(34, 211, 160, 0.24);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.quick-profile-modal .profile-label {
+    color: var(--t3);
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+.quick-profile-modal .profile-value {
+    margin-top: 0;
+    color: var(--t1);
+    font-size: clamp(0.98rem, 1.7vw, 1.18rem);
+    font-weight: 800;
+    line-height: 1.15;
+}
+
+.quick-profile-modal .profile-tile small,
+.quick-profile-modal .profile-tile span[style*="font-size: 0.62rem"] {
+    margin-top: auto !important;
+    color: var(--t3) !important;
+    font-size: 0.68rem !important;
+    line-height: 1.35;
+}
+
+.quick-profile-modal .subsection-title {
+    margin: 18px 0 10px;
+    color: var(--t1);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+}
+
+.quick-profile-modal .token-list {
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.quick-profile-modal .token-chip {
+    border-color: rgba(124, 111, 255, 0.25);
+    border-radius: 7px;
+    background: rgba(124, 111, 255, 0.1);
+    color: #cfc9ff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 5px 10px;
+}
+
+.quick-profile-table-wrap {
+    overflow-x: auto;
+    margin-bottom: 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.quick-profile-modal .activity-table {
+    width: 100%;
+    min-width: 760px;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.quick-profile-modal .activity-table th {
+    padding: 13px 16px;
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.quick-profile-modal .activity-table td {
+    padding: 14px 16px;
+    vertical-align: middle;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.quick-profile-modal .activity-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.quick-profile-modal .activity-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.quick-profile-modal .activity-table td[colspan] {
+    padding: 38px 12px;
+    color: var(--t3);
+    text-align: center;
+}
+
+.quick-profile-modal .mono-td,
+.quick-profile-modal .settlement-cell,
+.quick-profile-modal .settlement-ref {
+    color: #b9c4ff;
+    font-family: var(--mono);
+    font-size: 0.73rem;
+}
+
+.quick-profile-modal .tx-link {
+    display: inline-flex;
+    width: fit-content;
+    color: #cfc9ff;
+    font-family: var(--mono);
+    font-size: 0.73rem;
+    font-weight: 750;
+    text-decoration: none;
+    text-underline-offset: 3px;
+}
+
+.quick-profile-modal .tx-link:hover,
+.quick-profile-modal .tx-link:focus-visible {
+    color: var(--green);
+    text-decoration: underline;
+}
+
+.quick-profile-modal .pnl-badge {
+    border-radius: 7px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 4px 8px;
+}
+
+.quick-profile-modal .refresh-btn {
+    border-radius: 8px;
+    padding: 6px 11px;
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--t2);
+}
+
+.quick-profile-modal .refresh-btn:not(:disabled):hover {
+    border-color: rgba(34, 211, 160, 0.35);
+    color: var(--green);
+}
+
+.quick-profile-modal .profile-pager {
+    justify-content: space-between;
+    margin-top: 0;
+    padding: 13px 4px 0;
+    color: var(--t3);
+}
+
+@media (max-width: 900px) {
+    .quick-profile-modal .profile-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .quick-profile-modal {
+        width: min(100%, calc(100vw - 18px));
+        padding: 16px;
+    }
+
+    .quick-profile-modal .profile-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.creator-earnings-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.provider-selection-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.provider-selection-bar span {
+    display: block;
+    color: var(--t3);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.provider-selection-bar strong {
+    display: block;
+    margin-top: 2px;
+    color: var(--t1);
+    font-family: var(--mono);
+    font-size: 0.76rem;
+}
+
+.provider-selection-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.creator-earnings-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 10px;
+    border: 1px solid var(--bdr);
+    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.creator-earnings-item.selected {
+    border-color: rgba(124, 111, 255, 0.42);
+    background: rgba(124, 111, 255, 0.08);
+}
+
+.creator-earnings-item input[type="checkbox"] {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.creator-earnings-item input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+}
+
+.creator-earnings-item strong,
+.creator-earnings-item span {
+    display: block;
+}
+
+.creator-earnings-item span {
+    margin-top: 2px;
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+}
+
+.creator-earnings-amount {
+    flex-shrink: 0;
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.gateway-withdraw-panel {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid rgba(45, 212, 191, 0.22);
+    border-radius: var(--radius-xs);
+    background: rgba(45, 212, 191, 0.055);
+}
+
+.gateway-withdraw-head,
+.gateway-withdraw-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.gateway-withdraw-head span,
+.gateway-withdraw-help {
+    color: var(--t3);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.gateway-withdraw-head strong {
+    display: block;
+    margin-top: 3px;
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 0.82rem;
+}
+
+.gateway-withdraw-row {
+    margin-top: 10px;
+}
+
+.gateway-withdraw-input {
+    width: 100%;
+    min-width: 0;
+    font-family: var(--mono);
+}
+
+.gateway-withdraw-row span {
+    color: var(--t2);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+}
+
+.gateway-withdraw-help {
+    margin-top: 8px;
+    line-height: 1.45;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.action-note {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--t2);
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+

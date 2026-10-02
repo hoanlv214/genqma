@@ -1,0 +1,175 @@
+﻿.qma-loading-state {
+    --loader-size: 22px;
+    --loader-accent: var(--accent, #7c6fff);
+    --loader-secondary: var(--green, #22d3a0);
+
+    width: 100%;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--t3);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-align: center;
+}
+
+.qma-loading-state.size-xs {
+    --loader-size: 14px;
+}
+
+.qma-loading-state.size-sm {
+    --loader-size: 18px;
+}
+
+.qma-loading-state.size-lg {
+    --loader-size: 28px;
+}
+
+.qma-loading-state.compact {
+    min-height: 54px;
+    gap: 8px;
+}
+
+.qma-loading-state.inline {
+    min-height: 0;
+    width: auto;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    vertical-align: middle;
+}
+
+.qma-loading-state.button-loader {
+    min-height: 0;
+    width: auto;
+    display: inline-flex;
+    flex-direction: row;
+    gap: 7px;
+    color: currentColor;
+    font-size: inherit;
+}
+
+.qma-loading-state.table-loader {
+    min-height: 86px;
+}
+
+.marketplace-provider-grid>.qma-loading-state {
+    grid-column: 1 / -1;
+}
+
+.qma-loader {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: var(--loader-size);
+    height: var(--loader-size);
+    flex: 0 0 auto;
+    color: var(--loader-accent);
+}
+
+.qma-loading-state.is-signal .qma-loader i {
+    display: block;
+    width: max(2px, calc(var(--loader-size) * 0.14));
+    height: 34%;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--loader-secondary), var(--loader-accent));
+    opacity: 0.35;
+    transform-origin: center;
+    animation: qma-signal-pulse 900ms ease-in-out infinite;
+}
+
+.qma-loading-state.is-signal .qma-loader i:nth-child(2) {
+    animation-delay: 120ms;
+}
+
+.qma-loading-state.is-signal .qma-loader i:nth-child(3) {
+    animation-delay: 240ms;
+}
+
+.qma-loading-state.is-spinner .qma-loader {
+    border: 1.5px solid rgba(124, 111, 255, 0.22);
+    border-top-color: var(--loader-accent);
+    border-right-color: var(--loader-secondary);
+    border-radius: 999px;
+    animation: qma-spin 760ms linear infinite;
+}
+
+.qma-loading-state.is-progress {
+    width: min(100%, 260px);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.qma-loading-state.is-progress .qma-loader {
+    width: 100%;
+    height: 2px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(124, 111, 255, 0.16);
+}
+
+.qma-loading-state.is-progress .qma-loader::after {
+    content: "";
+    display: block;
+    width: 38%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, transparent, var(--loader-secondary), var(--loader-accent), transparent);
+    animation: qma-progress-scan 1.25s ease-in-out infinite;
+}
+
+.qma-loading-state.is-progress span:last-child {
+    text-align: center;
+}
+
+@keyframes qma-signal-pulse {
+
+    0%,
+    100% {
+        height: 34%;
+        opacity: 0.32;
+    }
+
+    50% {
+        height: 86%;
+        opacity: 1;
+    }
+}
+
+@keyframes qma-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes qma-progress-scan {
+    from {
+        transform: translateX(-110%);
+    }
+
+    to {
+        transform: translateX(290%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .qma-loader,
+    .qma-loader i,
+    .qma-loader::after {
+        animation: none !important;
+    }
+
+    .qma-loading-state.is-signal .qma-loader i {
+        height: 58%;
+        opacity: 0.7;
+    }
+}
+

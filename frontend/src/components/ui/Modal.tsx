@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import "../../styles/styles.css";
+import { cn } from "../../utils/cn";
 
 export interface ModalProps {
   open: boolean;
@@ -58,8 +59,7 @@ export function Modal({
     >
       <div
         ref={panelRef}
-        className={`modal-panel ${className}`}
-        style={{ maxWidth, width: "100%" }}
+        className={cn("modal-panel w-full max-w-lg", className)}
         role="dialog"
         aria-modal="true"
         tabIndex={-1}

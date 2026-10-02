@@ -18,8 +18,12 @@
     "@reown/appkit": "^1.8.24",
     "@reown/appkit-adapter-wagmi": "^1.8.24",
     "@scalar/api-reference-react": "^0.9.58",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.49.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.7.0",
     "viem": "^2.56.9",
     "wagmi": "^3.7.7"
   },
@@ -29,7 +33,10 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
     "happy-dom": "^20.14.5",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.6.3",
     "vite": "^6.0.5"
   }
