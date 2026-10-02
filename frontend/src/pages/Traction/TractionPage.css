@@ -87,6 +87,7 @@
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
+  width: fit-content;
   max-width: var(--container-max, 1180px);
   margin: 0 auto var(--space-6);
   padding: 4px;
@@ -98,8 +99,8 @@
 }
 
 .traction-tab-btn {
-  flex: 1 1 auto;
-  min-width: 140px;
+  flex: 0 0 auto;
+  min-width: 0;
   padding: 9px 16px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;

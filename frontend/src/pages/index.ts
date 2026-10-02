@@ -7,3 +7,4 @@ export { SwapPage, type SwapProps } from "./Swap";
 export { ConnectPage, type ConnectProps } from "./Connect";
 export { NotFoundPage, type NotFoundProps } from "./NotFound";
 export { ApiDocsPage, type ApiDocsProps } from "./ApiDocs";
+export { OperationsPage, type OperationsProps } from "./Operations";

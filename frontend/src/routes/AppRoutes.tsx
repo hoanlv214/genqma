@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   HomePage,
+  OperationsPage,
   IntelligencePage,
   MarketplacePage,
   ProfilePage,
@@ -40,6 +41,7 @@ export function AppRoutes() {
       "marketplace-body",
       "profile-body",
       "traction-body",
+      "operations-body",
       "notfound-body",
       "swap-body"
     );
@@ -54,6 +56,8 @@ export function AppRoutes() {
       document.body.classList.add("profile-body");
     } else if (route === "traction") {
       document.body.classList.add("traction-body");
+    } else if (route === "operations") {
+      document.body.classList.add("operations-body");
     } else if (route === "swap") {
       document.body.classList.add("swap-body");
     } else if (route === "not_found") {
@@ -71,6 +75,7 @@ export function AppRoutes() {
       {route === "marketplace" && <MarketplacePage onNavigate={navigate} />}
       {route === "profile" && <ProfilePage onNavigate={navigate} />}
       {route === "traction" && <TractionPage onNavigate={navigate} />}
+      {route === "operations" && <OperationsPage onNavigate={navigate} />}
       {route === "swap" && <SwapPage onNavigate={navigate} />}
       {route === "not_found" && <NotFoundPage onNavigate={navigate} />}
       {route === "docs" && (
