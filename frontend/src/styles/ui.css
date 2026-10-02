@@ -291,7 +291,7 @@ button.btn-green {
     background: var(--accent-dim);
     color: var(--accent);
     font-family: var(--mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     font-weight: 700;
 }
 
@@ -499,7 +499,7 @@ button.btn-green {
 }
 
 .receipt-no {
-    font-size: 0.62rem;
+    font-size: var(--text-2xs);
     color: var(--paper-ink-3);
 }
 

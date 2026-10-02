@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { getClientConfig } from "@/services/api";
 import { shortAddress, getWalletProvider } from "@/services/wallet";
@@ -625,7 +626,7 @@ export function IntelligencePage({
           <TokenIcon symbol={activeQuery?.symbol || ""} size={18} />
           <span>{activeQuery?.symbol} Report</span>
         </div>
-        <span className="qma-report-verified">✓ Verified on Arc</span>
+        <span className="qma-report-verified"><Check size={13} /> Verified on Arc</span>
       </div>
       <ReportWorkspace
         activeQuery={activeQuery}

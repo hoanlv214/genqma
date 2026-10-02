@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Zap, Bot, Check, Clipboard, Link2, X } from "lucide-react";
 import { requestJson, API_BASE_URL } from "@/services/api";
 import {
   getCachedWalletProfileToken,
@@ -243,7 +244,7 @@ export function ConnectPage(_props?: ConnectProps) {
         <div className="connect-container">
           <div className="connect-header">
             <div className="connect-pill-badge">
-              <span>⚡ Model Context Protocol (MCP) · OAuth 2.1 PKCE</span>
+              <span><Zap size={13} className="inline mr-1" />Model Context Protocol (MCP) · OAuth 2.1 PKCE</span>
             </div>
             <h1 className="connect-title">Connect Your AI Assistant</h1>
             <p className="connect-subtitle">
@@ -259,7 +260,7 @@ export function ConnectPage(_props?: ConnectProps) {
                 <div className="connect-card-header">
                   <div className="connect-card-title-group">
                     <div className="connect-card-icon claude-icon-bg" aria-hidden="true">
-                      <span>🤖</span>
+                      <span><Bot size={20} /></span>
                     </div>
                     <div>
                       <div className="connect-card-name">Claude (Anthropic)</div>
@@ -281,7 +282,7 @@ export function ConnectPage(_props?: ConnectProps) {
                   rel="noopener noreferrer"
                   className="btn btn-primary btn-lg claude-btn"
                 >
-                  <span>⚡ 1-Click Connect to Claude →</span>
+                  <span><Zap size={14} className="inline mr-1" />1-Click Connect to Claude →</span>
                 </a>
                 <div className="connect-card-hint">
                   Opens claude.ai/new with QMA connector pre-filled
@@ -295,7 +296,7 @@ export function ConnectPage(_props?: ConnectProps) {
                 <div className="connect-card-header">
                   <div className="connect-card-title-group">
                     <div className="connect-card-icon chatgpt-icon-bg" aria-hidden="true">
-                      <span>⚡</span>
+                      <span><Zap size={20} /></span>
                     </div>
                     <div>
                       <div className="connect-card-name">ChatGPT (OpenAI)</div>
@@ -318,7 +319,7 @@ export function ConnectPage(_props?: ConnectProps) {
                   }}
                   className="btn btn-secondary btn-lg chatgpt-btn"
                 >
-                  <span>{copiedUrl ? "✓ URL Copied! Opening ChatGPT..." : "📋 Copy URL & Open ChatGPT →"}</span>
+                  <span>{copiedUrl ? <><Check size={14} className="inline mr-1" />URL Copied! Opening ChatGPT...</> : <><Clipboard size={14} className="inline mr-1" />Copy URL & Open ChatGPT →</>}</span>
                 </button>
 
                 <div
@@ -513,7 +514,7 @@ export function ConnectPage(_props?: ConnectProps) {
         <div className="oauth-card">
           <div className="oauth-header">
             <div className="oauth-avatar" aria-hidden="true">
-              <span>{isClaude ? "🤖" : isChatGPT ? "⚡" : "🔗"}</span>
+              <span>{isClaude ? <Bot size={24} /> : isChatGPT ? <Zap size={24} /> : <Link2 size={24} />}</span>
             </div>
             <h2 className="oauth-title">Authorize AI Client</h2>
             <p className="oauth-subtitle">
@@ -605,22 +606,22 @@ export function ConnectPage(_props?: ConnectProps) {
           {/* Permissions / Scopes List */}
           <div className="oauth-scopes-list">
             <div className="oauth-scope-item">
-              <span className="oauth-scope-icon allow">✓</span>
+              <span className="oauth-scope-icon allow"><Check size={14} /></span>
               <span>Can scan live anomalies across all registered providers (Free)</span>
             </div>
             <div className="oauth-scope-item">
-              <span className="oauth-scope-icon allow">✓</span>
+              <span className="oauth-scope-icon allow"><Check size={14} /></span>
               <span>Can purchase intelligence snapshots up to <strong>${maxPriceUsdc} USDC</strong> per call</span>
             </div>
             <div className="oauth-scope-item">
-              <span className="oauth-scope-icon deny">✗</span>
+              <span className="oauth-scope-icon deny"><X size={14} /></span>
               <span><strong>CANNOT</strong> withdraw funds or exceed your <strong>${budgetUsdc} USDC</strong> budget</span>
             </div>
           </div>
 
           {issuedCode ? (
             <div className="oauth-success-banner">
-              <div className="oauth-success-title">✓ Approved & Connected</div>
+              <div className="oauth-success-title"><Check size={16} className="inline mr-1" />Approved & Connected</div>
               <div className="oauth-success-desc">Redirecting back to your AI application...</div>
             </div>
           ) : (
@@ -632,7 +633,7 @@ export function ConnectPage(_props?: ConnectProps) {
               {busy ? (
                 <span>Authorizing & Signing Session...</span>
               ) : account ? (
-                <span>✓ Authorize as {shortAddress(account)}</span>
+                <span><Check size={14} className="inline mr-1" />Authorize as {shortAddress(account)}</span>
               ) : (
                 <span>Connect Wallet & Authorize</span>
               )}

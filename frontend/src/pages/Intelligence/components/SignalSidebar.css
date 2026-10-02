@@ -100,7 +100,7 @@
     align-items: center;
     gap: 4px;
     font-family: var(--mono);
-    font-size: 0.62rem;
+    font-size: var(--text-2xs);
     font-weight: 700;
     text-transform: uppercase;
     padding: 1px 5px;
@@ -212,7 +212,7 @@
     border: 1px solid var(--bdr);
     border-radius: 3px;
     padding: 1px 4px;
-    font-size: 0.62rem;
+    font-size: var(--text-2xs);
     font-family: var(--mono);
     cursor: pointer;
     transition: all 0.15s;
@@ -237,7 +237,7 @@
     margin-left: auto;
     color: #00E5FF;
     font-family: var(--mono);
-    font-size: 0.62rem;
+    font-size: var(--text-2xs);
     font-weight: 600;
     background: rgba(0, 229, 255, 0.08);
     border: 1px solid rgba(0, 229, 255, 0.25);
@@ -545,7 +545,7 @@
 .agent-picks-panel .card-score {
     color: var(--t1);
     font-family: var(--mono);
-    font-size: 0.76rem;
+    font-size: var(--text-sm);
     font-weight: 800;
 }
 
@@ -624,7 +624,7 @@
 .sidebar-section-title {
     font-family: var(--mono);
     font-weight: 700;
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     color: var(--t2);
     text-transform: uppercase;
     letter-spacing: 1.2px;
@@ -653,7 +653,7 @@
 
 .card-tier-text {
     font-family: var(--mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     color: var(--t3);
 }
 

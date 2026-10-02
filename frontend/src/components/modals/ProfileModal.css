@@ -1,4 +1,4 @@
-﻿.quick-profile-modal {
+.quick-profile-modal {
     width: min(980px, calc(100vw - 32px));
     padding: 24px;
     border: 1px solid rgba(255, 255, 255, 0.09);
@@ -84,7 +84,7 @@
 .quick-profile-modal .profile-tile span[style*="font-size: 0.62rem"] {
     margin-top: auto !important;
     color: var(--t3) !important;
-    font-size: 0.68rem !important;
+    font-size: var(--text-xs) !important;
     line-height: 1.35;
 }
 
@@ -187,7 +187,7 @@
 
 .quick-profile-modal .pnl-badge {
     border-radius: 7px;
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     font-weight: 800;
     padding: 4px 8px;
 }
@@ -259,7 +259,7 @@
     margin-top: 2px;
     color: var(--t1);
     font-family: var(--mono);
-    font-size: 0.76rem;
+    font-size: var(--text-sm);
 }
 
 .provider-selection-actions {
@@ -305,7 +305,7 @@
     margin-top: 2px;
     color: var(--t3);
     font-family: var(--mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
 }
 
 .creator-earnings-amount {
@@ -335,7 +335,7 @@
 .gateway-withdraw-head span,
 .gateway-withdraw-help {
     color: var(--t3);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }

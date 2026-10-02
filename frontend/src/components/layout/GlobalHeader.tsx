@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { Landmark, Layers, ArrowLeftRight, TrendingUp, Store } from "lucide-react";
 import { shortAddress } from "../../services/wallet";
 import type { QmaRoute } from "../../app/routes";
 import { useAgentWalletStore } from "../../state/agentWalletStore";
@@ -74,22 +75,27 @@ export function GlobalHeader({
     {
       id: "operations",
       label: "Operations",
+      icon: Landmark,
     },
     {
       id: "app",
       label: "Intelligence",
+      icon: Layers,
     },
     {
       id: "swap",
       label: "Swap & StableFX",
+      icon: ArrowLeftRight,
     },
     {
       id: "traction",
       label: "Traction & Ledger",
+      icon: TrendingUp,
     },
     {
       id: "marketplace",
       label: "Creator Marketplace",
+      icon: Store,
     }
   ];
 
@@ -102,19 +108,25 @@ export function GlobalHeader({
 
       {/* 2. Center - Navigation */}
       <nav className="global-nav-center">
-        {navLinks.map(link => (
-          <button
-            key={link.id}
-            type="button"
-            className={`global-nav-link ${activePage === link.id ? "active" : ""}`}
-            onClick={() => onNavigate(link.id as QmaRoute)}
-            title={link.label}
-          >
-            <span className="nav-label">
-              {link.label}
-            </span>
-          </button>
-        ))}
+        {navLinks.map(link => {
+          const Icon = link.icon;
+          return (
+            <button
+              key={link.id}
+              type="button"
+              className={`global-nav-link ${activePage === link.id ? "active" : ""}`}
+              onClick={() => onNavigate(link.id as QmaRoute)}
+              title={link.label}
+            >
+              <span className="nav-icon-wrapper">
+                <Icon size={16} />
+              </span>
+              <span className="nav-label">
+                {link.label}
+              </span>
+            </button>
+          );
+        })}
       </nav>
 
       {/* 3. Right - Context Controls & Wallet */}

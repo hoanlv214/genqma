@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TriangleAlert, X } from "lucide-react";
 import { FundArcWalletModal } from "./FundArcWalletModal";
 import { Loader } from "../ui/Loader";
 import { formatUsdc } from "../../utils/format";
@@ -154,7 +155,7 @@ export function UnifiedWithdrawModal({
             </div>
           </div>
           <button className="funding-close-btn" type="button" onClick={onClose}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            <X size={16} />
           </button>
         </div>
 
@@ -242,7 +243,7 @@ export function UnifiedWithdrawModal({
             {fundChainStatus && fundChainStatus !== ARC_CHAIN.name && (
               <div className="flex items-center justify-between px-3.5 py-2.5 bg-amber-500/10 border border-amber-500/25 rounded-lg mb-3.5 gap-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-base">⚠️</span>
+                  <TriangleAlert size={16} className="text-amber-400 shrink-0" />
                   <span className="text-xs text-amber-400">
                     Connected to <strong>{fundChainStatus}</strong>. Switch to {ARC_CHAIN.name} to process Gateway refund.
                   </span>

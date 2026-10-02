@@ -34,7 +34,7 @@
   color: #fff;
   padding: 4px 6px;
   border-radius: 4px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--mono);
   font-size: 14px;
 }
 
@@ -245,7 +245,7 @@
 
 .wallet-short-address {
   color: var(--t1, #ffffff);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--mono);
   font-size: 13px;
   font-weight: 500;
 }
@@ -360,7 +360,7 @@
 }
 
 .mono-address {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--mono);
   color: var(--t1, #ffffff);
   font-size: 13px;
 }
@@ -403,7 +403,7 @@
 
 .balance-value {
   color: var(--t1, #ffffff);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--mono);
   font-size: 13px;
   font-weight: 500;
 }
@@ -476,7 +476,7 @@
 
 .agent-wallet-address {
   font-size: 11.5px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--mono);
   color: var(--t2, #8d95b0);
 }
 
@@ -546,7 +546,7 @@
   gap: 7px;
   padding: 5px 11px;
   border-radius: 9999px;
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-family: var(--mono);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -1151,7 +1151,7 @@
     background: rgba(255, 255, 255, 0.04);
     color: var(--t3);
     font-family: var(--mono);
-    font-size: 0.62rem;
+    font-size: var(--text-2xs);
     line-height: 1.25;
     white-space: nowrap;
     overflow: hidden;

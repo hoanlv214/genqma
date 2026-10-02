@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { Loader } from "../ui/Loader";
 import { shortAddress } from "../../utils/format";
 import "./ProfileModal.css";
@@ -49,7 +50,7 @@ export function ProfileModal({
             <div className="modal-title" id="wallet-profile-title">Wallet Profile</div>
             <div className="modal-subtitle" id="wallet-profile-address">{wallet}</div>
           </div>
-          <button className="icon-button" type="button" title="Close" onClick={onClose}>✕</button>
+          <button className="icon-button" type="button" title="Close" onClick={onClose}><X size={14} /></button>
         </div>
         <div className="profile-grid">
           <div className="profile-tile"><span className="profile-label">Wallet On-chain USDC</span><span className="profile-value">{profileChainUsdc === "loading..." ? <Loader compact variant="spinner" size="xs" className="inline" /> : profileChainUsdc}</span></div>

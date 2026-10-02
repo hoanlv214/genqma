@@ -1,4 +1,4 @@
-﻿/* Agent Buyer Horizontal Bar styles */
+/* Agent Buyer Horizontal Bar styles */
 .agent-control-bar {
     display: flex;
     align-items: center;
@@ -164,7 +164,7 @@
     display: inline-block;
     padding: 2px 6px;
     border-radius: 4px;
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     font-family: var(--mono);
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--bdr);
@@ -273,7 +273,7 @@
 .agent-buyer-eyebrow {
     color: var(--green);
     font-family: var(--mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     font-weight: 800;
     letter-spacing: 0.16em;
     text-transform: uppercase;
@@ -906,7 +906,7 @@
     color: #cfc9ff;
     padding: 5px 9px;
     font-family: var(--mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     font-weight: 800;
 }
 
@@ -987,7 +987,7 @@
     z-index: 1;
     margin-top: 10px;
     color: #fbbf24;
-    font-size: 0.76rem;
+    font-size: var(--text-sm);
 }
 
 .agent-signature-card {
@@ -1031,7 +1031,7 @@
     border-radius: 9px;
     cursor: pointer;
     font-family: var(--mono);
-    font-size: 0.76rem;
+    font-size: var(--text-sm);
     font-weight: 850;
     padding: 10px 12px;
 }
@@ -1057,7 +1057,7 @@
     color: #fbbf24;
     cursor: pointer;
     font-family: var(--mono);
-    font-size: 0.76rem;
+    font-size: var(--text-sm);
     font-weight: 850;
     padding: 10px 14px;
     transition: all 0.2s ease;
@@ -1081,7 +1081,7 @@
     color: #ff6b7a;
     cursor: pointer;
     font-family: var(--mono);
-    font-size: 0.76rem;
+    font-size: var(--text-sm);
     font-weight: 850;
     padding: 10px 14px;
     transition: all 0.2s ease;
@@ -1188,7 +1188,7 @@
 .agent-dp-block-label {
     color: var(--t3);
     font-family: var(--mono);
-    font-size: 0.62rem;
+    font-size: var(--text-2xs);
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -1241,7 +1241,7 @@
     gap: 10px;
     padding: 3px 0;
     color: var(--t3);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
 }
 
 .agent-provider-row.selected {
@@ -1261,13 +1261,13 @@
 
 .agent-split-badge {
     color: #fbbf24;
-    font-size: 0.76rem;
+    font-size: var(--text-sm);
     font-weight: 700;
 }
 
 .agent-split-sub {
     color: var(--t3);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     line-height: 1.45;
 }
 
@@ -1292,7 +1292,7 @@
 .agent-funding-label {
     color: var(--t3);
     font-family: var(--mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     flex-shrink: 0;
 }
 
@@ -1306,7 +1306,7 @@
 
 .agent-funding-status {
     font-family: var(--mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     font-weight: 800;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -1343,7 +1343,7 @@
     padding: 8px 16px 0;
     color: var(--t3);
     font-family: var(--mono);
-    font-size: 0.62rem;
+    font-size: var(--text-2xs);
     font-weight: 800;
     letter-spacing: 0.1em;
     text-transform: uppercase;

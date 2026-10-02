@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Clock, Check, X, Pause, RefreshCw, QrCode, Plus } from "lucide-react";
 import { requestJson } from "../../services/api";
 import {
   getCachedWalletProfileToken,
@@ -239,7 +240,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                     addIfUnique(
                       `action-${data.id}-${index}`,
                       <div>
-                        ⏳ Analyzing and purchasing{tierStr} report on <span className="agent-runner-purchase-symbol">{a.symbol}</span>{provStr}{costStr}...
+                        <Clock size={13} className="inline mr-1 text-t3" /> Analyzing and purchasing{tierStr} report on <span className="agent-runner-purchase-symbol">{a.symbol}</span>{provStr}{costStr}...
                         <div className="agent-runner-purchase-time">{timeStr}</div>
                       </div>
                     );
@@ -247,7 +248,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                     addIfUnique(
                       `action-${data.id}-${index}`,
                       <div>
-                        ✅ Purchased{tierStr} report on <span className="agent-runner-purchase-symbol">{a.symbol}</span>{provStr}{costStr}
+                        <Check size={13} className="inline mr-1 text-green" /> Purchased{tierStr} report on <span className="agent-runner-purchase-symbol">{a.symbol}</span>{provStr}{costStr}
                         <div className="agent-runner-purchase-time">{timeStr}</div>
                       </div>
                     );
@@ -257,7 +258,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                   addIfUnique(
                     `action-${data.id}-${index}`,
                     <div>
-                      ❌ Purchase failed: <span className="text-red-400 font-mono">{String(a.reason)}</span>
+                      <X size={13} className="inline mr-1 text-red-400" /> Purchase failed: <span className="text-red-400 font-mono">{String(a.reason)}</span>
                       <div className="agent-runner-purchase-time">{timeStr}</div>
                     </div>
                   );
@@ -271,7 +272,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 addIfUnique(
                   `failure-${data.id}-${fIdx}`,
                   <div>
-                    ❌ <span className="text-red-400 font-mono">{String(f.error || f.message || "Execution error")}</span>
+                    <X size={13} className="inline mr-1 text-red-400" /> <span className="text-red-400 font-mono">{String(f.error || f.message || "Execution error")}</span>
                     {timeStr && <div className="agent-runner-purchase-time">{timeStr}</div>}
                   </div>
                 );
@@ -280,12 +281,12 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               if (data.status === "paused") {
                 addIfUnique(`status-paused-${data.id}`, (
                   <div className="bg-amber-500/[0.08] border border-amber-500/25 rounded-md px-2.5 py-2 text-amber-400 text-xs mt-1">
-                    ⏸️ <strong>Session Auto-Paused</strong>: Risk Governance Circuit Breaker triggered. Zero-spend invariant active on Arc.
+                    <Pause size={13} className="inline mr-1" /><strong>Session Auto-Paused</strong>: Risk Governance Circuit Breaker triggered. Zero-spend invariant active on Arc.
                   </div>
                 ));
               }
 
-              if (data.status === "stopped") addIfUnique(`status-stopped-${data.id}`, "⚠️ Session has been stopped.");
+              if (data.status === "stopped") addIfUnique(`status-stopped-${data.id}`, "Session has been stopped.");
 
               if (data.status === "completed") {
                 const startedAt = data.runtime_state.startedAt ? new Date(data.runtime_state.startedAt).getTime() : 0;
@@ -301,7 +302,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
                 addIfUnique(`status-completed-${data.id}`, (
                   <div className="agent-runner-complete-card">
-                    <h3>🎉 Session Completed!</h3>
+                    <h3>Session Completed!</h3>
                     <p className="text-t-secondary">I've finished researching and executing purchases based on your prompt.</p>
 
                     <div className="agent-runner-complete-stats grid grid-cols-2 gap-2">
@@ -340,7 +341,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 const errMsg = data.runtime_state?.lastError || lastFail || "Session execution failed.";
                 addIfUnique(`status-failed-${data.id}`, (
                   <div className="agent-runner-failure-card bg-red-500/[0.08] border border-red-500/20 rounded-lg px-3 py-2.5 mt-2 text-red-400">
-                    <strong className="block mb-1">❌ Session Stopped / Failed</strong>
+                    <strong className="block mb-1"><X size={14} className="inline mr-1" />Session Stopped / Failed</strong>
                     <span className="text-xs break-words text-t-secondary">{String(errMsg)}</span>
                   </div>
                 ));
@@ -394,7 +395,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 handleMetaMaskTransfer(targetAddress, amt);
               }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <Plus size={12} />
               Deposit via Wallet ({ARC_CHAIN.name})
             </button>
           </div>
@@ -409,18 +410,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 (refreshCooldown || isRefreshingBal) ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-surface-3"
               )}
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                width="12"
-                height="12"
-                className={isRefreshingBal ? "animate-spin" : ""}
-              >
-                <path d="M23 4v6h-6"></path>
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-              </svg>
+              <RefreshCw size={12} className={isRefreshingBal ? "animate-spin" : ""} />
               {isRefreshingBal ? "Checking..." : refreshCooldown ? "Cooldown" : "Check Balance"}
             </button>
 
@@ -435,7 +425,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               }}
               className="py-2 px-3 text-[11px] font-semibold border border-bdr rounded cursor-pointer bg-surface-2 text-t-secondary flex items-center gap-1 hover:bg-surface-3 transition-colors"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+              <QrCode size={12} />
               Show QR
             </button>
           </div>
@@ -481,20 +471,20 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
             setMessages(prev => [...prev, {
               id: `sys-started-funded-${Date.now()}`,
               role: "agent",
-              content: `🎉 Funds detected! Your Agent Wallet now has $${totalAvail.toFixed(2)} USDC ($${newBal.toFixed(2)} on-chain, $${newGwBal.toFixed(2)} prepaid). Starting session...`
+              content: `Funds detected! Your Agent Wallet now has $${totalAvail.toFixed(2)} USDC ($${newBal.toFixed(2)} on-chain, $${newGwBal.toFixed(2)} prepaid). Starting session...`
             }]);
           } else {
             setMessages(prev => [...prev, {
               id: `sys-funded-nobudget-${Date.now()}`,
               role: "agent",
-              content: `✅ Funds detected! Current balance is $${totalAvail.toFixed(2)} USDC ($${newBal.toFixed(2)} on-chain, $${newGwBal.toFixed(2)} prepaid).`
+              content: `Funds detected! Current balance is $${totalAvail.toFixed(2)} USDC ($${newBal.toFixed(2)} on-chain, $${newGwBal.toFixed(2)} prepaid).`
             }]);
           }
         } else {
           setMessages(prev => [...prev, {
             id: `sys-insufficient-still-${Date.now()}`,
             role: "agent",
-            content: `ℹ️ Current balance is $${totalAvail.toFixed(2)} USDC ($${newBal.toFixed(2)} on-chain, $${newGwBal.toFixed(2)} prepaid) (required: $${budget.toFixed(2)} USDC). Please send funds first.`
+            content: `Current balance is $${totalAvail.toFixed(2)} USDC ($${newBal.toFixed(2)} on-chain, $${newGwBal.toFixed(2)} prepaid) (required: $${budget.toFixed(2)} USDC). Please send funds first.`
           }]);
         }
       }
@@ -515,7 +505,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
       setMessages(prev => [...prev, {
         id: `sys-funding-switch-${Date.now()}`,
         role: "agent",
-        content: `⏳ Switching your wallet to ${ARC_CHAIN.name} (Chain ID: ${ARC_CHAIN.chainId})...`
+        content: `Switching your wallet to ${ARC_CHAIN.name} (Chain ID: ${ARC_CHAIN.chainId})...`
       }]);
 
       await ensureArcTestnet(provider);
@@ -525,7 +515,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
       setMessages(prev => [...prev, {
         id: `sys-funding-tx-${Date.now()}`,
         role: "agent",
-        content: `⏳ Requesting transfer of ${amount.toFixed(2)} USDC in your MetaMask wallet...`
+        content: `Requesting transfer of ${amount.toFixed(2)} USDC in your MetaMask wallet...`
       }]);
 
       const txHash = (await provider.request({
@@ -543,7 +533,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
       setMessages(prev => [...prev, {
         id: `sys-funding-submitted-${Date.now()}`,
         role: "agent",
-        content: `🚀 Transfer transaction submitted! Hash: ${txHash.slice(0, 10)}... Please click the "Check Balance" button once the transaction succeeds to activate your session.`
+        content: `Transfer transaction submitted! Hash: ${txHash.slice(0, 10)}... Please click the "Check Balance" button once the transaction succeeds to activate your session.`
       }]);
 
     } catch (err: any) {
@@ -551,7 +541,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
       setMessages(prev => [...prev, {
         id: `sys-funding-failed-${Date.now()}`,
         role: "agent",
-        content: `❌ Transfer aborted or failed: ${err.message || err}`
+        content: `Transfer aborted or failed: ${err.message || err}`
       }]);
     }
   };
@@ -610,7 +600,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
           content: `Got it! I've updated your instructions${newBudget !== null ? ` and set the budget to $${newBudget} USDC` : ''}${status === "stopped" || status === "paused" ? " and re-queued the session" : ""}.`
         }]);
       } catch (err: any) {
-        setMessages(prev => [...prev, { id: `err-${Date.now()}`, role: "agent", content: `❌ Failed to update session: ${err.message}` }]);
+        setMessages(prev => [...prev, { id: `err-${Date.now()}`, role: "agent", content: `Failed to update session: ${err.message}` }]);
       }
       return;
     }
@@ -640,7 +630,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
         id: `err-bal-${Date.now()}`,
         role: "agent",
         content: renderFundingWidget(
-          `❌ You only have $${totalAvail.toFixed(2)} USDC ($${globalBalance.toFixed(2)} on-chain, $${gatewayBalance.toFixed(2)} prepaid) in your Agent Wallet, which is less than your requested budget of $${parsedBudget.toFixed(2)} USDC. Please fund your wallet to proceed.`,
+          `You only have $${totalAvail.toFixed(2)} USDC ($${globalBalance.toFixed(2)} on-chain, $${gatewayBalance.toFixed(2)} prepaid) in your Agent Wallet, which is less than your requested budget of $${parsedBudget.toFixed(2)} USDC. Please fund your wallet to proceed.`,
           agentWalletAddress,
           parsedBudget
         )
@@ -655,7 +645,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
       // 1. Check for Web3 Wallet
       if (!(window as any).ethereum) {
-        setMessages(prev => [...prev, { id: `err-wallet-${Date.now()}`, role: "agent", content: `❌ Please install MetaMask or a Web3 wallet to authorize operations.` }]);
+        setMessages(prev => [...prev, { id: `err-wallet-${Date.now()}`, role: "agent", content: `Please install MetaMask or a Web3 wallet to authorize operations.` }]);
         setStatus("error");
         return;
       }
@@ -663,7 +653,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
       setMessages(prev => [...prev, {
         id: `sys-started-${Date.now()}`,
         role: "agent",
-        content: `✅ Submitting to backend...`
+        content: `Submitting to backend...`
       }]);
 
       const sessionData = await sessionRequest<any>(wallet, `/api/v1/sessions`, {
@@ -692,7 +682,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
           content: (
             <div>
               <p className="m-0 mb-2.5">
-                ℹ️ Agent Wallet created at <span className="mono text-brand-cyan text-[11px] font-bold">{createdWalletAddress || "..."}</span>.
+                Agent Wallet created at <span className="mono text-brand-cyan text-[11px] font-bold">{createdWalletAddress || "..."}</span>.
                 Please fund at least <strong>${parsedBudget.toFixed(2)} USDC</strong> to this address to start.
               </p>
               <div className="flex gap-2 flex-wrap">
@@ -701,7 +691,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                   className="connect-btn-primary px-3 py-2 text-[11px] font-semibold flex items-center gap-1.5 border-none rounded cursor-pointer bg-brand-cyan text-on-accent hover:opacity-90 transition-opacity"
                   onClick={() => handleMetaMaskTransfer(createdWalletAddress, parsedBudget)}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  <Plus size={12} />
                   Fund ${parsedBudget.toFixed(2)} USDC via MetaMask
                 </button>
                 <button
@@ -713,18 +703,10 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                     (refreshCooldown || isRefreshingBal) ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-surface-3"
                   )}
                 >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    width="12"
-                    height="12"
+                  <RefreshCw
+                    size={12}
                     className={isRefreshingBal ? "animate-spin" : ""}
-                  >
-                    <path d="M23 4v6h-6"></path>
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                  </svg>
+                  />
                   {isRefreshingBal ? "Checking..." : refreshCooldown ? "Cooldown (5s)" : "Check Balance"}
                 </button>
               </div>
@@ -739,7 +721,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
     } catch (err: any) {
       setStatus("error");
-      setMessages(prev => [...prev, { id: `err-${Date.now()}`, role: "agent", content: `❌ Error: ${err.message}` }]);
+      setMessages(prev => [...prev, { id: `err-${Date.now()}`, role: "agent", content: `Error: ${err.message}` }]);
     }
   };
 
@@ -828,7 +810,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
           </div>
           <div className="agent-header-right">
             <button className="icon-button close-btn" onClick={onClose} title="Close">
-              <i className="ti ti-x" />
+              <X size={14} />
             </button>
           </div>
         </div>

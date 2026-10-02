@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Check, X, Clock, ArrowUpDown } from "lucide-react";
 import type { QmaRoute } from "@/app/routes";
 import { GlobalHeader } from "@/components/layout/GlobalHeader";
 import { WalletAppKitModal } from "@/components/modals/WalletAppKitModal";
@@ -567,7 +568,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                                             <span className="dropdown-chain-sub">Domain {net.domain} • {net.latency}</span>
                                           </div>
                                         </div>
-                                        {isSelected && <span className="dropdown-chain-check">✓</span>}
+                                        {isSelected && <span className="dropdown-chain-check"><Check size={14} /></span>}
                                       </button>
                                     );
                                   })}
@@ -648,10 +649,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                             setDestinationChain(prevOrigin);
                           }}
                         >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M7 16V4m0 0L3 8m4-4l4 4" />
-                            <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
-                          </svg>
+                          <ArrowUpDown size={16} />
                         </button>
                         <div className="swap-divider-line" />
                       </div>
@@ -710,7 +708,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                                             <span className="dropdown-chain-sub">Domain {net.domain} • {net.latency}</span>
                                           </div>
                                         </div>
-                                        {isSelected && <span className="dropdown-chain-check">✓</span>}
+                                        {isSelected && <span className="dropdown-chain-check"><Check size={14} /></span>}
                                       </button>
                                     );
                                   })}
@@ -783,7 +781,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                     {/* Status Feedback Banner */}
                     {(transferMessage || transferError || transferTxHash) && (
                       <div className={`swap-feedback-banner ${transferError ? "error" : "success"}`} role={transferError ? "alert" : "status"}>
-                        <div className="feedback-icon">{transferError ? "✕" : "✓"}</div>
+                        <div className="feedback-icon">{transferError ? <X size={16} /> : <Check size={16} />}</div>
                         <div className="feedback-content">
                           <div className="feedback-title">{transferError ? "Transfer Issue" : "Status Update"}</div>
                           <p className="feedback-desc">{transferError || transferMessage}</p>
@@ -829,7 +827,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                       {/* Step 1: Lock on Origin */}
                       <div className={`timeline-step ${transferStep > 1 ? "completed" : transferStep === 1 ? (transferError ? "error" : "active") : ""}`}>
                         <div className="timeline-rail">
-                          <div className="timeline-node">{transferStep > 1 ? "✓" : "1"}</div>
+                          <div className="timeline-node">{transferStep > 1 ? <Check size={13} /> : "1"}</div>
                           <div className="timeline-connector" />
                         </div>
                         <div className="timeline-content">
@@ -872,7 +870,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                       {/* Step 2: Circle Iris Attestation */}
                       <div className={`timeline-step ${transferStep > 2 ? "completed" : transferStep === 2 ? (transferError ? "error" : "active") : ""}`}>
                         <div className="timeline-rail">
-                          <div className="timeline-node">{transferStep > 2 ? "✓" : "2"}</div>
+                          <div className="timeline-node">{transferStep > 2 ? <Check size={13} /> : "2"}</div>
                           <div className="timeline-connector" />
                         </div>
                         <div className="timeline-content">
@@ -896,7 +894,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                       {/* Step 3: Burn & Mint */}
                       <div className={`timeline-step ${transferStep > 3 ? "completed" : transferStep === 3 ? (transferError ? "error" : "active") : ""}`}>
                         <div className="timeline-rail">
-                          <div className="timeline-node">{transferStep > 3 ? "✓" : "3"}</div>
+                          <div className="timeline-node">{transferStep > 3 ? <Check size={13} /> : "3"}</div>
                           <div className="timeline-connector" />
                         </div>
                         <div className="timeline-content">
@@ -920,7 +918,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                       {/* Step 4: Settlement */}
                       <div className={`timeline-step ${transferStep >= 4 ? "completed" : ""}`}>
                         <div className="timeline-rail">
-                          <div className="timeline-node">{transferStep >= 4 ? "✓" : "4"}</div>
+                          <div className="timeline-node">{transferStep >= 4 ? <Check size={13} /> : "4"}</div>
                         </div>
                         <div className="timeline-content">
                           <div className="timeline-row">
@@ -1058,10 +1056,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                         aria-label="Switch exchange pair"
                         onClick={() => setFxFromToken((prev) => (prev === "EURC" ? "USDC" : "EURC"))}
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M7 16V4m0 0L3 8m4-4l4 4" />
-                          <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
+                        <ArrowUpDown size={16} />
                       </button>
                       <div className="swap-divider-line" />
                     </div>
@@ -1119,7 +1114,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                     <div className="bridge-spec-item">
                       <span className="spec-label">RFQ Quote Expiry</span>
                       <span className="spec-value speed">
-                        ⏱ Expires in 00:{quoteSecondsLeft.toString().padStart(2, "0")}
+                        <Clock size={13} className="inline mr-1 align-text-bottom" />Expires in 00:{quoteSecondsLeft.toString().padStart(2, "0")}
                       </span>
                     </div>
                     <div className="bridge-spec-item">
@@ -1158,7 +1153,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
 
                   {(fxMessage || fxError || fxTxHash) && (
                     <div className={`swap-feedback-banner ${fxError ? "error" : "success"}`} role={fxError ? "alert" : "status"}>
-                      <div className="feedback-icon">{fxError ? "✕" : "✓"}</div>
+                      <div className="feedback-icon">{fxError ? <X size={16} /> : <Check size={16} />}</div>
                       <div className="feedback-content">
                         <div className="feedback-title">{fxError ? "Settlement Failed" : "Settled on Arc"}</div>
                         <p className="feedback-desc">{fxError || fxMessage}</p>
@@ -1294,7 +1289,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                 aria-label="Close review modal"
                 onClick={() => setShowReviewModal(false)}
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
 

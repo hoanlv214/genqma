@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { FundingReportRenderer } from "./FundingReportRenderer";
 import { OIReportRenderer } from "./OIReportRenderer";
 import { DecisionReceipt } from "./DecisionReceipt";
@@ -202,7 +203,7 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
           {/* B. GenLayer Intelligent Contract SLA Protection Guarantee */}
           <div className="genlayer-sla-banner">
             <div className="genlayer-sla-left">
-              <div className="genlayer-sla-badge-icon">✓</div>
+              <div className="genlayer-sla-badge-icon"><Check size={14} /></div>
               <div>
                 <div className="genlayer-sla-headline">
                   Verified by GenLayer Intelligent Contract — 98% Confidence SLA Guarantee
@@ -256,15 +257,15 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
               </p>
               <ul className="tier-features">
                 <li>
-                  <span className="feat-check">✓</span>
+                  <span className="feat-check"><Check size={13} /></span>
                   <span>Anomaly regime cluster classification</span>
                 </li>
                 <li>
-                  <span className="feat-check">✓</span>
+                  <span className="feat-check"><Check size={13} /></span>
                   <span>Top 3 closest historical analog matches</span>
                 </li>
                 <li>
-                  <span className="feat-check">✓</span>
+                  <span className="feat-check"><Check size={13} /></span>
                   <span>Directional bias & initial volatility range</span>
                 </li>
               </ul>
@@ -295,19 +296,19 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
               </p>
               <ul className="tier-features">
                 <li>
-                  <span className="feat-check">✓</span>
+                  <span className="feat-check"><Check size={13} /></span>
                   <span>Complete 12-analog historical regime matchbook</span>
                 </li>
                 <li>
-                  <span className="feat-check">✓</span>
+                  <span className="feat-check"><Check size={13} /></span>
                   <span>Full P10 / P50 / P90 quantile return distribution</span>
                 </li>
                 <li>
-                  <span className="feat-check">✓</span>
+                  <span className="feat-check"><Check size={13} /></span>
                   <span>Hash-bound GenLayer SLA proof on Arc</span>
                 </li>
                 <li>
-                  <span className="feat-check">✓</span>
+                  <span className="feat-check"><Check size={13} /></span>
                   <span>Immutable Decision Receipt with cryptographic audit trail</span>
                 </li>
               </ul>

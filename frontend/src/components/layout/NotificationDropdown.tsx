@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { ShieldAlert, Zap, Briefcase, Landmark, Bot, Link2 } from "lucide-react";
 import type { QmaRoute } from "../../app/routes";
 import { shortAddress } from "../../services/wallet";
 import { formatDateTime } from "../../utils/format";
@@ -79,10 +80,10 @@ export function NotificationDropdown({
               id: `inc_${inc.incident_id}`,
               type: "incident",
               title: isP1
-                ? "🚨 Autonomous Agent Auto-Paused"
+                ? "Autonomous Agent Auto-Paused"
                 : inc.severity === "P2_WARNING"
-                ? "⚠️ Agent Risk Warning"
-                : "ℹ️ Agent Safety Advisory",
+                ? "Agent Risk Warning"
+                : "Agent Safety Advisory",
               description: inc.details || `${inc.category}: ${inc.rule}`,
               timestamp: inc.timestamp ? formatDateTime(inc.timestamp) : "Recent",
               unread: true,
@@ -145,7 +146,7 @@ export function NotificationDropdown({
           items.push({
             id: "cb_active",
             type: "alert",
-            title: "⚡ Circuit Breaker Engaged",
+            title: "Circuit Breaker Engaged",
             description: "High market volatility detected. Purchases throttled for risk mitigation.",
             timestamp: "Live",
             unread: true,
@@ -258,16 +259,16 @@ export function NotificationDropdown({
   const getTypeIcon = (type: NotificationItem["type"]) => {
     switch (type) {
       case "incident":
-        return <span className="text-red-500">🛡️</span>;
+        return <ShieldAlert size={14} className="text-red-500 shrink-0" />;
       case "alert":
-        return <span className="text-amber-500">⚡</span>;
+        return <Zap size={14} className="text-amber-500 shrink-0" />;
       case "creator":
-        return <span className="text-sky-400">💼</span>;
+        return <Briefcase size={14} className="text-sky-400 shrink-0" />;
       case "treasury":
-        return <span className="text-emerald-500">🏛️</span>;
+        return <Landmark size={14} className="text-emerald-500 shrink-0" />;
       case "agent":
       default:
-        return <span className="text-purple-500">🤖</span>;
+        return <Bot size={14} className="text-purple-500 shrink-0" />;
     }
   };
 
@@ -386,8 +387,9 @@ export function NotificationDropdown({
                         <div className="notification-menu__item-meta flex items-center gap-2 text-[10px] text-t3 font-mono mb-2">
                           <span>Sess: {shortAddress(item.incidentData.session_id)}</span>
                           {item.incidentData.euthyna_hash && (
-                            <span className="text-emerald-500">
-                              ⛓️ {item.incidentData.euthyna_hash.slice(0, 10)}...
+                            <span className="text-emerald-500 inline-flex items-center">
+                              <Link2 size={11} className="inline mr-1 shrink-0" />
+                              {item.incidentData.euthyna_hash.slice(0, 10)}...
                             </span>
                           )}
                         </div>

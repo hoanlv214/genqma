@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { X } from "lucide-react";
 import "../../styles/styles.css";
 import { cn } from "../../utils/cn";
 
@@ -74,7 +75,7 @@ export function Modal({
                 onClick={onClose}
                 aria-label="Close modal"
               >
-                ✕
+                <X size={14} />
               </button>
             )}
           </div>

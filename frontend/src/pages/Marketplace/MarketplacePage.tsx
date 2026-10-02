@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Check, X, Clock, Zap } from "lucide-react";
 import { getClientConfig } from "@/services/api";
 import {
   getAdminPublicConfig,
@@ -443,7 +444,7 @@ export function MarketplacePage({
           <div className={`marketplace-alert-banner ${applications[0].status === "approved" ? "status-success" : applications[0].status === "rejected" ? "status-error" : "status-pending"}`}>
             <div className="marketplace-alert-content">
               <span className="marketplace-alert-icon" aria-hidden="true">
-                {applications[0].status === "approved" ? "✓" : applications[0].status === "rejected" ? "✕" : "⏳"}
+                {applications[0].status === "approved" ? <Check size={16} /> : applications[0].status === "rejected" ? <X size={16} /> : <Clock size={16} />}
               </span>
               <div>
                 <strong className="marketplace-alert-title">
@@ -480,7 +481,7 @@ export function MarketplacePage({
         {isConnectedAdmin() && adminApplications.filter(a => a.status === "pending").length > 0 && (
           <div className="marketplace-alert-banner status-admin">
             <div className="marketplace-alert-content">
-              <span className="marketplace-alert-icon" aria-hidden="true">⚡</span>
+              <span className="marketplace-alert-icon" aria-hidden="true"><Zap size={16} /></span>
               <div>
                 <strong className="marketplace-alert-title">Pending Applications</strong>
                 <p className="marketplace-alert-desc">

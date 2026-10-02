@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { TriangleAlert, Zap, Check, Sparkles, X } from "lucide-react";
 import { FundArcWalletModal } from "./FundArcWalletModal";
 import { getWalletProvider, ensureArcTestnet } from "../../services/wallet";
 import { ARC_CHAIN } from "../../config/network";
@@ -187,7 +188,7 @@ export function UnifiedDepositModal({
         onProgress: (evt) => setDelegateStatus(evt.message),
       });
       if (res.success) {
-        setDelegateStatus("✓ Agent Authorized");
+        setDelegateStatus("Agent Authorized");
       } else {
         setDelegateStatus(res.error || "Auth Failed");
       }
@@ -247,7 +248,7 @@ export function UnifiedDepositModal({
             </div>
           </div>
           <button className="funding-close-btn" type="button" onClick={onClose}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            <X size={16} />
           </button>
         </div>
 
@@ -324,7 +325,7 @@ export function UnifiedDepositModal({
             {!isArcChain && (
               <div className="flex items-center justify-between px-3.5 py-2.5 bg-amber-500/10 border border-amber-500/25 rounded-lg mb-3.5 gap-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-base">⚠️</span>
+                  <TriangleAlert size={16} className="text-amber-400 shrink-0" />
                   <span className="text-xs text-amber-400">
                     Connected to <strong>{fundChainStatus}</strong>. Switch to {ARC_CHAIN.name} to deposit.
                   </span>
@@ -345,7 +346,7 @@ export function UnifiedDepositModal({
               <div className="flex flex-col gap-2 p-3 bg-gradient-to-br from-blue-500/10 to-indigo-500/20 border border-indigo-500/35 rounded-lg mb-3.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-base">⚡</span>
+                    <Zap size={16} className="text-blue-400 shrink-0" />
                     <span className="text-xs text-blue-300 font-bold">
                       Unified Balance Cross-Chain Auto-Detect
                     </span>
@@ -411,7 +412,7 @@ export function UnifiedDepositModal({
                   <div className="funding-balance-head">
                     <span className="funding-section-header">2. Gateway Balance</span>
                     <span className={`funding-status-pill ${fundReadinessTone}`}>
-                      {fundReadinessTone === "ready" ? "✓ Ready" : fundReadinessStatus}
+                      {fundReadinessTone === "ready" ? <><Check size={14} className="inline mr-1" />Ready</> : fundReadinessStatus}
                     </span>
                   </div>
                   <div className="funding-balance-values">
@@ -507,7 +508,7 @@ export function UnifiedDepositModal({
                   </div>
 
                   <div className="funding-sparkle-alert">
-                    <span className="funding-sparkle-icon">✦</span>
+                    <span className="funding-sparkle-icon"><Sparkles size={14} /></span>
                     <span className="funding-sparkle-text">
                       Funds deposited into Circle Gateway are held in escrow and spent off-chain with sub-second finality (&lt;500ms) across supported chains.
                     </span>
@@ -618,7 +619,7 @@ export function UnifiedDepositModal({
                   </div>
 
                   <div className="funding-sparkle-alert">
-                    <span className="funding-sparkle-icon">✦</span>
+                    <span className="funding-sparkle-icon"><Sparkles size={14} /></span>
                     <span className="funding-sparkle-text">
                       Your funds will be available in your agent wallet once the transaction is confirmed on Arc.
                     </span>

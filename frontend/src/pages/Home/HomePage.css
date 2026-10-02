@@ -74,7 +74,7 @@
 }
 
 .landing-section-title {
-    font-family: var(--sans, "Inter", sans-serif);
+    font-family: var(--sans);
     font-size: clamp(1.6rem, 3.2vw, 2.3rem);
     font-weight: 800;
     line-height: 1.2;
@@ -85,7 +85,7 @@
 }
 
 .serif-accent {
-    font-family: var(--font-display, 'Newsreader', Georgia, serif);
+    font-family: var(--font-display);
     font-style: italic;
     font-weight: 500;
     color: var(--green, #22d3a0);
@@ -177,7 +177,7 @@
 }
 
 .landing-hero-title {
-    font-family: var(--sans, "Inter", sans-serif);
+    font-family: var(--sans);
     font-size: clamp(2.2rem, 4.4vw, 3.4rem);
     font-weight: 800;
     line-height: 1.1;
@@ -189,7 +189,7 @@
 
 .serif-line,
 .landing-hero-title .serif-line {
-    font-family: var(--font-display, 'Newsreader', Georgia, serif);
+    font-family: var(--font-display);
     font-style: italic;
     font-weight: 500;
     display: block;
@@ -203,7 +203,7 @@
 
 .landing-hero-desc {
     color: var(--t2, #8d95b0);
-    font-size: clamp(1rem, 1.8vw, 1.12rem);
+    font-size: clamp(1rem, 1.8vw, var(--text-xl));
     line-height: 1.65;
     max-width: 580px;
     margin: 0;
@@ -234,7 +234,7 @@
     gap: 8px;
     padding: 11px 20px;
     border-radius: var(--radius-md, 10px);
-    font-size: 0.92rem;
+    font-size: var(--text-md);
     font-weight: 600;
     text-decoration: none;
     cursor: pointer;
@@ -386,7 +386,7 @@
 }
 
 .landing-problem blockquote {
-    font-family: var(--sans, "Inter", sans-serif);
+    font-family: var(--sans);
     font-size: clamp(1.35rem, 2.6vw, 1.95rem);
     font-weight: 600;
     line-height: 1.35;
@@ -523,7 +523,7 @@
 
 .landing-feature-desc {
     color: var(--t2, #8d95b0);
-    font-size: 0.92rem;
+    font-size: var(--text-md);
     line-height: 1.65;
     margin: 0;
 }
@@ -647,7 +647,7 @@
 
 .landing-audience-desc {
     color: var(--t2, #8d95b0);
-    font-size: 0.92rem;
+    font-size: var(--text-md);
     line-height: 1.65;
     margin: 0;
 }
@@ -871,7 +871,7 @@
 .landing-footer-col .footer-link-btn {
     color: var(--t2, #8d95b0);
     text-decoration: none;
-    font-size: 0.84rem;
+    font-size: var(--text-base);
     background: transparent;
     border: none;
     padding: 0;
@@ -965,7 +965,7 @@
 
 .landing-brand-disclaimer {
     color: var(--t3, #5a6280);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     line-height: 1.55;
     margin: 14px 0 0;
     max-width: 800px;
@@ -1167,7 +1167,7 @@
 }
 
 .stage-num {
-    font-size: 0.76rem;
+    font-size: var(--text-sm);
     color: #2563eb;
 }
 
@@ -1188,7 +1188,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
-    font-size: 0.76rem;
+    font-size: var(--text-sm);
     color: #374151;
     line-height: 1.35;
 }
@@ -1281,7 +1281,7 @@
 }
 
 .rule-note {
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     display: block;
     opacity: 0.9;
     margin-top: 1px;
@@ -1305,7 +1305,7 @@
 .outcome-verdict-badge {
     display: inline-block;
     font-family: var(--mono);
-    font-size: 0.76rem;
+    font-size: var(--text-sm);
     font-weight: 800;
     letter-spacing: 0.14em;
     padding: 3px 8px;
@@ -1356,7 +1356,7 @@
     display: flex;
     justify-content: space-between;
     font-family: var(--mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs);
     color: #6b7280;
 }
 

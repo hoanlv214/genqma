@@ -1,4 +1,5 @@
 import React from "react";
+import { Zap } from "lucide-react";
 import { TokenIcon } from "@/components/TokenIcon";
 import { formatCompactMoney } from "@/utils/format";
 import "./SignalReportsView.css";
@@ -174,7 +175,7 @@ export function SignalReportsView(props: SignalReportsViewProps) {
                         Open Report
                       </button>
                       <button type="button" className="btn btn-ghost btn-sm" onClick={onAuto} title="Buy reports automatically within your limits">
-                        ⚡ Auto
+                        <Zap size={14} className="inline mr-1" />Auto
                       </button>
                     </>
                   ) : (
@@ -198,7 +199,7 @@ export function SignalReportsView(props: SignalReportsViewProps) {
                         Full ${fullPrice.toFixed(3)}
                       </button>
                       <button type="button" className="btn btn-ghost btn-sm" onClick={onAuto} title="Buy reports automatically within your limits">
-                        ⚡ Auto
+                        <Zap size={14} className="inline mr-1" />Auto
                       </button>
                     </>
                   )}
