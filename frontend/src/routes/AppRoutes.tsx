@@ -70,6 +70,7 @@ export function AppRoutes() {
 
   return (
     <AgentWalletProvider enabled={agentWalletEnabled}>
+      <ThemeSwitcher />
       {route === "landing" && <HomePage onNavigate={navigate} />}
       {route === "app" && <IntelligencePage onNavigate={navigate} />}
       {route === "connect" && <ConnectPage />}
