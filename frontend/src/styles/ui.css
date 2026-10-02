@@ -53,14 +53,14 @@
 
 .btn-primary {
     background: linear-gradient(135deg, var(--accent-strong), var(--accent));
-    border-color: rgba(124, 111, 255, 0.45);
+    border-color: rgb(var(--accent-rgb) / 0.45);
     color: #fff;
-    box-shadow: 0 2px 14px rgba(124, 111, 255, 0.22);
+    box-shadow: 0 2px 14px rgb(var(--accent-rgb) / 0.22);
 }
 
 .btn-primary:hover {
     background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-    border-color: rgba(124, 111, 255, 0.65);
+    border-color: rgb(var(--accent-rgb) / 0.65);
     box-shadow: var(--glow-accent);
     transform: translateY(-1px);
 }
@@ -113,7 +113,7 @@
 /* Legacy alias: old `.btn-green` markup renders the violet primary. */
 button.btn-green {
     background: linear-gradient(135deg, var(--accent-strong), var(--accent));
-    border-color: rgba(124, 111, 255, 0.45);
+    border-color: rgb(var(--accent-rgb) / 0.45);
     color: #fff;
 }
 
@@ -163,7 +163,7 @@ button.btn-green {
 .chip-info {
     color: var(--accent);
     background: var(--accent-dim);
-    border-color: rgba(124, 111, 255, 0.28);
+    border-color: rgb(var(--accent-rgb) / 0.28);
 }
 
 .chip-premium {
@@ -231,7 +231,7 @@ button.btn-green {
     place-items: center;
     border-radius: var(--radius-md);
     background: var(--accent-dim);
-    border: 1px solid rgba(124, 111, 255, 0.3);
+    border: 1px solid rgb(var(--accent-rgb) / 0.3);
     color: var(--accent);
 }
 
@@ -427,7 +427,7 @@ button.btn-green {
 
 .loop-step.is-active {
     background: var(--accent-dim);
-    border-color: rgba(124, 111, 255, 0.4);
+    border-color: rgb(var(--accent-rgb) / 0.4);
 }
 
 .loop-step.is-active::before,
@@ -590,7 +590,7 @@ button.btn-green {
 /* ----- Ledger grid (proof sections) ----------------------------------------- */
 .ledger-grid {
     background-image:
-        linear-gradient(rgba(124, 111, 255, 0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(124, 111, 255, 0.05) 1px, transparent 1px);
+        linear-gradient(rgb(var(--accent-rgb) / 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(var(--accent-rgb) / 0.05) 1px, transparent 1px);
     background-size: 32px 32px;
 }

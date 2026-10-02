@@ -82,8 +82,8 @@
 
 .landing-toc-tab.is-active {
     color: var(--t1, #e8eaf0);
-    background: var(--accent-dim, rgba(124, 111, 255, 0.12));
-    border-color: rgba(124, 111, 255, 0.32);
+    background: var(--accent-dim, rgb(var(--accent-rgb) / 0.12));
+    border-color: rgb(var(--accent-rgb) / 0.32);
 }
 
 .landing-toc-num {
@@ -98,7 +98,7 @@
 
 .landing-toc-tab:hover .landing-toc-num,
 .landing-toc-tab.is-active .landing-toc-num {
-    color: var(--accent, #7C6FFF);
+    color: var(--accent, var(--accent));
 }
 
 /* ----- Right cluster ----- */
@@ -131,22 +131,22 @@
     align-items: center;
     height: 34px;
     padding: 0 14px;
-    border: 1px solid rgba(124, 111, 255, 0.45);
+    border: 1px solid rgb(var(--accent-rgb) / 0.45);
     border-radius: var(--radius-sm, 8px);
-    background: linear-gradient(135deg, var(--accent-strong, #6a5ce8), var(--accent, #7C6FFF));
+    background: linear-gradient(135deg, var(--accent-strong, #6a5ce8), var(--accent, var(--accent)));
     color: #ffffff;
     font-family: var(--sans, "Inter", sans-serif);
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
     cursor: pointer;
-    box-shadow: 0 2px 12px rgba(124, 111, 255, 0.22);
+    box-shadow: 0 2px 12px rgb(var(--accent-rgb) / 0.22);
     transition: box-shadow var(--dur-fast, 150ms) ease, filter var(--dur-fast, 150ms) ease;
 }
 
 .landing-cta:hover {
     filter: brightness(1.08);
-    box-shadow: 0 4px 18px rgba(124, 111, 255, 0.38);
+    box-shadow: 0 4px 18px rgb(var(--accent-rgb) / 0.38);
 }
 
 /* Hamburger — hidden on desktop */
@@ -210,13 +210,13 @@
 }
 
 .landing-mobile-toc .is-active .landing-toc-num {
-    color: var(--accent, #7C6FFF);
+    color: var(--accent, var(--accent));
 }
 
 .landing-mobile-here {
     margin-left: auto;
     font-size: 8px;
-    color: var(--accent, #7C6FFF);
+    color: var(--accent, var(--accent));
 }
 
 .landing-mobile-group {
@@ -266,15 +266,15 @@
     width: 100%;
     height: 44px;
     margin-top: var(--space-4, 16px);
-    border: 1px solid rgba(124, 111, 255, 0.45);
+    border: 1px solid rgb(var(--accent-rgb) / 0.45);
     border-radius: var(--radius-md, 12px);
-    background: linear-gradient(135deg, var(--accent-strong, #6a5ce8), var(--accent, #7C6FFF));
+    background: linear-gradient(135deg, var(--accent-strong, #6a5ce8), var(--accent, var(--accent)));
     color: #ffffff;
     font-family: var(--sans, "Inter", sans-serif);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 2px 12px rgba(124, 111, 255, 0.22);
+    box-shadow: 0 2px 12px rgb(var(--accent-rgb) / 0.22);
 }
 
 /* ----- Anchored sections clear the sticky header ----- */

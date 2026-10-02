@@ -9,7 +9,7 @@
   background-color: var(--bg-0);
   background-image:
     radial-gradient(circle at 50% -8%, var(--accent-dim), transparent 50%),
-    radial-gradient(circle at 85% 20%, rgba(124, 111, 255, 0.05), transparent 40%);
+    radial-gradient(circle at 85% 20%, rgb(var(--accent-rgb) / 0.05), transparent 40%);
   color: var(--t1);
   font-family: var(--sans);
   display: flex;
@@ -113,7 +113,7 @@
   gap: var(--space-2);
   padding: 5px 14px;
   background: var(--accent-dim);
-  border: 1px solid rgba(124, 111, 255, 0.3);
+  border: 1px solid rgb(var(--accent-rgb) / 0.3);
   border-radius: var(--radius-pill);
   font-family: var(--mono);
   font-size: var(--text-2xs);
@@ -176,13 +176,13 @@
 
 /* Recommended card accent */
 .connect-card.claude-card {
-  border-color: rgba(124, 111, 255, 0.28);
-  background: linear-gradient(180deg, rgba(124, 111, 255, 0.04) 0%, var(--glass-card) 45%);
+  border-color: rgb(var(--accent-rgb) / 0.28);
+  background: linear-gradient(180deg, rgb(var(--accent-rgb) / 0.04) 0%, var(--glass-card) 45%);
 }
 
 .connect-card.claude-card:hover {
   border-color: var(--bdr-hi);
-  box-shadow: var(--shadow-lg), 0 0 24px rgba(124, 111, 255, 0.12);
+  box-shadow: var(--shadow-lg), 0 0 24px rgb(var(--accent-rgb) / 0.12);
 }
 
 .connect-card-top {
@@ -559,7 +559,7 @@
   height: 56px;
   border-radius: var(--radius-lg);
   background: var(--accent-dim);
-  border: 1px solid rgba(124, 111, 255, 0.3);
+  border: 1px solid rgb(var(--accent-rgb) / 0.3);
   display: grid;
   place-items: center;
   font-size: 1.75rem;
@@ -725,7 +725,7 @@
 
 .oauth-chip.active {
   background: var(--accent-dim);
-  border-color: rgba(124, 111, 255, 0.45);
+  border-color: rgb(var(--accent-rgb) / 0.45);
   color: var(--accent-hover);
   font-weight: 700;
 }

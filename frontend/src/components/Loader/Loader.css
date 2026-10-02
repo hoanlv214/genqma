@@ -1,6 +1,6 @@
 ﻿.qma-loading-state {
     --loader-size: 22px;
-    --loader-accent: var(--accent, #7c6fff);
+    --loader-accent: var(--accent, var(--accent));
     --loader-secondary: var(--green, #22d3a0);
 
     width: 100%;
@@ -93,7 +93,7 @@
 }
 
 .qma-loading-state.is-spinner .qma-loader {
-    border: 1.5px solid rgba(124, 111, 255, 0.22);
+    border: 1.5px solid rgb(var(--accent-rgb) / 0.22);
     border-top-color: var(--loader-accent);
     border-right-color: var(--loader-secondary);
     border-radius: 999px;
@@ -112,7 +112,7 @@
     height: 2px;
     overflow: hidden;
     border-radius: 999px;
-    background: rgba(124, 111, 255, 0.16);
+    background: rgb(var(--accent-rgb) / 0.16);
 }
 
 .qma-loading-state.is-progress .qma-loader::after {

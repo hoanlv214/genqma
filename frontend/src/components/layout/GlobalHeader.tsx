@@ -216,7 +216,7 @@ export function GlobalHeader({
                         <button
                           type="button"
                           onClick={() => { onOpenDepositAgent(); setDropdownOpen(false); }}
-                          className="flex-1 py-1 px-2 rounded-md bg-[rgba(124,111,255,0.18)] border border-[rgba(124,111,255,0.35)] text-[rgba(168,156,255,1)] text-[11px] font-semibold text-center hover:bg-[rgba(124,111,255,0.3)] transition-colors cursor-pointer"
+                          className="flex-1 py-1 px-2 rounded-md bg-[rgb(var(--accent-rgb) / 0.18)] border border-[rgb(var(--accent-rgb) / 0.35)] text-[rgba(168,156,255,1)] text-[11px] font-semibold text-center hover:bg-[rgb(var(--accent-rgb) / 0.3)] transition-colors cursor-pointer"
                         >
                           + Fund
                         </button>
@@ -247,7 +247,7 @@ export function GlobalHeader({
                       <button
                         type="button"
                         onClick={() => { onOpenDepositAgent(); setDropdownOpen(false); }}
-                        className="w-full py-1.5 px-2.5 rounded-md bg-[rgba(124,111,255,0.18)] border border-[rgba(124,111,255,0.35)] text-[rgba(168,156,255,1)] text-[11px] font-semibold text-center hover:bg-[rgba(124,111,255,0.3)] transition-colors cursor-pointer mt-1"
+                        className="w-full py-1.5 px-2.5 rounded-md bg-[rgb(var(--accent-rgb) / 0.18)] border border-[rgb(var(--accent-rgb) / 0.35)] text-[rgba(168,156,255,1)] text-[11px] font-semibold text-center hover:bg-[rgb(var(--accent-rgb) / 0.3)] transition-colors cursor-pointer mt-1"
                       >
                         + Create &amp; Fund Agent
                       </button>

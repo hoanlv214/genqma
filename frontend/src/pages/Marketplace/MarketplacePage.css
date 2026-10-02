@@ -138,7 +138,7 @@
 
 .marketplace-alert-banner.status-admin {
     background: var(--accent-dim);
-    border-color: rgba(124, 111, 255, 0.35);
+    border-color: rgb(var(--accent-rgb) / 0.35);
 }
 
 .marketplace-alert-content {
@@ -177,7 +177,7 @@
 }
 
 .status-admin .marketplace-alert-icon {
-    background: rgba(124, 111, 255, 0.2);
+    background: rgb(var(--accent-rgb) / 0.2);
     color: var(--accent);
 }
 
@@ -417,7 +417,7 @@
 }
 
 .marketplace-symbol-badge {
-    border: 1px solid rgba(124, 111, 255, 0.22);
+    border: 1px solid rgb(var(--accent-rgb) / 0.22);
     background: var(--accent-dim);
     color: var(--accent);
     font-family: var(--mono);
@@ -865,7 +865,7 @@
 .creator-form-status.info {
     color: var(--accent);
     background: var(--accent-dim);
-    border-color: rgba(124, 111, 255, 0.3);
+    border-color: rgb(var(--accent-rgb) / 0.3);
 }
 
 /* Accessibility helper */

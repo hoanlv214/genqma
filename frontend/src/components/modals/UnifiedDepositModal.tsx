@@ -643,7 +643,7 @@ export function UnifiedDepositModal({
             )}
 
             {/* Shortcut Banner to dedicated Swap & Bridge page */}
-            <div className="mt-5 px-4 py-3 bg-[rgba(124,111,255,0.08)] border border-[rgba(124,111,255,0.2)] rounded-[10px] flex items-center justify-between gap-3">
+            <div className="mt-5 px-4 py-3 bg-[rgb(var(--accent-rgb) / 0.08)] border border-[rgb(var(--accent-rgb) / 0.2)] rounded-[10px] flex items-center justify-between gap-3">
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs font-semibold text-white">
                   Need to exchange EURC or bridge from another chain?
@@ -658,7 +658,7 @@ export function UnifiedDepositModal({
                   onClose();
                   onNavigate?.("swap");
                 }}
-                className="px-3.5 py-1.5 bg-[rgba(124,111,255,0.2)] border border-[rgba(124,111,255,0.4)] rounded-md text-indigo-200 text-[11px] font-semibold cursor-pointer whitespace-nowrap transition-all duration-150 hover:bg-[rgba(124,111,255,0.3)]"
+                className="px-3.5 py-1.5 bg-[rgb(var(--accent-rgb) / 0.2)] border border-[rgb(var(--accent-rgb) / 0.4)] rounded-md text-indigo-200 text-[11px] font-semibold cursor-pointer whitespace-nowrap transition-all duration-150 hover:bg-[rgb(var(--accent-rgb) / 0.3)]"
               >
                 Open Swap &amp; Bridge →
               </button>

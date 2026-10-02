@@ -78,7 +78,7 @@
 }
 
 .t-cmd {
-    color: var(--accent, #7c6fff);
+    color: var(--accent, var(--accent));
 }
 
 .t-green {
@@ -86,18 +86,18 @@
 }
 
 .t-accent {
-    color: var(--accent, #7c6fff);
+    color: var(--accent, var(--accent));
 }
 
 /* Legacy Button Alias (Compatibility) */
 .btn-green {
-    background: linear-gradient(135deg, var(--accent-strong, #6366f1), var(--accent, #7c6fff));
+    background: linear-gradient(135deg, var(--accent-strong, #6366f1), var(--accent, var(--accent)));
     color: #ffffff;
-    border: 1px solid rgba(124, 111, 255, 0.42);
+    border: 1px solid rgb(var(--accent-rgb) / 0.42);
     font-weight: 700;
     text-decoration: none;
     cursor: pointer;
-    box-shadow: 0 2px 14px rgba(124, 111, 255, 0.22);
+    box-shadow: 0 2px 14px rgb(var(--accent-rgb) / 0.22);
     transition: transform var(--dur-fast, 0.15s) ease,
         box-shadow var(--dur-fast, 0.15s) ease,
         filter var(--dur-fast, 0.15s) ease;
@@ -106,7 +106,7 @@
 .btn-green:hover {
     color: #ffffff;
     transform: translateY(-1px);
-    box-shadow: var(--glow-accent, 0 0 20px rgba(124, 111, 255, 0.35));
+    box-shadow: var(--glow-accent, 0 0 20px rgb(var(--accent-rgb) / 0.35));
     filter: brightness(1.06);
 }
 

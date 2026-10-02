@@ -21,7 +21,7 @@ body {
     display: flex;
     flex-direction: column;
     background-image:
-        radial-gradient(ellipse 800px 500px at 0% 0%, rgba(124, 111, 255, 0.04) 0%, transparent 70%),
+        radial-gradient(ellipse 800px 500px at 0% 0%, rgb(var(--accent-rgb) / 0.04) 0%, transparent 70%),
         radial-gradient(ellipse 500px 400px at 100% 100%, rgba(34, 211, 160, 0.025) 0%, transparent 60%);
 }
 
@@ -121,13 +121,13 @@ header {
     color: var(--accent);
     padding: 2px 7px;
     /* border-radius: 3px; */
-    /* border: 1px solid rgba(124,111,255,0.2); */
+    /* border: 1px solid rgb(var(--accent-rgb) / 0.2); */
     letter-spacing: 0.5px;
 }
 
 .header-link {
-    border: 1px solid rgba(124, 111, 255, 0.24);
-    background: rgba(124, 111, 255, 0.08);
+    border: 1px solid rgb(var(--accent-rgb) / 0.24);
+    background: rgb(var(--accent-rgb) / 0.08);
     color: var(--t2);
     border-radius: var(--radius-sm);
     padding: 6px 9px;
@@ -140,8 +140,8 @@ header {
 
 .header-link:hover {
     color: var(--t1);
-    border-color: rgba(124, 111, 255, 0.5);
-    background: rgba(124, 111, 255, 0.14);
+    border-color: rgb(var(--accent-rgb) / 0.5);
+    background: rgb(var(--accent-rgb) / 0.14);
 }
 
 .status-indicators {
@@ -205,7 +205,7 @@ header {
 .wallet-button {
     height: 26px;
     min-width: 120px;
-    border: 1px solid rgba(124, 111, 255, 0.3);
+    border: 1px solid rgb(var(--accent-rgb) / 0.3);
     border-radius: var(--radius-xs);
     background: var(--accent-dim);
     color: var(--accent);
@@ -223,8 +223,8 @@ header {
 }
 
 .wallet-button:hover {
-    background: rgba(124, 111, 255, 0.2);
-    border-color: rgba(124, 111, 255, 0.5);
+    background: rgb(var(--accent-rgb) / 0.2);
+    border-color: rgb(var(--accent-rgb) / 0.5);
 }
 
 .wallet-button.connected {
@@ -444,7 +444,7 @@ header {
 .profile-page-link {
     color: var(--accent);
     text-decoration: none;
-    border: 1px solid rgba(124, 111, 255, 0.22);
+    border: 1px solid rgb(var(--accent-rgb) / 0.22);
     border-radius: var(--radius-xs);
     padding: 4px 8px;
     white-space: nowrap;
@@ -582,7 +582,7 @@ header {
 }
 
 .deposit-quick-btn {
-    border: 1px solid rgba(124, 111, 255, 0.25);
+    border: 1px solid rgb(var(--accent-rgb) / 0.25);
     border-radius: var(--radius-sm);
     background: var(--accent-dim);
     color: var(--accent);
@@ -633,7 +633,7 @@ header {
 
 .withdraw-input {
     width: 100%;
-    border: 1px solid rgba(124, 111, 255, 0.25);
+    border: 1px solid rgb(var(--accent-rgb) / 0.25);
     border-radius: 5px;
     background: var(--bg-1);
     color: var(--t1);
@@ -644,8 +644,8 @@ header {
 
 .withdraw-input:focus {
     outline: none;
-    border-color: rgba(124, 111, 255, 0.5);
-    box-shadow: 0 0 0 3px rgba(124, 111, 255, 0.08);
+    border-color: rgb(var(--accent-rgb) / 0.5);
+    box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.08);
 }
 
 .withdraw-help {
@@ -756,7 +756,7 @@ header {
 }
 
 .token-chip {
-    border: 1px solid rgba(124, 111, 255, 0.25);
+    border: 1px solid rgb(var(--accent-rgb) / 0.25);
     background: var(--accent-dim);
     color: var(--accent);
     border-radius: var(--radius-xs);
@@ -777,7 +777,7 @@ header {
 
 /* ===== SPINNER ===== */
 .spinner {
-    border: 2px solid rgba(124, 111, 255, 0.12);
+    border: 2px solid rgb(var(--accent-rgb) / 0.12);
     width: 22px;
     height: 22px;
     border-radius: 50%;
@@ -882,4 +882,4 @@ header {
     .body {
         padding-bottom: 88px;
     }
-}
+}

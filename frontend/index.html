@@ -2,6 +2,13 @@
 <html lang="en">
 
 <head>
+  <script>
+    try {
+      var q = new URLSearchParams(location.search).get("theme");
+      var t = q || localStorage.getItem("qma-theme") || "treasury";
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />

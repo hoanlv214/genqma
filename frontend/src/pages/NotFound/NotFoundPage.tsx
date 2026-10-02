@@ -25,7 +25,7 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
           position: absolute;
           width: 500px;
           height: 500px;
-          background: radial-gradient(circle, rgba(124, 111, 255, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+          background: radial-gradient(circle, rgb(var(--accent-rgb) / 0.15) 0%, rgba(0, 0, 0, 0) 70%);
           border-radius: 50%;
           top: 50%;
           left: 50%;
@@ -54,7 +54,7 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
           border: 1px solid rgba(255, 255, 255, 0.08);
           font-size: 13px;
           font-weight: 500;
-          color: var(--accent, #7C6FFF);
+          color: var(--accent, var(--accent));
           margin-bottom: 24px;
           letter-spacing: 0.5px;
           text-transform: uppercase;
@@ -64,8 +64,8 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
           width: 6px;
           height: 6px;
           border-radius: 50%;
-          background: var(--accent, #7C6FFF);
-          box-shadow: 0 0 8px var(--accent, #7C6FFF);
+          background: var(--accent, var(--accent));
+          box-shadow: 0 0 8px var(--accent, var(--accent));
         }
 
         .notfound-code {
@@ -105,19 +105,19 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
           gap: 8px;
           padding: 12px 24px;
           border-radius: 8px;
-          background: var(--accent, #7C6FFF);
+          background: var(--accent, var(--accent));
           color: #fff;
           font-weight: 600;
           font-size: 14px;
           border: none;
           cursor: pointer;
           transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-          box-shadow: 0 4px 16px rgba(124, 111, 255, 0.3);
+          box-shadow: 0 4px 16px rgb(var(--accent-rgb) / 0.3);
         }
 
         .notfound-btn-primary:hover {
           transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(124, 111, 255, 0.4);
+          box-shadow: 0 6px 20px rgb(var(--accent-rgb) / 0.4);
         }
 
         .notfound-btn-secondary {
@@ -156,7 +156,7 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
         }
 
         .notfound-terminal-box .term-prefix {
-          color: var(--accent, #7C6FFF);
+          color: var(--accent, var(--accent));
         }
       `}</style>
 

@@ -4,7 +4,7 @@
     border: 1px solid rgba(255, 255, 255, 0.09);
     border-radius: 14px;
     background:
-        radial-gradient(circle at 18% 0%, rgba(124, 111, 255, 0.08), transparent 34%),
+        radial-gradient(circle at 18% 0%, rgb(var(--accent-rgb) / 0.08), transparent 34%),
         rgba(15, 17, 26, 0.98);
     box-shadow: 0 28px 80px rgba(0, 0, 0, 0.62);
 }
@@ -103,9 +103,9 @@
 }
 
 .quick-profile-modal .token-chip {
-    border-color: rgba(124, 111, 255, 0.25);
+    border-color: rgb(var(--accent-rgb) / 0.25);
     border-radius: 7px;
-    background: rgba(124, 111, 255, 0.1);
+    background: rgb(var(--accent-rgb) / 0.1);
     color: #cfc9ff;
     font-size: 0.72rem;
     font-weight: 800;
@@ -280,8 +280,8 @@
 }
 
 .creator-earnings-item.selected {
-    border-color: rgba(124, 111, 255, 0.42);
-    background: rgba(124, 111, 255, 0.08);
+    border-color: rgb(var(--accent-rgb) / 0.42);
+    background: rgb(var(--accent-rgb) / 0.08);
 }
 
 .creator-earnings-item input[type="checkbox"] {

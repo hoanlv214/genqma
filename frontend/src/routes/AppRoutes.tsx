@@ -12,6 +12,7 @@ import {
 } from "@/pages";
 import { routeFromPath, pathForRoute, type QmaRoute } from "@/app/routes";
 import { AgentWalletProvider } from "@/state/agentWalletStore";
+import ThemeSwitcher from "@/components/dev/ThemeSwitcher";
 
 const LazyApiDocsPage = lazy(() =>
   import("@/pages/ApiDocs").then((m) => ({ default: m.ApiDocsPage }))

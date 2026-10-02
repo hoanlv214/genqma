@@ -42,7 +42,7 @@
 /* ===== BASIC SUMMARY SECTION ("YOUR RESULT AT A GLANCE") ===== */
 .basic-summary-section {
     background: linear-gradient(145deg, rgba(16, 20, 42, 0.72) 0%, rgba(8, 10, 22, 0.88) 100%);
-    border: 1px solid rgba(124, 111, 255, 0.22);
+    border: 1px solid rgb(var(--accent-rgb) / 0.22);
     border-radius: var(--radius-md);
     padding: 20px 22px;
     box-shadow: 0 6px 28px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -101,7 +101,7 @@
 }
 
 .summary-card:hover {
-    border-color: rgba(124, 111, 255, 0.4);
+    border-color: rgb(var(--accent-rgb) / 0.4);
     background: rgba(14, 18, 38, 0.9);
     transform: translateY(-1px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
@@ -314,7 +314,7 @@
 }
 
 .analogs-table tr:hover td {
-    background: rgba(124, 111, 255, 0.03);
+    background: rgb(var(--accent-rgb) / 0.03);
     color: var(--t1);
 }
 
@@ -462,4 +462,4 @@
         margin: 0 auto;
     }
 }
-
+

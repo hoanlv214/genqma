@@ -17,69 +17,11 @@
 
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500;1,6..72,600&display=swap');
 
+/* Colors (bg/surface/border/text/accent/semantic/shadows/glass/paper) now live
+   in styles/themes.css — the single per-theme source. This :root keeps structure
+   only: fonts, the QMA paper family, type/radius/spacing/motion/layout scales. */
 :root {
-    /* ----- Core background layers (deep space navy, never pure black) ----- */
-    --bg-0: #06080f;
-    --bg-1: #0a0d18;
-    --bg-2: #0f1220;
-    --bg-3: rgba(15, 18, 32, 0.7);
-
-    /* ----- Elevation surfaces (for cards sitting on bg-1/bg-2) ----- */
-    --surface-1: rgba(255, 255, 255, 0.02);
-    --surface-2: rgba(255, 255, 255, 0.035);
-    --surface-3: rgba(255, 255, 255, 0.055);
-    --surface-glass: rgba(13, 16, 28, 0.72);
-
-    /* ----- Borders ----- */
-    --bdr: rgba(255, 255, 255, 0.06);
-    --bdr-md: rgba(255, 255, 255, 0.10);
-    --bdr-hi: rgba(124, 111, 255, 0.35);
-
-    /* ----- Primary accent (violet/indigo) — interactive color ----- */
-    --accent: #7C6FFF;
-    --accent-hover: #8f84ff;
-    --accent-strong: #6a5ce8;
-    --accent-dim: rgba(124, 111, 255, 0.12);
-    --accent-glow: rgba(124, 111, 255, 0.25);
-
-    /* ----- Logo SVG Gradient tokens ----- */
-    --logo-grad-start: #6745FA;
-    --logo-grad-end: #30FCEB;
-    --logo-gradient: linear-gradient(135deg, #6745FA 0%, #30FCEB 100%);
-
-    /* ----- Brand gradient (hero highlight text, brand moments) ----- */
-    --brand-gradient: linear-gradient(92deg, #7c5cff 0%, #a78bfa 45%, #38e8c6 100%);
-
-    /* ----- Semantic status colors ----- */
-    --green: #22d3a0;
-    --green-dim: rgba(34, 211, 160, 0.12);
-    --red: #f4475b;
-    --red-dim: rgba(244, 71, 91, 0.12);
-    --amber: #f59e0b;
-    --amber-dim: rgba(245, 158, 11, 0.10);
-    --orange: var(--amber);
-    --purple: #a78bfa;
-    --purple-dim: rgba(167, 139, 250, 0.12);
-
-    /* ----- Semantic aliases (new markup may use either name) ----- */
-    --success: var(--green);
-    --success-dim: var(--green-dim);
-    --warning: var(--amber);
-    --warning-dim: var(--amber-dim);
-    --danger: var(--red);
-    --danger-dim: var(--red-dim);
-
-    /* ----- Loading skeleton ----- */
-    --skeleton-base: rgba(255, 255, 255, 0.05);
-    --skeleton-sheen: rgba(255, 255, 255, 0.10);
-    --shadow-violet: 0 12px 40px rgba(9, 10, 20, 0.55), 0 4px 24px rgba(124, 111, 255, 0.10);
-
-    /* ----- Text hierarchy ----- */
-    --t1: #e8eaf0;
-    --t2: #8d95b0;
-    --t3: #4a5270;
-
-    /* ----- Fonts ----- */
+/* ----- Fonts ----- */
     --mono: 'JetBrains Mono', 'Fira Code', monospace;
     --sans: 'Inter', sans-serif;
 
@@ -157,19 +99,13 @@
     --space-16: 64px;
     --space-20: 80px;
 
-    /* ----- Shadow & glow scale (layered depth, never flat grey boxes) ----- */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.32);
-    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.42);
-    --glow-accent: 0 0 0 1px rgba(124, 111, 255, 0.32), 0 8px 32px rgba(124, 111, 255, 0.2);
-    --glow-green: 0 0 0 1px rgba(34, 211, 160, 0.32), 0 8px 32px rgba(34, 211, 160, 0.18);
-    --glow-cyan: 0 0 0 1px rgba(6, 182, 212, 0.35), 0 8px 32px rgba(6, 182, 212, 0.2);
+    /* ----- Shadow & glow: per-theme, see themes.css bridge ----- */
 
-    /* ----- Glass & Luminous Elevation Tokens ----- */
+/* ----- Glass & Luminous Elevation Tokens ----- */
     --glass-card: rgba(14, 19, 36, 0.72);
     --glass-card-hover: rgba(22, 30, 56, 0.85);
     --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-border-hover: rgba(124, 111, 255, 0.4);
+    --glass-border-hover: rgb(var(--accent-rgb) / 0.4);
     --glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
 
     /* ----- Motion ----- */

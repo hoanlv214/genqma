@@ -219,7 +219,7 @@
 
 .ribbon-card:hover {
     border-color: var(--bdr-md);
-    background: rgba(124, 111, 255, 0.04);
+    background: rgb(var(--accent-rgb) / 0.04);
     transform: translateY(-1px);
 }
 

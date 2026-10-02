@@ -1,0 +1,226 @@
+/*
+ * styles/themes.css — import SAU tokens.css (hoặc thay phần màu trong tokens.css).
+ *
+ * Quy tắc:
+ *  - Mỗi theme chỉ khai báo ~20 biến "gốc" bên dưới. Mọi biến phái sinh
+ *    (dim, ring, glow...) nằm ở :root và tự tính từ biến gốc.
+ *  - Màu cần độ trong suốt khai báo dạng kênh RGB: --accent-rgb: 99 102 241;
+ *    rồi dùng rgb(var(--accent-rgb) / 0.14). KHÔNG hardcode rgba(...) trong CSS khác.
+ *  - Thêm theme mới = copy 1 khối [data-theme="..."], sửa giá trị,
+ *    rồi thêm 1 dòng vào THEMES trong theme.ts.
+ */
+
+/* ───────── Biến phái sinh: dùng chung cho mọi theme ───────── */
+:root {
+  --accent: rgb(var(--accent-rgb));
+  --accent-dim: rgb(var(--accent-rgb) / 0.14);
+  --accent-ring: rgb(var(--accent-rgb) / 0.40);
+  --accent-glow: 0 0 0 1px rgb(var(--accent-rgb) / 0.35),
+    0 8px 28px rgb(var(--accent-rgb) / 0.22);
+
+  --green: rgb(var(--green-rgb));
+  --green-dim: rgb(var(--green-rgb) / 0.14);
+  --green-line: rgb(var(--green-rgb) / 0.35);
+
+  --red: rgb(var(--red-rgb));
+  --red-dim: rgb(var(--red-rgb) / 0.14);
+  --red-line: rgb(var(--red-rgb) / 0.35);
+
+  --amber: rgb(var(--amber-rgb));
+  --amber-dim: rgb(var(--amber-rgb) / 0.14);
+  --amber-line: rgb(var(--amber-rgb) / 0.35);
+
+  --shadow-sm: 0 1px 0 rgb(var(--shadow-rgb) / 0.20);
+  --shadow-md: 0 1px 0 rgb(var(--shadow-rgb) / 0.20),
+    0 14px 40px rgb(var(--shadow-rgb) / 0.28);
+  --shadow-lg: 0 1px 0 rgb(var(--shadow-rgb) / 0.24),
+    0 24px 64px rgb(var(--shadow-rgb) / 0.36);
+
+  --focus-ring: 0 0 0 3px var(--accent-ring);
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { transition: none; }
+}
+
+/* ───────── 1. treasury — Palette v2 hiện tại (mặc định) ───────── */
+:root,
+[data-theme="treasury"] {
+  color-scheme: dark;
+
+  --bg-base: #09090b;
+  --surface-1: #0f121a;
+  --surface-2: #111827;
+  --surface-3: #182032;
+  --bdr: #1f2937;
+  --bdr-strong: #374151;
+
+  --t1: #f3f4f6;
+  --t2: #9ca3af;
+  --t3: #6b7280;
+
+  --accent-rgb: 99 102 241;      /* #6366F1 */
+  --accent-hover: #818cf8;
+  --accent-strong: #4f46e5;      /* nền nút chính */
+  --accent-text: #a5b4fc;        /* link / chữ nhỏ trên nền tối */
+  --on-accent: #ffffff;
+
+  --green-rgb: 16 185 129;       /* #10B981 */
+  --red-rgb: 239 68 68;          /* #EF4444 */
+  --amber-rgb: 245 158 11;       /* #F59E0B */
+  --shadow-rgb: 0 0 0;
+
+  /* Paper Artifact — receipt, report, verdict */
+  --paper: #fdfcf7;
+  --paper-ink: #111827;
+  --paper-ink-2: #4b5563;
+  --paper-line: #e5e1d3;
+}
+
+/* ───────── 2. indigo-sky — nền navy, indigo + sky ───────── */
+[data-theme="indigo-sky"] {
+  color-scheme: dark;
+
+  --bg-base: #0b1020;
+  --surface-1: #101733;
+  --surface-2: #151d3f;
+  --surface-3: #1c2650;
+  --bdr: #243061;
+  --bdr-strong: #34437f;
+
+  --t1: #eef2ff;
+  --t2: #a5b0d6;
+  --t3: #7482b0;
+
+  --accent-rgb: 99 102 241;
+  --accent-hover: #818cf8;
+  --accent-strong: #4f46e5;
+  --accent-text: #a5b4fc;
+  --on-accent: #ffffff;
+
+  --green-rgb: 52 211 153;       /* #34D399 */
+  --red-rgb: 248 113 113;        /* #F87171 */
+  --amber-rgb: 251 191 36;       /* #FBBF24 */
+  --shadow-rgb: 2 6 23;
+
+  --paper: #fdfcf7;
+  --paper-ink: #111827;
+  --paper-ink-2: #4b5563;
+  --paper-line: #e5e1d3;
+}
+
+/* ───────── 3. emerald — nền xanh rêu đen, tiền / tăng trưởng ───────── */
+[data-theme="emerald"] {
+  color-scheme: dark;
+
+  --bg-base: #08110f;
+  --surface-1: #0c1815;
+  --surface-2: #10211d;
+  --surface-3: #162d28;
+  --bdr: #1d3a33;
+  --bdr-strong: #2b5247;
+
+  --t1: #ecfdf5;
+  --t2: #9bbdb2;
+  --t3: #6a8c81;
+
+  --accent-rgb: 16 185 129;      /* #10B981 */
+  --accent-hover: #34d399;
+  --accent-strong: #059669;
+  --accent-text: #6ee7b7;
+  --on-accent: #022c22;
+
+  --green-rgb: 52 211 153;
+  --red-rgb: 248 113 113;
+  --amber-rgb: 251 191 36;
+  --shadow-rgb: 0 8 5;
+
+  --paper: #fcfcf6;
+  --paper-ink: #0f1f1a;
+  --paper-ink-2: #46574f;
+  --paper-line: #e0e4d4;
+}
+
+/* ───────── 4. paper-light — sáng, kem, "giấy tờ" ───────── */
+[data-theme="paper-light"] {
+  color-scheme: light;
+
+  --bg-base: #faf9f5;
+  --surface-1: #ffffff;
+  --surface-2: #f5f3ec;
+  --surface-3: #ece9df;
+  --bdr: #e4e0d3;
+  --bdr-strong: #c9c4b3;
+
+  --t1: #18181b;
+  --t2: #52525b;
+  --t3: #71717a;
+
+  --accent-rgb: 79 70 229;       /* #4F46E5 */
+  --accent-hover: #4338ca;
+  --accent-strong: #4f46e5;
+  --accent-text: #4338ca;
+  --on-accent: #ffffff;
+
+  --green-rgb: 5 150 105;        /* #059669 */
+  --red-rgb: 220 38 38;          /* #DC2626 */
+  --amber-rgb: 217 119 6;        /* #D97706 */
+  --shadow-rgb: 40 36 24;
+
+  /* trên theme sáng, paper = chính surface, vẫn giữ viền để còn "tờ giấy" */
+  --paper: #ffffff;
+  --paper-ink: #18181b;
+  --paper-ink-2: #52525b;
+  --paper-line: #e4e0d3;
+}
+
+/*
+ * ───────── Thêm theme mới ─────────
+ * [data-theme="ten-moi"] {
+ *   color-scheme: dark | light;
+ *   --bg-base … --paper-line   (copy đủ ~25 biến ở trên)
+ * }
+ */
+
+
+/* ───────── Legacy token bridge: old names resolve through theme channels ───────── */
+:root {
+    --bg-0: var(--bg-base);
+    --bg-1: color-mix(in srgb, var(--bg-base) 90%, var(--t1) 10%);
+    --bg-2: color-mix(in srgb, var(--surface-1) 80%, var(--bg-base));
+    --bg-3: color-mix(in srgb, var(--surface-1) 70%, transparent);
+
+    --surface-glass: color-mix(in srgb, var(--surface-1) 72%, transparent);
+    --glass-card: var(--surface-glass);
+    --glass-card-hover: color-mix(in srgb, var(--surface-2) 85%, transparent);
+    --glass-border: var(--bdr);
+    --glass-border-hover: var(--accent-ring);
+    --glass-highlight: linear-gradient(135deg, rgb(255 255 255 / 0.06) 0%, rgb(255 255 255 / 0.01) 100%);
+
+    --bdr-md: color-mix(in srgb, var(--bdr) 55%, var(--bdr-strong));
+    --bdr-hi: var(--accent-ring);
+
+    --glow-accent: var(--accent-glow);
+    --glow-green: 0 0 0 1px var(--green-line), 0 8px 32px rgb(var(--green-rgb) / 0.18);
+    --glow-cyan: var(--accent-glow);
+
+    --skeleton-base: color-mix(in srgb, var(--t2) 8%, transparent);
+    --skeleton-sheen: color-mix(in srgb, var(--t2) 16%, transparent);
+    --shadow-violet: 0 12px 40px rgb(var(--shadow-rgb) / 0.55), 0 4px 24px rgb(var(--accent-rgb) / 0.10);
+
+    --logo-gradient: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent-hover) 100%);
+    --brand-gradient: linear-gradient(92deg, var(--accent-strong) 0%, var(--accent-text) 45%, var(--green) 100%);
+
+    --purple: var(--accent-text);
+    --purple-dim: var(--accent-dim);
+    --orange: var(--amber);
+
+    /* paper extras (themes.css defines paper/ink/ink-2/line) */
+    --paper-2: var(--paper);
+    --paper-ink-3: var(--paper-ink-2);
+    --paper-line-soft: var(--paper-line);
+    --paper-paid: var(--green);
+    --paper-held: var(--amber);
+    --paper-refused: var(--red);
+}

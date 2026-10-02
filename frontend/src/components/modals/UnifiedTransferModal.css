@@ -52,7 +52,7 @@
 .funding-sidebar-wallet-icon-wrapper {
     width: 36px;
     height: 36px;
-    background: rgba(124, 111, 255, 0.15);
+    background: rgb(var(--accent-rgb) / 0.15);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -244,13 +244,13 @@
 
 .funding-source-card:hover {
     background: #141624;
-    border-color: rgba(124, 111, 255, 0.3);
+    border-color: rgb(var(--accent-rgb) / 0.3);
 }
 
 .funding-source-card.active {
-    background: rgba(124, 111, 255, 0.05);
+    background: rgb(var(--accent-rgb) / 0.05);
     border-color: var(--accent);
-    box-shadow: 0 0 16px rgba(124, 111, 255, 0.1);
+    box-shadow: 0 0 16px rgb(var(--accent-rgb) / 0.1);
 }
 
 .funding-source-title {
@@ -396,15 +396,15 @@
 }
 
 .funding-preset-btn.preset-max:hover {
-    background: rgba(124, 111, 255, 0.08);
-    border-color: rgba(124, 111, 255, 0.2);
+    background: rgb(var(--accent-rgb) / 0.08);
+    border-color: rgb(var(--accent-rgb) / 0.2);
     color: var(--accent);
 }
 
 /* Sparkle warning alert */
 .funding-sparkle-alert {
-    background: rgba(124, 111, 255, 0.06);
-    border: 1px solid rgba(124, 111, 255, 0.15);
+    background: rgb(var(--accent-rgb) / 0.06);
+    border: 1px solid rgb(var(--accent-rgb) / 0.15);
     border-radius: 8px;
     padding: 14px 16px;
     display: flex;
@@ -550,8 +550,8 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: rgba(124, 111, 255, 0.1);
-    border: 1px solid rgba(124, 111, 255, 0.2);
+    background: rgb(var(--accent-rgb) / 0.1);
+    border: 1px solid rgb(var(--accent-rgb) / 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -841,4 +841,4 @@
     color: #fff;
     box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
 }
-
+

@@ -65,11 +65,11 @@
 .anomaly-card:hover {
     border-color: var(--bdr-md);
     border-left-color: var(--accent);
-    background: rgba(124, 111, 255, 0.03);
+    background: rgb(var(--accent-rgb) / 0.03);
 }
 
 .anomaly-card.active {
-    border-color: rgba(124, 111, 255, 0.2);
+    border-color: rgb(var(--accent-rgb) / 0.2);
     border-left-color: var(--accent);
     background: var(--accent-dim);
 }
@@ -220,12 +220,12 @@
 
 .venue-tag:hover {
     border-color: var(--accent);
-    background: rgba(124, 111, 255, 0.08);
+    background: rgb(var(--accent-rgb) / 0.08);
 }
 
 .venue-tag.is-primary {
-    border-color: rgba(124, 111, 255, 0.35);
-    background: rgba(124, 111, 255, 0.08);
+    border-color: rgb(var(--accent-rgb) / 0.35);
+    background: rgb(var(--accent-rgb) / 0.08);
 }
 
 .venue-funding {
@@ -301,7 +301,7 @@
 .anomaly-card {
     background: #0f1324;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-left: 3px solid rgba(124, 111, 255, 0.4);
+    border-left: 3px solid rgb(var(--accent-rgb) / 0.4);
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 0;
@@ -311,7 +311,7 @@
 
 .anomaly-card:hover {
     background: #161c36;
-    border-color: rgba(124, 111, 255, 0.5);
+    border-color: rgb(var(--accent-rgb) / 0.5);
     border-left-color: var(--accent);
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
@@ -370,8 +370,8 @@
 }
 
 .agent-pick-card {
-    background: rgba(124, 111, 255, 0.08);
-    border: 1px solid rgba(124, 111, 255, 0.2);
+    background: rgb(var(--accent-rgb) / 0.08);
+    border: 1px solid rgb(var(--accent-rgb) / 0.2);
     border-left: 3px solid var(--accent);
     border-radius: 8px;
     padding: 12px;
@@ -379,10 +379,10 @@
 }
 
 .agent-pick-card:hover {
-    background: rgba(124, 111, 255, 0.14);
-    border-color: rgba(124, 111, 255, 0.4);
+    background: rgb(var(--accent-rgb) / 0.14);
+    border-color: rgb(var(--accent-rgb) / 0.4);
     transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(124, 111, 255, 0.15);
+    box-shadow: 0 4px 14px rgb(var(--accent-rgb) / 0.15);
 }
 
 .agent-pick-symbol {
@@ -423,7 +423,7 @@
 
 .agent-picks-list::-webkit-scrollbar-thumb:hover,
 .anomalies-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(124, 111, 255, 0.45);
+    background: rgb(var(--accent-rgb) / 0.45);
 }
 
 /* Make anomalies-list scroll area take all remaining height and behave correctly */
@@ -438,7 +438,7 @@
 }
 
 .agent-mode-pill {
-    background: rgba(124, 111, 255, 0.15);
+    background: rgb(var(--accent-rgb) / 0.15);
     color: var(--accent);
     padding: 2px 8px;
     border-radius: 999px;
@@ -506,8 +506,8 @@
 
 .anomalies-count-pill.is-refreshing {
     color: var(--accent);
-    background: rgba(124, 111, 255, 0.12);
-    border-color: rgba(124, 111, 255, 0.25);
+    background: rgb(var(--accent-rgb) / 0.12);
+    border-color: rgb(var(--accent-rgb) / 0.25);
 }
 
 .anomalies-count-pill.is-error {
@@ -636,7 +636,7 @@
     font-weight: 700;
     color: var(--accent);
     background: var(--accent-dim);
-    border: 1px solid rgba(124, 111, 255, 0.3);
+    border: 1px solid rgb(var(--accent-rgb) / 0.3);
     border-radius: 3px;
     padding: 1px 4px;
     line-height: 1;

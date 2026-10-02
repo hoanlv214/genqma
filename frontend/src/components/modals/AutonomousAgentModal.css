@@ -36,12 +36,12 @@
     width: 22px;
     height: 22px;
     border-radius: 7px;
-    background: rgba(124, 111, 255, 0.16);
+    background: rgb(var(--accent-rgb) / 0.16);
     color: #cfc9ff;
     font-family: var(--mono);
     font-size: 0.58rem;
     font-weight: 900;
-    border: 1px solid rgba(124, 111, 255, 0.28);
+    border: 1px solid rgb(var(--accent-rgb) / 0.28);
 }
 
 .agent-status-indicator {
@@ -178,7 +178,7 @@
     border-top: 0;
     border-radius: 0 0 12px 12px;
     background:
-        radial-gradient(ellipse 55% 80% at 15% 0%, rgba(124, 111, 255, 0.06), transparent 62%),
+        radial-gradient(ellipse 55% 80% at 15% 0%, rgb(var(--accent-rgb) / 0.06), transparent 62%),
         #05070d;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
@@ -244,7 +244,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 18px;
     background:
-        radial-gradient(ellipse 70% 80% at 20% 0%, rgba(124, 111, 255, 0.13), transparent 58%),
+        radial-gradient(ellipse 70% 80% at 20% 0%, rgb(var(--accent-rgb) / 0.13), transparent 58%),
         radial-gradient(ellipse 60% 80% at 90% 12%, rgba(34, 211, 160, 0.1), transparent 58%),
         #070911;
     box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
@@ -339,9 +339,9 @@
 .agent-stage-progress-fill {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, var(--green), #7c6fff, var(--green));
+    background: linear-gradient(90deg, var(--green), var(--accent), var(--green));
     background-size: 200% 100%;
-    box-shadow: 0 0 10px rgba(34, 211, 160, 0.6), 0 0 20px rgba(124, 111, 255, 0.4);
+    box-shadow: 0 0 10px rgba(34, 211, 160, 0.6), 0 0 20px rgb(var(--accent-rgb) / 0.4);
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
     animation: electricFlow 1.5s linear infinite;
     position: relative;
@@ -368,7 +368,7 @@
     height: 8px;
     border-radius: 50%;
     background: #fff;
-    box-shadow: 0 0 8px 2px rgba(34, 211, 160, 0.4), 0 0 16px 4px rgba(124, 111, 255, 0.4), 0 0 24px 8px rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 8px 2px rgba(34, 211, 160, 0.4), 0 0 16px 4px rgb(var(--accent-rgb) / 0.4), 0 0 24px 8px rgba(255, 255, 255, 0.4);
     animation: sparkPulse 0.4s ease-in-out infinite alternate;
 }
 
@@ -441,7 +441,7 @@
 
 .stage-unlocked .agent-stage-dot:last-child span::after {
     animation-delay: 0.5s;
-    border-color: #7c6fff;
+    border-color: var(--accent);
 }
 
 @keyframes rippleBurst {
@@ -468,7 +468,7 @@
     }
 
     50% {
-        box-shadow: 0 0 20px #7c6fff, 0 0 35px #7c6fff;
+        box-shadow: 0 0 20px var(--accent), 0 0 35px var(--accent);
     }
 }
 
@@ -500,7 +500,7 @@
 .fw-particle.p2 {
     --dx: 42px;
     --dy: 0px;
-    background: #7c6fff;
+    background: var(--accent);
     animation-delay: 0.2s;
 }
 
@@ -528,7 +528,7 @@
 .fw-particle.p6 {
     --dx: -42px;
     --dy: 0px;
-    background: #7c6fff;
+    background: var(--accent);
     animation-delay: 0.25s;
 }
 
@@ -574,7 +574,7 @@
 
 .agent-stage-dot.active span {
     background: #cfc9ff;
-    box-shadow: 0 0 0 4px rgba(124, 111, 255, 0.15), 0 0 18px rgba(124, 111, 255, 0.45);
+    box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / 0.15), 0 0 18px rgb(var(--accent-rgb) / 0.45);
     animation: agentPulse 1.2s ease-in-out infinite alternate;
 }
 
@@ -700,8 +700,8 @@
 }
 
 .agent-bar-input:focus {
-    border-color: rgba(124, 111, 255, 0.5);
-    box-shadow: 0 0 0 2px rgba(124, 111, 255, 0.15);
+    border-color: rgb(var(--accent-rgb) / 0.5);
+    box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.15);
 }
 
 .agent-bar-input::placeholder {
@@ -900,9 +900,9 @@
 
 .agent-pick-meta span,
 .agent-settlement-ref {
-    border: 1px solid rgba(124, 111, 255, 0.22);
+    border: 1px solid rgb(var(--accent-rgb) / 0.22);
     border-radius: 999px;
-    background: rgba(124, 111, 255, 0.08);
+    background: rgb(var(--accent-rgb) / 0.08);
     color: #cfc9ff;
     padding: 5px 9px;
     font-family: var(--mono);
@@ -1204,8 +1204,8 @@
     padding: 8px 10px;
     margin-top: 2px;
     border-radius: 8px;
-    background: rgba(124, 111, 255, 0.07);
-    border: 1px solid rgba(124, 111, 255, 0.15);
+    background: rgb(var(--accent-rgb) / 0.07);
+    border: 1px solid rgb(var(--accent-rgb) / 0.15);
     color: #cfc9ff;
     font-size: 0.74rem;
     line-height: 1.45;
@@ -1223,7 +1223,7 @@
     grid-column: 1 / -1;
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid rgba(124, 111, 255, 0.14);
+    border-top: 1px solid rgb(var(--accent-rgb) / 0.14);
 }
 
 .agent-provider-comparison-label {
@@ -1441,7 +1441,7 @@
     padding: 14px 16px;
     margin: 8px 0;
     border-radius: 10px;
-    background: linear-gradient(135deg, rgba(34, 211, 160, 0.08) 0%, rgba(124, 111, 255, 0.05) 100%);
+    background: linear-gradient(135deg, rgba(34, 211, 160, 0.08) 0%, rgb(var(--accent-rgb) / 0.05) 100%);
     border: 1px dashed rgba(34, 211, 160, 0.35);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
     animation: successFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -1897,7 +1897,7 @@
 }
 
 .view-mode-btn.active {
-    background: var(--accent, #7C6FFF);
+    background: var(--accent, var(--accent));
     color: #fff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }

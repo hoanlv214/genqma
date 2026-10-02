@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./App";
 import "./styles/tokens.css";
+import "./styles/themes.css";
 import "./styles/ui.css";
 import "./styles/styles.css";
 import "./styles/index.css";

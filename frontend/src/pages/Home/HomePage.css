@@ -18,7 +18,7 @@
     background-image:
         linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-        radial-gradient(ellipse 900px 520px at 12% 0%, rgba(124, 111, 255, 0.12) 0%, transparent 64%),
+        radial-gradient(ellipse 900px 520px at 12% 0%, rgb(var(--accent-rgb) / 0.12) 0%, transparent 64%),
         radial-gradient(ellipse 720px 520px at 92% 18%, rgba(34, 211, 160, 0.08) 0%, transparent 62%);
     background-size: 32px 32px, 32px 32px, auto, auto;
     color: var(--t1, #e8eaf0);
@@ -123,7 +123,7 @@
 .landing-section--hero {
     padding: clamp(48px, 8vw, 84px) 0 clamp(44px, 6vw, 68px);
     background:
-        radial-gradient(ellipse 900px 520px at 50% -20px, rgba(124, 111, 255, 0.16) 0%, transparent 68%),
+        radial-gradient(ellipse 900px 520px at 50% -20px, rgb(var(--accent-rgb) / 0.16) 0%, transparent 68%),
         radial-gradient(ellipse 700px 420px at 85% 30%, rgba(34, 211, 160, 0.06) 0%, transparent 64%),
         linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
@@ -154,8 +154,8 @@
     font-size: 0.72rem;
     font-weight: 600;
     color: var(--green, #22d3a0);
-    background: var(--accent-dim, rgba(124, 111, 255, 0.12));
-    border: 1px solid rgba(124, 111, 255, 0.22);
+    background: var(--accent-dim, rgb(var(--accent-rgb) / 0.12));
+    border: 1px solid rgb(var(--accent-rgb) / 0.22);
     border-radius: var(--radius-pill, 9999px);
     padding: 5px 14px;
     letter-spacing: 0.4px;
@@ -245,16 +245,16 @@
 
 .landing-actions .btn-primary,
 .landing-primary {
-    background: linear-gradient(135deg, var(--accent-strong, #6a5ce8), var(--accent, #7C6FFF));
+    background: linear-gradient(135deg, var(--accent-strong, #6a5ce8), var(--accent, var(--accent)));
     color: #ffffff;
-    border: 1px solid rgba(124, 111, 255, 0.45);
-    box-shadow: 0 4px 18px rgba(124, 111, 255, 0.32);
+    border: 1px solid rgb(var(--accent-rgb) / 0.45);
+    box-shadow: 0 4px 18px rgb(var(--accent-rgb) / 0.32);
 }
 
 .landing-actions .btn-primary:hover,
 .landing-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 24px rgba(124, 111, 255, 0.42);
+    box-shadow: 0 6px 24px rgb(var(--accent-rgb) / 0.42);
     filter: brightness(1.06);
     color: #ffffff;
 }
@@ -268,8 +268,8 @@
 
 .landing-actions .landing-secondary:hover,
 .landing-secondary:hover {
-    color: var(--accent, #7C6FFF);
-    border-color: rgba(124, 111, 255, 0.4);
+    color: var(--accent, var(--accent));
+    border-color: rgb(var(--accent-rgb) / 0.4);
     background: var(--surface-2, rgba(255, 255, 255, 0.04));
     transform: translateY(-1px);
 }
@@ -503,7 +503,7 @@
     justify-content: center;
     border: 1px solid var(--bdr, rgba(255, 255, 255, 0.08));
     border-radius: 12px;
-    color: var(--accent, #7C6FFF);
+    color: var(--accent, var(--accent));
     background: var(--surface-2, rgba(255, 255, 255, 0.035));
 }
 
@@ -628,7 +628,7 @@
     background: var(--card-accent, var(--accent));
 }
 
-.landing-audience-card--agents { --card-accent: var(--accent, #7C6FFF); }
+.landing-audience-card--agents { --card-accent: var(--accent, var(--accent)); }
 .landing-audience-card--researchers { --card-accent: var(--green, #22d3a0); }
 .landing-audience-card--traders { --card-accent: #38bdf8; }
 
@@ -657,7 +657,7 @@
    ============================================================================= */
 .landing-section--builders {
     background:
-        radial-gradient(ellipse 700px 420px at 80% 50%, rgba(124, 111, 255, 0.09) 0%, transparent 70%),
+        radial-gradient(ellipse 700px 420px at 80% 50%, rgb(var(--accent-rgb) / 0.09) 0%, transparent 70%),
         var(--bg-1, #0a0d18);
     border-top: 1px solid var(--bdr, rgba(255, 255, 255, 0.06));
     border-bottom: 1px solid var(--bdr, rgba(255, 255, 255, 0.06));
@@ -680,10 +680,10 @@
 
 .agent-terminal {
     background: #080a12;
-    border: 1px solid rgba(124, 111, 255, 0.25);
+    border: 1px solid rgb(var(--accent-rgb) / 0.25);
     border-radius: var(--radius-lg, 14px);
     overflow: hidden;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(124, 111, 255, 0.12);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgb(var(--accent-rgb) / 0.12);
 }
 
 .mac-window-header {
@@ -883,7 +883,7 @@
 
 .landing-footer-col a:hover,
 .landing-footer-col .footer-link-btn:hover {
-    color: var(--accent, #7C6FFF);
+    color: var(--accent, var(--accent));
 }
 
 .landing-footer-builton {
