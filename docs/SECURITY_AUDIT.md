@@ -96,10 +96,10 @@ rejects duplicate settlements even for pending reservations.
 
 | Finding | agy severity | Verified verdict | Action |
 | --- | --- | --- | --- |
-| F2 refunded revived to paid via split-leg re-verify (`payment_state_machine.py:66` lacks refunded guard; `main.py:1428` leg write precedes the 1484 guard) | CRITICAL | **HIGH - confirmed risk, corrected trace** (exploitation needs a late VALID verdict after refund) | FIX NOW |
-| F4 creator_claim_lock is in-process only (state.py) | CRITICAL | **HIGH - real gap, single-worker deployment today makes it unexploitable now** | FIX NOW (cross_process_lock) |
-| F6 claim nonce never checked server-side | CRITICAL | **MEDIUM - economic state blocks replay drain (claimable drops to 0); nonce cache = hardening** | FIX NOW (cheap) |
-| F3 save_paid_reports / event dispatch fail-open (repositories/storage.py:243) | HIGH | **HIGH - confirmed** (entitlement/event persistence swallowed) | FIX NOW (raise on payment paths) |
+| F2 refunded revived to paid via split-leg re-verify | CRITICAL | **FIXED 2026-10-03** (refunded terminal guard in refresh_split_invoice_status + 409 guards at main.py:1437/:2344) | done |
+| F4 creator_claim_lock is in-process only | CRITICAL | **FIXED 2026-10-03** (cross_process_lock("creator_claim") wraps the claim section) | done |
+| F6 claim nonce never checked server-side | CRITICAL | **FIXED 2026-10-03** (claimant+nonce replay cache, bounded 10k, 409 claim_nonce_replayed) | done |
+| F3 save_paid_reports / event dispatch fail-open (repositories/storage.py:243) | HIGH | **FIXED 2026-10-03** (dispatch re-raises on payment save paths) | done |
 | F5 refund amount from invoice.amount_raw | HIGH | **MEDIUM - defense-in-depth** (attacker needs prior invoice-mutation primitive; bps validated, operation idempotency present) | log, post-deadline |
 | F1 settlement check-then-act race | HIGH | **MEDIUM - DB unique index backstops (E4 proof); race yields 500, not double-pay** | log (409 handling later) |
 | F8 euthyna hash payload omits provider_id/reasoning/consensus; x402_direct_split ledger gap | HIGH | **MEDIUM - confirmed by design** (money fields covered; contextual fields editable) | DISCLOSE in docs + post-deadline |
@@ -113,3 +113,9 @@ rejects duplicate settlements even for pending reservations.
 - Refund amounts derive from the invoice's stored amount_raw (bound at
   creation), compared against - but not yet re-derived from - the
   qma_payment_events ledger.
+
+**E5 closure (2026-10-03)**: all four money-critical findings FIXED and
+regression-tested; full suite 419 passed / 0 failed. Remaining E5 items are
+logged MEDIUM/LOW (F5 refund source defense-in-depth, F1 race 409 handling,
+F8 payload disclosure, F7 display rounding, F9 reasoning sanitization) and are
+post-deadline hardening, not blockers.
