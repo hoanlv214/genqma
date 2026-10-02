@@ -34,6 +34,7 @@ export function TractionPage({ onNavigate }: TractionProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<TractionTab>("overview");
+  const [days, setDays] = useState<7 | 14 | 30>(14);
   const { address: walletAddress, disconnect } = useWalletStore();
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export function TractionPage({ onNavigate }: TractionProps) {
       controller = new AbortController();
       setLoading(true);
       try {
-        const data = await fetchTraction(14, 20, { signal: controller.signal });
+        const data = await fetchTraction(days, 20, { signal: controller.signal });
         if (!disposed) {
           setSnapshot(data);
           setError("");
@@ -66,7 +67,7 @@ export function TractionPage({ onNavigate }: TractionProps) {
       controller?.abort();
       window.clearInterval(timer);
     };
-  }, []);
+  }, [days]);
 
   const maxDailyVolume = useMemo(
     () => Math.max(...((snapshot?.daily_paid || snapshot?.daily_settled || []).map((day) => day.volume_usdc)), 0.000001),
@@ -101,6 +102,20 @@ export function TractionPage({ onNavigate }: TractionProps) {
           <p className="traction-intro">
             Real report purchases, sub-second Arc x402 micropayments, GenLayer SLA verification, and Morpho idle yield generation.
           </p>
+          <div className="traction-window-picker" role="group" aria-label="Statistics window">
+            <span className="traction-window-label">Window</span>
+            {[7, 14, 30].map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={`traction-window-btn${days === option ? " is-active" : ""}`}
+                aria-pressed={days === option}
+                onClick={() => setDays(option as 7 | 14 | 30)}
+              >
+                {option}d
+              </button>
+            ))}
+          </div>
         </div>
         <div className="chip chip-live">
           <span className="traction-live-pulse" /> Settling on {ARC_CHAIN.name}
@@ -322,12 +337,12 @@ export function TractionPage({ onNavigate }: TractionProps) {
                 <div className="traction-panel-heading">
                   <div>
                     <span className="eyebrow">Payment activity</span>
-                    <h2>Paid · Last 14 days</h2>
+                    <h2>Paid · Last {days} days</h2>
                   </div>
                   <span className="traction-panel-meta">UTC daily aggregation</span>
                 </div>
-                <div className="traction-chart h-[150px] flex items-end gap-2 border-b border-[var(--bdr-md)]" aria-label="Paid volume for the last 14 days">
-                  {(snapshot?.daily_paid || snapshot?.daily_settled || Array.from({ length: 14 }, (_, index) => ({ date: String(index), reports: 0, volume_usdc: 0 }))).map((day, idx) => {
+                <div className="traction-chart h-[150px] flex items-end gap-2 border-b border-[var(--bdr-md)]" aria-label={`Paid volume for the last ${days} days`}>
+                  {(snapshot?.daily_paid || snapshot?.daily_settled || Array.from({ length: days }, (_, index) => ({ date: String(index), reports: 0, volume_usdc: 0 }))).map((day, idx) => {
                     const ratio = Math.max(0.04, day.volume_usdc / maxDailyVolume);
                     const barHeightPx = Math.round(ratio * 120);
                     return (
@@ -357,7 +372,7 @@ export function TractionPage({ onNavigate }: TractionProps) {
                     );
                   })}
                 </div>
-                <div className="traction-chart-axis"><span>14 days ago</span><span>Today</span></div>
+                <div className="traction-chart-axis"><span>{days} days ago</span><span>Today</span></div>
               </section>
 
               {/* Unit Economics Card */}
