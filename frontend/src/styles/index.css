@@ -1,6 +1,37 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 theme bridge: semantic utilities (bg-accent, text-on-accent,
+ * bg-paper, text-t2, border-bdr, ...) resolve through the CSS variables that
+ * styles/themes.css redefines per [data-theme]. Switching theme via Alt+T
+ * therefore recolors every Tailwind-styled surface automatically.
+ */
+@theme inline {
+    --color-accent: var(--accent);
+    --color-accent-strong: var(--accent-strong);
+    --color-accent-text: var(--accent-text);
+    --color-on-accent: var(--on-accent);
+    --color-success: var(--green);
+    --color-success-dim: var(--green-dim);
+    --color-danger: var(--red);
+    --color-danger-dim: var(--red-dim);
+    --color-warning: var(--amber);
+    --color-warning-dim: var(--amber-dim);
+    --color-t1: var(--t1);
+    --color-t2: var(--t2);
+    --color-t3: var(--t3);
+    --color-bdr: var(--bdr);
+    --color-bdr-strong: var(--bdr-strong);
+    --color-surface-1: var(--surface-1);
+    --color-surface-2: var(--surface-2);
+    --color-surface-3: var(--surface-3);
+    --color-bg: var(--bg-base);
+    --color-paper: var(--paper);
+    --color-paper-ink: var(--paper-ink);
+    --color-paper-ink-2: var(--paper-ink-2);
+    --font-sans: var(--sans);
+    --font-mono: var(--mono);
+}
 
 /* =============================================================================
    QMA GLOBAL UTILITIES & CORE RESETS
