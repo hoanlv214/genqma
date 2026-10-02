@@ -56,9 +56,8 @@ export function OperationsPage({ onNavigate }: OperationsProps) {
   const [integrity, setIntegrity] = useState<EuthynaIntegrity | null>(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
 
-  const load = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError("");
+  const load = useCallback(async (signal?: AbortSignal, quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       // Per-panel resilience: one failing endpoint degrades only its own panel.
       const [pos, fcst, pol, recs, incs] = await Promise.all([
@@ -68,8 +67,12 @@ export function OperationsPage({ onNavigate }: OperationsProps) {
         fetchEuthynaRecords(12, { signal }).catch(() => null),
         fetchAgentIncidents({ signal }).catch(() => null),
       ]);
-      if (pos === null && fcst === null && pol === null && recs === null && incs === null) {
+      const anyData = pos !== null || fcst !== null || pol !== null || recs !== null || incs !== null;
+      if (!anyData) {
+        // Transient backend outage: keep the banner, next poll self-heals.
         setError("Operations endpoints unreachable — is the backend running?");
+      } else {
+        setError("");
       }
       if (pos) setPosition(pos);
       if (fcst) setForecast(fcst);
@@ -81,14 +84,22 @@ export function OperationsPage({ onNavigate }: OperationsProps) {
         setError(err instanceof Error ? err.message : "Operations data unavailable.");
       }
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
 
+  // Self-healing: poll every 30s so a transient backend outage clears itself
+  // once the backend returns (quiet polls never flash the full-page loader).
   useEffect(() => {
     const controller = new AbortController();
     load(controller.signal);
-    return () => controller.abort();
+    const timer = window.setInterval(() => {
+      load(undefined, true);
+    }, 30_000);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
   }, [load]);
 
   const onRunDecision = async () => {
