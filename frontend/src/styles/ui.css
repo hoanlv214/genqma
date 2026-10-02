@@ -54,7 +54,7 @@
 .btn-primary {
     background: linear-gradient(135deg, var(--accent-strong), var(--accent));
     border-color: rgb(var(--accent-rgb) / 0.45);
-    color: #fff;
+    color: var(--t1);
     box-shadow: 0 2px 14px rgb(var(--accent-rgb) / 0.22);
 }
 
@@ -74,7 +74,7 @@
 .btn-secondary:hover {
     border-color: var(--glass-border-hover);
     background: var(--surface-3);
-    color: #fff;
+    color: var(--t1);
 }
 
 .btn-ghost {
@@ -114,7 +114,7 @@
 button.btn-green {
     background: linear-gradient(135deg, var(--accent-strong), var(--accent));
     border-color: rgb(var(--accent-rgb) / 0.45);
-    color: #fff;
+    color: var(--t1);
 }
 
 /* ----- Status chips (color + text + dot — never color alone) ------------- */

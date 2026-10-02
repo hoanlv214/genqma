@@ -29,6 +29,17 @@
     --color-paper: var(--paper);
     --color-paper-ink: var(--paper-ink);
     --color-paper-ink-2: var(--paper-ink-2);
+    /* legacy palette names from the removed tailwind.config.js */
+    --color-red: var(--red);
+    --color-green: var(--green);
+    --color-amber: var(--amber);
+    --color-blue: var(--accent);
+    --color-sky: var(--accent-text);
+    --color-brand: var(--accent);
+    --color-qmaGreen: var(--green);
+    --color-qmaAmber: var(--amber);
+    --color-qmaRed: var(--red);
+    --color-qmaPurple: var(--accent-text);
     --font-sans: var(--sans);
     --font-mono: var(--mono);
 }
