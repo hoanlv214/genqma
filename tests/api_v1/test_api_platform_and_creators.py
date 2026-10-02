@@ -135,7 +135,7 @@ class ApiPlatformAndCreatorsTests(unittest.TestCase):
         self.assertEqual(payload["summary"]["current_paid_reports"], 2)
         self.assertEqual(payload["summary"]["settled_reports"], 1)
         self.assertEqual(payload["summary"]["pending_batch_reports"], 1)
-        self.assertEqual(payload["summary"]["settled_volume_usdc"], 0.005)
+        self.assertEqual(payload["summary"]["settled_volume_usdc"], 0.006)
         self.assertEqual(payload["summary"]["pending_batch_volume_usdc"], 0.005)
         self.assertEqual(payload["provenance"]["agent"]["reports"], 1)
         self.assertEqual(len(payload["recent_settlements"]), 2)

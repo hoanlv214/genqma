@@ -113,10 +113,10 @@ def test_financial_split_math_conservation_10000_bps():
 
 def test_micro_usdc_raw_precision_no_fractional_loss():
     """Ensures usdc_to_raw and decimal string conversion are exact."""
-    assert usdc_to_raw(0.002) == 1000
+    assert usdc_to_raw(0.001) == 1000
     assert usdc_to_raw(0.000001) == 1
     assert usdc_to_raw(1.0) == 1000000
-    assert raw_usdc_to_decimal_string(1000) == "0.002"
+    assert raw_usdc_to_decimal_string(1000) == "0.001"
 
     # Split $0.010 (10,000 raw micro-units) at 85% / 15%
     total_raw = 10000
