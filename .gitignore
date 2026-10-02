@@ -79,3 +79,5 @@ scratch/
 .claude/
 agent/skills/
 data/skills/
+
+draft/
