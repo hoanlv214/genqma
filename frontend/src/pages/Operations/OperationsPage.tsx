@@ -3,6 +3,7 @@ import type { QmaRoute } from "@/app/routes";
 import { GlobalHeader } from "@/components/layout/GlobalHeader";
 import { Loader } from "@/components/ui/Loader";
 import { useWalletStore } from "@/state/walletStore";
+import "./OperationsPage.css";
 import {
   fetchAgentIncidents,
   fetchEuthynaRecords,

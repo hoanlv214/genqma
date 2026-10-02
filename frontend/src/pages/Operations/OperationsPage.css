@@ -285,3 +285,53 @@
     animation: none;
   }
 }
+
+/* --- Taste pass: restraint details (violet-only accent, tokens only) ------- */
+
+.operations-panel {
+  transition:
+    border-color var(--dur-fast) var(--ease-out-expo),
+    box-shadow var(--dur-fast) var(--ease-out-expo);
+}
+
+.operations-panel:hover {
+  border-color: rgba(124, 111, 255, 0.28);
+  box-shadow:
+    var(--shadow-sm),
+    0 4px 24px rgba(124, 111, 255, 0.06);
+}
+
+.operations-big-metric {
+  font-variant-numeric: tabular-nums;
+}
+
+.operations-cap {
+  transition: border-color var(--dur-fast) var(--ease-out-expo);
+}
+
+.operations-cap:hover {
+  border-color: rgba(124, 111, 255, 0.28);
+}
+
+.operations-cap strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Decision receipt: ruled sections, reads like a signed slip */
+.operations-decision {
+  border: 1px solid var(--bdr);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: rgba(124, 111, 255, 0.03);
+}
+
+.operations-decision-meta {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--bdr);
+}
+
+.operations-rationale {
+  margin-left: 0;
+  margin-right: 0;
+}
