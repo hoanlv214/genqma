@@ -11,7 +11,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", isLoading = false, children, disabled, ...props }, ref) => {
     const variantStyles = {
       primary:
-        "bg-gradient-to-r from-accent-strong to-accent text-white border border-accent/40 shadow-glow hover:brightness-105 active:scale-[0.98]",
+        "bg-gradient-to-r from-accent-strong to-accent text-on-accent border border-accent/40 shadow-glow hover:brightness-105 active:scale-[0.98]",
       secondary:
         "bg-surface-2 text-t1 border border-bdr hover:bg-surface-3 hover:border-bdr-md active:scale-[0.98]",
       outline:

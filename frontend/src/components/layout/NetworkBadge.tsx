@@ -75,10 +75,10 @@ export function NetworkBadge({ className = "", showDetailsOnClick = true }: Netw
       {/* Network Details Popover */}
       {open && (
         <div
-          className="network-badge__popover network-badge-popover absolute top-[calc(100%+8px)] right-0 w-[280px] bg-gradient-to-b from-slate-900/[0.98] to-slate-950/[0.99] border border-white/[0.12] rounded-xl p-4 shadow-[0_16px_40px_rgba(0,0,0,0.65)] z-[1100] backdrop-blur-xl"
+          className="network-badge__popover network-badge-popover absolute top-[calc(100%+8px)] right-0 w-[280px] bg-surface-1 border border-bdr rounded-xl p-4 shadow-[0_16px_40px_rgba(0,0,0,0.65)] z-[1100] backdrop-blur-xl"
         >
-          <div className="network-badge__popover-header flex justify-between items-center mb-3 pb-2 border-b border-white/[0.08]">
-            <span className="network-badge__popover-title text-[11px] uppercase tracking-wider text-white/50 font-bold">
+          <div className="network-badge__popover-header flex justify-between items-center mb-3 pb-2 border-b border-bdr">
+            <span className="network-badge__popover-title text-[11px] uppercase tracking-wider text-t3 font-bold">
               Network Profile
             </span>
             <span
@@ -95,31 +95,31 @@ export function NetworkBadge({ className = "", showDetailsOnClick = true }: Netw
 
           <div className="network-badge__popover-body flex flex-col gap-2 text-[11.5px]">
             <div className="network-badge__popover-row flex justify-between">
-              <span className="network-badge__popover-label text-white/55">Chain ID</span>
-              <span className="network-badge__popover-value font-mono text-slate-50 font-semibold">
+              <span className="network-badge__popover-label text-t3">Chain ID</span>
+              <span className="network-badge__popover-value font-mono text-t1 font-semibold">
                 {ARC_CHAIN.chainId}
               </span>
             </div>
             <div className="network-badge__popover-row flex justify-between">
-              <span className="network-badge__popover-label text-white/55">Native Gas</span>
+              <span className="network-badge__popover-label text-t3">Native Gas</span>
               <span className="network-badge__popover-value text-sky-400 font-semibold font-mono">
                 USDC (~$0.01)
               </span>
             </div>
             <div className="network-badge__popover-row flex justify-between">
-              <span className="network-badge__popover-label text-white/55">Block Finality</span>
+              <span className="network-badge__popover-label text-t3">Block Finality</span>
               <span className="network-badge__popover-value text-emerald-400 font-semibold font-mono">
                 &lt; 500ms
               </span>
             </div>
           </div>
 
-          <div className="network-badge__popover-footer mt-3 pt-2.5 border-t border-white/[0.08]">
+          <div className="network-badge__popover-footer mt-3 pt-2.5 border-t border-bdr">
             <a
               href={ARC_CHAIN.explorerUrl}
               target="_blank"
               rel="noreferrer"
-              className="network-badge__popover-link flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-md bg-white/[0.04] border border-white/[0.09] text-sky-400 text-[11px] font-semibold no-underline hover:bg-white/[0.08] hover:border-sky-500/40 hover:text-sky-300 transition-all"
+              className="network-badge__popover-link flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-md bg-surface-2 border border-bdr text-sky-400 text-[11px] font-semibold no-underline hover:bg-surface-3 hover:border-sky-500/40 hover:text-sky-300 transition-all"
             >
               <span>View Explorer on Arcscan</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">

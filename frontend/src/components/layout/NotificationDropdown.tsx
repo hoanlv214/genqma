@@ -280,8 +280,8 @@ export function NotificationDropdown({
           hasCriticalIncident
             ? "notification-menu__bell-btn--critical bg-red-500/15 border border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.4)] text-red-300"
             : open
-            ? "notification-menu__bell-btn--active bg-white/10 border border-white/[0.2] text-slate-100"
-            : "bg-white/[0.04] border border-white/[0.1] text-slate-200 hover:bg-white/[0.08] hover:border-white/[0.2]"
+            ? "notification-menu__bell-btn--active bg-surface-2 border border-bdr text-t1"
+            : "bg-surface-1 border border-bdr text-t2 hover:bg-surface-2 hover:border-bdr-strong"
         )}
         onClick={() => setOpen(!open)}
         title="Notifications & System Alerts"
@@ -295,7 +295,7 @@ export function NotificationDropdown({
         {unreadCount > 0 && (
           <span
             className={cn(
-              "notification-menu__badge absolute -top-1 -right-1 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 pointer-events-none",
+              "notification-menu__badge absolute -top-1 -right-1 text-on-accent text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 pointer-events-none",
               hasCriticalIncident
                 ? "notification-menu__badge--critical bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.9)]"
                 : "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"
@@ -308,14 +308,14 @@ export function NotificationDropdown({
 
       {open && (
         <div
-          className="notification-menu__popover notification-panel absolute top-[calc(100%+8px)] right-0 w-[380px] max-h-[480px] bg-[rgba(10,15,28,0.98)] border border-white/[0.12] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.7)] z-[9999] overflow-hidden flex flex-col backdrop-blur-xl"
+          className="notification-menu__popover notification-panel absolute top-[calc(100%+8px)] right-0 w-[380px] max-h-[480px] bg-[rgba(10,15,28,0.98)] border border-bdr rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.7)] z-[9999] overflow-hidden flex flex-col backdrop-blur-xl"
         >
           {/* Header */}
-          <div className="notification-menu__header px-4 py-3 border-b border-white/[0.08] flex justify-between items-center">
+          <div className="notification-menu__header px-4 py-3 border-b border-bdr flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <strong className="notification-menu__title text-[13.5px] text-white font-bold">Activity &amp; Alerts</strong>
+              <strong className="notification-menu__title text-[13.5px] text-t1 font-bold">Activity &amp; Alerts</strong>
               {unreadCount > 0 && (
-                <span className="text-[11px] text-slate-400">({unreadCount} new)</span>
+                <span className="text-[11px] text-t2">({unreadCount} new)</span>
               )}
             </div>
             {unreadCount > 0 && (
@@ -332,7 +332,7 @@ export function NotificationDropdown({
           {/* List */}
           <div className="notification-menu__list overflow-y-auto flex-1 py-2">
             {notifications.length === 0 ? (
-              <div className="notification-menu__empty py-8 px-4 text-center text-slate-500 text-xs">
+              <div className="notification-menu__empty py-8 px-4 text-center text-t3 text-xs">
                 No notifications right now.
               </div>
             ) : (
@@ -345,7 +345,7 @@ export function NotificationDropdown({
                     key={item.id}
                     onClick={() => handleItemClick(item)}
                     className={cn(
-                      "notification-menu__item px-4 py-3 cursor-pointer flex gap-2.5 items-start border-b border-white/[0.04] transition-colors duration-150 hover:bg-white/[0.05]",
+                      "notification-menu__item px-4 py-3 cursor-pointer flex gap-2.5 items-start border-b border-bdr transition-colors duration-150 hover:bg-surface-2",
                       isIncident
                         ? item.incidentData?.severity === "P1_CRITICAL"
                           ? "notification-menu__item--critical bg-red-500/[0.08] border-l-[3px] border-l-red-500"
@@ -358,13 +358,13 @@ export function NotificationDropdown({
                     <div className="notification-menu__item-icon text-[15px] mt-0.5">{getTypeIcon(item.type)}</div>
                     <div className="notification-menu__item-content flex-1 min-w-0">
                       <div className="notification-menu__item-header flex items-center justify-between gap-1.5 mb-1">
-                        <div className="notification-menu__item-title text-[12.5px] font-semibold text-slate-100">
+                        <div className="notification-menu__item-title text-[12.5px] font-semibold text-t1">
                           {item.title}
                         </div>
                         {isIncident && (
                           <span
                             className={cn(
-                              "notification-menu__item-tag text-[9.5px] font-bold px-1.5 py-px rounded uppercase text-white font-mono",
+                              "notification-menu__item-tag text-[9.5px] font-bold px-1.5 py-px rounded uppercase text-on-accent font-mono",
                               item.incidentData?.severity === "P1_CRITICAL"
                                 ? "notification-menu__item-tag--critical bg-red-500"
                                 : item.incidentData?.severity === "P2_WARNING"
@@ -377,13 +377,13 @@ export function NotificationDropdown({
                         )}
                       </div>
 
-                      <div className="notification-menu__item-desc text-[11.5px] text-slate-400 leading-snug mb-1.5">
+                      <div className="notification-menu__item-desc text-[11.5px] text-t2 leading-snug mb-1.5">
                         {item.description}
                       </div>
 
                       {/* Euthyna Hash & Session Reference */}
                       {isIncident && item.incidentData && (
-                        <div className="notification-menu__item-meta flex items-center gap-2 text-[10px] text-slate-500 font-mono mb-2">
+                        <div className="notification-menu__item-meta flex items-center gap-2 text-[10px] text-t3 font-mono mb-2">
                           <span>Sess: {shortAddress(item.incidentData.session_id)}</span>
                           {item.incidentData.euthyna_hash && (
                             <span className="text-emerald-500">
@@ -434,7 +434,7 @@ export function NotificationDropdown({
                         </div>
                       )}
 
-                      <div className="text-[10px] text-slate-500 font-mono mt-1">
+                      <div className="text-[10px] text-t3 font-mono mt-1">
                         {item.timestamp}
                       </div>
                     </div>

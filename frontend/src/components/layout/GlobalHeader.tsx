@@ -225,7 +225,7 @@ export function GlobalHeader({
                         <button
                           type="button"
                           onClick={() => { onOpenWithdrawAgent(); setDropdownOpen(false); }}
-                          className="flex-1 py-1 px-2 rounded-md bg-white/[0.04] border border-white/[0.08] text-[var(--t2)] text-[11px] font-semibold text-center hover:bg-white/[0.08] hover:text-[var(--t1)] transition-colors cursor-pointer"
+                          className="flex-1 py-1 px-2 rounded-md bg-surface-2 border border-bdr text-t2 text-[11px] font-semibold text-center hover:bg-surface-3 hover:text-t1 transition-colors cursor-pointer"
                         >
                           Withdraw
                         </button>

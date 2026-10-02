@@ -206,7 +206,7 @@ export function InteractiveLiveSimulationWidget() {
                 {Object.entries(step.details).map(([k, v]) => (
                   <div key={k} className="simulation-detail-row">
                     <span className="simulation-detail-key">{k}:</span>
-                    <strong className={cn("simulation-detail-val", isPassed ? "text-white" : "text-t2")}>
+                    <strong className={cn("simulation-detail-val", isPassed ? "text-t1" : "text-t2")}>
                       {v}
                     </strong>
                   </div>

@@ -113,7 +113,7 @@ export function AgentRiskGovernancePanel() {
 
         <div className="balance-tile">
           <span className="balance-tile-label">Active Incidents</span>
-          <strong className={cn("text-lg font-mono", openCount > 0 ? "text-[var(--amber)]" : "text-white")}>
+          <strong className={cn("text-lg font-mono", openCount > 0 ? "text-[var(--amber)]" : "text-t1")}>
             {openCount} Open / {incidents.length} Total
           </strong>
           <span className="balance-tile-sub">Auto-circuit breakers</span>
@@ -180,7 +180,7 @@ export function AgentRiskGovernancePanel() {
                         <span className={sevChipClass}>{inc.severity}</span>
                       </td>
                       <td>
-                        <strong className="text-white block">{inc.category}</strong>
+                        <strong className="text-t1 block">{inc.category}</strong>
                         <div className="table-meta">{inc.rule}</div>
                       </td>
                       <td className="mono-td" title={inc.session_id}>
@@ -260,7 +260,7 @@ export function AgentRiskGovernancePanel() {
       {selectedIncident && (
         <div className="resolution-modal-box">
           <div className="flex justify-between items-center mb-2">
-            <strong className="text-sm text-white">
+            <strong className="text-sm text-t1">
               Resolve Incident: {selectedIncident.incident_id}
             </strong>
             <button

@@ -333,7 +333,7 @@ export function UnifiedDepositModal({
                   type="button"
                   onClick={handleSwitchToArc}
                   disabled={switchingNetwork}
-                  className="px-3 py-1.5 bg-amber-500 text-black font-bold text-[11px] rounded-md border-none cursor-pointer whitespace-nowrap hover:bg-amber-400 transition-colors"
+                  className="px-3 py-1.5 bg-amber-500 text-on-accent font-bold text-[11px] rounded-md border-none cursor-pointer whitespace-nowrap hover:bg-amber-400 transition-colors"
                 >
                   {switchingNetwork ? "Switching..." : `Switch to ${ARC_CHAIN.name}`}
                 </button>
@@ -354,14 +354,14 @@ export function UnifiedDepositModal({
                     Circle Gateway
                   </span>
                 </div>
-                <p className="m-0 text-[11px] text-slate-300 leading-snug">
+                <p className="m-0 text-[11px] text-t2 leading-snug">
                   Arc wallet balance is 0, but we detected <strong>{multiChainOverview.bestExternalChain.balanceUsdc} USDC</strong> on <strong>{multiChainOverview.bestExternalChain.name}</strong>. You can deposit directly into your Unified Gateway Balance without bridging!
                 </p>
                 <button
                   type="button"
                   disabled={crossChainLoading}
                   onClick={() => handleFastExternalDeposit(multiChainOverview.bestExternalChain!.chainId, "1.0")}
-                  className="self-start mt-1 px-3.5 py-1.5 bg-blue-500 text-white font-bold text-[11px] rounded-md border-none cursor-pointer shadow-md shadow-blue-500/30 hover:bg-blue-400 transition-colors"
+                  className="self-start mt-1 px-3.5 py-1.5 bg-blue-500 text-on-accent font-bold text-[11px] rounded-md border-none cursor-pointer shadow-md shadow-blue-500/30 hover:bg-blue-400 transition-colors"
                 >
                   {crossChainLoading ? "Processing Deposit..." : `Deposit 1.0 USDC from ${multiChainOverview.bestExternalChain.name} →`}
                 </button>
@@ -438,7 +438,7 @@ export function UnifiedDepositModal({
 
                   {/* Multi-Chain Source Network Selector */}
                   <div className="mb-3">
-                    <span className="block mb-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <span className="block mb-1.5 text-[11px] font-bold text-t2 uppercase tracking-wider">
                       Source Network For Gateway Funding
                     </span>
                     <div className="flex gap-2 flex-wrap">
@@ -453,7 +453,7 @@ export function UnifiedDepositModal({
                               "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold cursor-pointer transition-all duration-150 border",
                               isSelected
                                 ? "bg-blue-500/25 border-blue-500 text-blue-400"
-                                : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                                : "bg-surface-2 border-bdr text-t2 hover:bg-surface-3"
                             )}
                           >
                             <span>{chain.name}</span>
@@ -461,7 +461,7 @@ export function UnifiedDepositModal({
                           </button>
                         );
                       }) || (
-                        <span className="text-xs text-slate-400">{ARC_CHAIN.name} ({fundWalletUsdc})</span>
+                        <span className="text-xs text-t2">{ARC_CHAIN.name} ({fundWalletUsdc})</span>
                       )}
                     </div>
                   </div>
@@ -524,8 +524,8 @@ export function UnifiedDepositModal({
                     <div className="mt-3.5 px-3.5 py-2.5 bg-blue-500/[0.06] border border-dashed border-indigo-500/35 rounded-lg">
                       <div className="flex items-center justify-between gap-2.5">
                         <div>
-                          <div className="text-xs font-bold text-slate-200">Agent Auto-Pay Delegation</div>
-                          <div className="text-[11px] text-slate-400 leading-snug">
+                          <div className="text-xs font-bold text-t1">Agent Auto-Pay Delegation</div>
+                          <div className="text-[11px] text-t2 leading-snug">
                             Authorize your Agent to spend from Unified Balance (&lt;500ms) without popups.
                           </div>
                         </div>
@@ -645,10 +645,10 @@ export function UnifiedDepositModal({
             {/* Shortcut Banner to dedicated Swap & Bridge page */}
             <div className="mt-5 px-4 py-3 bg-[rgb(var(--accent-rgb) / 0.08)] border border-[rgb(var(--accent-rgb) / 0.2)] rounded-[10px] flex items-center justify-between gap-3">
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-semibold text-white">
+                <span className="text-xs font-semibold text-t1">
                   Need to exchange EURC or bridge from another chain?
                 </span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-t2">
                   Visit the Arc StableFX &amp; CCTP V2 Bridge Desk.
                 </span>
               </div>

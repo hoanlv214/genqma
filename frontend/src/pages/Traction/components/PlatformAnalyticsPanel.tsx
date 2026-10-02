@@ -195,7 +195,7 @@ export function PlatformAnalyticsPanel() {
                   platformPayments.map((event, index) => (
                     <tr key={event.event_id || event.settlement_id || event.invoice_id || index}>
                       <td className="mono-td">
-                        <strong className="text-white">{event.symbol || "n/a"}</strong>
+                        <strong className="text-t1">{event.symbol || "n/a"}</strong>
                         <div className="table-meta">{formatDateTime(event.paid_at)}</div>
                       </td>
                       <td>
@@ -347,7 +347,7 @@ export function PlatformAnalyticsPanel() {
                   return (
                     <tr key={row.provider_id || index} title={row.split_note || "Ledger estimate only."}>
                       <td className="mono-td" title={row.owner_wallet || ""}>
-                        <strong className="text-white">
+                        <strong className="text-t1">
                           {row.provider_name || row.provider_id || "provider"}
                         </strong>
                         <div className="table-meta">

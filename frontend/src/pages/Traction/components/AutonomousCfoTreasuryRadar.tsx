@@ -146,7 +146,7 @@ export function AutonomousCfoTreasuryRadar() {
             {/* Card 1: Liquid USDC */}
             <div className="balance-tile">
               <span className="balance-tile-label">Liquid Treasury Cash (Arc)</span>
-              <strong className="text-xl text-white font-mono">
+              <strong className="text-xl text-t1 font-mono">
                 {formatUsdc(position?.treasury_liquid_usdc ?? 0)}
               </strong>
               <span className="balance-tile-sub text-[var(--accent)]">
@@ -275,7 +275,7 @@ export function AutonomousCfoTreasuryRadar() {
                               {formatUsdc(r.treasury_liquid_after ?? r.balance_after ?? 0)}
                             </td>
                             <td className="max-w-xs">
-                              <div className="text-white text-xs leading-relaxed">
+                              <div className="text-t1 text-xs leading-relaxed">
                                 {r.cfo_reasoning || r.reasoning || "Autonomous treasury decision"}
                               </div>
                               <div className="table-meta">

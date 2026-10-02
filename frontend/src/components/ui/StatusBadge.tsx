@@ -33,7 +33,7 @@ const TONE_CLASSES: Record<BadgeTone, string> = {
   amber: "text-[var(--amber,#f59e0b)] bg-[rgba(245,158,11,0.10)] border-[rgba(245,158,11,0.28)]",
   red: "text-[var(--red,#f4475b)] bg-[rgba(244,71,91,0.12)] border-[rgba(244,71,91,0.28)]",
   purple: "text-[var(--purple,#a78bfa)] bg-[rgba(167,139,250,0.12)] border-[rgba(167,139,250,0.28)]",
-  neutral: "text-[var(--t3,#8d95b0)] bg-white/[0.04] border-[var(--bdr,rgba(255,255,255,0.06))]",
+  neutral: "text-t3 bg-surface-2 border-bdr",
 };
 
 export function StatusBadge({

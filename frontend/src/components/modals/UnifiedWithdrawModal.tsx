@@ -251,7 +251,7 @@ export function UnifiedWithdrawModal({
                   type="button"
                   onClick={handleSwitchToArc}
                   disabled={switchingNetwork}
-                  className="px-3 py-1.5 bg-amber-500 text-black font-bold text-[11px] rounded-md border-none cursor-pointer whitespace-nowrap hover:bg-amber-400 transition-colors"
+                  className="px-3 py-1.5 bg-amber-500 text-on-accent font-bold text-[11px] rounded-md border-none cursor-pointer whitespace-nowrap hover:bg-amber-400 transition-colors"
                 >
                   {switchingNetwork ? "Switching..." : `Switch to ${ARC_CHAIN.name}`}
                 </button>
