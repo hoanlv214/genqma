@@ -1519,3 +1519,43 @@
         justify-content: center;
     }
 }
+
+/* Text stamp (replaces SVG seal) + PASS/FAIL rule markers */
+.receipt-stamp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 14px;
+    border: 2px solid currentColor;
+    border-radius: 6px;
+    transform: rotate(-4deg);
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+.receipt-stamp-text {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    white-space: nowrap;
+}
+
+.receipt-stamp--paid {
+    color: var(--green, #34d399);
+}
+
+.receipt-stamp--refused {
+    color: #dc2626;
+}
+
+.rule-icon {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    padding: 2px 5px;
+    line-height: 1;
+}
