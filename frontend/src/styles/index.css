@@ -40,6 +40,14 @@
     --color-qmaAmber: var(--amber);
     --color-qmaRed: var(--red);
     --color-qmaPurple: var(--accent-text);
+    --color-qmaGreen-dim: var(--green-dim);
+    --color-qmaAmber-dim: var(--amber-dim);
+    --color-qmaRed-dim: var(--red-dim);
+    --color-qmaPurple-dim: var(--accent-dim);
+    --color-bg-0: var(--bg-0);
+    --color-bg-1: var(--bg-1);
+    --color-bg-2: var(--bg-2);
+    --shadow-card: var(--shadow-sm);
     --font-sans: var(--sans);
     --font-mono: var(--mono);
 }
