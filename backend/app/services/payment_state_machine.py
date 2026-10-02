@@ -60,7 +60,11 @@ def refresh_split_invoice_status(invoice: dict) -> str:
     if settled_count == len(legs) and legs:
         if invoice.get("verification_required") and (invoice.get("genlayer") or {}).get("verdict") != "VALID":
             invoice["status"] = "verification_pending"
-        elif invoice.get("status") in ("disputed", "refunded"):
+        elif invoice.get("status") == "refunded":
+            return "refunded"
+        elif invoice.get("status") == "verification_rejected" or (invoice.get("genlayer") or {}).get("verdict") == "INVALID":
+            return "verification_rejected"
+        elif invoice.get("status") in ("disputed",):
             invoice["status"] = invoice.get("status")
         else:
             invoice["status"] = "paid"

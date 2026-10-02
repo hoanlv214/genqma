@@ -859,10 +859,18 @@ def _load_paid_report_by_id(address, entitlement_id):
     return repo.load_paid_report_by_id(storage_backend, address, entitlement_id, normalize_address)
 
 def _save_paid_reports(reports):
-    repo.save_paid_reports(storage_backend, reports)
+    try:
+        repo.save_paid_reports(storage_backend, reports)
+    except Exception as exc:
+        import fastapi
+        raise fastapi.HTTPException(status_code=503, detail={"error": "persistence_unavailable", "message": "Failed to persist report entitlement"}) from exc
 
 def _save_single_paid_report(entitlement_id, record):
-    repo.save_single_paid_report(storage_backend, entitlement_id, record)
+    try:
+        repo.save_single_paid_report(storage_backend, entitlement_id, record)
+    except Exception as exc:
+        import fastapi
+        raise fastapi.HTTPException(status_code=503, detail={"error": "persistence_unavailable", "message": "Failed to persist report entitlement"}) from exc
 
 def _load_invoices():
     return repo.load_invoices(storage_backend)
@@ -1424,6 +1432,9 @@ def verify_split_payment(invoice_id, invoice, proof):
                 raise HTTPException(status_code=400, detail="Split settlement payer mismatch.")
             payer = payer or settlement_payer
             batch = {"batch_tx": None, "explorer_url": None} if has_authoritative_gateway_claims else find_arc_batch_tx(settlement)
+            if invoice.get("status") == "refunded":
+                from fastapi import HTTPException
+                raise HTTPException(status_code=409, detail={"error": "invoice_refunded", "message": "Invoice is refunded and cannot be paid."})
             leg_update = {
                 "status": "paid",
                 "settlement_id": submitted.settlement_id,
@@ -2328,6 +2339,9 @@ async def _treasury_decide_loop() -> None:
 
 def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
     """Generate, bind, and verify the exact report before issuing access."""
+    if invoice.get("status") == "refunded":
+        import fastapi
+        raise fastapi.HTTPException(status_code=409, detail={"error": "invoice_refunded", "message": "Invoice is refunded and cannot be paid."})
     if invoice.get("status") == "paid" and (invoice.get("genlayer") or {}).get("verdict") == "VALID":
         return invoice.get("genlayer")
     if invoice.get("status") in {"verification_rejected", "refunded"} and (invoice.get("genlayer") or {}).get("verdict") == "INVALID":

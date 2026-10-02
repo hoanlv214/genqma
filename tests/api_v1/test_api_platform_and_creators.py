@@ -119,7 +119,7 @@ class ApiPlatformAndCreatorsTests(unittest.TestCase):
             "claimant_address": "0xclaimant",
             "provider_ids": ["prov1"],
             "amount_usdc": 5.0,
-            "nonce": "123456789",
+            "nonce": str(time.time()) + "nonce",
             "issued_at": int(time.time()),
             "signature": "0x" + "12" * 10
         }

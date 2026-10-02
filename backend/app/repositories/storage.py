@@ -248,7 +248,8 @@ def save_paid_reports(storage_backend, reports: dict) -> None:
             reports = {**retained, **reports}
         storage_backend.save_paid_reports(reports)
     except Exception as exc:
-        logger.warning(f"Could not save paid reports: {exc}")
+        logger.error(f"Could not save paid reports: {exc}")
+        raise
 
 
 def save_single_paid_report(storage_backend, entitlement_id: str, record: dict) -> None:
@@ -258,7 +259,8 @@ def save_single_paid_report(storage_backend, entitlement_id: str, record: dict) 
         else:
             storage_backend.save_paid_reports({entitlement_id: record})
     except Exception as exc:
-        logger.warning(f"Could not save single paid report: {exc}")
+        logger.error(f"Could not save single paid report: {exc}")
+        raise
 
 
 # ---------------------------------------------------------------------------

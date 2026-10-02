@@ -487,3 +487,87 @@ def test_euthyna_concurrent_records_chain_intact(tmp_path):
     assert integrity["chain_broken"] is False
     assert integrity["audit_health"] == "PASSED"
 
+
+# ---------------------------------------------------------------------------
+# E5 Fix Tests (Money Critical)
+# ---------------------------------------------------------------------------
+
+def test_refresh_split_invoice_refunded_is_terminal():
+    from backend.app.services.payment_state_machine import refresh_split_invoice_status
+    invoice = {
+        "status": "refunded",
+        "split": {
+            "mode": "x402_direct_split",
+            "legs": [{"leg_id": "L1", "status": "paid", "settlement_id": "S1"}]
+        }
+    }
+    status = refresh_split_invoice_status(invoice)
+    assert status == "refunded"
+    assert invoice["status"] == "refunded"
+
+def test_creator_claim_nonce_replay(client, monkeypatch):
+    import backend.app.api.v1.endpoints.providers as providers_module
+    from backend.app.api.v1.endpoints.providers import seen_claim_nonces
+    import time
+    
+    seen_claim_nonces.clear()
+    claimant = "0xAAAABBBBCCCCDDDDEEEEFFFF0000111122223333".lower()
+    
+    class FakeDeps:
+        creator_claim_lock = __import__('threading').Lock()
+        creator_claim_intent_ttl_seconds = 60
+        creator_claim_min_usdc = 1.0
+        arc_gateway_internal_secret = None
+        arc_gateway_base_url = "http://fake"
+        
+        def normalize_address(self, addr): return addr.lower()
+        def same_address(self, a, b): return a.lower() == b.lower()
+        def canonical_provider_ids(self, ids): return ids
+        def provider_ids_owned_by(self, addr): return ["test_prov"]
+        def reload_persistent_state(self, include_reports): pass
+        def build_provider_stats(self, p_id): return {"creator_claimable_usdc": 10.0}
+        def build_creator_claim_message(self, **kwargs): return "msg"
+        def recover_creator_claim_signer(self, msg, sig): return claimant
+        def allocate_creator_claim(self, p_ids, amt): return ([], [])
+        def get_creator_claims_db(self): return []
+        def save_creator_claim_record(self, rec): return True
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    app = FastAPI()
+    app.include_router(providers_module.create_providers_router(FakeDeps()))
+    my_client = TestClient(app)
+    
+    import requests
+    class FakeResp:
+        ok = True
+        status_code = 200
+        headers = {"content-type": "application/json"}
+        def json(self): return {"transaction_hash": "0x123", "explorer_url": ""}
+    monkeypatch.setattr(requests, "post", lambda *args, **kwargs: FakeResp())
+    
+    payload = {
+        "claimant_address": claimant,
+        "amount_usdc": 5.0,
+        "nonce": "nonce_xyz_123",
+        "issued_at": int(time.time()),
+        "signature": "0x" + "a" * 130,
+        "provider_ids": ["test_prov"]
+    }
+    
+    res1 = my_client.post("/api/v1/creators/claim", json=payload)
+    print(res1.text); assert res1.status_code == 200
+    
+    res2 = my_client.post("/api/v1/creators/claim", json=payload)
+    assert res2.status_code == 409
+    assert "claim_nonce_replayed" in res2.text
+
+def test_save_single_paid_report_raises_on_failure():
+    from backend.app.repositories.storage import save_single_paid_report
+    class FailingStorage:
+        def save_single_paid_report(self, e_id, rec):
+            raise Exception("DB Down")
+    
+    import pytest
+    with pytest.raises(Exception, match="DB Down"):
+        save_single_paid_report(FailingStorage(), "ent_123", {})

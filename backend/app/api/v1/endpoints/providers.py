@@ -25,6 +25,11 @@ from backend.app.schemas import (
 from backend.app.core.security_schemes import qma_admin_token_header
 from backend.app.core.openapi_responses import documented_error, documented_errors
 
+# Fix 3: In-memory cache for claim nonces (TTL-bounded intent)
+# We can clear this set on restart because claims have short TTL (60s) anyway.
+seen_claim_nonces = set()
+
+
 
 router = APIRouter(tags=["Provider discovery"])
 
@@ -272,6 +277,7 @@ def create_providers_router(deps: SimpleNamespace) -> APIRouter:
             "application": application,
         }
 
+
     @migrated.post(
         "/api/v1/creators/claim",
         tags=["Creator operations"],
@@ -296,7 +302,17 @@ def create_providers_router(deps: SimpleNamespace) -> APIRouter:
         if unowned:
             raise HTTPException(status_code=403, detail=f"Wallet does not own provider(s): {', '.join(unowned)}")
 
-        with deps.creator_claim_lock:
+        from backend.app.core.state import cross_process_lock
+        with deps.creator_claim_lock, cross_process_lock("creator_claim"):
+            # F6: Claim nonce replay cache
+            claim_nonce_key = (claimant, payload.nonce)
+            if claim_nonce_key in seen_claim_nonces:
+                raise HTTPException(status_code=409, detail={"error": "claim_nonce_replayed", "message": "This claim nonce has already been used."})
+            
+            # Keep set bounded to ~10k (simple clear since intents expire in 60s anyway)
+            if len(seen_claim_nonces) > 10000:
+                seen_claim_nonces.clear()
+            seen_claim_nonces.add(claim_nonce_key)
             deps.reload_persistent_state(include_reports=False)
             stats_rows = [deps.build_provider_stats(provider_id) for provider_id in provider_ids]
             total_available = round(sum(float(row.get("creator_claimable_usdc") or 0) for row in stats_rows), 6)
