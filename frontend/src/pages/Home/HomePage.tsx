@@ -252,7 +252,7 @@ export function HomePage({ onNavigate }: HomeProps) {
                                 <span className="measure-label">median gas per settlement</span>
                             </div>
                             <div className="measure-cell">
-                                <span className="measure-value">$0.001+</span>
+                                <span className="measure-value">$0.002+</span>
                                 <span className="measure-label">per-query pricing</span>
                             </div>
                             <div className="measure-cell">
@@ -322,11 +322,24 @@ export function HomePage({ onNavigate }: HomeProps) {
                                     empirical market regime distributions into queryable API reports. Agents use one x402 authorization,
                                     and report delivery is cryptographically verified against the bound hash on {ARC_CHAIN.name}.
                                 </p>
+                                <div className="landing-terminal" aria-label="qma CLI example">
+                                    <div className="landing-terminal-bar">
+                                        <span className="landing-terminal-dot dot-red" />
+                                        <span className="landing-terminal-dot dot-amber" />
+                                        <span className="landing-terminal-dot dot-green" />
+                                        <span className="landing-terminal-title">agents/bin/qma.js</span>
+                                    </div>
+                                    <pre className="landing-terminal-body"><code><span className="t-prompt">$</span> qma agent run <span className="t-flag">\</span>
+                                        <span className="t-flag">--live</span> <span className="t-flag">--executor</span> circle-agent-wallet <span className="t-flag">--wallet</span> 0xYour-Agent-Wallet <span className="t-flag">--no-auto-deposit</span> <span className="t-flag">\</span>
+                                        <span className="t-flag">--task</span> <span className="t-str">"buy the best BTC preview"</span> <span className="t-flag">--budget</span> 0.01 <span className="t-flag">--max-price</span> 0.005 <span className="t-flag">--max-purchases</span> 1
+
+                                        <span className="t-out">{'#'}</span> {metrics ? `${metrics.current_paid_count} reports settled for ${Number(metrics.current_revenue_usdc).toFixed(2)} USDC on ${ARC_CHAIN.name}, every verdict hash-linked` : 'connecting to the live ledger...'}</code></pre>
+                                </div>
                             </div>
                             <div className="landing-proof-card animate-on-scroll delay-200">
                                 <div className="landing-proof-item"><span className="landing-proof-label">Active Providers</span><strong className="landing-proof-value">Funding Memory, OI Memory, Pyth</strong></div>
                                 <div className="landing-proof-item"><span className="landing-proof-label">Approach</span><strong className="landing-proof-value">Match live anomalies to historical regimes</strong></div>
-                                <div className="landing-proof-item"><span className="landing-proof-label">Pricing</span><strong className="landing-proof-value">Pay per query ($0.001 preview / $0.005 full)</strong></div>
+                                <div className="landing-proof-item"><span className="landing-proof-label">Pricing</span><strong className="landing-proof-value">Pay per query ($0.002 preview / $0.005 full)</strong></div>
                                 <div className="landing-proof-item"><span className="landing-proof-label">Budget Safety</span><strong className="landing-proof-value">Strict session spending caps in USDC</strong></div>
                                 <div className="landing-proof-item"><span className="landing-proof-label">Payment Rail</span><strong className="landing-proof-value">Circle Gateway Nanopayments on {ARC_CHAIN.name}</strong></div>
                                 <div className="landing-proof-item"><span className="landing-proof-label">Audit Engine</span><strong className="landing-proof-value">Athenian Euthyna Cryptographic Hash Chain</strong></div>

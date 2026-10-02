@@ -46,8 +46,8 @@ const SCENARIOS: Record<DecisionOutcome, ReplayScenario> = {
   paid: {
     id: "paid",
     counterparty: "Live buyer · Arc Testnet",
-    reference: "report purchase · intelligence provider · full tier",
-    amount: "—",
+    reference: "report purchase · full tier",
+    amount: "····",
     observe: [
       "Ranked anomaly requested · no cached report for this query hash",
       `Circle Gateway x402 settlement received on ${ARC_CHAIN.name}`,
@@ -59,9 +59,9 @@ const SCENARIOS: Record<DecisionOutcome, ReplayScenario> = {
         "No cached report exists for this query hash — settling the invoice is within the payer budget and unlocks the report immediately.",
     },
     checks: [
-      { rule: "spend_guard.circuit_breaker", passed: true, note: "SpendLimitGuard armed — payer within per-payer caps" },
+      { rule: "spend_guard.circuit_breaker", passed: true, note: "SpendLimitGuard armed, payer within per-payer caps" },
       { rule: "settlement_validation.recipient_amount", passed: true, note: "Treasury recipient, payer and raw amount verified" },
-      { rule: "genlayer.sla_verdict", passed: true, note: "Finalized VALID — report hash bound to the invoice" },
+      { rule: "genlayer.sla_verdict", passed: true, note: "Finalized VALID, report hash bound to the invoice" },
       { rule: "euthyna.hash_linked", passed: true, note: "Decision appended to the SHA-256 audit chain" },
     ],
     outcome: {
@@ -89,7 +89,7 @@ const SCENARIOS: Record<DecisionOutcome, ReplayScenario> = {
     },
     checks: [
       { rule: "spend_guard.spend_limit", passed: false, note: "Requested price exceeds the payer spend cap" },
-      { rule: "spend_guard.circuit_breaker", passed: true, note: "Breaker healthy — refusal logged, purchases continue for others" },
+      { rule: "spend_guard.circuit_breaker", passed: true, note: "Breaker healthy, refusal logged, purchases continue for others" },
       { rule: "euthyna.hash_linked", passed: true, note: "Refusal appended to the audit chain with its reason" },
     ],
     outcome: {
@@ -344,9 +344,9 @@ export function AgentLoopReplay() {
       </div>
 
       <p className="evidence-footnote">
-        Scenarios wired to the live production ledger
+        Wired to the live production ledger
         {metrics
-          ? ` — ${metrics.current_paid_count} reports settled for ${metrics.current_revenue_usdc.toFixed(2)} USDC across ${metrics.unique_payers} payers`
+          ? `: ${metrics.current_paid_count} reports settled for ${metrics.current_revenue_usdc.toFixed(2)} USDC across ${metrics.unique_payers} payers`
           : ""}
         . The stages, rule names and outcomes are the platform's own; the hashes beneath the receipt are the head of the live SHA-256 audit chain.
       </p>
