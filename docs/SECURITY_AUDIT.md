@@ -80,3 +80,36 @@ Remaining scan findings F-02..F-10 (enum divergence, god-modules, dict-shape pas
 1. Any change to a route, auth rule, status code, audience, or invariant updates this document, the endpoint's OpenAPI metadata (`x-qma-access`, `x-qma-audiences`), and `docs/api/README.md` in the same change, followed by `python -m pytest tests/api_v1/test_api_openapi_docs.py -q`.
 2. Phase 7 of this cycle re-runs the full-spectrum review and an E5 adversarial pass over all Critical/Critical modules; results are recorded here with evidence levels.
 3. Diagram/flow drift discovered during any refactor is a CRCIP finding, not a doc bug — log it in `CLEANUP_LOG.md` §2.
+
+
+---
+
+## E5 Adversarial Review - Payment Invariants (2026-10-03)
+
+Independent red-team pass (agy gemini-3.1-pro-high, clean context) over the
+payment paths, then implementer-verified against source. Full report:
+`scratch/reports/e5_adversarial_review.md`. My own E4 runtime proof:
+the `qma_invoices_settlement_unique_idx` (partial, non-null) EMPIRICALLY
+rejects duplicate settlements even for pending reservations.
+
+### Triage (implementer-verified)
+
+| Finding | agy severity | Verified verdict | Action |
+| --- | --- | --- | --- |
+| F2 refunded revived to paid via split-leg re-verify (`payment_state_machine.py:66` lacks refunded guard; `main.py:1428` leg write precedes the 1484 guard) | CRITICAL | **HIGH - confirmed risk, corrected trace** (exploitation needs a late VALID verdict after refund) | FIX NOW |
+| F4 creator_claim_lock is in-process only (state.py) | CRITICAL | **HIGH - real gap, single-worker deployment today makes it unexploitable now** | FIX NOW (cross_process_lock) |
+| F6 claim nonce never checked server-side | CRITICAL | **MEDIUM - economic state blocks replay drain (claimable drops to 0); nonce cache = hardening** | FIX NOW (cheap) |
+| F3 save_paid_reports / event dispatch fail-open (repositories/storage.py:243) | HIGH | **HIGH - confirmed** (entitlement/event persistence swallowed) | FIX NOW (raise on payment paths) |
+| F5 refund amount from invoice.amount_raw | HIGH | **MEDIUM - defense-in-depth** (attacker needs prior invoice-mutation primitive; bps validated, operation idempotency present) | log, post-deadline |
+| F1 settlement check-then-act race | HIGH | **MEDIUM - DB unique index backstops (E4 proof); race yields 500, not double-pay** | log (409 handling later) |
+| F8 euthyna hash payload omits provider_id/reasoning/consensus; x402_direct_split ledger gap | HIGH | **MEDIUM - confirmed by design** (money fields covered; contextual fields editable) | DISCLOSE in docs + post-deadline |
+| F7 creator_earned = 0.8 x float total (:517) | MEDIUM | **LOW - display-only** (payouts use integer bps math in arc_verdict_settlement) | log |
+| F9 LLM reasoning unsanitized into ledger | MEDIUM | **LOW-MEDIUM - hardening** (React escapes; append-only text) | log |
+
+### Disclosures required in submission claims
+- Euthyna tamper-evidence covers the money-field subset of each record;
+  contextual fields (provider_id, reasoning, consensus) are outside the hash
+  payload. Say "money-field tamper-evidence", not unconditional "tamper-proof".
+- Refund amounts derive from the invoice's stored amount_raw (bound at
+  creation), compared against - but not yet re-derived from - the
+  qma_payment_events ledger.
