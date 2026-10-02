@@ -138,7 +138,7 @@ export function OperationsPage({ onNavigate }: OperationsProps) {
           </p>
         </div>
         <div className="chip chip-live">
-          <span className="operations-live-pulse" /> Settling on Arc
+          <span /> Settling on Arc
         </div>
       </section>
 

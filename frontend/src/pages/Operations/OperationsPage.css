@@ -35,16 +35,6 @@
   line-height: 1.6;
 }
 
-.operations-live-pulse {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 6px;
-  border-radius: 50%;
-  background: var(--green, #34d399);
-  box-shadow: 0 0 8px rgba(52, 211, 153, 0.7);
-}
-
 .operations-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -113,7 +103,7 @@
   margin: 0;
 }
 
-.operations-kv > div {
+.operations-kv>div {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -277,12 +267,6 @@
 
   .operations-hero {
     flex-direction: column;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .operations-live-pulse {
-    animation: none;
   }
 }
 
