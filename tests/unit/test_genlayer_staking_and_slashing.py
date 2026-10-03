@@ -9,8 +9,8 @@ def test_contract_contains_slashing_and_bond_mechanisms():
     source = CONTRACT_PATH.read_text(encoding="utf-8")
     
     # Verify bond registration and slashes state
-    assert "slashes: TreeMap[str, int]" in source
-    assert "provider_bonds: TreeMap[str, int]" in source
+    assert "slashes: TreeMap[str, bigint]" in source
+    assert "provider_bonds: TreeMap[str, bigint]" in source
     assert "def get_provider_slashes(" in source
     assert "def register_provider_bond(" in source
     assert "order[\"slashed\"] = True" in source

@@ -2425,7 +2425,27 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
     invoice["status"] = "verification_pending"
     _save_invoice(invoice)
 
-    pending_tx = (invoice.get("genlayer") or {}).get("transaction_hash")
+    gl_state = invoice.get("genlayer") if isinstance(invoice.get("genlayer"), dict) else {}
+    pending_tx = gl_state.get("transaction_hash")
+    # A submitted GenLayer tx that produced no order is only retried for a
+    # bounded window; past it the hash is stale and the next verify submits a
+    # fresh on-chain verification instead of waiting forever.
+    resubmit_after_sec = int(os.getenv("QMA_GENLAYER_RESUBMIT_AFTER_SEC", "600"))
+    pending_since = float(gl_state.get("pending_since") or invoice.get("paid_at") or time.time())
+    if pending_tx and (time.time() - pending_since) > resubmit_after_sec:
+        resubmit_count = int(gl_state.get("resubmit_count") or 0)
+        if resubmit_count >= 3:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "genlayer_verification_stalled",
+                    "message": "Repeated GenLayer verification submissions did not produce a verdict; report access remains locked.",
+                    "transaction_hash": pending_tx,
+                },
+            )
+        gl_state["superseded_transactions"] = list(gl_state.get("superseded_transactions") or []) + [pending_tx]
+        gl_state["resubmit_count"] = resubmit_count + 1
+        pending_tx = None
     try:
         receipt = genlayer_arbiter.verify_report(
             invoice_id=invoice_id,
@@ -2445,14 +2465,29 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
         )
 
     except genlayer_arbiter.GenLayerVerificationError as exc:
-        invoice["status"] = "verification_pending"
-        invoice["genlayer"] = {
+        gl_state = invoice.get("genlayer") if isinstance(invoice.get("genlayer"), dict) else {}
+        next_genlayer = {
+            **gl_state,
             "status": "VERIFICATION_PENDING",
             "verdict": "PENDING",
             "contract_address": genlayer_arbiter.GENLAYER_CONTRACT_ADDRESS or None,
             "transaction_hash": exc.transaction_hash or pending_tx,
             "error": str(exc),
         }
+        if getattr(exc, "failed", False):
+            # The on-chain execution finalized with an error and no order was
+            # written, so this hash can never produce a verdict. Drop it and
+            # let the next verify attempt submit a fresh transaction; the
+            # resubmit budget bounds how often this can repeat.
+            next_genlayer["transaction_hash"] = None
+            next_genlayer["pending_since"] = gl_state.get("pending_since") or time.time()
+            next_genlayer["resubmit_count"] = int(gl_state.get("resubmit_count") or 0) + 1
+            if exc.transaction_hash:
+                next_genlayer["superseded_transactions"] = list(gl_state.get("superseded_transactions") or []) + [exc.transaction_hash]
+        else:
+            next_genlayer.setdefault("pending_since", time.time())
+        invoice["status"] = "verification_pending"
+        invoice["genlayer"] = next_genlayer
         _save_invoice(invoice)
         raise HTTPException(
             status_code=503,
@@ -2463,7 +2498,12 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
             },
         ) from exc
 
-    invoice["genlayer"] = receipt
+    invoice["genlayer"] = {
+        # Preserve the resubmit audit trail (superseded hashes) across the
+        # final receipt write; receipt fields win on any key collision.
+        **{k: gl_state[k] for k in ("superseded_transactions", "resubmit_count", "pending_since") if k in gl_state},
+        **receipt,
+    }
     receipt_report_hash = receipt.get("report_hash") if isinstance(receipt, dict) else None
     if (receipt_report_hash is not None and str(receipt_report_hash) != str(report_hash)) or (
         receipt.get("verdict") != "INVALID" and receipt_report_hash is None

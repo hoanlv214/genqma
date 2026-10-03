@@ -357,7 +357,8 @@ export function PaywallPanel(props: PaywallPanelProps) {
                         <div className="paywall-detail-row">
                           <span className="paywall-detail-label">Verdict</span>
                           <span className={`paywall-detail-value ${genlayerReceipt.verdict === "VALID" ? "verdict-valid" : "verdict-invalid"}`}>
-                            {genlayerReceipt.verdict} ({genlayerReceipt.confidence}%)
+                            {genlayerReceipt.verdict}
+                            {typeof genlayerReceipt.confidence === "number" ? ` (${genlayerReceipt.confidence}%)` : ""}
                           </span>
                         </div>
                         <div className="paywall-detail-row">

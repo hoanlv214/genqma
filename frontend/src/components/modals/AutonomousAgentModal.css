@@ -1023,23 +1023,35 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    margin-top: auto;
+    flex-shrink: 0;
+    padding-top: 10px;
 }
 
 .agent-modal-primary,
 .agent-modal-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 9px;
     cursor: pointer;
     font-family: var(--mono);
     font-size: var(--text-sm);
     font-weight: 850;
-    padding: 10px 12px;
+    padding: 10px 14px;
+    transition: all 0.2s ease;
 }
 
 .agent-modal-primary {
     border-color: rgba(34, 211, 160, 0.38);
     background: var(--green);
     color: #06100d;
+}
+
+.agent-modal-primary:hover {
+    background: #1eb78a;
+    box-shadow: 0 0 16px rgba(34, 211, 160, 0.25);
 }
 
 .agent-modal-secondary {
@@ -1074,6 +1086,9 @@
 }
 
 .agent-modal-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     gap: 6px;
     border: 1px solid rgba(255, 107, 122, 0.3);
     border-radius: 9px;
@@ -1173,6 +1188,24 @@
     padding: 14px;
     height: 100%;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.agent-decision-panel::-webkit-scrollbar {
+    width: 5px;
+}
+
+.agent-decision-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 999px;
+}
+
+/* Flex children default to shrinkable, which lets fixed-height cards compress
+   and paint over the actions row instead of scrolling the panel. Keep every
+   block at natural height; only the purchases block flexes and scrolls. */
+.agent-decision-panel > * {
+    flex-shrink: 0;
 }
 
 .agent-dp-block {
@@ -1183,6 +1216,18 @@
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 11px;
     background: rgba(255, 255, 255, 0.02);
+    flex-shrink: 0;
+}
+
+.agent-dp-block .agent-empty-card {
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    color: var(--t3);
+    margin: 0;
 }
 
 .agent-dp-block-label {

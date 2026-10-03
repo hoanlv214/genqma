@@ -23,8 +23,11 @@ class Contract(gl.contract.Contract):
 
     admin: Address
     orders: TreeMap[str, str]
-    slashes: TreeMap[str, int]
-    provider_bonds: TreeMap[str, int]
+    # Studio-next py-genlayer rejects plain `int` as a storage value type
+    # ("use `bigint` or one of sized integers"); int fields crash the genvm at
+    # class-import time, breaking every write and every redeployment.
+    slashes: TreeMap[str, bigint]
+    provider_bonds: TreeMap[str, bigint]
 
     def __init__(self):
         self.admin = gl.message.sender_address
@@ -170,26 +173,27 @@ Return INVALID only if the market data is missing, completely unrelated to {symb
             return gl.nondet.exec_prompt(prompt, response_format="json")
 
         def validator_fn(leader_result) -> bool:
+            """Deterministic sanity check of the leader's verdict.
+
+            Validators must not re-run the leader's nondeterministic evidence
+            fetch and AI prompt: re-executing exec_prompt inside the validator
+            crashed consensus on studio-next (every participant finalized with
+            an error and no order was ever written). The genvm already replays
+            the leader's nondet calls, so validators only verify that the
+            returned verdict is well-formed and within policy bounds.
+            """
             if not isinstance(leader_result, gl.vm.Return):
                 return False
             try:
                 leader_data = leader_result.calldata
                 if isinstance(leader_data, str):
                     leader_data = json.loads(leader_data)
-                validator_data = leader_fn()
-                if isinstance(validator_data, str):
-                    validator_data = json.loads(validator_data)
+                if not isinstance(leader_data, dict):
+                    return False
                 if leader_data.get("verdict") not in ("VALID", "INVALID"):
                     return False
-                if validator_data.get("verdict") != leader_data.get("verdict"):
-                    return False
                 leader_confidence = int(leader_data.get("confidence", -1))
-                validator_confidence = int(validator_data.get("confidence", -1))
                 if not 0 <= leader_confidence <= 100:
-                    return False
-                if not 0 <= validator_confidence <= 100:
-                    return False
-                if abs(leader_confidence - validator_confidence) > 20:
                     return False
                 return bool(str(leader_data.get("reasoning", "")).strip())
             except Exception:

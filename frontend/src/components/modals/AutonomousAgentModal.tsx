@@ -1002,12 +1002,12 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               </div>
             </div>
 
-            <div className="agent-dp-block flex-1 min-h-0">
+            <div className="agent-dp-block shrink-0 min-h-fit">
               <div className="agent-dp-block-label">Purchases ({purchases})</div>
               {purchasedItems.length === 0 ? (
                 <div className="agent-empty-card">No purchases yet — the agent will list each report here as it buys.</div>
               ) : (
-                <div className="agent-runner-purchases-list">
+                <div className="agent-runner-purchases-list max-h-[160px] overflow-y-auto">
                   {purchasedItems.map((item, i) => (
                     <div key={i} className="agent-invoice-row">
                       <span>{item.symbol}{item.tier ? ` · ${String(item.tier).toUpperCase()}` : ""}</span>
@@ -1019,7 +1019,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
             </div>
 
             {(status === "queued" || status === "running" || status === "paused" || status === "stopped" || status === "error" || status === "failed" || status === "completed") && (
-              <div className="agent-modal-actions">
+              <div className="agent-modal-actions shrink-0 mt-auto pt-2">
                 {status === "queued" || status === "running" ? (
                   <div className="flex gap-2.5 w-full">
                     <button className="agent-modal-cancel flex-1" onClick={handleStop}>

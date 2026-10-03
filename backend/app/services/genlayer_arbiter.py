@@ -201,9 +201,10 @@ GENLAYER_RPC_ENDPOINT = os.getenv(
 class GenLayerVerificationError(RuntimeError):
     """Raised when no finalized, successful GenLayer verdict is available."""
 
-    def __init__(self, message: str, *, transaction_hash: Optional[str] = None):
+    def __init__(self, message: str, *, transaction_hash: Optional[str] = None, failed: bool = False):
         super().__init__(message)
         self.transaction_hash = transaction_hash
+        self.failed = failed
 
 
 def get_genlayer_config() -> dict[str, Any]:
@@ -549,6 +550,12 @@ def verify_report(
         }
         res = _submit_via_node(payload)
         tx_hash = res.get("transaction_hash") or transaction_hash
+        if res.get("failed") or str(res.get("execution_result") or "").upper() in ("ERROR", "FINISHED_WITH_ERROR"):
+            raise GenLayerVerificationError(
+                f"GenLayer transaction finalized with an error ({res.get('execution_result') or 'ERROR'}); no verdict was recorded on-chain",
+                transaction_hash=tx_hash,
+                failed=True,
+            )
         raw_order = res.get("order")
         order = None
         if isinstance(raw_order, str):

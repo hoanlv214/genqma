@@ -125,6 +125,8 @@ async function acquireSessionLease() {
       if (data.acquired && data.session) {
         return data.session;
       }
+    } else {
+      console.error(`[Worker ${WORKER_ID}] Acquire lease failed: HTTP ${res.status}: ${(await res.text()).slice(0, 240)}`);
     }
   } catch (e) {
     console.error(`[Worker ${WORKER_ID}] Acquire lease error (${API_BASE_URL}):`, e);

@@ -158,6 +158,19 @@ async function main() {
     }
 
     const executionResult = receipt?.txExecutionResultName || receipt?.tx_execution_result_name;
+    if (receipt && String(executionResult || "").toUpperCase() !== "FINISHED_WITH_RETURN") {
+      // The transaction finalized but the genvm errored; no order will ever
+      // appear for this hash. Report a hard failure so callers resubmit a
+      // fresh verification instead of waiting forever.
+      console.log(JSON.stringify({
+        success: false,
+        failed: true,
+        transaction_hash: txHash,
+        execution_result: executionResult,
+        order: null,
+      }, (k, v) => typeof v === "bigint" ? v.toString() : v));
+      return;
+    }
     const finalOrder = await client.readContract({
       address: contractAddress,
       functionName: "get_order",
