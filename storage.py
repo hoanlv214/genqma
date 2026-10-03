@@ -1421,6 +1421,22 @@ class PostgresStorage:
         return self.pool.getconn()
 
     def put_connection(self, conn):
+        # A connection left in an aborted or idle-in-transaction state fails
+        # every later borrower until the pool recycles it, which read paths
+        # surface as silent empty results. Reset it before reuse.
+        try:
+            if conn.closed:
+                self.pool.putconn(conn, close=True)
+                return
+            status_ready = getattr(psycopg2.extensions, "STATUS_READY", None)
+            if status_ready is not None and conn.status != status_ready:
+                conn.rollback()
+        except Exception:
+            try:
+                self.pool.putconn(conn, close=True)
+            except Exception:
+                pass
+            return
         self.pool.putconn(conn)
 
     def execute_query(self, query: str, params: tuple = (), fetch_all: bool = False, fetch_one: bool = False):
@@ -1434,6 +1450,12 @@ class PostgresStorage:
                     return cur.fetchall()
                 conn.commit()
                 return None
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
         finally:
             self.put_connection(conn)
 
