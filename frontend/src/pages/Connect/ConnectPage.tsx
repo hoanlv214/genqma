@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { QmaRoute } from "@/app/routes";
 import { GlobalHeader } from "@/components/layout/GlobalHeader";
 import { useWalletStore } from "@/state/walletStore";
-import { Zap, Bot, Check, Clipboard, Link2, X } from "lucide-react";
+import { AlertCircle, Bot, Check, Clipboard, Globe, Link2, Lock, ShieldCheck, Wallet, X, Zap } from "lucide-react";
 import { requestJson, API_BASE_URL } from "@/services/api";
 import {
   getCachedWalletProfileToken,
@@ -334,10 +334,7 @@ export function ConnectPage({ onNavigate }: ConnectProps) {
           <div className="connect-panel">
             <div className="connect-panel-header">
               <div className="connect-panel-title">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
+                <Lock size={18} strokeWidth={2} aria-hidden="true" />
                 <span>Authorized AI Clients & Spending Policy</span>
               </div>
 
@@ -400,10 +397,7 @@ export function ConnectPage({ onNavigate }: ConnectProps) {
             ) : account ? (
               <div className="state-card connect-empty-card">
                 <div className="state-icon" aria-hidden="true">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
+                  <Lock size={22} strokeWidth={2} />
                 </div>
                 <h3>No AI clients connected</h3>
                 <ol className="state-steps">
@@ -415,12 +409,7 @@ export function ConnectPage({ onNavigate }: ConnectProps) {
             ) : (
               <div className="state-card connect-empty-card">
                 <div className="state-icon" aria-hidden="true">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="6" width="20" height="12" rx="2" />
-                    <path d="M12 12h.01" />
-                    <path d="M17 12h.01" />
-                    <path d="M7 12h.01" />
-                  </svg>
+                  <Wallet size={22} strokeWidth={2} />
                 </div>
                 <h3>Connect wallet to manage</h3>
                 <ol className="state-steps">
@@ -442,11 +431,7 @@ export function ConnectPage({ onNavigate }: ConnectProps) {
 
             {error && (
               <div className="connect-error-banner" role="alert">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
+                <AlertCircle size={16} strokeWidth={2} aria-hidden="true" />
                 <span>{error}</span>
               </div>
             )}
@@ -456,10 +441,7 @@ export function ConnectPage({ onNavigate }: ConnectProps) {
           <div className="connect-guarantee-card">
             <div className="connect-guarantee-rail" aria-hidden="true">
               <div className="connect-guarantee-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  <path d="m9 12 2 2 4-4" />
-                </svg>
+                <ShieldCheck size={18} strokeWidth={2.2} />
               </div>
             </div>
             <div className="connect-guarantee-body">
@@ -482,11 +464,7 @@ export function ConnectPage({ onNavigate }: ConnectProps) {
       <nav className="connect-nav">
         <div className="connect-nav-brand">
           <div className="connect-logo-badge">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-              <path d="M2 12h20" />
-            </svg>
+            <Globe size={18} strokeWidth={2.2} stroke="#fff" />
           </div>
           <div className="connect-brand-info">
             <strong className="connect-brand-name">QMA</strong>
@@ -510,10 +488,7 @@ export function ConnectPage({ onNavigate }: ConnectProps) {
 
           <div className="oauth-client-badge">
             <div className="oauth-client-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
+              <Lock size={20} strokeWidth={2} />
             </div>
             <div className="oauth-client-meta">
               <div className="oauth-client-name">

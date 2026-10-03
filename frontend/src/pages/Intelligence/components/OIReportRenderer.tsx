@@ -1,3 +1,4 @@
+import { FileText } from "lucide-react";
 import type { PaidReport, QmaQuery } from "@/types/qma";
 
 type RecordValue = Record<string, unknown>;
@@ -118,12 +119,7 @@ export function OIReportRenderer({ report, activeQuery }: OIReportRendererProps)
     <section className="report-container funding-report-renderer" aria-label="Funding report">
       <div className="report-section section-span-all basic-summary-section">
         <div className="section-header flex items-center gap-2">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-          </svg>
+          <FileText size={12} strokeWidth={2} />
           Your result at a glance
         </div>
         <p className="plain-summary">
@@ -205,17 +201,10 @@ export function OIReportRenderer({ report, activeQuery }: OIReportRendererProps)
             <div className="dist-row" key={p.key}>
               <span className="dist-label">{p.label}</span>
               <div className="dist-bar-bg">
-                <svg className="w-full h-full block" preserveAspectRatio="none" role="presentation">
-                  <rect
-                    x="0"
-                    y="0"
-                    width={`${Math.max(0, Math.min(100, p.width))}%`}
-                    height="100%"
-                    rx="3"
-                    fill="var(--accent)"
-                    className="transition-all duration-500 ease-out"
-                  />
-                </svg>
+                <div
+                  style={{ width: `${Math.max(0, Math.min(100, p.width))}%` }}
+                  className="h-full rounded-[3px] bg-[var(--accent)] transition-all duration-500 ease-out"
+                />
               </div>
               <span className="dist-val">{p.text}</span>
             </div>

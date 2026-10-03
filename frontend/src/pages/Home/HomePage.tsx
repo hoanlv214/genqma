@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { CreditCard, Eye, LogIn, Search, TrendingUp } from "lucide-react";
 import { API_BASE_URL } from "@/services/api";
 import { getPlatformSummary } from "@/services/traction";
 import { LandingHeader } from "@/components/layout/LandingHeader";
@@ -174,17 +175,11 @@ export function HomePage({ onNavigate }: HomeProps) {
                                 </p>
                                 <div className="landing-actions">
                                     <button type="button" className="btn-primary landing-primary text-btn" onClick={() => onNavigate("app")}>
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <circle cx="11" cy="11" r="8"></circle>
-                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                        </svg>
+                                        <Search size={16} strokeWidth={2} />
                                         Open Market Workspace
                                     </button>
                                     <button type="button" className="landing-secondary text-btn" onClick={() => onNavigate("traction")}>
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-                                            <polyline points="17 6 23 6 23 12"></polyline>
-                                        </svg>
+                                        <TrendingUp size={16} strokeWidth={2} />
                                         See Live Proof
                                     </button>
                                 </div>
@@ -271,10 +266,7 @@ export function HomePage({ onNavigate }: HomeProps) {
                         <div className="landing-grid">
                             <article className="animate-on-scroll delay-100">
                                 <div className="feature-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
-                                        <circle cx="12" cy="12" r="3" />
-                                    </svg>
+                                    <Eye size={24} strokeWidth={2} />
                                 </div>
                                 <h2>Historical Regime Matching</h2>
                                 <p className="landing-feature-desc">
@@ -283,10 +275,7 @@ export function HomePage({ onNavigate }: HomeProps) {
                             </article>
                             <article className="animate-on-scroll delay-200">
                                 <div className="feature-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <rect x="2" y="5" width="20" height="14" rx="2" />
-                                        <path d="M2 10h20" />
-                                    </svg>
+                                    <CreditCard size={24} strokeWidth={2} />
                                 </div>
                                 <h2>Statistical Distributions, Not Guarantees</h2>
                                 <p className="landing-feature-desc">
@@ -295,11 +284,7 @@ export function HomePage({ onNavigate }: HomeProps) {
                             </article>
                             <article className="animate-on-scroll delay-300">
                                 <div className="feature-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                                        <polyline points="10 17 15 12 10 7" />
-                                        <line x1="15" y1="12" x2="3" y2="12" />
-                                    </svg>
+                                    <LogIn size={24} strokeWidth={2} />
                                 </div>
                                 <h2>Hard Spending Guardrails on Arc</h2>
                                 <p className="landing-feature-desc">

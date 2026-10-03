@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Landmark, Layers, ArrowLeftRight, TrendingUp, Store, Bot } from "lucide-react";
+import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Bot, Check, ChevronDown, ChevronUp, Clock, Copy, Landmark, Layers, LogOut, Store, TrendingUp, User, Wallet } from "lucide-react";
 import { shortAddress } from "../../services/wallet";
 import type { QmaRoute } from "../../app/routes";
 import { useAgentWalletStore } from "../../state/agentWalletStore";
@@ -143,11 +143,7 @@ export function GlobalHeader({
 
         {!walletAddress ? (
           <button type="button" className="connect-btn-primary" onClick={onConnect}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16" className="mr-1.5 inline-block align-middle">
-              <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path>
-              <path d="M4 6v12c0 1.1.9 2 2 2h14v-4H6a2 2 0 0 1-2-2"></path>
-              <path d="M18 12a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"></path>
-            </svg>
+            <Wallet size={16} strokeWidth={2} className="mr-1.5 inline-block align-middle" />
             Connect Wallet
           </button>
         ) : (
@@ -165,9 +161,11 @@ export function GlobalHeader({
                   </span>
                 )}
               </div>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`chevron ${dropdownOpen ? "up" : "down"}`} width="14" height="14">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
+              {dropdownOpen ? (
+                <ChevronUp size={14} className="chevron up" />
+              ) : (
+                <ChevronDown size={14} className="chevron down" />
+              )}
             </button>
 
             {dropdownOpen && (
@@ -176,16 +174,16 @@ export function GlobalHeader({
                 <div className="dropdown-header">
                   <div className="dropdown-identity">
                     <div className="dropdown-avatar">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                      <User size={16} strokeWidth={2} />
                     </div>
                     <div className="dropdown-identity-text">
                       <div className="dropdown-address-row">
                         <span className="mono-address">{shortAddress(walletAddress)}</span>
                         <button className="copy-btn" onClick={handleCopy} title="Copy User Address">
                           {copySuccess ? (
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="12" height="12"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            <Check size={12} strokeWidth={2} />
                           ) : (
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <Copy size={12} strokeWidth={2} />
                           )}
                         </button>
                       </div>
@@ -199,10 +197,7 @@ export function GlobalHeader({
                   <div className="agent-wallet-card">
                     <div className="agent-wallet-card-header">
                       <div className="agent-wallet-icon-badge">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="12" height="12">
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
+                        <Wallet size={12} strokeWidth={2} />
                       </div>
                       <span className="agent-wallet-label">Autonomous Agent Wallet</span>
                     </div>
@@ -216,9 +211,9 @@ export function GlobalHeader({
                       <span className="agent-wallet-address">{shortAddress(agentWalletAddress)}</span>
                       <button className="copy-btn" onClick={handleAgentCopy} title="Copy Agent Address">
                         {agentCopySuccess ? (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="11" height="11"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          <Check size={11} strokeWidth={2} />
                         ) : (
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="11" height="11"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                          <Copy size={11} strokeWidth={2} />
                         )}
                       </button>
                     </div>
@@ -248,10 +243,7 @@ export function GlobalHeader({
                   <div className="agent-wallet-card is-empty">
                     <div className="agent-wallet-card-header">
                       <div className="agent-wallet-icon-badge">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="12" height="12">
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
+                        <Wallet size={12} strokeWidth={2} />
                       </div>
                       <span className="agent-wallet-label">Autonomous Agent Wallet</span>
                     </div>
@@ -278,24 +270,20 @@ export function GlobalHeader({
                   </button>
 
                   <button className="dropdown-action-btn" onClick={() => { onNavigate("profile"); setDropdownOpen(false); }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
+                    <Clock size={16} strokeWidth={1.75} />
                     Profile & History
                   </button>
 
                   {onOpenDeposit && (
                     <button className="dropdown-action-btn" onClick={() => { onOpenDeposit(); setDropdownOpen(false); }}>
-                      <svg className="action-icon-deposit" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><circle cx="12" cy="12" r="9"></circle><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></svg>
+                      <ArrowDownCircle className="action-icon-deposit" size={16} strokeWidth={1.75} />
                       Deposit
                     </button>
                   )}
 
                   {onOpenWithdrawAgent && (
                     <button className="dropdown-action-btn" onClick={() => { onOpenWithdrawAgent(); setDropdownOpen(false); }}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-                        <circle cx="12" cy="12" r="9"></circle>
-                        <polyline points="16 12 12 8 8 12"></polyline>
-                        <line x1="12" y1="16" x2="12" y2="8"></line>
-                      </svg>
+                      <ArrowUpCircle size={16} strokeWidth={1.75} />
                       Withdraw
                     </button>
                   )}
@@ -304,7 +292,7 @@ export function GlobalHeader({
                 {/* 4. Footer */}
                 <div className="dropdown-footer">
                   <button className="dropdown-action-btn text-danger" onClick={() => { onDisconnect(); setDropdownOpen(false); }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    <LogOut size={16} strokeWidth={2} />
                     Disconnect
                   </button>
                 </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ArrowUpRight, ChevronDown, Clock, Copy, CreditCard, FileText } from "lucide-react";
 import { ApiError, getClientConfig } from "@/services/api";
 import {
   clearWalletProfileSession,
@@ -616,10 +617,7 @@ export function ProfilePage({ onNavigate }: ProfileProps) {
                       title="Copy wallet address"
                       aria-label="Copy wallet address"
                     >
-                      <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
-                        <path d="M4 2a2 2 0 00-2 2v7a2 2 0 002 2h1v-1a1 1 0 011-1h5a1 1 0 011 1v1h1a2 2 0 002-2V4a2 2 0 00-2-2H4zm0-1h8a3 3 0 013 3v7a3 3 0 01-3 3H4a3 3 0 01-3-3V4a3 3 0 013-3z" />
-                        <path d="M5 12a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1H6a1 1 0 01-1-1v-2z" />
-                      </svg>
+                      <Copy size={14} />
                     </button>
                   </div>
                   {!isPublicProfile && (
@@ -756,10 +754,7 @@ export function ProfilePage({ onNavigate }: ProfileProps) {
             {!wallet ? (
               <div className="state-card">
                 <div className="state-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="2" y="5" width="20" height="14" rx="2" />
-                    <line x1="2" y1="10" x2="22" y2="10" />
-                  </svg>
+                  <CreditCard size={24} strokeWidth={2} />
                 </div>
                 <h3>Connect your wallet</h3>
                 <p>Connect your Arc wallet to review verified on-chain settlements and access purchased reports.</p>
@@ -781,13 +776,7 @@ export function ProfilePage({ onNavigate }: ProfileProps) {
             ) : payments.length === 0 ? (
               <div className="state-card">
                 <div className="state-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg>
+                  <FileText size={24} strokeWidth={2} />
                 </div>
                 <h3>No verified payments yet</h3>
                 <p>You have not made any report purchases on this wallet yet.</p>
@@ -923,13 +912,7 @@ export function ProfilePage({ onNavigate }: ProfileProps) {
                             className={`payment-chevron ${isExpanded ? "is-open" : ""}`}
                             aria-hidden="true"
                           >
-                            <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-                              <path
-                                fillRule="evenodd"
-                                d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
+                            <ChevronDown size={16} />
                           </span>
                         </div>
                       </div>
@@ -1155,20 +1138,7 @@ export function ProfilePage({ onNavigate }: ProfileProps) {
                                     rel="noreferrer"
                                   >
                                     <span>Open Arcscan reference</span>
-                                    <svg
-                                      viewBox="0 0 16 16"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      width="12"
-                                      height="12"
-                                    >
-                                      <path
-                                        d="M3 13L13 3M13 3H6M13 3V10"
-                                        strokeWidth="1.5"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    </svg>
+                                    <ArrowUpRight size={12} strokeWidth={1.5} />
                                   </a>
                                 )}
                               </section>
@@ -1228,10 +1198,7 @@ export function ProfilePage({ onNavigate }: ProfileProps) {
               ) : localEvents.length === 0 ? (
                 <div className="state-card">
                   <div className="state-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 14 14" />
-                    </svg>
+                    <Clock size={24} strokeWidth={2} />
                   </div>
                   <h3>No wallet actions yet</h3>
                   <p>Client-side events, split settlements, and Gateway status will be logged here.</p>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Check, X, Clock, ArrowUpDown } from "lucide-react";
+import { Activity, ArrowUpDown, Check, CircleDollarSign, Clock, Wifi, X } from "lucide-react";
 import type { QmaRoute } from "@/app/routes";
 import { GlobalHeader } from "@/components/layout/GlobalHeader";
 import { WalletAppKitModal } from "@/components/modals/WalletAppKitModal";
@@ -507,10 +507,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                   className={`swap-tab-btn ${activeTab === "cctp_transfer" ? "active" : ""}`}
                   onClick={() => setActiveTab("cctp_transfer")}
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M7 16V4m0 0L3 8m4-4l4 4" />
-                    <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
-                  </svg>
+                  <ArrowUpDown size={15} strokeWidth={2} />
                   <span>Cross-Chain USDC Transfer</span>
                 </button>
                 <button
@@ -520,11 +517,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                   className={`swap-tab-btn ${activeTab === "stablefx" ? "active" : ""}`}
                   onClick={() => setActiveTab("stablefx")}
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v12" />
-                    <path d="M8 10h8" />
-                  </svg>
+                  <CircleDollarSign size={15} strokeWidth={2} />
                   <span>Arc StableFX (EURC ↔ USDC)</span>
                 </button>
               </div>
@@ -536,10 +529,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                     <div className="swap-card-header">
                       <div className="swap-card-header-left">
                         <div className="swap-card-icon-wrap">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                            <path d="M7 16V4m0 0L3 8m4-4l4 4" />
-                            <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
-                          </svg>
+                          <ArrowUpDown size={18} strokeWidth={2.2} />
                         </div>
                         <div>
                           <h2 className="swap-card-title">Cross-Chain USDC Transfer</h2>
@@ -870,9 +860,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                     <div className="pipeline-header">
                       <div className="pipeline-header-title">
                         <div className="pipeline-badge-icon">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                          </svg>
+                          <Activity size={16} strokeWidth={2.2} />
                         </div>
                         <div>
                           <h3 className="pipeline-title">Execution Pipeline</h3>
@@ -1255,10 +1243,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
               <div className="side-card">
                 <div className="side-card-header">
                   <h3 className="side-card-title">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
+                    <Clock size={15} strokeWidth={2} />
                     <span>Recent Settlements</span>
                   </h3>
                   <span className="chip chip-live">Live</span>
@@ -1299,12 +1284,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
               <div className="side-card">
                 <div className="side-card-header">
                   <h3 className="side-card-title">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M5 12.55a11 11 0 0 1 14.08 0" />
-                      <path d="M1.42 9a16 16 0 0 1 21.16 0" />
-                      <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-                      <line x1="12" y1="20" x2="12.01" y2="20" />
-                    </svg>
+                    <Wifi size={15} strokeWidth={2} />
                     <span>Supported Networks</span>
                   </h3>
                   <span className="chip chip-live">Operational</span>

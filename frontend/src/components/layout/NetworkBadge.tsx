@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import { ARC_CHAIN, IS_TESTNET, NETWORK_MODE } from "../../config/network";
 import { cn } from "../../utils/cn";
 import "./GlobalHeader.css";
@@ -53,22 +54,14 @@ export function NetworkBadge({ className = "", showDetailsOnClick = true }: Netw
         />
         <span className="network-badge__name">{ARC_CHAIN.name}</span>
         {showDetailsOnClick && (
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            width="12"
-            height="12"
+          <ChevronDown
+            size={12}
+            strokeWidth={2}
             className={cn(
               "network-badge__chevron opacity-65 transition-transform duration-200",
               open && "network-badge__chevron--open rotate-180"
             )}
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          />
         )}
       </button>
 
@@ -122,11 +115,7 @@ export function NetworkBadge({ className = "", showDetailsOnClick = true }: Netw
               className="network-badge__popover-link flex items-center justify-center gap-1.5 w-full py-1.5 px-3 rounded-md bg-surface-2 border border-bdr text-sky-400 text-[11px] font-semibold no-underline hover:bg-surface-3 hover:border-sky-500/40 hover:text-sky-300 transition-all"
             >
               <span>View Explorer on Arcscan</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
+              <ExternalLink size={12} strokeWidth={2} />
             </a>
           </div>
         </div>
