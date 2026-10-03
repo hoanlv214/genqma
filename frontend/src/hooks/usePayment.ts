@@ -678,7 +678,7 @@ export function usePayment({
             report: { status: "waiting", label: "Locked" },
           }));
           setPayStatusText("");
-          setPayErrorText("Settlement confirmed on Arc! GenLayer validator consensus is still finalizing. Click 'Unlock Report' to complete verification without any new payment.");
+          setPayErrorText("Settlement confirmed on Arc! GenLayer validator consensus is still finalizing. Click 'Unlock Report' to complete verification without any new payment. If validators ultimately reject the report, the full payment is refunded automatically.");
           return;
         }
         throw new Error("QMA verification did not return an access token.");

@@ -25,6 +25,7 @@ from backend.app.schemas.health_responses import (
     HealthResponse,
 )
 from backend.app.schemas.payment_responses import (
+    GenlayerStatusResponse,
     InvoicePaymentStateResponse,
     PaymentInvoiceResponse,
     PaymentQuoteResponse,
@@ -88,6 +89,7 @@ __all__ = [
     "WalletProfileSessionRequest",
     "ClientConfigResponse",
     "GatewayInfoResponse",
+    "GenlayerStatusResponse",
     "HealthResponse",
     "InvoicePaymentStateResponse",
     "PaymentInvoiceResponse",

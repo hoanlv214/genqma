@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, Query, Security, HTTPException
 
 from backend.app.schemas import (
+    GenlayerStatusResponse,
     InvoicePaymentStateResponse,
     InvoiceRequest,
     PaymentInvoiceResponse,
@@ -94,6 +95,49 @@ def create_payments_router(deps: SimpleNamespace) -> APIRouter:
     def verify_payment(invoice_id: str = Query(...), proof: Optional[PaymentVerifyRequest] = None):
         """Verifies one Circle x402 settlement, then requires a finalized GenLayer verdict for the bound report hash. VALID unlocks the report and schedules the creator share; INVALID blocks access and schedules a full payer refund. A GenLayer outage returns 503 and never issues access."""
         return deps.verify_payment(invoice_id=invoice_id, proof=proof)
+
+    genlayer_status_cache: dict = {}
+
+    @migrated.get(
+        "/api/v1/genlayer/status",
+        response_model=GenlayerStatusResponse,
+        response_model_exclude_unset=True,
+        tags=["Payments & settlement"],
+        summary="Read GenLayer verification service health",
+        description="""Liveness probe for the GenLayer Shield verification path. Performs a cached single-node contract view read (60s TTL) and reports `operational`, `degraded` (contract unreachable — verifications stay pending and fail closed) or `unconfigured`.
+
+**Authentication:** Public route. Purely observational: never gates access and never fabricates verdicts.""",
+        responses=documented_errors(429, 503),
+        openapi_extra={"x-qma-access": "public", "x-qma-audiences": ["public", "agent"]},
+    )
+    def get_genlayer_status():
+        import time as time_module
+
+        from backend.app.services import genlayer_arbiter
+
+        config = genlayer_arbiter.get_genlayer_config()
+        stats = genlayer_arbiter.get_sla_cache_stats()
+        now = time_module.time()
+        probe = genlayer_status_cache.get("probe")
+        if not probe or now - genlayer_status_cache.get("at", 0) > 60:
+            probe = genlayer_arbiter.probe_availability()
+            genlayer_status_cache["at"] = now
+            genlayer_status_cache["probe"] = probe
+        if not config.get("configured"):
+            status = "unconfigured"
+        elif probe.get("reachable"):
+            status = "operational"
+        else:
+            status = "degraded"
+        return {
+            "status": status,
+            "network": config.get("network"),
+            "contract_address": config.get("contract_address"),
+            "configured": config.get("configured"),
+            "probe": probe,
+            "cached_verdicts_count": stats.get("cached_verdicts_count", 0),
+            "checked_at": now,
+        }
 
     @migrated.post("/api/v1/payment/withdraw", response_model=WithdrawResponse, response_model_exclude_unset=True, tags=["Creator operations"], summary="Submit a creator withdrawal", responses=documented_errors(400, 403, 429, 500, 502, 503))
     def submit_withdraw(payload: WithdrawRequest):

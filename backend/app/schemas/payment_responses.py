@@ -112,3 +112,15 @@ class WithdrawResponse(ResponseModel):
     relayed: bool
     amount_usdc: Any
     withdraw_owner: Dict[str, Any]
+
+
+class GenlayerStatusResponse(ResponseModel):
+    """Health snapshot of the GenLayer Shield verification path."""
+
+    status: str
+    network: Optional[str] = None
+    contract_address: Optional[str] = None
+    configured: bool = False
+    probe: Dict[str, Any]
+    cached_verdicts_count: int = 0
+    checked_at: float

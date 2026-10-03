@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Clock, Check, X, Pause, RefreshCw, QrCode, Plus } from "lucide-react";
 import { requestJson } from "../../services/api";
+import { fetchGenlayerStatus, type GenlayerStatus } from "../../services/operations";
 import {
   getCachedWalletProfileToken,
   requestWalletProfileSession,
@@ -80,6 +81,22 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
   const [budget, setBudget] = useState<number>(0);
   const [spent, setSpent] = useState<number>(0);
   const [purchases, setPurchases] = useState<number>(0);
+  const [genlayerStatus, setGenlayerStatus] = useState<GenlayerStatus | null>(null);
+
+  // The SLA oracle row reflects the real GenLayer probe; purchases stay
+  // fail-closed while the chain is degraded, so show that instead of a spinner.
+  useEffect(() => {
+    if (!open) return;
+    let disposed = false;
+    const load = () => {
+      fetchGenlayerStatus()
+        .then((s) => { if (!disposed) setGenlayerStatus(s); })
+        .catch(() => { if (!disposed) setGenlayerStatus(null); });
+    };
+    load();
+    const interval = setInterval(load, 30000);
+    return () => { disposed = true; clearInterval(interval); };
+  }, [open]);
   const [purchasedItems, setPurchasedItems] = useState<any[]>([]);
 
   // Real UI state
@@ -993,7 +1010,25 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 </div>
                 <div className="agent-funding-row">
                   <span className="agent-funding-label">GenLayer SLA Oracle</span>
-                  <span className="agent-funding-val text-[var(--green)]">Fail-Closed</span>
+                  <span
+                    className={`agent-funding-val ${
+                      genlayerStatus
+                        ? genlayerStatus.status === "operational"
+                          ? "text-[var(--green)]"
+                          : genlayerStatus.status === "degraded"
+                          ? "text-[#fbbf24]"
+                          : "text-[#ff6b7a]"
+                        : "text-[var(--green)]"
+                    }`}
+                  >
+                    {genlayerStatus
+                      ? genlayerStatus.status === "operational"
+                        ? `Operational · ${genlayerStatus.probe.probe_latency_ms}ms`
+                        : genlayerStatus.status === "degraded"
+                        ? "Degraded — fail-closed"
+                        : "Unconfigured"
+                      : "Fail-Closed"}
+                  </span>
                 </div>
                 <div className="agent-funding-row">
                   <span className="agent-funding-label">Athenian Euthyna</span>

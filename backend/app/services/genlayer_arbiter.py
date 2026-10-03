@@ -231,6 +231,27 @@ def get_genlayer_config() -> dict[str, Any]:
     }
 
 
+def probe_availability() -> dict[str, Any]:
+    """Cheap liveness probe: read a sentinel order view from the contract.
+
+    View calls are single-node reads (no consensus wait), so a fast successful
+    probe means the GenLayer path is answerable; failure means verifications
+    will stall and the UI should surface a degraded state instead of a spinner.
+    """
+    started = time.perf_counter()
+    try:
+        client, _account = _create_client()
+        _read_order(client, "qma-status-probe")
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        return {"reachable": True, "probe_latency_ms": latency_ms}
+    except Exception as exc:
+        return {
+            "reachable": False,
+            "probe_latency_ms": int((time.perf_counter() - started) * 1000),
+            "error": str(exc)[:160],
+        }
+
+
 def _create_client():
     addr = _contract_address()
     pk = _private_key()

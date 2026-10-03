@@ -2162,7 +2162,15 @@ def _trigger_genlayer_prewarm_in_background(invoice: dict) -> None:
     import threading
 
     def _worker():
-        prewarm_genlayer_sla_for_invoice(invoice)
+        # The verdict should be on-chain before the buyer finishes paying; a
+        # single failed submission would push the whole purchase onto the slow
+        # verify path, so retry with backoff until it lands or the budget ends.
+        for attempt in range(1, 4):
+            receipt = prewarm_genlayer_sla_for_invoice(invoice)
+            if receipt is not None:
+                return
+            if attempt < 3:
+                time.sleep(20 * attempt)
 
     thread = threading.Thread(
         target=_worker,

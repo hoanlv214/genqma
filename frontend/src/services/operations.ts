@@ -82,6 +82,19 @@ export interface AgentIncident {
 export const fetchTreasuryPosition = (init: RequestInit = {}) =>
   requestJson<TreasuryPosition>("/api/v1/treasury/usyc/position", init);
 
+export interface GenlayerStatus {
+  status: "operational" | "degraded" | "unconfigured";
+  network: string;
+  contract_address: string | null;
+  configured: boolean;
+  probe: { reachable: boolean; probe_latency_ms: number; error?: string };
+  cached_verdicts_count: number;
+  checked_at: number;
+}
+
+export const fetchGenlayerStatus = (init: RequestInit = {}) =>
+  requestJson<GenlayerStatus>("/api/v1/genlayer/status", init);
+
 export const fetchTreasuryForecast = (horizonDays = 30, init: RequestInit = {}) =>
   requestJson<TreasuryForecast>(`/api/v1/treasury/usyc/forecast?horizon_days=${horizonDays}`, init);
 
