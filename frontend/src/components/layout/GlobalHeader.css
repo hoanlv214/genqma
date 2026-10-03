@@ -1315,3 +1315,23 @@
     color: var(--t1);
 }
 
+
+
+/* Mobile: nav collapses to icon-only (labels hidden, icons remain the target) */
+@media (max-width: 768px) {
+    .global-nav-center {
+        gap: 2px;
+    }
+
+    .global-nav-link {
+        padding: 8px 10px;
+    }
+
+    .global-nav-link .nav-label {
+        display: none;
+    }
+
+    .global-nav-link .nav-icon-wrapper {
+        margin: 0;
+    }
+}
