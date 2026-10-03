@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiUrl } from "@/services/api";
 import { ARC_CHAIN } from "@/config/network";
 import { cn } from "@/utils/cn";
@@ -13,71 +13,88 @@ interface SimulationStep {
   link?: { label: string; url: string };
 }
 
+interface LivePaymentEvent {
+  invoice_id: string;
+  symbol: string;
+  tier: string;
+  provider_id: string;
+  amount_usdc: number;
+  gateway_status: string;
+  transaction_hash: string | null;
+  explorer_url: string | null;
+  paid_at: number;
+}
+
+interface EuthynaRecord {
+  action: string;
+  amount_usdc: number;
+  status: string;
+  genlayer_consensus: string | null;
+  integrity_hash: string;
+  arcscan_url: string | null;
+  policy_rule_applied: string;
+}
+
+interface TreasuryPosition {
+  treasury_liquid_usdc: number;
+  usyc_shares: number;
+  current_apy_percent: number;
+  earn_protocol: string;
+}
+
+interface LiveLedger {
+  payment: LivePaymentEvent | null;
+  verdict: EuthynaRecord | null;
+  position: TreasuryPosition | null;
+}
+
+function shortHash(hash: string | null | undefined): string {
+  if (!hash) return "-";
+  return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
+}
+
 export function InteractiveLiveSimulationWidget() {
   const [isRunning, setIsRunning] = useState(false);
   const [activeStep, setActiveStep] = useState<number>(0);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [txHash] = useState<string>("0xa41fb97e20b38c2317586fa6efd1b849e7b233a18a9947ec548beea82e7529ea");
   const [elapsedMs, setElapsedMs] = useState<number>(0);
+  const [ledger, setLedger] = useState<LiveLedger | null>(null);
 
-  const steps: SimulationStep[] = [
-    {
-      id: 1,
-      title: "Alpha Anomaly Detected",
-      badge: "STREAM EVENT",
-      badgeColor: "var(--accent)",
-      description: "Quant agent detects 0.042% perp funding divergence between MEXC and Binance.",
-      details: {
-        "Target Asset": "BTC/USDT Perpetual",
-        "Divergence": "+42 bps (+38.2% ann.)",
-        "Action": "Acquire Verified Alpha Report",
-        "Invoice Price": "0.002 USDC",
-      },
-    },
-    {
-      id: 2,
-      title: "Autonomous x402 Micropayment",
-      badge: "ON-CHAIN SETTLED",
-      badgeColor: "var(--green)",
-      description: "Circle Agent Wallet executes native USDC settlement on Arc Testnet.",
-      details: {
-        "Settlement Layer": `Arc Network (${ARC_CHAIN.name})`,
-        "Gas Paid": "0.00002 USDC",
-        "Finality": "< 650ms",
-        "Protocol": "Circle DCW Session Policy",
-      },
-      link: {
-        label: "View Arcscan Transaction",
-        url: `https://testnet.arcscan.app/tx/${txHash}`,
-      },
-    },
-    {
-      id: 3,
-      title: "GenLayer SLA Verification",
-      badge: "SLA VERIFIED",
-      badgeColor: "var(--purple)",
-      description: "Intelligent validator confirms data integrity and SLA equivalence in <100ms.",
-      details: {
-        "Latency": "38ms (Threshold: 100ms)",
-        "Verdict": "VALID (Consensus passed)",
-        "Slashing Bond": "100.00 USDC Stake Intact",
-        "Payload Match": "SHA-256 Oracle Bound",
-      },
-    },
-    {
-      id: 4,
-      title: "Autonomous CFO Idle Sweep",
-      badge: "EARN KIT SWEEP",
-      badgeColor: "var(--amber)",
-      description: "Treasury sweeps idle cash into Morpho Vault compounding 6.5% APY.",
-      details: {
-        "Earn Vault": "Steakhouse USDC",
-        "Current APY": "6.5% Compound",
-        "Amount Swept": "4.000 USDC",
-        "Audit Seal": "Euthyna SHA-256 Sealed",
-      },
-    },
-  ];
+  // Every step below renders values pulled live from the platform API —
+  // payment ledger, Euthyna hash-chained audit trail and the on-chain
+  // treasury position. Nothing here is mocked: when a source has no data yet
+  // the step says so instead of inventing numbers.
+  const fetchLiveLedger = async () => {
+    const next: LiveLedger = { payment: null, verdict: null, position: null };
+    const [paymentsRes, euthynaRes, positionRes] = await Promise.allSettled([
+      fetch(apiUrl("/api/v1/platform/payments?page_size=1")),
+      fetch(apiUrl("/api/v1/treasury/audit/euthyna?limit=5")),
+      fetch(apiUrl("/api/v1/treasury/usyc/position")),
+    ]);
+    try {
+      if (paymentsRes.status === "fulfilled" && paymentsRes.value.ok) {
+        const data = await paymentsRes.value.json();
+        next.payment = (data?.recent_payments?.[0] as LivePaymentEvent) || null;
+      }
+    } catch { /* keep null */ }
+    try {
+      if (euthynaRes.status === "fulfilled" && euthynaRes.value.ok) {
+        const data = await euthynaRes.value.json();
+        const records = Array.isArray(data) ? (data as EuthynaRecord[]) : [];
+        next.verdict = records.find((r) => r.genlayer_consensus) || records[0] || null;
+      }
+    } catch { /* keep null */ }
+    try {
+      if (positionRes.status === "fulfilled" && positionRes.value.ok) {
+        next.position = (await positionRes.value.json()) as TreasuryPosition;
+      }
+    } catch { /* keep null */ }
+    setLedger(next);
+  };
+
+  useEffect(() => {
+    fetchLiveLedger();
+  }, []);
 
   const runSimulation = async () => {
     if (isRunning) return;
@@ -91,14 +108,9 @@ export function InteractiveLiveSimulationWidget() {
       setElapsedMs(Date.now() - startTime);
     }, 50);
 
-    try {
-      const posRes = await fetch(apiUrl("/api/v1/treasury/usyc/position"));
-      if (posRes.ok) {
-        // Position available
-      }
-    } catch {
-      // Fallback
-    }
+    // Re-read the live ledger so the replay always reflects the latest
+    // on-chain state, then walk the four steps.
+    await fetchLiveLedger();
 
     // Step 1 -> Step 2
     await new Promise((resolve) => setTimeout(resolve, 750));
@@ -118,6 +130,96 @@ export function InteractiveLiveSimulationWidget() {
     setIsRunning(false);
     setIsCompleted(true);
   };
+
+  const payment = ledger?.payment ?? null;
+  const verdict = ledger?.verdict ?? null;
+  const position = ledger?.position ?? null;
+
+  const steps: SimulationStep[] = [
+    {
+      id: 1,
+      title: "Verified Alpha Report Acquired",
+      badge: payment ? "LIVE PURCHASE" : "AWAITING PURCHASE",
+      badgeColor: "var(--accent)",
+      description: payment
+        ? `Latest report bought on the marketplace: the ${payment.tier} tier report on ${payment.symbol} from ${payment.provider_id}.`
+        : "No report has been purchased yet. This step binds to the platform's live payment ledger.",
+      details: payment
+        ? {
+            "Target Asset": `${payment.symbol} (${payment.tier})`,
+            "Provider": payment.provider_id,
+            "Invoice": payment.invoice_id,
+            "Price": `${payment.amount_usdc} USDC`,
+          }
+        : {
+            "Target Asset": "awaiting first purchase",
+            "Source": "live payment ledger",
+          },
+    },
+    {
+      id: 2,
+      title: "Autonomous x402 Micropayment",
+      badge: payment?.transaction_hash ? "ON-CHAIN SETTLED" : payment ? "GATEWAY SETTLED" : "AWAITING SETTLEMENT",
+      badgeColor: "var(--green)",
+      description: payment
+        ? `Circle Gateway settled ${payment.amount_usdc} USDC for invoice ${payment.invoice_id} on ${ARC_CHAIN.name}.`
+        : "Settlement happens through Circle Gateway x402 pay-per-query the moment a report is bought.",
+      details: payment
+        ? {
+            "Settlement Layer": `Arc Network (${ARC_CHAIN.name})`,
+            "Amount Settled": `${payment.amount_usdc} USDC`,
+            "Gateway Status": payment.gateway_status,
+            "Tx": payment.transaction_hash ? shortHash(payment.transaction_hash) : "batched by Gateway",
+          }
+        : {
+            "Settlement Layer": `Arc Network (${ARC_CHAIN.name})`,
+            "Protocol": "Circle Gateway x402",
+          },
+      link: payment?.explorer_url
+        ? { label: "View Arcscan Transaction", url: payment.explorer_url }
+        : undefined,
+    },
+    {
+      id: 3,
+      title: "GenLayer SLA Verification",
+      badge: verdict?.genlayer_consensus ? `SLA ${verdict.genlayer_consensus}` : "AWAITING VERDICT",
+      badgeColor: "var(--purple)",
+      description: verdict
+        ? `${verdict.action} recorded in the hash-chained Euthyna ledger with GenLayer consensus ${verdict.genlayer_consensus ?? "pending"}.`
+        : "Every settlement is written to the Euthyna SHA-256 hash chain once GenLayer consensus finalizes.",
+      details: verdict
+        ? {
+            "Verdict": verdict.genlayer_consensus ?? "PENDING",
+            "Status": verdict.status,
+            "Payout": `${verdict.amount_usdc} USDC`,
+            "Ledger Seal": `${verdict.integrity_hash.slice(0, 14)}…`,
+          }
+        : {
+            "Verdict": "awaiting first verified settlement",
+            "Ledger": "Euthyna SHA-256 hash chain",
+          },
+      link: verdict?.arcscan_url ? { label: "Inspect Ledger Tx", url: verdict.arcscan_url } : undefined,
+    },
+    {
+      id: 4,
+      title: "Autonomous CFO Treasury Sweep",
+      badge: position ? "LIVE POSITION" : "AWAITING POSITION",
+      badgeColor: "var(--amber)",
+      description: position
+        ? `Treasury engine tracks ${position.treasury_liquid_usdc} USDC liquid against the configured yield position (${position.earn_protocol}).`
+        : "The CFO engine evaluates idle cash for the configured yield vault on every cycle.",
+      details: position
+        ? {
+            "Liquid USDC": `${position.treasury_liquid_usdc}`,
+            "Yield Shares": `${position.usyc_shares}`,
+            "Target APY": `${position.current_apy_percent}%`,
+            "Sweep Status": position.usyc_shares > 0 ? "position active" : "no sweep yet — below policy threshold",
+          }
+        : {
+            "Sweep Status": "awaiting treasury position",
+          },
+    },
+  ];
 
   const progressBarWidth = isCompleted
     ? "w-full"
@@ -142,7 +244,7 @@ export function InteractiveLiveSimulationWidget() {
           </div>
           <h2>Autonomous Agent Financial Loop</h2>
           <p className="text-sm text-t2 mt-1 max-w-3xl leading-relaxed">
-            Anomaly detection, sub-second Arc x402 settlement, GenLayer SLA verification, and automated Morpho treasury idle yield sweep.
+            Anomaly detection, sub-second Arc x402 settlement, GenLayer SLA verification, and automated treasury idle yield sweep — replayed from the platform's live ledger, not mock data.
           </p>
         </div>
 
@@ -234,21 +336,29 @@ export function InteractiveLiveSimulationWidget() {
         <div className="simulation-completion-banner">
           <div className="flex flex-col gap-0.5">
             <span className="font-mono text-[11px] font-bold text-qmaGreen uppercase tracking-wider">
-              Simulation Verified On Arc Testnet ({(elapsedMs / 1000).toFixed(1)}s)
+              Loop Replayed From Live Platform Data ({(elapsedMs / 1000).toFixed(1)}s)
             </span>
             <small className="text-xs text-t2">
-              Report acquired for 0.002 USDC with 0.00002 USDC gas · SLA validated in 38ms · Unused balance earning 6.5% APY in Morpho.
+              {payment
+                ? `Report ${payment.symbol} acquired for ${payment.amount_usdc} USDC · ${
+                    verdict?.genlayer_consensus
+                      ? `GenLayer consensus ${verdict.genlayer_consensus}`
+                      : "settlement recorded"
+                  } · Treasury ${position ? `${position.treasury_liquid_usdc} USDC liquid` : "position pending"}.`
+                : "All steps bind to the live payment ledger, Euthyna audit trail and on-chain treasury position."}
             </small>
           </div>
 
-          <a
-            href={`https://testnet.arcscan.app/tx/${txHash}`}
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-secondary btn-sm"
-          >
-            Verify on Arcscan
-          </a>
+          {(payment?.explorer_url || verdict?.arcscan_url) && (
+            <a
+              href={payment?.explorer_url || verdict?.arcscan_url || "#"}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-secondary btn-sm"
+            >
+              Verify on Arcscan
+            </a>
+          )}
         </div>
       )}
     </section>

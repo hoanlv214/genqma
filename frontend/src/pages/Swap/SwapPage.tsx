@@ -85,13 +85,6 @@ const NETWORKS_LIST = [
   { id: "arc", name: ARC_CHAIN.name, logo: <ArcLogo size={16} />, domain: ARC_CHAIN.cctpDomain, latency: "<1s" },
 ];
 
-const RECENT_SETTLEMENTS = [
-  { id: "1", amount: "+50.00 USDC", route: "Base Sepolia → Ethereum Sepolia", timeAgo: "2m ago" },
-  { id: "2", amount: "+12.50 USDC", route: "Arbitrum Sepolia → Arc", timeAgo: "8m ago" },
-  { id: "3", amount: "+256.00 USDC", route: "Base Sepolia → Arbitrum Sepolia", timeAgo: "15m ago" },
-  { id: "4", amount: "+75.00 USDC", route: "Ethereum Sepolia → Arc", timeAgo: "32m ago" },
-];
-
 export function SwapPage({ onNavigate }: SwapProps) {
   const { address: wallet, setAddress, disconnect } = useWalletStore();
   const [showAppKitModal, setShowAppKitModal] = useState(false);
@@ -150,7 +143,8 @@ export function SwapPage({ onNavigate }: SwapProps) {
   const [fxQuote, setFxQuote] = useState<StableFxQuote | null>(null);
   const [fxQuoteLoading, setFxQuoteLoading] = useState(false);
   const [quoteSecondsLeft, setQuoteSecondsLeft] = useState(24);
-  const [settlementRows, setSettlementRows] = useState(RECENT_SETTLEMENTS);
+  // Recent settlements come live from the Euthyna audit trail; no mock rows.
+  const [settlementRows, setSettlementRows] = useState<any[]>([]);
 
   const targetArcChainId = ARC_CHAIN.chainId;
   const isArcChain = currentChainId === targetArcChainId;
@@ -449,13 +443,12 @@ export function SwapPage({ onNavigate }: SwapProps) {
   const toToken = fxFromToken === "EURC" ? "USDC" : "EURC";
   const currentPayBalance = fxFromToken === "EURC" ? eurcBalance : usdcBalance;
   const currentReceiveBalance = toToken === "EURC" ? eurcBalance : usdcBalance;
+  // Real RFQ output only — never estimate from a hardcoded rate.
   const estOutput = fxQuote
     ? fxQuote.to_amount.toFixed(4)
-    : (
-      parseFloat(fxAmount) > 0
-        ? (fxFromToken === "USDC" ? (parseFloat(fxAmount) * 0.9212).toFixed(4) : (parseFloat(fxAmount) / 0.9212).toFixed(4))
-        : "0.00"
-    );
+    : parseFloat(fxAmount) > 0
+    ? "—"
+    : "0.00";
 
   const originNetObj = NETWORKS_LIST.find((n) => n.id === originChain) || NETWORKS_LIST[0];
   const destNetObj = NETWORKS_LIST.find((n) => n.id === destinationChain) || NETWORKS_LIST[3] || NETWORKS_LIST[0];
@@ -1155,12 +1148,20 @@ export function SwapPage({ onNavigate }: SwapProps) {
                     <div className="bridge-spec-item">
                       <span className="spec-label">Market Exchange Rate</span>
                       <span className="spec-value">
-                        {fxFromToken === "USDC" ? "1 USDC ≈ 0.9212 EURC" : "1 EURC ≈ 1.0855 USDC"}
+                        {fxQuote
+                          ? `1 ${fxQuote.from_currency} ≈ ${fxQuote.effective_rate.toFixed(6)} ${fxQuote.to_currency}`
+                          : fxQuoteLoading
+                          ? "Fetching RFQ quote…"
+                          : "Quoted at execution"}
                       </span>
                     </div>
                     <div className="bridge-spec-item">
-                      <span className="spec-label">Desk RFQ Spread</span>
-                      <span className="spec-value highlight">5 bps (0.05%) Institutional</span>
+                      <span className="spec-label">RFQ Conversion Fee</span>
+                      <span className="spec-value highlight">
+                        {fxQuote
+                          ? `${fxQuote.fee_amount} ${fxQuote.fee_currency} on ${fxQuote.from_amount} ${fxQuote.from_currency}`
+                          : "Disclosed with quote"}
+                      </span>
                     </div>
                     <div className="bridge-spec-item">
                       <span className="spec-label">RFQ Quote Expiry</span>
@@ -1250,7 +1251,12 @@ export function SwapPage({ onNavigate }: SwapProps) {
                 </div>
 
                 <div className="settlement-rows-list">
-                  {settlementRows.map((row: any) => (
+                  {settlementRows.length === 0 ? (
+                    <div className="settlement-row-item">
+                      <span className="settlement-row-route">Awaiting live settlements from the Euthyna ledger…</span>
+                    </div>
+                  ) : (
+                    settlementRows.map((row: any) => (
                     <div key={row.id} className="settlement-row-item">
                       <div className="settlement-row-left">
                         <UsdcLogo size={20} />
@@ -1276,7 +1282,8 @@ export function SwapPage({ onNavigate }: SwapProps) {
                         <span className="settlement-time-ago tabular-nums">{row.timeAgo}</span>
                       </div>
                     </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
 

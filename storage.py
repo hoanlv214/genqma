@@ -1697,6 +1697,13 @@ class PostgresStorage:
                 invoices[inv_id] = invoice
         return invoices
 
+    def count_invoices(self) -> int:
+        """Authoritative invoice count straight from PostgreSQL. The in-memory
+        invoice map is only a newest-2000 view, so len() must never be used as
+        a platform metric."""
+        row = self.execute_query("SELECT count(*) AS n FROM public.qma_invoices;", fetch_one=True)
+        return int(row["n"]) if row else 0
+
     def load_paid_invoices_for_wallet(self, address: str, *, limit: int = 5000) -> dict:
         invoices = {
             invoice_id: invoice

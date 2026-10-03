@@ -875,6 +875,12 @@ def _save_single_paid_report(entitlement_id, record):
 def _load_invoices():
     return repo.load_invoices(storage_backend)
 
+def _count_invoices() -> int:
+    try:
+        return int(storage_backend.count_invoices())
+    except Exception:
+        return len(state.invoices_db)
+
 def _load_paid_invoices_for_wallet(address):
     return repo.load_paid_invoices_for_wallet(storage_backend, address, normalize_address)
 
@@ -2764,6 +2770,7 @@ app.include_router(create_platform_router(SimpleNamespace(
     compact_payment_event=compact_payment_event,
     fetch_gateway_balance_cached=fetch_gateway_balance_cached,
     invoices_db=state.invoices_db,
+    count_invoices=_count_invoices,
     load_platform_payment_events=_load_platform_payment_events,
     maybe_refresh_unresolved_payment_events=_maybe_refresh,
     paginate_items=paginate_items,
