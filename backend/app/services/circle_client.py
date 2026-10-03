@@ -1,6 +1,7 @@
 """Circle Gateway client and Arcscan batch-tx helpers."""
 
 import logging
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Dict, Optional
@@ -381,10 +382,36 @@ def reconcile_disputed_invoices(save_invoice_fn, max_invoices: int = 20) -> None
             continue
 
 
+_payment_refresh_lock = threading.Lock()
+_payment_refresh_running = False
+
+
 def maybe_refresh_unresolved_payment_events(save_payment_ledger_fn, save_invoice_fn, max_events: int = 8) -> None:
+    """Kick a Circle reconciliation sweep in the background.
+
+    The refresh makes live Gateway calls that can block for seconds; running it
+    inline stalled /platform/summary for every visitor after each TTL window.
+    The request returns immediately and the sweep lands for the next read.
+    """
+    global _payment_refresh_running
     now = time.time()
     if now - state.payment_event_refresh_state.get("at", 0) < PAYMENT_EVENT_REFRESH_TTL_SECONDS:
         return
     state.payment_event_refresh_state["at"] = now
-    refresh_unresolved_payment_events(save_payment_ledger_fn, max_events=max_events)
-    reconcile_disputed_invoices(save_invoice_fn)
+    with _payment_refresh_lock:
+        if _payment_refresh_running:
+            return
+        _payment_refresh_running = True
+
+    def _run() -> None:
+        global _payment_refresh_running
+        try:
+            refresh_unresolved_payment_events(save_payment_ledger_fn, max_events=max_events)
+            reconcile_disputed_invoices(save_invoice_fn)
+        except Exception as exc:
+            logger.warning(f"Background payment event refresh failed: {exc}")
+        finally:
+            with _payment_refresh_lock:
+                _payment_refresh_running = False
+
+    threading.Thread(target=_run, name="qma-payment-event-refresh", daemon=True).start()

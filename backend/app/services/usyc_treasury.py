@@ -13,6 +13,7 @@ import logging
 import math
 import os
 from pathlib import Path
+import threading
 import time
 from typing import Any, Dict, Optional
 import urllib.request
@@ -34,6 +35,19 @@ from backend.app.schemas.treasury import CorporateTreasuryPolicy
 from backend.app.services.wallet_utils import normalize_address
 
 logger = logging.getLogger("QMA-USYC-Treasury")
+
+# One on-chain position read costs 3-5 sequential RPC round trips (~1s against
+# the public Arc testnet RPC) and the console polls it continuously, so serve a
+# short-lived cached snapshot instead of re-querying the chain per request.
+POSITION_CACHE_TTL_SECONDS = int(os.getenv("QMA_USYC_POSITION_CACHE_TTL_SECONDS", "15"))
+_position_cache: Dict[str, tuple] = {}
+_position_cache_lock = threading.Lock()
+
+
+def _invalidate_position_cache() -> None:
+    """Drop cached on-chain positions after any treasury write."""
+    with _position_cache_lock:
+        _position_cache.clear()
 
 # Arc network & contract constants (sourced from config.py / .env)
 ARC_EXPLORER_URL = ARC_EXPLORER
@@ -587,6 +601,13 @@ class USYCTreasuryService:
             account_address or PLATFORM_TREASURY_ADDRESS or PAYMENT_WALLET_ADDRESS
         )
 
+        cache_key = target_account or ""
+        now_value = time.time()
+        with _position_cache_lock:
+            cached = _position_cache.get(cache_key)
+            if cached and now_value - cached[0] < POSITION_CACHE_TTL_SECONDS:
+                return dict(cached[1])
+
         shares_raw = 0
         assets_raw = 0
         total_vault_assets_raw = 0
@@ -654,7 +675,7 @@ class USYCTreasuryService:
         assets_usdc = assets_raw / 1e6 if assets_raw > 0 else (shares_raw / vault_dec_scale)
         total_vault_usdc = total_vault_assets_raw / 1e6
 
-        return {
+        result = {
             "account": target_account,
             "vault_contract": self.vault_address,
             "underlying_asset": self.usdc_asset,
@@ -670,6 +691,9 @@ class USYCTreasuryService:
             "current_apy_percent": round(self.target_apy * 100, 2),
             "explorer_url": f"{ARC_EXPLORER_URL}/address/{self.vault_address}",
         }
+        with _position_cache_lock:
+            _position_cache[cache_key] = (time.time(), result)
+        return dict(result)
 
     def prepare_deposit_intent(self, amount_usdc: float, depositor: str) -> Dict[str, Any]:
         """Prepare autonomous EIP-712 / EVM deposit payload to sweep idle USDC into USYC."""
@@ -854,6 +878,7 @@ class USYCTreasuryService:
             raise RuntimeError(f"Deposit transaction reverted on Arc Testnet: {tx_hash_hex}")
 
         self._last_rebalance_at = time.time()
+        _invalidate_position_cache()
 
         return {
             "success": True,
@@ -923,6 +948,7 @@ class USYCTreasuryService:
             raise RuntimeError(f"Redemption transaction reverted on Arc Testnet: {tx_hash_hex}")
 
         self._last_rebalance_at = time.time()
+        _invalidate_position_cache()
 
         return {
             "success": True,
