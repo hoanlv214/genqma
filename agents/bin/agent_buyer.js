@@ -1075,7 +1075,7 @@ async function runTreasuryMode() {
   const sweepAmt = parseFloat(argValue("sweep", "0"));
   const redeemAmt = parseFloat(argValue("redeem", "0"));
 
-  console.log("\n🏛️  QMA VESTIARION — AUTONOMOUS AI CFO ON ARC");
+  console.log("\n🏛️  QMA TREASURY ENGINE — AUTONOMOUS AI CFO ON ARC");
   console.log(`===============================================`);
   console.log(`Target Wallet: ${targetWallet}`);
   console.log(`Execution    : ${isLive ? "🟢 LIVE ON-CHAIN BROADCAST" : "🟡 DRY-RUN SIMULATION (Pass --live to execute)"}`);

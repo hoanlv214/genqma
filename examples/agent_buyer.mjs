@@ -569,18 +569,11 @@ async function executeInvoicePayment(invoice, account) {
       walletAddress: account.address,
       signLeg: async (resourceUrl) => signX402Payment(resourceUrl, account),
     });
-  const normalizedInvoice = invoiceSplitLegs(invoice).length
-    ? invoice
-    : {
-      ...invoice,
-      split_legs: [{
-        leg_id: "single",
-        resource: invoice.arc_gateway_url,
-        pay_to: "",
-        amount_raw: "",
-        amount_usdc: Number(invoice.amount),
-      }],
-    };
+  // Single-leg (seller_wallet) invoices are executed as-is: the executor
+  // synthesizes its own non-split "single" leg from arc_gateway_url, and
+  // wrapping it as a split leg trips pay_to validation with an empty
+  // recipient (the x402 402-challenge carries the real payTo).
+  const normalizedInvoice = invoice;
   const result = await executor.execute({ invoice: normalizedInvoice });
   result.settlements.forEach((settlement) => {
     console.log(`Settled ${settlement.leg_id}: ${short(settlement.settlement_id)} (${settlement.gateway_status || "received"})`);
@@ -736,7 +729,44 @@ async function main() {
   console.log(`Agent wallet (authorization): ${account.address}`);
   console.log(`Settlement payer (backing EOA): ${verifyData.payer_address || "pending"}`);
 
-  const report = await fetchReport(invoice, verifyData, pick);
+  let currentVerify = verifyData;
+  if (!currentVerify.access_token && currentVerify.status === "verification_pending") {
+    console.log("GenLayer SLA consensus is verifying. Polling for the final verdict...");
+    const startTime = Date.now();
+    const maxWaitMs = 300000;
+    while (!currentVerify.access_token && Date.now() - startTime < maxWaitMs) {
+      await sleep(5000);
+      try {
+        const statusRes = await fetch(apiUrl(`/api/v1/payment/invoices/${encodeURIComponent(invoice.invoice_id)}/status?invoice_secret=${encodeURIComponent(invoice.invoice_secret)}&refresh=true`));
+        currentVerify = await statusRes.json().catch(() => ({}));
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        if (currentVerify.status === "paid" && currentVerify.access_token) {
+          console.log(`\nGenLayer verified in ${elapsed}s. Verdict=${currentVerify.genlayer?.verdict || "VALID"}`);
+          break;
+        }
+        if (currentVerify.status === "verification_rejected" || currentVerify.genlayer?.verdict === "INVALID") {
+          break;
+        }
+        process.stdout.write(`...waiting for GenLayer consensus (${elapsed}s)\r`);
+      } catch {
+        // Keep polling until the bounded window closes.
+      }
+    }
+  }
+
+  if (currentVerify.status === "verification_rejected" || currentVerify.genlayer?.verdict === "INVALID") {
+    console.error(`\nGenLayer SLA violated: ${currentVerify.genlayer?.reasoning || "data divergence from live exchange feed"}. Report access blocked.`);
+    return;
+  }
+  if (!currentVerify.access_token) {
+    if (currentVerify.status === "verification_pending") {
+      console.log("\nPayment settled on Arc. GenLayer consensus is still confirming; the report unlocks automatically once the verdict lands.");
+      return;
+    }
+    throw new Error(`Verification did not return an access token: ${JSON.stringify(currentVerify)}`);
+  }
+
+  const report = await fetchReport(invoice, currentVerify, pick);
   console.log("\nPaid JSON report:");
   console.log(JSON.stringify({
     symbol: report.query_symbol || report.symbol || pick.symbol,

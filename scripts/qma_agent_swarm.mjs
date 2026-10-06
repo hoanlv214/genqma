@@ -51,6 +51,7 @@ const CONFIG = {
   symbols: envList("SYMBOLS", argValue("symbols", "auto")),
   tiers: envList("TIERS", argValue("tiers", "preview,full")),
   recommendationLimit: Math.min(25, Math.max(1, Number(process.env.RECOMMENDATION_LIMIT || argValue("limit", "25")))),
+  maxPriceUsdc: process.env.MAX_PRICE_USDC || argValue("max-price", "0.006"),
   walletsFile: path.resolve(ROOT, process.env.WALLETS_FILE || argValue("wallets-file", ".qma-test-wallets.json")),
   dryRun: envBool("DRY_RUN", !hasFlag("live")),
   once: envBool("RUN_ONCE", hasFlag("once")),
@@ -122,6 +123,7 @@ function agentArgs({ wallet, symbol, tier, providerId }) {
     "--agent-label", wallet.label,
     "--run-source", CONFIG.runSource,
     "--limit", String(CONFIG.recommendationLimit),
+    "--max-price", String(CONFIG.maxPriceUsdc),
   ];
   if (symbol && String(symbol).toLowerCase() !== "auto") args.push("--symbol", symbol);
   if (!CONFIG.dryRun) args.push("--live");

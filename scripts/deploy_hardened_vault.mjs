@@ -26,7 +26,7 @@ const ARC_TESTNET_CHAIN = {
 };
 
 const account = privateKeyToAccount(pk);
-console.log('🏛️ QMA VESTIARION — HARDENED USYC VAULT DEPLOYMENT & ON-CHAIN TEST');
+console.log('🏛️ QMA TREASURY ENGINE — HARDENED USYC VAULT DEPLOYMENT & ON-CHAIN TEST');
 console.log('Deployer / Agent Account:', account.address);
 
 const publicClient = createPublicClient({
