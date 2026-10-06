@@ -38,6 +38,9 @@
     --color-brand: var(--accent);
     --color-qmaGreen: var(--green);
     --color-qmaAmber: var(--amber);
+    /* type scale aliases (values live in tokens.css :root) */
+    --text-2xs: var(--text-2xs);
+    --text-xs: var(--text-xs);
     --color-qmaRed: var(--red);
     --color-qmaPurple: var(--accent-text);
     --color-qmaGreen-dim: var(--green-dim);

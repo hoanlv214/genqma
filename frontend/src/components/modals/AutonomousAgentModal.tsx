@@ -324,28 +324,28 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
 
                     <div className="agent-runner-complete-stats grid grid-cols-2 gap-2">
                       <div className="flex flex-col">
-                        <span className="text-[11px] text-t-tertiary uppercase">Target Budget</span>
+                        <span className="text-xs text-t-tertiary uppercase">Target Budget</span>
                         <strong className="text-t1">${Number(data.budget_usdc || 0).toFixed(4)} USDC</strong>
                       </div>
 
                       <div className="flex flex-col">
-                        <span className="text-[11px] text-t-tertiary uppercase">Actually Spent</span>
+                        <span className="text-xs text-t-tertiary uppercase">Actually Spent</span>
                         <strong className="text-brand-cyan">${currentSpent.toFixed(4)} USDC</strong>
                       </div>
 
                       <div className="flex flex-col">
-                        <span className="text-[11px] text-t-tertiary uppercase">Purchased Reports</span>
+                        <span className="text-xs text-t-tertiary uppercase">Purchased Reports</span>
                         <strong className="text-t1">{data.runtime_state.purchaseCount || 0}</strong>
                       </div>
 
                       <div className="flex flex-col">
-                        <span className="text-[11px] text-t-tertiary uppercase">Duration</span>
+                        <span className="text-xs text-t-tertiary uppercase">Duration</span>
                         <strong className="text-t1">{durationStr}</strong>
                       </div>
 
                       {data.runtime_state.candidatesEvaluated > 0 && (
                         <div className="col-span-2 flex flex-col mt-1 pt-2 border-t border-bdr">
-                          <span className="text-[11px] text-t-tertiary uppercase">Evaluated Candidates</span>
+                          <span className="text-xs text-t-tertiary uppercase">Evaluated Candidates</span>
                           <span className="text-xs text-t-secondary">Analyzed {data.runtime_state.candidatesEvaluated} reports before making decisions.</span>
                         </div>
                       )}
@@ -396,12 +396,12 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 defaultValue={defaultAmount}
                 className="w-full bg-black/30 border border-bdr rounded px-2 py-1.5 text-t1 text-xs outline-none focus:border-brand-cyan/50"
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-t-tertiary pointer-events-none">USDC</span>
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-2xs text-t-tertiary pointer-events-none">USDC</span>
             </div>
 
             <button
               type="button"
-              className="connect-btn-primary flex-1 py-2 px-3 text-[11px] font-semibold flex items-center justify-center gap-1.5 border-none rounded cursor-pointer bg-brand-cyan text-on-accent hover:opacity-90 transition-opacity"
+              className="connect-btn-primary flex-1 py-2 px-3 text-xs font-semibold flex items-center justify-center gap-1.5 border-none rounded cursor-pointer bg-brand-cyan text-on-accent hover:opacity-90 transition-opacity"
               onClick={() => {
                 const inputEl = document.getElementById(`fund-input-${targetAddress}`) as HTMLInputElement;
                 const amt = inputEl ? parseFloat(inputEl.value) : parseFloat(defaultAmount);
@@ -423,7 +423,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               onClick={handleManualRefreshBalance}
               disabled={refreshCooldown || isRefreshingBal}
               className={cn(
-                "flex-1 py-2 px-3 text-[11px] font-semibold flex items-center justify-center gap-1.5 border border-bdr rounded bg-surface-2 text-t1 transition-opacity",
+                "flex-1 py-2 px-3 text-xs font-semibold flex items-center justify-center gap-1.5 border border-bdr rounded bg-surface-2 text-t1 transition-opacity",
                 (refreshCooldown || isRefreshingBal) ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-surface-3"
               )}
             >
@@ -440,7 +440,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                   qrEl.classList.toggle("flex");
                 }
               }}
-              className="py-2 px-3 text-[11px] font-semibold border border-bdr rounded cursor-pointer bg-surface-2 text-t-secondary flex items-center gap-1 hover:bg-surface-3 transition-colors"
+              className="py-2 px-3 text-xs font-semibold border border-bdr rounded cursor-pointer bg-surface-2 text-t-secondary flex items-center gap-1 hover:bg-surface-3 transition-colors"
             >
               <QrCode size={12} />
               Show QR
@@ -458,9 +458,9 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               height={120}
               className="w-[120px] h-[120px] rounded bg-paper p-1.5 mb-2.5"
             />
-            <span className="text-[11px] text-t1 font-semibold mb-0.5">{ARC_CHAIN.name} (Chain: {ARC_CHAIN.chainId})</span>
-            <span className="text-[10px] text-t-tertiary mb-2">Scan with Mobile Wallet</span>
-            <span className="font-mono text-[10px] text-brand-cyan break-all text-center">{targetAddress}</span>
+            <span className="text-xs text-t1 font-semibold mb-0.5">{ARC_CHAIN.name} (Chain: {ARC_CHAIN.chainId})</span>
+            <span className="text-2xs text-t-tertiary mb-2">Scan with Mobile Wallet</span>
+            <span className="font-mono text-2xs text-brand-cyan break-all text-center">{targetAddress}</span>
           </div>
         </div>
       </div>
@@ -699,13 +699,13 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
           content: (
             <div>
               <p className="m-0 mb-2.5">
-                Agent Wallet created at <span className="mono text-brand-cyan text-[11px] font-bold">{createdWalletAddress || "..."}</span>.
+                Agent Wallet created at <span className="mono text-brand-cyan text-xs font-bold">{createdWalletAddress || "..."}</span>.
                 Please fund at least <strong>${parsedBudget.toFixed(2)} USDC</strong> to this address to start.
               </p>
               <div className="flex gap-2 flex-wrap">
                 <button
                   type="button"
-                  className="connect-btn-primary px-3 py-2 text-[11px] font-semibold flex items-center gap-1.5 border-none rounded cursor-pointer bg-brand-cyan text-on-accent hover:opacity-90 transition-opacity"
+                  className="connect-btn-primary px-3 py-2 text-xs font-semibold flex items-center gap-1.5 border-none rounded cursor-pointer bg-brand-cyan text-on-accent hover:opacity-90 transition-opacity"
                   onClick={() => handleMetaMaskTransfer(createdWalletAddress, parsedBudget)}
                 >
                   <Plus size={12} />
@@ -716,7 +716,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                   onClick={handleManualRefreshBalance}
                   disabled={refreshCooldown || isRefreshingBal}
                   className={cn(
-                    "px-3 py-2 text-[11px] font-semibold flex items-center gap-1.5 border border-bdr rounded bg-surface-2 text-t1 transition-opacity",
+                    "px-3 py-2 text-xs font-semibold flex items-center gap-1.5 border border-bdr rounded bg-surface-2 text-t1 transition-opacity",
                     (refreshCooldown || isRefreshingBal) ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-surface-3"
                   )}
                 >
@@ -870,23 +870,23 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                     <i className="ti ti-alert-triangle text-base" />
                     <span>Circuit Breaker Active · Auto-Paused</span>
                   </div>
-                  <span className="text-[10px] text-t-tertiary font-mono">Zero-Spend Enforced</span>
+                  <span className="text-2xs text-t-tertiary font-mono">Zero-Spend Enforced</span>
                 </div>
-                <p className="m-0 text-[11px] text-t-secondary leading-snug">
+                <p className="m-0 text-xs text-t-secondary leading-snug">
                   Session has been halted by the Autonomous Risk Governance Engine. Any payment requests on Arc are rejected fast with HTTP 403.
                 </p>
                 <div className="flex gap-2 mt-0.5">
                   <button
                     type="button"
                     onClick={() => handleControl("resume", "Manual resume from Circuit Breaker banner")}
-                    className="px-2.5 py-1 text-[11px] font-semibold rounded bg-amber-500 text-on-accent border-none cursor-pointer flex items-center gap-1 hover:bg-amber-400 transition-colors"
+                    className="px-2.5 py-1 text-xs font-semibold rounded bg-amber-500 text-on-accent border-none cursor-pointer flex items-center gap-1 hover:bg-amber-400 transition-colors"
                   >
                     <i className="ti ti-player-play" /> Resume Execution
                   </button>
                   <button
                     type="button"
                     onClick={() => handleControl("kill", "Emergency Kill from Circuit Breaker banner")}
-                    className="px-2.5 py-1 text-[11px] font-semibold rounded bg-red-500/15 text-red-400 border border-red-500/30 cursor-pointer flex items-center gap-1 hover:bg-red-500/25 transition-colors"
+                    className="px-2.5 py-1 text-xs font-semibold rounded bg-red-500/15 text-red-400 border border-red-500/30 cursor-pointer flex items-center gap-1 hover:bg-red-500/25 transition-colors"
                   >
                     <i className="ti ti-power" /> Emergency Terminate
                   </button>
@@ -956,7 +956,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
               <div className="agent-dp-block-label flex justify-between items-center">
                 <span>Spending Policy & Limits</span>
                 <span className={cn(
-                  "text-[10px] normal-case font-semibold px-1.5 py-0.5 rounded",
+                  "text-2xs normal-case font-semibold px-1.5 py-0.5 rounded",
                   spendingPolicy?.source === "circle_cli"
                     ? "text-brand-cyan bg-[rgba(0,255,178,0.12)]"
                     : "text-t-tertiary bg-surface-2"
@@ -983,7 +983,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                     onClick={handleCopyCircleCliCommand}
                     disabled={!agentWalletAddress}
                     className={cn(
-                      "w-full px-2 py-1.5 text-[11px] font-medium rounded border border-bdr bg-surface-2 text-t-secondary flex items-center justify-center gap-1.5 transition-colors",
+                      "w-full px-2 py-1.5 text-xs font-medium rounded border border-bdr bg-surface-2 text-t-secondary flex items-center justify-center gap-1.5 transition-colors",
                       !agentWalletAddress ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-surface-3"
                     )}
                     title="Copy verbatim Circle CLI command to inspect or configure wallet limits with OTP"
@@ -999,7 +999,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
             <div className="agent-dp-block">
               <div className="agent-dp-block-label flex justify-between items-center">
                 <span>Risk Governance & Invariants</span>
-                <span className="text-[10px] text-[var(--green)] normal-case font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                <span className="text-2xs text-[var(--green)] normal-case font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded">
                   Circuit Breaker Active
                 </span>
               </div>
@@ -1032,7 +1032,7 @@ export function AutonomousAgentModal({ open, onClose, wallet }: AutonomousAgentM
                 </div>
                 <div className="agent-funding-row">
                   <span className="agent-funding-label">Athenian Euthyna</span>
-                  <span className="agent-funding-val text-brand-cyan font-mono text-[10px]">SHA-256 Audit Trail</span>
+                  <span className="agent-funding-val text-brand-cyan font-mono text-2xs">SHA-256 Audit Trail</span>
                 </div>
               </div>
             </div>

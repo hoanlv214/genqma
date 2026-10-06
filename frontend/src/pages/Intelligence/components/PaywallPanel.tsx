@@ -1,5 +1,6 @@
 import { shortAddress } from "@/services/wallet";
 import { Loader } from "@/components/Loader";
+import { X } from "lucide-react";
 import { ARC_CHAIN } from "@/config/network";
 import { GENLAYER_CONTRACT_ADDRESS, GENLAYER_EXPLORER_URL } from "@/services/genlayer";
 import { DecisionReceipt } from "./DecisionReceipt";
@@ -118,8 +119,8 @@ export function PaywallPanel(props: PaywallPanelProps) {
       {paywallOpen && currentInvoice && (
         <div className="paywall-overlay" id="paywall-element">
           <div className="paywall-card">
-            <button className="paywall-close" type="button" onClick={() => setPaywallOpen(false)}>
-              x
+            <button className="paywall-close" type="button" aria-label="Close paywall" onClick={() => setPaywallOpen(false)}>
+              <X size={14} strokeWidth={2} />
             </button>
             <div className={`paywall-layout ${isPaid ? "paywall-layout--paid" : ""}`}>
               <div className="paywall-main">
@@ -173,7 +174,13 @@ export function PaywallPanel(props: PaywallPanelProps) {
                       const step1 = isPaid ? { cls: "is-completed", label: "Connected" } : { cls: paymentClass(paymentStepStatus.wallet?.status), label: paymentStepStatus.wallet?.label || "Pending" };
                       const step2 = isPaid ? { cls: "is-completed", label: "Ready" } : { cls: paymentClass(paymentStepStatus.gateway?.status), label: paymentStepStatus.gateway?.label || "Pending" };
                       const step3 = isPaid ? { cls: "is-completed", label: "Settled" } : { cls: paymentClass(paymentStepStatus.settlement?.status), label: paymentStepStatus.settlement?.label || "Pending" };
-                      const step4 = isPaid ? { cls: "is-completed", label: "SLA Verified" } : { cls: paymentClass(paymentStepStatus.genlayer?.status || "waiting"), label: paymentStepStatus.genlayer?.label || "Waiting" };
+                      const slaState = currentInvoice?.sla_state || paymentDetails?.sla_state;
+                      const preverified = slaState === "preverified";
+                      const step4 = isPaid
+                        ? { cls: "is-completed", label: "SLA Verified" }
+                        : preverified && paymentStepStatus.genlayer?.status !== "failed"
+                          ? { cls: paymentClass("completed"), label: "Pre-Verified" }
+                          : { cls: paymentClass(paymentStepStatus.genlayer?.status || "waiting"), label: paymentStepStatus.genlayer?.label || "Waiting" };
                       const step5 = isPaid ? { cls: "is-completed", label: "Unlocked" } : { cls: paymentClass(paymentStepStatus.report?.status), label: paymentStepStatus.report?.label || "Pending" };
 
                       return (
@@ -234,7 +241,7 @@ export function PaywallPanel(props: PaywallPanelProps) {
                             <div className="pf-step-icon" />
                             <div className="pf-body">
                               <div className="pf-step-top">
-                                <div className="pf-label">4. GenLayer Intelligent SLA Arbiter</div>
+                                <div className="pf-label">{preverified && !isPaid ? "4. GenLayer SLA (Pre-Verified)" : "4. GenLayer Intelligent SLA Arbiter"}</div>
                                 <span className={`pf-badge ${step4.cls}`}>
                                   {step4.label}
                                 </span>
@@ -242,11 +249,13 @@ export function PaywallPanel(props: PaywallPanelProps) {
                               <div className="pf-val">
                                 {isPaid || paymentStepStatus.genlayer?.status === "completed"
                                   ? `Finalized GenLayer verdict: VALID${(paymentDetails.genlayerTxHash || genlayerReceipt?.transaction_hash) ? ` (Tx: ${shortAddress(paymentDetails.genlayerTxHash || genlayerReceipt?.transaction_hash)})` : ""}. The bound report hash is unlocked.`
-                                  : paymentStepStatus.genlayer?.status === "active"
-                                    ? "Fetching authoritative MEXC evidence and awaiting GenLayer validator consensus..."
-                                    : paymentStepStatus.genlayer?.status === "failed"
-                                      ? "SLA rejected. Report access remains blocked."
-                                      : "The configured contract verifies the report hash before access is issued."}
+                                  : preverified
+                                    ? "Epoch attestation is already VALID on-chain. Access opens immediately after settlement."
+                                    : paymentStepStatus.genlayer?.status === "active"
+                                      ? "Fetching authoritative MEXC evidence and awaiting GenLayer validator consensus. The first verification of a market window takes a few minutes; later purchases in the same window unlock instantly."
+                                      : paymentStepStatus.genlayer?.status === "failed"
+                                        ? "SLA rejected. Report access remains blocked."
+                                        : "The configured contract verifies the report hash before access is issued."}
                               </div>
                             </div>
                           </div>
@@ -275,7 +284,7 @@ export function PaywallPanel(props: PaywallPanelProps) {
                   <div className="paywall-verified-summary">
                     <div className="paywall-verified-chip">
                       <span className="verified-dot" />
-                      <span>GenLayer SLA Validated ({genlayerReceipt?.confidence || 98}% Consensus) · On-chain Proof Generated</span>
+                      <span>GenLayer SLA Validated ({genlayerReceipt?.confidence != null ? `${genlayerReceipt.confidence}% Consensus` : "On-chain Consensus"}) · On-chain Proof Generated</span>
                     </div>
                   </div>
                 )}

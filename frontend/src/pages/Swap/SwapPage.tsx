@@ -695,7 +695,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                           <span>Destination Network</span>
                           <span className="swap-balance-row">
                             Balance:{" "}
-                            <span className="tabular-nums font-mono text-[11px] text-[var(--t2)]">
+                            <span className="tabular-nums font-mono text-xs text-[var(--t2)]">
                               {balancesLoading ? "..." : `${destBalance} USDC`}
                             </span>
                           </span>

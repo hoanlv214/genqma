@@ -5,7 +5,6 @@ import type { QmaRoute } from "../../app/routes";
 import { useAgentWalletStore } from "../../state/agentWalletStore";
 import { QmaLogo } from "../ui/QmaLogo";
 import { NotificationDropdown } from "./NotificationDropdown";
-import { NetworkBadge } from "./NetworkBadge";
 import "./GlobalHeader.css";
 
 export interface GlobalHeaderProps {
@@ -74,27 +73,27 @@ export function GlobalHeader({
   const navLinks = [
     {
       id: "operations",
-      label: "Operations",
+      label: "Ops",
       icon: Landmark,
     },
     {
       id: "app",
-      label: "Intelligence",
+      label: "Signals",
       icon: Layers,
     },
     {
       id: "swap",
-      label: "Swap & StableFX",
+      label: "Swap",
       icon: ArrowLeftRight,
     },
     {
       id: "traction",
-      label: "Traction & Ledger",
+      label: "Proof",
       icon: TrendingUp,
     },
     {
       id: "marketplace",
-      label: "Creator Marketplace",
+      label: "Market",
       icon: Store,
     }
   ];
@@ -133,7 +132,6 @@ export function GlobalHeader({
       <div className="global-nav-right">
         {rightControls && <div className="global-nav-context">{rightControls}</div>}
 
-        <NetworkBadge />
 
         <NotificationDropdown
           walletAddress={walletAddress}
@@ -151,16 +149,12 @@ export function GlobalHeader({
             <button
               type="button"
               className={`wallet-dropdown-btn ${dropdownOpen ? "active" : ""}`}
+              aria-label="Wallet menu"
+              title={agentWalletAddress ? `Agent wallet: ${agentWalletBalance.toFixed(2)} USDC` : "Wallet menu"}
               onClick={() => setDropdownOpen(!dropdownOpen)}
             >
-              <div className="wallet-address-info">
-                <span className="wallet-short-address">{shortAddress(walletAddress)}</span>
-                {agentWalletAddress && (
-                  <span className="text-[10px] text-[var(--accent)] opacity-80 block text-left mt-0.5">
-                    Agent: ${agentWalletBalance.toFixed(2)}
-                  </span>
-                )}
-              </div>
+              <Wallet size={14} strokeWidth={2} className="wallet-btn-icon" />
+              <span className="wallet-short-address">{shortAddress(walletAddress)}</span>
               {dropdownOpen ? (
                 <ChevronUp size={14} className="chevron up" />
               ) : (
@@ -179,7 +173,7 @@ export function GlobalHeader({
                     <div className="dropdown-identity-text">
                       <div className="dropdown-address-row">
                         <span className="mono-address">{shortAddress(walletAddress)}</span>
-                        <button className="copy-btn" onClick={handleCopy} title="Copy User Address">
+                        <button className="copy-btn" onClick={handleCopy} aria-label="Copy to clipboard" title="Copy User Address">
                           {copySuccess ? (
                             <Check size={12} strokeWidth={2} />
                           ) : (
@@ -209,7 +203,7 @@ export function GlobalHeader({
 
                     <div className="agent-wallet-address-row">
                       <span className="agent-wallet-address">{shortAddress(agentWalletAddress)}</span>
-                      <button className="copy-btn" onClick={handleAgentCopy} title="Copy Agent Address">
+                      <button className="copy-btn" onClick={handleAgentCopy} aria-label="Copy to clipboard" title="Copy Agent Address">
                         {agentCopySuccess ? (
                           <Check size={11} strokeWidth={2} />
                         ) : (
@@ -223,7 +217,7 @@ export function GlobalHeader({
                         <button
                           type="button"
                           onClick={() => { onOpenDepositAgent(); setDropdownOpen(false); }}
-                          className="flex-1 py-1 px-2 rounded-md bg-[rgb(var(--accent-rgb) / 0.18)] border border-[rgb(var(--accent-rgb) / 0.35)] text-[rgba(168,156,255,1)] text-[11px] font-semibold text-center hover:bg-[rgb(var(--accent-rgb) / 0.3)] transition-colors cursor-pointer"
+                          className="flex-1 py-1 px-2 rounded-md bg-[rgb(var(--accent-rgb) / 0.18)] border border-[rgb(var(--accent-rgb) / 0.35)] text-[var(--accent)] text-xs font-semibold text-center hover:bg-[rgb(var(--accent-rgb) / 0.3)] transition-colors cursor-pointer"
                         >
                           + Fund
                         </button>
@@ -232,7 +226,7 @@ export function GlobalHeader({
                         <button
                           type="button"
                           onClick={() => { onOpenWithdrawAgent(); setDropdownOpen(false); }}
-                          className="flex-1 py-1 px-2 rounded-md bg-surface-2 border border-bdr text-t2 text-[11px] font-semibold text-center hover:bg-surface-3 hover:text-t1 transition-colors cursor-pointer"
+                          className="flex-1 py-1 px-2 rounded-md bg-surface-2 border border-bdr text-t2 text-xs font-semibold text-center hover:bg-surface-3 hover:text-t1 transition-colors cursor-pointer"
                         >
                           Withdraw
                         </button>
@@ -251,7 +245,7 @@ export function GlobalHeader({
                       <button
                         type="button"
                         onClick={() => { onOpenDepositAgent(); setDropdownOpen(false); }}
-                        className="w-full py-1.5 px-2.5 rounded-md bg-[rgb(var(--accent-rgb) / 0.18)] border border-[rgb(var(--accent-rgb) / 0.35)] text-[rgba(168,156,255,1)] text-[11px] font-semibold text-center hover:bg-[rgb(var(--accent-rgb) / 0.3)] transition-colors cursor-pointer mt-1"
+                        className="w-full py-1.5 px-2.5 rounded-md bg-[rgb(var(--accent-rgb) / 0.18)] border border-[rgb(var(--accent-rgb) / 0.35)] text-[var(--accent)] text-xs font-semibold text-center hover:bg-[rgb(var(--accent-rgb) / 0.3)] transition-colors cursor-pointer mt-1"
                       >
                         + Create &amp; Fund Agent
                       </button>

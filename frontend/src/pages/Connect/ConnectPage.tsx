@@ -9,7 +9,6 @@ import {
   requestWalletProfileSession,
 } from "@/services/walletProfileSession";
 import { getWalletProvider, shortAddress } from "@/services/wallet";
-import { NetworkBadge } from "@/components/layout/NetworkBadge";
 import "./ConnectPage.css";
 import type { ConnectProps } from "./Connect.types";
 
@@ -105,10 +104,10 @@ export function ConnectPage({ onNavigate }: ConnectProps) {
 
   useEffect(() => {
     if (!oauthParams) {
-      document.title = "Connect Claude & ChatGPT — QMA";
+      document.title = "Connect Claude & ChatGPT | QMA";
       return;
     }
-    document.title = "Authorize your AI agent — QMA";
+    document.title = "Authorize your AI agent | QMA";
   }, [oauthParams]);
 
   const connectWalletExplicitly = async () => {
@@ -208,7 +207,7 @@ export function ConnectPage({ onNavigate }: ConnectProps) {
       setCopiedUrl(true);
       setTimeout(() => setCopiedUrl(false), 3000);
     } catch {
-      setError("Copy failed — please manually copy: " + MCP_ENDPOINT);
+      setError("Copy failed. Please copy manually: " + MCP_ENDPOINT);
     }
   };
 
@@ -471,7 +470,6 @@ export function ConnectPage({ onNavigate }: ConnectProps) {
             <span className="connect-brand-tag">OAuth 2.1 Consent</span>
           </div>
         </div>
-        <NetworkBadge />
       </nav>
 
       <div className="connect-container">

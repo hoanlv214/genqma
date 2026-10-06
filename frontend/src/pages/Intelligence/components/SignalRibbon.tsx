@@ -1,3 +1,4 @@
+import { RefreshCw, ArrowLeftRight } from "lucide-react";
 import React, { useEffect, useState, useRef } from "react";
 import { getLiveAnomalies, getAgentRecommendations } from "@/services/providers";
 import { Loader } from "@/components/Loader";
@@ -153,7 +154,8 @@ export function SignalRibbon({
             onClick={handleManualRefresh}
             title="Refresh live orderbooks"
           >
-            ↻ Sync
+            <RefreshCw size={12} strokeWidth={2} />
+            Sync
           </button>
           {onViewModeChange && (
             <div className="header-view-toggle" role="group" aria-label="View mode">
@@ -181,7 +183,8 @@ export function SignalRibbon({
             onClick={onToggleLayout}
             title="Switch to docked vertical sidebar"
           >
-            Sidebar Dock ⇄
+            Sidebar Dock
+            <ArrowLeftRight size={12} strokeWidth={2} />
           </button>
         </div>
       </div>

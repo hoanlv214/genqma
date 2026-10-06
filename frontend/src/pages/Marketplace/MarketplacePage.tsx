@@ -527,7 +527,7 @@ export function MarketplacePage({
             ) : providersError ? (
               <div className="state-card col-span-full">
                 <h3>Failed to load providers</h3>
-                <p>{providersError}</p>
+                <p>Couldn't load the creator marketplace. Check the backend connection, then retry.</p>
                 <div className="state-actions">
                   <button type="button" className="btn btn-secondary btn-sm" onClick={loadProviders}>
                     Retry

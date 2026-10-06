@@ -60,7 +60,7 @@ export function InteractiveLiveSimulationWidget() {
   const [elapsedMs, setElapsedMs] = useState<number>(0);
   const [ledger, setLedger] = useState<LiveLedger | null>(null);
 
-  // Every step below renders values pulled live from the platform API —
+  // Every step below renders values pulled live from the platform API:
   // payment ledger, Euthyna hash-chained audit trail and the on-chain
   // treasury position. Nothing here is mocked: when a source has no data yet
   // the step says so instead of inventing numbers.
@@ -213,7 +213,7 @@ export function InteractiveLiveSimulationWidget() {
             "Liquid USDC": `${position.treasury_liquid_usdc}`,
             "Yield Shares": `${position.usyc_shares}`,
             "Target APY": `${position.current_apy_percent}%`,
-            "Sweep Status": position.usyc_shares > 0 ? "position active" : "no sweep yet — below policy threshold",
+            "Sweep Status": position.usyc_shares > 0 ? "position active" : "no sweep yet (below policy threshold)",
           }
         : {
             "Sweep Status": "awaiting treasury position",
@@ -244,7 +244,7 @@ export function InteractiveLiveSimulationWidget() {
           </div>
           <h2>Autonomous Agent Financial Loop</h2>
           <p className="text-sm text-t2 mt-1 max-w-3xl leading-relaxed">
-            Anomaly detection, sub-second Arc x402 settlement, GenLayer SLA verification, and automated treasury idle yield sweep — replayed from the platform's live ledger, not mock data.
+            Anomaly detection, sub-second Arc x402 settlement, GenLayer SLA verification, and automated treasury idle yield sweep ,  replayed from the platform's live ledger, not mock data.
           </p>
         </div>
 
@@ -321,7 +321,7 @@ export function InteractiveLiveSimulationWidget() {
                   href={step.link.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="tx-link mt-auto pt-1.5 text-[11px]"
+                  className="tx-link mt-auto pt-1.5 text-xs"
                 >
                   {step.link.label} &rarr;
                 </a>
@@ -335,7 +335,7 @@ export function InteractiveLiveSimulationWidget() {
       {isCompleted && (
         <div className="simulation-completion-banner">
           <div className="flex flex-col gap-0.5">
-            <span className="font-mono text-[11px] font-bold text-qmaGreen uppercase tracking-wider">
+            <span className="font-mono text-xs font-bold text-qmaGreen uppercase tracking-wider">
               Loop Replayed From Live Platform Data ({(elapsedMs / 1000).toFixed(1)}s)
             </span>
             <small className="text-xs text-t2">

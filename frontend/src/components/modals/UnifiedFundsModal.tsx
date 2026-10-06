@@ -349,10 +349,10 @@ export function UnifiedFundsModal({
 
   return (
     <FundArcWalletModal open={open} onClose={onClose}>
-      <div className="flex flex-col h-full w-full bg-[#090a12] text-t1 select-none">
+      <div className="flex flex-col h-full w-full bg-[var(--bg-base)] text-t1 select-none">
         {/* Top Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-[#0c0d18]/70 backdrop-blur-md shrink-0">
-          <div className="flex items-center gap-3.5">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-bdr bg-surface-1/70 backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center text-accent shadow-inner">
               {mainTab === "deposit" ? (
                 <ArrowDownLeft size={20} className="stroke-[2.5]" />
@@ -362,10 +362,10 @@ export function UnifiedFundsModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white tracking-tight leading-none m-0">
+                <h2 className="text-base font-bold text-t1 tracking-tight leading-none m-0">
                   {mainTab === "deposit" ? "Deposit USDC" : "Withdraw USDC"}
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/[0.06] text-t3 border border-white/[0.08]">
+                <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-white/[0.06] text-t3 border border-bdr">
                   Arc &amp; Gateway
                 </span>
               </div>
@@ -379,15 +379,15 @@ export function UnifiedFundsModal({
 
           <div className="flex items-center gap-3">
             {/* Main Tabs Pill Switcher */}
-            <div className="inline-flex p-1 bg-[#131522] border border-white/[0.08] rounded-xl">
+            <div className="inline-flex p-1 bg-surface-3 border border-bdr rounded-xl">
               <button
                 type="button"
                 onClick={() => setMainTab("deposit")}
                 className={cn(
-                  "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer",
                   mainTab === "deposit"
                     ? "bg-accent text-on-accent shadow-md shadow-accent/25"
-                    : "text-t3 hover:text-white hover:bg-white/[0.04]"
+                    : "text-t3 hover:text-t1 hover:bg-surface-3"
                 )}
               >
                 <ArrowDownLeft size={14} className="stroke-[2.5]" />
@@ -397,10 +397,10 @@ export function UnifiedFundsModal({
                 type="button"
                 onClick={() => setMainTab("withdraw")}
                 className={cn(
-                  "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer",
                   mainTab === "withdraw"
                     ? "bg-accent text-on-accent shadow-md shadow-accent/25"
-                    : "text-t3 hover:text-white hover:bg-white/[0.04]"
+                    : "text-t3 hover:text-t1 hover:bg-surface-3"
                 )}
               >
                 <ArrowUpRight size={14} className="stroke-[2.5]" />
@@ -412,7 +412,7 @@ export function UnifiedFundsModal({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-t3 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-full bg-surface-3 hover:bg-white/[0.1] border border-bdr text-t3 hover:text-t1 flex items-center justify-center transition-colors cursor-pointer"
               title="Close Modal"
             >
               <X size={16} />
@@ -423,58 +423,58 @@ export function UnifiedFundsModal({
         {/* Modal Body: Left Sidebar + Right Main Workspace */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Left Sidebar */}
-          <div className="w-[280px] bg-[#0b0c16] border-r border-white/[0.06] p-6 flex flex-col gap-5 shrink-0 relative overflow-hidden">
+          <div className="w-[280px] bg-surface-2 border-r border-bdr p-6 flex flex-col gap-5 shrink-0 relative overflow-hidden">
             {/* Account Card Info */}
             <div className="flex flex-col gap-2">
-              <span className="text-[10px] font-bold text-t3 uppercase tracking-wider">Active Account</span>
+              <span className="text-2xs font-bold text-t3 uppercase tracking-wider">Active Account</span>
               {activeSubTab === "gateway" ? (
-                <div className="p-3.5 rounded-xl bg-blue-500/[0.08] border border-blue-500/20 flex flex-col gap-2">
+                <div className="p-3 rounded-xl bg-blue-500/[0.08] border border-blue-500/20 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center">
                         <CreditCard size={15} />
                       </div>
-                      <span className="text-xs font-bold text-white">Gateway Prepaid</span>
+                      <span className="text-xs font-bold text-t1">Gateway Prepaid</span>
                     </div>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 uppercase">
+                    <span className="text-2xs font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 uppercase">
                       Circle
                     </span>
                   </div>
-                  <span className="text-[11px] text-t3 leading-relaxed">
+                  <span className="text-xs text-t3 leading-relaxed">
                     Zero-gas nanopayments pre-funded on Circle Gateway smart contract.
                   </span>
                 </div>
               ) : activeSubTab === "agent" ? (
-                <div className="p-3.5 rounded-xl bg-accent/[0.08] border border-accent/20 flex flex-col gap-2">
+                <div className="p-3 rounded-xl bg-accent/[0.08] border border-accent/20 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-lg bg-accent/20 text-accent flex items-center justify-center">
                         <Wallet size={15} />
                       </div>
-                      <span className="text-xs font-bold text-white">Agent Wallet</span>
+                      <span className="text-xs font-bold text-t1">Agent Wallet</span>
                     </div>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent uppercase">
+                    <span className="text-2xs font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent uppercase">
                       SCA
                     </span>
                   </div>
-                  <span className="text-[11px] text-t3 leading-relaxed">
+                  <span className="text-xs text-t3 leading-relaxed">
                     Smart Contract Account used by your autonomous agent to purchase data.
                   </span>
                 </div>
               ) : (
-                <div className="p-3.5 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20 flex flex-col gap-2">
+                <div className="p-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                         <Building2 size={15} />
                       </div>
-                      <span className="text-xs font-bold text-white">Creator Earnings</span>
+                      <span className="text-xs font-bold text-t1">Creator Earnings</span>
                     </div>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 uppercase">
+                    <span className="text-2xs font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 uppercase">
                       Revenue
                     </span>
                   </div>
-                  <span className="text-[11px] text-t3 leading-relaxed">
+                  <span className="text-xs text-t3 leading-relaxed">
                     Accrued intelligence services revenue from payments ledger &amp; Gateway splits.
                   </span>
                 </div>
@@ -485,20 +485,20 @@ export function UnifiedFundsModal({
 
             {/* Current Balance Display */}
             <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-bold text-t3 uppercase tracking-wider">
+              <span className="text-2xs font-bold text-t3 uppercase tracking-wider">
                 {mainTab === "withdraw" && activeSubTab === "creator" ? "Total Claimable" : "Current Balance"}
               </span>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-white font-mono tracking-tight">
+                <span className="text-3xl font-extrabold text-t1 font-mono tracking-tight">
                   {activeSubTab === "gateway"
                     ? safeFormatUsdc(fundGatewayBalance)
                     : activeSubTab === "agent"
                     ? `$${agentWalletBalance.toFixed(2)}`
                     : `$${(providerEarningsTotals.totalClaimable + providerEarningsTotals.gatewayAvailable).toFixed(2)}`}
                 </span>
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#131522] border border-white/[0.08]">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-3 border border-bdr">
                   <img src="/usdc-logo.svg" width={14} height={14} alt="USDC" className="w-3.5 h-3.5" />
-                  <span className="text-[11px] font-bold text-t2 font-mono">USDC</span>
+                  <span className="text-xs font-bold text-t2 font-mono">USDC</span>
                 </div>
               </div>
             </div>
@@ -506,7 +506,7 @@ export function UnifiedFundsModal({
             {/* Security Guarantee Box */}
             <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] flex gap-2.5 items-start mt-auto z-10">
               <ShieldCheck size={16} className="text-emerald-400 shrink-0 mt-0.5" />
-              <span className="text-[11px] text-t3 leading-snug">
+              <span className="text-xs text-t3 leading-snug">
                 {mainTab === "deposit"
                   ? "Gateway funds are self-custodied. You can refund them to your MetaMask wallet anytime."
                   : "Withdrawal requests are processed securely and returned directly to your connected wallet."}
@@ -523,7 +523,7 @@ export function UnifiedFundsModal({
           <div className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto">
             {/* Wrong Network Notice Banner */}
             {!isArcChain && (
-              <div className="flex items-center justify-between p-3.5 bg-amber-500/10 border border-amber-500/25 rounded-xl gap-3 shrink-0">
+              <div className="flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/25 rounded-xl gap-3 shrink-0">
                 <div className="flex items-center gap-2.5">
                   <TriangleAlert size={16} className="text-amber-400 shrink-0" />
                   <span className="text-xs text-amber-300">
@@ -535,7 +535,7 @@ export function UnifiedFundsModal({
                   type="button"
                   onClick={handleSwitchToArc}
                   disabled={switchingNetwork}
-                  className="px-3.5 py-1.5 bg-amber-500 text-on-accent font-bold text-xs rounded-lg border-none cursor-pointer whitespace-nowrap hover:bg-amber-400 transition-colors shadow-sm"
+                  className="px-3 py-1.5 bg-amber-500 text-on-accent font-bold text-xs rounded-lg border-none cursor-pointer whitespace-nowrap hover:bg-amber-400 transition-colors shadow-sm"
                 >
                   {switchingNetwork ? "Switching..." : `Switch to ${ARC_CHAIN.name}`}
                 </button>
@@ -547,7 +547,7 @@ export function UnifiedFundsModal({
               <>
                 {/* Cross-chain Unified Balance Auto-Detection Banner */}
                 {multiChainOverview?.detectedExternalBalance && multiChainOverview?.bestExternalChain && (
-                  <div className="flex flex-col gap-2.5 p-3.5 bg-gradient-to-br from-blue-500/15 to-indigo-500/20 border border-indigo-500/35 rounded-xl shrink-0">
+                  <div className="flex flex-col gap-2.5 p-3 bg-gradient-to-br from-blue-500/15 to-indigo-500/20 border border-indigo-500/35 rounded-xl shrink-0">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Zap size={16} className="text-blue-400 shrink-0" />
@@ -555,16 +555,16 @@ export function UnifiedFundsModal({
                           Unified Balance Cross-Chain Auto-Detect
                         </span>
                       </div>
-                      <span className="text-[10px] text-blue-300 bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
+                      <span className="text-2xs text-blue-300 bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
                         Circle Gateway
                       </span>
                     </div>
                     <p className="m-0 text-xs text-t2 leading-snug">
                       Arc balance is 0, but we detected{" "}
-                      <strong className="text-white font-mono">
+                      <strong className="text-t1 font-mono">
                         {multiChainOverview.bestExternalChain.balanceUsdc} USDC
                       </strong>{" "}
-                      on <strong className="text-white">{multiChainOverview.bestExternalChain.name}</strong>. You can
+                      on <strong className="text-t1">{multiChainOverview.bestExternalChain.name}</strong>. You can
                       deposit directly into your Unified Gateway Balance without bridging!
                     </p>
                     <button
@@ -584,7 +584,7 @@ export function UnifiedFundsModal({
 
                 {/* Step 1: Choose Deposit Target */}
                 <div className="flex flex-col gap-2.5">
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  <span className="text-xs font-bold text-t1 uppercase tracking-wider">
                     1. Choose Deposit Target
                   </span>
                   <div className={cn("grid gap-3", agentWalletAddress ? "grid-cols-2" : "grid-cols-1")}>
@@ -594,13 +594,13 @@ export function UnifiedFundsModal({
                         "p-4 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col gap-1 text-left",
                         depositTarget === "gateway"
                           ? "bg-accent/[0.08] border-accent shadow-md shadow-accent/15"
-                          : "bg-[#0f1019] border-white/[0.06] hover:bg-[#141624] hover:border-white/[0.12]"
+                          : "bg-surface-2 border-bdr hover:bg-surface-3 hover:border-bdr-md"
                       )}
                     >
                       <span
                         className={cn(
                           "text-sm font-bold",
-                          depositTarget === "gateway" ? "text-accent" : "text-white"
+                          depositTarget === "gateway" ? "text-accent" : "text-t1"
                         )}
                       >
                         Circle Gateway
@@ -615,13 +615,13 @@ export function UnifiedFundsModal({
                           "p-4 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col gap-1 text-left",
                           depositTarget === "agent"
                             ? "bg-accent/[0.08] border-accent shadow-md shadow-accent/15"
-                            : "bg-[#0f1019] border-white/[0.06] hover:bg-[#141624] hover:border-white/[0.12]"
+                            : "bg-surface-2 border-bdr hover:bg-surface-3 hover:border-bdr-md"
                         )}
                       >
                         <span
                           className={cn(
                             "text-sm font-bold",
-                            depositTarget === "agent" ? "text-accent" : "text-white"
+                            depositTarget === "agent" ? "text-accent" : "text-t1"
                           )}
                         >
                           Agent Wallet
@@ -646,14 +646,14 @@ export function UnifiedFundsModal({
                     className="flex flex-col gap-5 flex-1"
                   >
                     {/* Step 2: Gateway Balance & Progress Bar (FIXED CSS) */}
-                    <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                    <div className="flex flex-col gap-2 p-3 rounded-xl bg-white/[0.02] border border-bdr">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">
+                        <span className="text-xs font-bold text-t1 uppercase tracking-wider">
                           2. Gateway Balance
                         </span>
                         <span
                           className={cn(
-                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider border",
                             fundReadinessTone === "ready"
                               ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
                               : "bg-amber-500/15 text-amber-400 border-amber-500/30"
@@ -671,7 +671,7 @@ export function UnifiedFundsModal({
 
                       {/* Clean balance labels */}
                       <div className="flex items-baseline justify-between mt-1 text-xs">
-                        <strong className="text-base font-bold text-white font-mono">
+                        <strong className="text-base font-bold text-t1 font-mono">
                           {fundGatewayBalance || "0.000 USDC"}
                         </strong>
                         <span className="text-t3">
@@ -702,13 +702,13 @@ export function UnifiedFundsModal({
 
                     {/* Step 3: Source Network & Amount Input */}
                     <div className="flex flex-col gap-3">
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <span className="text-xs font-bold text-t1 uppercase tracking-wider">
                         3. Deposit from Connected Wallet
                       </span>
 
                       {/* Multi-Chain Source Selector */}
                       <div className="flex flex-col gap-1.5">
-                        <span className="text-[11px] font-bold text-t3 uppercase tracking-wider">
+                        <span className="text-xs font-bold text-t3 uppercase tracking-wider">
                           Source Network for Gateway Funding
                         </span>
                         <div className="flex gap-2 flex-wrap">
@@ -723,11 +723,11 @@ export function UnifiedFundsModal({
                                   "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all border",
                                   isSelected
                                     ? "bg-blue-500/25 border-blue-500 text-blue-300 shadow-sm"
-                                    : "bg-[#10121d] border-white/[0.08] text-t3 hover:text-white hover:bg-white/[0.04]"
+                                    : "bg-surface-2 border-bdr text-t3 hover:text-t1 hover:bg-surface-3"
                                 )}
                               >
                                 <span>{chain.name}</span>
-                                <span className="opacity-80 font-mono text-[11px]">
+                                <span className="opacity-80 font-mono text-xs">
                                   ({chain.balanceUsdc} USDC)
                                 </span>
                               </button>
@@ -741,7 +741,7 @@ export function UnifiedFundsModal({
                       </div>
 
                       {/* Wallet Identity Row */}
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-[#080910] border border-white/[0.06]">
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-surface-1 border border-bdr">
                         <div className="flex items-center gap-3">
                           <img
                             src={selectedSourceChainId === ARC_CHAIN.chainId ? "/arc-logo.svg" : "/usdc-logo.svg"}
@@ -749,8 +749,8 @@ export function UnifiedFundsModal({
                             className="w-6 h-6 rounded-full shrink-0"
                           />
                           <div>
-                            <div className="text-xs font-bold text-white font-mono">{fundWalletStatus}</div>
-                            <div className="text-[11px] text-t3">
+                            <div className="text-xs font-bold text-t1 font-mono">{fundWalletStatus}</div>
+                            <div className="text-xs text-t3">
                               {fundProviderStatus} ·{" "}
                               {selectedSourceChainId === ARC_CHAIN.chainId
                                 ? fundChainStatus
@@ -771,7 +771,7 @@ export function UnifiedFundsModal({
 
                       {/* Amount Input + MAX Button */}
                       <div className="flex gap-2">
-                        <div className="flex-1 flex items-center bg-[#06070c] border border-white/[0.08] rounded-xl px-3.5 py-1 focus-within:border-accent transition-colors">
+                        <div className="flex-1 flex items-center bg-surface-1 border border-bdr rounded-xl px-3 py-1 focus-within:border-accent transition-colors">
                           <input
                             type="number"
                             step="0.000001"
@@ -780,9 +780,9 @@ export function UnifiedFundsModal({
                             value={gatewayDepositAmount}
                             onChange={(e) => setGatewayDepositAmount?.(e.target.value)}
                             required
-                            className="flex-1 bg-transparent border-none text-white font-mono text-base font-semibold outline-none py-2.5 min-w-0"
+                            className="flex-1 bg-transparent border-none text-t1 font-mono text-base font-semibold outline-none py-2.5 min-w-0"
                           />
-                          <div className="flex items-center gap-1.5 pl-2 text-t2 font-bold text-xs shrink-0 border-l border-white/[0.08]">
+                          <div className="flex items-center gap-1.5 pl-2 text-t2 font-bold text-xs shrink-0 border-l border-bdr">
                             <img src="/usdc-logo.svg" width={16} height={16} alt="USDC" className="w-4 h-4" />
                             <span>USDC</span>
                           </div>
@@ -801,28 +801,28 @@ export function UnifiedFundsModal({
                         <button
                           type="button"
                           onClick={handleDeficitPreset}
-                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-accent text-xs font-semibold cursor-pointer transition-colors"
+                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-bdr text-accent text-xs font-semibold cursor-pointer transition-colors"
                         >
                           Deficit
                         </button>
                         <button
                           type="button"
                           onClick={() => setGatewayDepositAmount?.("0.05")}
-                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-t2 text-xs font-semibold cursor-pointer transition-colors"
+                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-bdr text-t2 text-xs font-semibold cursor-pointer transition-colors"
                         >
                           0.05 USDC
                         </button>
                         <button
                           type="button"
                           onClick={() => setGatewayDepositAmount?.("0.1")}
-                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-t2 text-xs font-semibold cursor-pointer transition-colors"
+                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-bdr text-t2 text-xs font-semibold cursor-pointer transition-colors"
                         >
                           0.1 USDC
                         </button>
                         <button
                           type="button"
                           onClick={() => setGatewayDepositAmount?.("1.0")}
-                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-t2 text-xs font-semibold cursor-pointer transition-colors"
+                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-bdr text-t2 text-xs font-semibold cursor-pointer transition-colors"
                         >
                           1.0 USDC
                         </button>
@@ -847,8 +847,8 @@ export function UnifiedFundsModal({
                       {agentWalletAddress && (
                         <div className="p-3 bg-blue-500/[0.06] border border-dashed border-indigo-500/35 rounded-xl flex items-center justify-between gap-3">
                           <div>
-                            <div className="text-xs font-bold text-white">Agent Auto-Pay Delegation</div>
-                            <div className="text-[11px] text-t3 leading-tight mt-0.5">
+                            <div className="text-xs font-bold text-t1">Agent Auto-Pay Delegation</div>
+                            <div className="text-xs text-t3 leading-tight mt-0.5">
                               Authorize your Agent to spend from Unified Balance (&lt;500ms) without popups.
                             </div>
                           </div>
@@ -865,11 +865,11 @@ export function UnifiedFundsModal({
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="flex gap-3 pt-3 mt-auto border-t border-white/[0.06]">
+                    <div className="flex gap-3 pt-3 mt-auto border-t border-bdr">
                       <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 py-3 rounded-xl bg-[#121320] border border-white/[0.08] text-white text-xs font-bold hover:bg-[#171828] transition-colors cursor-pointer"
+                        className="flex-1 py-3 rounded-xl bg-surface-2 border border-bdr text-t1 text-xs font-bold hover:bg-surface-3 transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -881,7 +881,7 @@ export function UnifiedFundsModal({
                           !gatewayDepositAmount ||
                           parseFloat(gatewayDepositAmount) <= 0
                         }
-                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-xs font-bold hover:opacity-95 shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-t1 text-xs font-bold hover:opacity-95 shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                       >
                         {gatewayDepositLoading || crossChainLoading
                           ? "Depositing..."
@@ -900,15 +900,15 @@ export function UnifiedFundsModal({
                 {depositTarget === "agent" && agentWalletAddress && (
                   <form onSubmit={handleFundAgent} className="flex flex-col gap-5 flex-1">
                     <div className="flex flex-col gap-3">
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <span className="text-xs font-bold text-t1 uppercase tracking-wider">
                         2. Agent Smart Account Address
                       </span>
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-[#06070c] border border-white/[0.08]">
-                        <span className="text-xs font-mono text-white break-all pr-2">{agentWalletAddress}</span>
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-surface-1 border border-bdr">
+                        <span className="text-xs font-mono text-t1 break-all pr-2">{agentWalletAddress}</span>
                         <button
                           type="button"
                           onClick={handleCopy}
-                          className="p-1.5 rounded-lg text-t3 hover:text-white transition-colors cursor-pointer shrink-0"
+                          className="p-1.5 rounded-lg text-t3 hover:text-t1 transition-colors cursor-pointer shrink-0"
                           title="Copy Address"
                         >
                           {copied ? (
@@ -918,15 +918,15 @@ export function UnifiedFundsModal({
                           )}
                         </button>
                       </div>
-                      <div className="text-[11px] text-t3">Send USDC (via Arc Testnet) to this smart contract address.</div>
+                      <div className="text-xs text-t3">Send USDC (via Arc Testnet) to this smart contract address.</div>
                     </div>
 
                     <div className="flex flex-col gap-3">
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <span className="text-xs font-bold text-t1 uppercase tracking-wider">
                         3. Amount to Fund (USDC)
                       </span>
                       <div className="flex gap-2">
-                        <div className="flex-1 flex items-center bg-[#06070c] border border-white/[0.08] rounded-xl px-3.5 py-1 focus-within:border-accent transition-colors">
+                        <div className="flex-1 flex items-center bg-surface-1 border border-bdr rounded-xl px-3 py-1 focus-within:border-accent transition-colors">
                           <input
                             type="number"
                             step="0.000001"
@@ -935,9 +935,9 @@ export function UnifiedFundsModal({
                             value={agentOpAmount}
                             onChange={(e) => setAgentOpAmount(e.target.value)}
                             required
-                            className="flex-1 bg-transparent border-none text-white font-mono text-base font-semibold outline-none py-2.5 min-w-0"
+                            className="flex-1 bg-transparent border-none text-t1 font-mono text-base font-semibold outline-none py-2.5 min-w-0"
                           />
-                          <div className="flex items-center gap-1.5 pl-2 text-t2 font-bold text-xs shrink-0 border-l border-white/[0.08]">
+                          <div className="flex items-center gap-1.5 pl-2 text-t2 font-bold text-xs shrink-0 border-l border-bdr">
                             <img src="/usdc-logo.svg" width={16} height={16} alt="USDC" className="w-4 h-4" />
                             <span>USDC</span>
                           </div>
@@ -955,28 +955,28 @@ export function UnifiedFundsModal({
                         <button
                           type="button"
                           onClick={() => setAgentOpAmount("10")}
-                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-t2 text-xs font-semibold cursor-pointer transition-colors"
+                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-bdr text-t2 text-xs font-semibold cursor-pointer transition-colors"
                         >
                           $10
                         </button>
                         <button
                           type="button"
                           onClick={() => setAgentOpAmount("25")}
-                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-t2 text-xs font-semibold cursor-pointer transition-colors"
+                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-bdr text-t2 text-xs font-semibold cursor-pointer transition-colors"
                         >
                           $25
                         </button>
                         <button
                           type="button"
                           onClick={() => setAgentOpAmount("50")}
-                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-t2 text-xs font-semibold cursor-pointer transition-colors"
+                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-bdr text-t2 text-xs font-semibold cursor-pointer transition-colors"
                         >
                           $50
                         </button>
                         <button
                           type="button"
                           onClick={() => setAgentOpAmount("100")}
-                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] text-t2 text-xs font-semibold cursor-pointer transition-colors"
+                          className="py-1.5 px-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-bdr text-t2 text-xs font-semibold cursor-pointer transition-colors"
                         >
                           $100
                         </button>
@@ -990,18 +990,18 @@ export function UnifiedFundsModal({
                       </div>
                     </div>
 
-                    <div className="flex gap-3 pt-3 mt-auto border-t border-white/[0.06]">
+                    <div className="flex gap-3 pt-3 mt-auto border-t border-bdr">
                       <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 py-3 rounded-xl bg-[#121320] border border-white/[0.08] text-white text-xs font-bold hover:bg-[#171828] transition-colors cursor-pointer"
+                        className="flex-1 py-3 rounded-xl bg-surface-2 border border-bdr text-t1 text-xs font-bold hover:bg-surface-3 transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={agentOpLoading || !agentOpAmount || parseFloat(agentOpAmount) <= 0}
-                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-xs font-bold hover:opacity-95 shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-t1 text-xs font-bold hover:opacity-95 shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                       >
                         {agentOpLoading ? "Funding..." : "Confirm Deposit"}
                       </button>
@@ -1012,8 +1012,8 @@ export function UnifiedFundsModal({
                 {/* Shortcut to Bridge Page */}
                 <div className="p-3 bg-accent/[0.08] border border-accent/20 rounded-xl flex items-center justify-between gap-3 shrink-0">
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-xs font-bold text-white">Need to bridge cross-chain or swap EURC?</span>
-                    <span className="text-[11px] text-t3">Visit the full Arc CCTP V2 &amp; StableFX Desk.</span>
+                    <span className="text-xs font-bold text-t1">Need to bridge cross-chain or swap EURC?</span>
+                    <span className="text-xs text-t3">Visit the full Arc CCTP V2 &amp; StableFX Desk.</span>
                   </div>
                   <button
                     type="button"
@@ -1034,7 +1034,7 @@ export function UnifiedFundsModal({
               <>
                 {/* Step 1: Choose Withdraw Source */}
                 <div className="flex flex-col gap-2.5">
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  <span className="text-xs font-bold text-t1 uppercase tracking-wider">
                     1. Choose Withdraw Source
                   </span>
                   <div
@@ -1049,13 +1049,13 @@ export function UnifiedFundsModal({
                         "p-4 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col gap-1 text-left",
                         withdrawSource === "gateway"
                           ? "bg-accent/[0.08] border-accent shadow-md shadow-accent/15"
-                          : "bg-[#0f1019] border-white/[0.06] hover:bg-[#141624] hover:border-white/[0.12]"
+                          : "bg-surface-2 border-bdr hover:bg-surface-3 hover:border-bdr-md"
                       )}
                     >
                       <span
                         className={cn(
                           "text-sm font-bold",
-                          withdrawSource === "gateway" ? "text-accent" : "text-white"
+                          withdrawSource === "gateway" ? "text-accent" : "text-t1"
                         )}
                       >
                         Gateway Prepaid
@@ -1070,13 +1070,13 @@ export function UnifiedFundsModal({
                           "p-4 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col gap-1 text-left",
                           withdrawSource === "agent"
                             ? "bg-accent/[0.08] border-accent shadow-md shadow-accent/15"
-                            : "bg-[#0f1019] border-white/[0.06] hover:bg-[#141624] hover:border-white/[0.12]"
+                            : "bg-surface-2 border-bdr hover:bg-surface-3 hover:border-bdr-md"
                         )}
                       >
                         <span
                           className={cn(
                             "text-sm font-bold",
-                            withdrawSource === "agent" ? "text-accent" : "text-white"
+                            withdrawSource === "agent" ? "text-accent" : "text-t1"
                           )}
                         >
                           Agent Wallet
@@ -1095,13 +1095,13 @@ export function UnifiedFundsModal({
                           "p-4 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col gap-1 text-left",
                           withdrawSource === "creator"
                             ? "bg-accent/[0.08] border-accent shadow-md shadow-accent/15"
-                            : "bg-[#0f1019] border-white/[0.06] hover:bg-[#141624] hover:border-white/[0.12]"
+                            : "bg-surface-2 border-bdr hover:bg-surface-3 hover:border-bdr-md"
                         )}
                       >
                         <span
                           className={cn(
                             "text-sm font-bold",
-                            withdrawSource === "creator" ? "text-accent" : "text-white"
+                            withdrawSource === "creator" ? "text-accent" : "text-t1"
                           )}
                         >
                           Creator Earnings
@@ -1117,31 +1117,31 @@ export function UnifiedFundsModal({
                   <form onSubmit={handleGatewayWithdraw} className="flex flex-col gap-5 flex-1">
                     {/* Destination Wallet */}
                     <div className="flex flex-col gap-2">
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <span className="text-xs font-bold text-t1 uppercase tracking-wider">
                         2. Destination Wallet
                       </span>
-                      <div className="p-3.5 rounded-xl bg-[#06070c] border border-white/[0.08] flex items-center justify-between">
-                        <span className="text-xs font-mono text-white break-all">{wallet}</span>
+                      <div className="p-3 rounded-xl bg-surface-1 border border-bdr flex items-center justify-between">
+                        <span className="text-xs font-mono text-t1 break-all">{wallet}</span>
                       </div>
-                      <div className="text-[11px] text-t3">USDC will be returned to this connected address.</div>
+                      <div className="text-xs text-t3">USDC will be returned to this connected address.</div>
                     </div>
 
                     {/* Amount to Refund */}
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">
+                        <span className="text-xs font-bold text-t1 uppercase tracking-wider">
                           3. Amount to Refund (USDC)
                         </span>
                         <span className="text-xs text-t3">
                           Available:{" "}
-                          <span className="text-white font-mono font-bold">
+                          <span className="text-t1 font-mono font-bold">
                             {safeFormatUsdc(fundGatewayBalance)}
                           </span>
                         </span>
                       </div>
 
                       <div className="flex gap-2">
-                        <div className="flex-1 flex items-center bg-[#06070c] border border-white/[0.08] rounded-xl px-3.5 py-1 focus-within:border-accent transition-colors">
+                        <div className="flex-1 flex items-center bg-surface-1 border border-bdr rounded-xl px-3 py-1 focus-within:border-accent transition-colors">
                           <input
                             type="number"
                             step="0.000001"
@@ -1151,9 +1151,9 @@ export function UnifiedFundsModal({
                             value={gatewayWithdrawAmount}
                             onChange={(e) => setGatewayWithdrawAmount?.(e.target.value)}
                             required
-                            className="flex-1 bg-transparent border-none text-white font-mono text-base font-semibold outline-none py-2.5 min-w-0"
+                            className="flex-1 bg-transparent border-none text-t1 font-mono text-base font-semibold outline-none py-2.5 min-w-0"
                           />
-                          <div className="flex items-center gap-1.5 pl-2 text-t2 font-bold text-xs shrink-0 border-l border-white/[0.08]">
+                          <div className="flex items-center gap-1.5 pl-2 text-t2 font-bold text-xs shrink-0 border-l border-bdr">
                             <img src="/usdc-logo.svg" width={16} height={16} alt="USDC" className="w-4 h-4" />
                             <span>USDC</span>
                           </div>
@@ -1169,11 +1169,11 @@ export function UnifiedFundsModal({
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-3 pt-3 mt-auto border-t border-white/[0.06]">
+                    <div className="flex gap-3 pt-3 mt-auto border-t border-bdr">
                       <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 py-3 rounded-xl bg-[#121320] border border-white/[0.08] text-white text-xs font-bold hover:bg-[#171828] transition-colors cursor-pointer"
+                        className="flex-1 py-3 rounded-xl bg-surface-2 border border-bdr text-t1 text-xs font-bold hover:bg-surface-3 transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -1185,7 +1185,7 @@ export function UnifiedFundsModal({
                           safeParseUsdc(gatewayWithdrawAmount) <= 0 ||
                           safeParseUsdc(gatewayWithdrawAmount) > safeParseUsdc(fundGatewayBalance)
                         }
-                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-xs font-bold hover:opacity-95 shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-t1 text-xs font-bold hover:opacity-95 shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                       >
                         {gatewayWithdrawLoading ? "Refunding..." : "Confirm Refund"}
                       </button>
@@ -1197,30 +1197,30 @@ export function UnifiedFundsModal({
                 {withdrawSource === "agent" && agentWalletAddress && (
                   <form onSubmit={handleWithdrawAgent} className="flex flex-col gap-5 flex-1">
                     <div className="flex flex-col gap-2">
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <span className="text-xs font-bold text-t1 uppercase tracking-wider">
                         2. Destination Wallet
                       </span>
-                      <div className="p-3.5 rounded-xl bg-[#06070c] border border-white/[0.08] flex items-center justify-between">
-                        <span className="text-xs font-mono text-white break-all">{wallet}</span>
+                      <div className="p-3 rounded-xl bg-surface-1 border border-bdr flex items-center justify-between">
+                        <span className="text-xs font-mono text-t1 break-all">{wallet}</span>
                       </div>
-                      <div className="text-[11px] text-t3">USDC will be withdrawn to this connected address.</div>
+                      <div className="text-xs text-t3">USDC will be withdrawn to this connected address.</div>
                     </div>
 
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">
+                        <span className="text-xs font-bold text-t1 uppercase tracking-wider">
                           3. Amount to Withdraw (USDC)
                         </span>
                         <span className="text-xs text-t3">
                           Available:{" "}
-                          <span className="text-white font-mono font-bold">
+                          <span className="text-t1 font-mono font-bold">
                             ${agentWalletBalance.toFixed(2)} USDC
                           </span>
                         </span>
                       </div>
 
                       <div className="flex gap-2">
-                        <div className="flex-1 flex items-center bg-[#06070c] border border-white/[0.08] rounded-xl px-3.5 py-1 focus-within:border-accent transition-colors">
+                        <div className="flex-1 flex items-center bg-surface-1 border border-bdr rounded-xl px-3 py-1 focus-within:border-accent transition-colors">
                           <input
                             type="number"
                             step="0.000001"
@@ -1230,9 +1230,9 @@ export function UnifiedFundsModal({
                             value={agentOpAmount}
                             onChange={(e) => setAgentOpAmount(e.target.value)}
                             required
-                            className="flex-1 bg-transparent border-none text-white font-mono text-base font-semibold outline-none py-2.5 min-w-0"
+                            className="flex-1 bg-transparent border-none text-t1 font-mono text-base font-semibold outline-none py-2.5 min-w-0"
                           />
-                          <div className="flex items-center gap-1.5 pl-2 text-t2 font-bold text-xs shrink-0 border-l border-white/[0.08]">
+                          <div className="flex items-center gap-1.5 pl-2 text-t2 font-bold text-xs shrink-0 border-l border-bdr">
                             <img src="/usdc-logo.svg" width={16} height={16} alt="USDC" className="w-4 h-4" />
                             <span>USDC</span>
                           </div>
@@ -1247,18 +1247,18 @@ export function UnifiedFundsModal({
                       </div>
                     </div>
 
-                    <div className="flex gap-3 pt-3 mt-auto border-t border-white/[0.06]">
+                    <div className="flex gap-3 pt-3 mt-auto border-t border-bdr">
                       <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 py-3 rounded-xl bg-[#121320] border border-white/[0.08] text-white text-xs font-bold hover:bg-[#171828] transition-colors cursor-pointer"
+                        className="flex-1 py-3 rounded-xl bg-surface-2 border border-bdr text-t1 text-xs font-bold hover:bg-surface-3 transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={agentOpLoading || !agentOpAmount || parseFloat(agentOpAmount) <= 0}
-                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-xs font-bold hover:opacity-95 shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-t1 text-xs font-bold hover:opacity-95 shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                       >
                         {agentOpLoading ? "Withdrawing..." : "Confirm Withdraw"}
                       </button>
@@ -1276,23 +1276,23 @@ export function UnifiedFundsModal({
                     ) : (
                       <>
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="p-3.5 rounded-xl bg-[#0f1019] border border-white/[0.06] flex flex-col gap-1">
-                            <span className="text-[10px] font-bold text-t3 uppercase tracking-wider">
+                          <div className="p-3 rounded-xl bg-surface-2 border border-bdr flex flex-col gap-1">
+                            <span className="text-2xs font-bold text-t3 uppercase tracking-wider">
                               Claimable Ledger
                             </span>
-                            <span className="text-lg font-bold text-white font-mono">
+                            <span className="text-lg font-bold text-t1 font-mono">
                               {formatUsdc(providerEarningsTotals.totalClaimable, 6)}
                             </span>
-                            <span className="text-[10px] text-emerald-400 font-semibold">Ready to claim</span>
+                            <span className="text-2xs text-emerald-400 font-semibold">Ready to claim</span>
                           </div>
-                          <div className="p-3.5 rounded-xl bg-[#0f1019] border border-white/[0.06] flex flex-col gap-1">
-                            <span className="text-[10px] font-bold text-t3 uppercase tracking-wider">
+                          <div className="p-3 rounded-xl bg-surface-2 border border-bdr flex flex-col gap-1">
+                            <span className="text-2xs font-bold text-t3 uppercase tracking-wider">
                               Withdrawable Gateway
                             </span>
-                            <span className="text-lg font-bold text-white font-mono">
+                            <span className="text-lg font-bold text-t1 font-mono">
                               {formatUsdc(providerEarningsTotals.gatewayAvailable, 6)}
                             </span>
-                            <span className="text-[10px] text-emerald-400 font-semibold">Available</span>
+                            <span className="text-2xs text-emerald-400 font-semibold">Available</span>
                           </div>
                         </div>
 
@@ -1318,7 +1318,7 @@ export function UnifiedFundsModal({
                                     "p-3 rounded-xl border flex items-center justify-between transition-colors",
                                     selected
                                       ? "bg-accent/[0.08] border-accent"
-                                      : "bg-[#0b0c16] border-white/[0.06]"
+                                      : "bg-surface-2 border-bdr"
                                   )}
                                 >
                                   <div className="flex items-center gap-3">
@@ -1330,17 +1330,17 @@ export function UnifiedFundsModal({
                                       className="rounded border-white/20 accent-indigo-500 w-4 h-4 cursor-pointer"
                                     />
                                     <div>
-                                      <div className="text-xs font-bold text-white">
+                                      <div className="text-xs font-bold text-t1">
                                         {item.provider_name || item.provider_id}
                                       </div>
-                                      <div className="text-[10px] text-t3">{item.provider_id}</div>
+                                      <div className="text-2xs text-t3">{item.provider_id}</div>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <div className="text-xs font-bold text-white font-mono">
+                                    <div className="text-xs font-bold text-t1 font-mono">
                                       {formatUsdc(availableAmount, 6)}
                                     </div>
-                                    <div className="text-[10px] text-t3">
+                                    <div className="text-2xs text-t3">
                                       {item.withdrawal_mode === "direct_gateway_split" ? "Gateway" : "Ledger"}
                                     </div>
                                   </div>
@@ -1355,14 +1355,14 @@ export function UnifiedFundsModal({
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-2 pt-3 mt-auto border-t border-white/[0.06]">
+                        <div className="flex items-center gap-2 pt-3 mt-auto border-t border-bdr">
                           <button
                             type="button"
                             onClick={refreshProviderEarningsModal}
                             disabled={
                               providerEarningsLoading || creatorClaimSubmitting || providerWithdrawSubmitting
                             }
-                            className="w-10 h-10 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-t2 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                            className="w-10 h-10 rounded-xl bg-surface-3 hover:bg-white/[0.08] border border-bdr text-t2 hover:text-t1 flex items-center justify-center transition-colors cursor-pointer shrink-0"
                             title="Refresh"
                           >
                             <RefreshCw size={15} />
@@ -1389,7 +1389,7 @@ export function UnifiedFundsModal({
                               !creatorClaimConfig?.configured ||
                               providerEarningsTotals.totalClaimable <= 0
                             }
-                            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-bold text-xs hover:opacity-95 shadow-md shadow-indigo-500/20 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-t1 font-bold text-xs hover:opacity-95 shadow-md shadow-indigo-500/20 transition-all cursor-pointer disabled:opacity-50"
                           >
                             {creatorClaimSubmitting ? "Claiming..." : "Claim Ledger"}
                           </button>

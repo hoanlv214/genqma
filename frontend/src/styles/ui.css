@@ -149,9 +149,9 @@ button.btn-green {
 }
 
 .chip-pending {
-    color: var(--amber);
-    background: var(--amber-dim);
-    border-color: rgba(245, 158, 11, 0.28);
+    color: var(--t2);
+    background: var(--surface-2);
+    border-color: var(--bdr-md);
 }
 
 .chip-error {
@@ -167,9 +167,9 @@ button.btn-green {
 }
 
 .chip-premium {
-    color: var(--purple);
-    background: var(--purple-dim);
-    border-color: rgba(167, 139, 250, 0.28);
+    color: var(--accent);
+    background: var(--accent-dim);
+    border-color: rgb(var(--accent-rgb) / 0.28);
 }
 
 .chip-neutral {

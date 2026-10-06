@@ -1,3 +1,4 @@
+import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getLiveAnomalies, getAgentRecommendations } from "@/services/providers";
 import { Loader } from "@/components/Loader";
@@ -117,7 +118,7 @@ export function SignalSidebar({
             title="Scan exchanges now"
             aria-label="Refresh live signals"
           >
-            ↻
+            <RefreshCw size={13} strokeWidth={2} />
           </button>
         </div>
       </div>

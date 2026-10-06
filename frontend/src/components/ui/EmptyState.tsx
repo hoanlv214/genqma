@@ -25,11 +25,11 @@ export function EmptyState({
         className
       )}
     >
-      <span className={cn("font-semibold text-[var(--t1)]", compact ? "text-[0.82rem]" : "text-[0.92rem]")}>
+      <span className={cn("font-semibold text-[var(--t1)]", compact ? "text-sm" : "text-base")}>
         {title}
       </span>
       {description && (
-        <p className="text-[0.78rem] text-[var(--t3)] max-w-sm m-0 leading-snug">
+        <p className="text-xs text-[var(--t3)] max-w-sm m-0 leading-snug">
           {description}
         </p>
       )}

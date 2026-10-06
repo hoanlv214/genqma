@@ -199,7 +199,7 @@ export function PlatformAnalyticsPanel() {
                         <div className="table-meta">{formatDateTime(event.paid_at)}</div>
                       </td>
                       <td>
-                        <span className="provider-badge">{event.provider_id || "funding_memory"}</span>
+                        <span className="provider-badge">{event.provider_id || "unattributed"}</span>
                       </td>
                       <td className="mono-td" title={event.payer_address || ""}>
                         {event.payer_address ? shortAddress(event.payer_address) : "n/a"}
@@ -269,13 +269,13 @@ export function PlatformAnalyticsPanel() {
                   platformPayers.map((payer, index) => {
                     const symbols = (payer.symbols || []).slice(0, 5).join(", ") || "n/a";
                     const overflow = (payer.symbols || []).length > 5 ? ` +${payer.symbols.length - 5}` : "";
-                    const providers = (payer.providers || []).join(", ") || "funding_memory";
+                    const providers = (payer.providers || []).join(", ") || "unattributed";
                     return (
                       <tr key={payer.payer_address || index} title={`Last paid: ${formatDateTime(payer.last_paid_at)}`}>
                         <td className="mono-td" title={payer.payer_address || ""}>
                           {payer.payer_address ? shortAddress(payer.payer_address) : "n/a"}
                         </td>
-                        <td className="text-[11px] text-[var(--t2)]">{providers}</td>
+                        <td className="text-xs text-[var(--t2)]">{providers}</td>
                         <td className="mono-td">
                           {payer.payments || 0} / {symbols}
                           {overflow}

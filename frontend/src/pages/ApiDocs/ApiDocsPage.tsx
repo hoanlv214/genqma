@@ -27,21 +27,21 @@ export function ApiDocsPage(_props: ApiDocsProps) {
 
   return (
     <div className="h-screen flex flex-col">
-      <div className="px-5 py-2.5 bg-[#1e1e1e] text-t1 flex gap-4 items-center border-b border-[#333] flex-wrap">
-        <strong className="text-[1.1rem] font-bold">QMA API Docs:</strong>
+      <div className="px-5 py-2 bg-surface-2 text-t1 flex gap-4 items-center border-b border-bdr-md flex-wrap">
+        <strong className="text-base font-bold">QMA API Docs:</strong>
         <nav aria-label="API documentation audience" className="flex gap-4 flex-wrap">
           {tabs.map((tab) => (
             <a
               key={tab.id || "full"}
               href={tab.id ? `/docs/${tab.id}` : "/docs"}
               aria-current={audience === tab.id ? "page" : undefined}
-              className={audience === tab.id ? "text-green-400 font-bold no-underline" : "text-t2 hover:text-t1 no-underline"}
+              className={audience === tab.id ? "text-success font-bold no-underline" : "text-t2 hover:text-t1 no-underline"}
             >
               {tab.label}
             </a>
           ))}
         </nav>
-        <span className="text-t3 text-[0.82rem]">{audienceDescription}</span>
+        <span className="text-t3 text-sm">{audienceDescription}</span>
       </div>
       <div className="flex-1 overflow-auto">
         <ApiReferenceReact configuration={{ url: openApiUrl }} />

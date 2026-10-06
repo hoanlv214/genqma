@@ -202,7 +202,7 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
               <div className="genlayer-sla-badge-icon"><Check size={14} /></div>
               <div>
                 <div className="genlayer-sla-headline">
-                  Verified by GenLayer Intelligent Contract — 98% Confidence SLA Guarantee
+                  Verified by GenLayer Intelligent Contract SLA
                 </div>
                 <div className="genlayer-sla-sub">
                   Consensus Hash-Bound SLA Protection · Non-Deterministic Multi-Validator Agreement on Live Evidence
@@ -270,7 +270,7 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
                 className="btn-unlock-tier preview"
                 onClick={() => onOpenPaywall?.("preview")}
               >
-                Unlock Preview — $0.002 USDC
+                Unlock Preview: 0.002 USDC
               </button>
             </div>
 
@@ -313,7 +313,7 @@ export function ReportWorkspace(props: ReportWorkspaceProps) {
                 className="btn-unlock-tier full"
                 onClick={() => onOpenPaywall?.("full")}
               >
-                Unlock Full Report — $0.005 USDC
+                Unlock Full Report: 0.005 USDC
               </button>
             </div>
           </div>

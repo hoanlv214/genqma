@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { QmaRoute } from "@/app/routes";
 import { fetchTraction, type TractionSnapshot } from "@/services/traction";
+import { fetchUsycPosition, type UsycPosition } from "@/services/treasury";
+import { formatUsdc } from "@/utils/format";
 import {
   PlatformAnalyticsPanel,
   AutonomousCfoTreasuryRadar,
@@ -12,6 +14,7 @@ import { GlobalHeader } from "@/components/layout/GlobalHeader";
 import { useWalletStore } from "@/state/walletStore";
 import { Loader } from "@/components/Loader";
 import { ARC_CHAIN } from "@/config/network";
+import { InfoHint } from "@/components/ui/InfoHint";
 import { shortAddress } from "@/services/wallet";
 import "./TractionPage.css";
 import type { TractionProps } from "./Traction.types";
@@ -31,6 +34,7 @@ function usdc(value: number) {
 
 export function TractionPage({ onNavigate }: TractionProps) {
   const [snapshot, setSnapshot] = useState<TractionSnapshot | null>(null);
+  const [usycPosition, setUsycPosition] = useState<UsycPosition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<TractionTab>("overview");
@@ -40,11 +44,14 @@ export function TractionPage({ onNavigate }: TractionProps) {
   useEffect(() => {
     let disposed = false;
     let controller: AbortController | null = null;
+    let firstLoad = true;
 
-    const load = async () => {
+    const load = async (quiet = false) => {
       controller?.abort();
       controller = new AbortController();
-      setLoading(true);
+      // Quiet polls (30s self-healing) never flash the full-page loader and
+      // keep the last good snapshot on transient backend outages.
+      if (!quiet || firstLoad) setLoading(true);
       try {
         const data = await fetchTraction(days, 20, { signal: controller.signal });
         if (!disposed) {
@@ -56,12 +63,24 @@ export function TractionPage({ onNavigate }: TractionProps) {
           setError(err instanceof Error ? err.message : "Traction data unavailable.");
         }
       } finally {
-        if (!disposed) setLoading(false);
+        if (!disposed) {
+          setLoading(false);
+          firstLoad = false;
+        }
+      }
+
+      // Treasury position is a secondary signal: a failed fetch must not
+      // blank the whole page, it just leaves the yield card in its empty state.
+      try {
+        const position = await fetchUsycPosition({ signal: controller.signal });
+        if (!disposed) setUsycPosition(position);
+      } catch {
+        if (!disposed) setUsycPosition(null);
       }
     };
 
     load();
-    const timer = window.setInterval(load, 30_000);
+    const timer = window.setInterval(() => load(true), 30_000);
     return () => {
       disposed = true;
       controller?.abort();
@@ -77,8 +96,8 @@ export function TractionPage({ onNavigate }: TractionProps) {
 
   const tabs: { id: TractionTab; label: string; badge?: string; badgeClass?: string }[] = [
     { id: "overview", label: "Overview & KPIs" },
-    { id: "simulation", label: "1-Click Live Loop", badge: "Interactive", badgeClass: "chip chip-info" },
-    { id: "cfo", label: "Autonomous CFO (Morpho)", badge: "6.5% APY (target)", badgeClass: "chip chip-pending" },
+    { id: "simulation", label: "1-Click Live Loop" },
+    { id: "cfo", label: "Autonomous CFO & Treasury" },
     { id: "governance", label: "SLA & Circuit Breakers" },
     { id: "ledger", label: "Settlement Ledger" },
   ];
@@ -100,7 +119,7 @@ export function TractionPage({ onNavigate }: TractionProps) {
           <p className="eyebrow">Public Protocol Ledger</p>
           <h1 className="traction-title">Traction &amp; Live Proof</h1>
           <p className="traction-intro">
-            Real report purchases, sub-second Arc x402 micropayments, GenLayer SLA verification, and Morpho idle yield generation.
+            Real report purchases, Arc x402 micropayments in USDC, GenLayer SLA verification, and autonomous USYC treasury sweeps.
           </p>
           <div className="traction-window-picker" role="group" aria-label="Statistics window">
             <span className="traction-window-label">Window</span>
@@ -162,22 +181,26 @@ export function TractionPage({ onNavigate }: TractionProps) {
             <>
               {/* 3 Headline Cards (Traction Metrics) */}
               <section className="traction-headline-grid" aria-label="Core traction headline metrics">
-                {/* Headline Card 1: Active Alpha Streams */}
+                {/* Headline Card 1: Report Families & Provider Coverage */}
                 <div className="traction-headline-card card-streams">
                   <div className="traction-headline-header">
-                    <span className="traction-headline-label">Active Alpha Streams</span>
-                    <span className="chip chip-info">3 Live Streams</span>
+                    <span className="traction-headline-label">Report Families</span>
+                    <span className="chip chip-info">3 in production</span>
                   </div>
-                  <strong className="traction-headline-val">3 Live Streams</strong>
+                  <strong className="traction-headline-val">3 Report Families</strong>
                   <p className="traction-headline-desc">
-                    Funding Disparity · Polymarket Basis · Pyth Volatility
+                    Funding &amp; Liquidity · Cross-Market Basis · Oracle Volatility
+                    <InfoHint text="Three report families sold by independent creators. Every report is a per-query statistical evidence pack priced in USDC." />
                   </p>
                   <div className="traction-headline-footer">
                     <div className="traction-tag-list">
-                      <span className="traction-tag traction-tag-accent">MEXC / Binance</span>
-                      <span className="traction-tag traction-tag-purple">Polymarket</span>
-                      <span className="traction-tag traction-tag-amber">Pyth Network</span>
+                      <span className="traction-tag">MEXC</span>
+                      <span className="traction-tag">Polymarket</span>
+                      <span className="traction-tag">Pyth Network</span>
                     </div>
+                    <small className="text-xs text-[var(--t3)] font-mono">
+                      {snapshot ? `${snapshot.providers.length} providers with settled sales (live)` : "provider sales load with the ledger"}
+                    </small>
                   </div>
                 </div>
 
@@ -185,39 +208,40 @@ export function TractionPage({ onNavigate }: TractionProps) {
                 <div className="traction-headline-card card-settled">
                   <div className="traction-headline-header">
                     <span className="traction-headline-label">Real Settlement Volume</span>
-                    <span className="chip chip-live">x402 Protocol</span>
+                    <span className="chip chip-pending">x402 Protocol</span>
                   </div>
                   <strong className="traction-headline-val text-[var(--green)]">
                     {summary ? usdc(summary.settled_volume_usdc) : "—"}
                   </strong>
                   <p className="traction-headline-desc">
-                    Settled on Arc Network · Sub-second finality ($0.00002 gas)
+                    Settled via Circle Gateway
+                    <InfoHint text="Settled volume counts only payments with final Circle Gateway status or an on-chain transaction hash. Everything else stays in the pending batch." />
                   </p>
                   <div className="traction-headline-footer">
-                    <small className="text-[11px] text-[var(--green)] font-mono">
+                    <small className="text-xs text-[var(--green)] font-mono">
                       {summary ? compactNumber(summary.settled_reports) : "0"} settled reports with final proof
                     </small>
                   </div>
                 </div>
 
-                {/* Headline Card 3: Treasury Earning Yield */}
+                {/* Headline Card 3: Treasury Yield (live USYC position) */}
                 <div className="traction-headline-card card-yield">
                   <div className="traction-headline-header">
-                    <span className="traction-headline-label">Treasury Earning Yield</span>
-                    <div className="flex gap-1.5 items-center">
-                      <span className="chip chip-pending">Arc Earn Kit</span>
-                      <span className="chip chip-pending">Estimated · Beta</span>
-                    </div>
+                    <span className="traction-headline-label">Treasury Yield</span>
+                    <span className="chip chip-info">USYC ERC-4626</span>
                   </div>
-                  <strong className="traction-headline-val text-[var(--amber)]">
-                    6.5% – 8.2% APY
+                  <strong className="traction-headline-val">
+                    {usycPosition ? `${usycPosition.current_apy_percent.toFixed(1)}% target APY` : "—"}
                   </strong>
                   <p className="traction-headline-desc">
-                    Earn Kit target vaults (estimated): Morpho Steakhouse USDC &amp; Morpho Prime on Arc
+                    Idle cash sweeps into the USYC vault on Arc
+                    <InfoHint text="Target APY is set by the treasury policy, not realized yield. The autonomous CFO sweeps surplus cash into the vault and redeems just in time for payables." />
                   </p>
                   <div className="traction-headline-footer">
-                    <small className="text-[11px] text-[var(--amber)] font-mono">
-                      Autonomous CFO sweeps idle cash · JIT liquidity redemption
+                    <small className="text-xs text-[var(--t3)] font-mono">
+                      {usycPosition
+                        ? `${formatUsdc(usycPosition.usdc_equivalent)} in vault · ${usycPosition.usyc_shares.toFixed(3)} shares`
+                        : "Vault position unavailable"}
                     </small>
                   </div>
                 </div>
@@ -227,10 +251,10 @@ export function TractionPage({ onNavigate }: TractionProps) {
               <div className="traction-teaser-card">
                 <div className="traction-teaser-text">
                   <strong>
-                    Experience the machine-to-machine loop live in action
+                    Walk the real machine-to-machine loop
                   </strong>
                   <span>
-                    Simulate Agent Report Purchase &rarr; 0.002 USDC settled &rarr; SLA verified &rarr; Morpho yield sweep.
+                    An x402 payment settles, GenLayer verifies the SLA, and idle cash sweeps into USYC. Every value shown is read from the live ledger.
                   </span>
                 </div>
                 <button
@@ -375,8 +399,8 @@ export function TractionPage({ onNavigate }: TractionProps) {
                 <div className="traction-chart-axis"><span>{days} days ago</span><span>Today</span></div>
               </section>
 
-              {/* Unit Economics Card */}
-              <UnitEconomicsCard />
+              {/* Protocol Economics Card (live summary) */}
+              <UnitEconomicsCard summary={summary} />
             </>
           )}
 

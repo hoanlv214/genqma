@@ -112,6 +112,14 @@ export function IntelligencePage({
 
   const { quotedPrices } = useQuote({ activeQuery, selectedProviderId });
 
+  const friendlyTransferError = (err: any): string => {
+    const raw = String(err?.message || err || "");
+    if (/user (rejected|denied)/i.test(raw)) return "Transaction was rejected in your wallet. Nothing was spent.";
+    if (/insufficient|balance/i.test(raw)) return "Not enough USDC in the connected wallet for this transfer.";
+    if (/network|rpc|timeout/i.test(raw)) return "Network issue while contacting Arc. Try again in a moment.";
+    return "Transfer failed. Check your wallet connection and try again.";
+  };
+
   const showToast = (message: string, tone: "info" | "success" | "warning" | "error" = "info") => {
     switch (tone) {
       case "success":
@@ -219,7 +227,7 @@ export function IntelligencePage({
       window.setTimeout(() => void refreshAgentWallet(), 4000);
     } catch (err: any) {
       console.error("MetaMask transfer error:", err);
-      showToast(`Transfer failed: ${err.message || err}`, "error");
+      showToast(friendlyTransferError(err), "error");
     } finally {
       setAgentOpLoading(false);
     }
@@ -246,7 +254,7 @@ export function IntelligencePage({
       setAgentOpAmount("");
       await refreshAgentWallet();
     } catch (err: any) {
-      showToast(err.message || "Withdrawal failed.", "error");
+      showToast("Withdrawal failed. Your funds stay in the gateway balance, try again shortly.", "error");
     } finally {
       setAgentOpLoading(false);
     }
@@ -315,7 +323,7 @@ export function IntelligencePage({
       setTimeout(refreshFundingReadiness, 4000);
     } catch (err: any) {
       console.error("Gateway withdrawal failed:", err);
-      showToast(err.message || "Gateway withdrawal failed.", "error");
+      showToast("Gateway withdrawal failed. Your funds stay put, try again shortly.", "error");
     } finally {
       setGatewayWithdrawLoading(false);
     }
@@ -563,7 +571,7 @@ export function IntelligencePage({
 
   const openCachedReportEntry = (entry: any, fallbackSignal: Record<string, any>, providerId = selectedProviderId) => {
     if (!entry?.report) return false;
-    const reportSignal = normalizeSignalPayload(entry.signal || entry.report?.query || fallbackSignal || { symbol: entry.report?.query_symbol });
+    const reportSignal = normalizeSignalPayload(entry.signal || entry.report?.query || (entry.report?.query_symbol ? { symbol: entry.report.query_symbol } : null) || fallbackSignal || { symbol: entry.report?.query_symbol });
     setSelectedProviderId(entry.provider_id || entry.report?.provider_id || entry.report?.invoice?.provider_id || providerId);
     setActiveQuery(reportSignal);
     setUnlockedReport({
@@ -635,8 +643,8 @@ export function IntelligencePage({
     <div className="qma-report-wrapper">
       <div className="qma-report-topbar">
         <div className="qma-report-topbar-left">
-          <TokenIcon symbol={activeQuery?.symbol || ""} size={18} />
-          <span>{activeQuery?.symbol} Report</span>
+          <TokenIcon symbol={unlockedReport?.query_symbol || activeQuery?.symbol || ""} size={18} />
+          <span>{unlockedReport?.query_symbol || activeQuery?.symbol} Report</span>
         </div>
         <span className="qma-report-verified"><Check size={13} /> Verified on Arc</span>
       </div>

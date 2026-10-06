@@ -11,14 +11,13 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          min-height: 100vh;
+          min-height: 100dvh;
           width: 100%;
-          background: radial-gradient(circle at center, #0f0c1b 0%, #050209 100%);
-          color: #fff;
-          font-family: 'Outfit', 'Inter', sans-serif;
+          background: var(--bg-base);
+          color: var(--t1);
           position: relative;
           overflow: hidden;
-          padding: 20px;
+          padding: 24px;
           box-sizing: border-box;
         }
 
@@ -26,7 +25,7 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
           position: absolute;
           width: 500px;
           height: 500px;
-          background: radial-gradient(circle, rgb(var(--accent-rgb) / 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+          background: radial-gradient(circle, rgb(var(--accent-rgb) / 0.12) 0%, rgba(0, 0, 0, 0) 70%);
           border-radius: 50%;
           top: 50%;
           left: 50%;
@@ -48,25 +47,17 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
         .notfound-badge {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 6px 14px;
+          gap: 8px;
+          padding: 8px 16px;
           border-radius: 20px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          font-size: 13px;
+          background: var(--surface-2);
+          border: 1px solid var(--bdr);
+          font-size: var(--text-sm);
           font-weight: 500;
-          color: var(--accent, var(--accent));
+          color: var(--accent);
           margin-bottom: 24px;
           letter-spacing: 0.5px;
           text-transform: uppercase;
-        }
-
-        .notfound-badge .dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: var(--accent, var(--accent));
-          box-shadow: 0 0 8px var(--accent, var(--accent));
         }
 
         .notfound-code {
@@ -75,7 +66,7 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
           line-height: 1;
           margin: 0;
           letter-spacing: -4px;
-          background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.3) 100%);
+          background: linear-gradient(180deg, var(--t1) 0%, rgb(var(--accent-rgb) / 0.35) 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           text-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -85,13 +76,13 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
           font-size: 24px;
           font-weight: 600;
           margin: 16px 0 12px;
-          color: #ffffff;
+          color: var(--t1);
         }
 
         .notfound-desc {
           font-size: 15px;
           line-height: 1.6;
-          color: rgba(255, 255, 255, 0.6);
+          color: var(--t2);
           margin: 0 0 32px;
         }
 
@@ -106,10 +97,10 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
           gap: 8px;
           padding: 12px 24px;
           border-radius: 8px;
-          background: var(--accent, var(--accent));
-          color: #fff;
+          background: var(--accent);
+          color: var(--on-accent);
           font-weight: 600;
-          font-size: 14px;
+          font-size: var(--text-base);
           border: none;
           cursor: pointer;
           transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -127,37 +118,18 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
           gap: 8px;
           padding: 12px 24px;
           border-radius: 8px;
-          background: rgba(255, 255, 255, 0.05);
-          color: #ffffff;
+          background: var(--surface-2);
+          color: var(--t1);
           font-weight: 600;
-          font-size: 14px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          font-size: var(--text-base);
+          border: 1px solid var(--bdr);
           cursor: pointer;
           transition: all 0.2s ease;
         }
 
         .notfound-btn-secondary:hover {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .notfound-terminal-box {
-          margin-top: 40px;
-          padding: 16px 20px;
-          border-radius: 8px;
-          background: rgba(0, 0, 0, 0.4);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.4);
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          max-width: 100%;
-        }
-
-        .notfound-terminal-box .term-prefix {
-          color: var(--accent, var(--accent));
+          background: var(--surface-3);
+          border-color: var(--bdr-md);
         }
       `}</style>
 
@@ -165,14 +137,14 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
 
       <div className="notfound-content">
         <div className="notfound-badge">
-          <span className="dot"></span>
-          <span>Routing Error</span>
+          <span>HTTP 404</span>
         </div>
 
         <h1 className="notfound-code">404</h1>
-        <h2 className="notfound-title">Intelligence Vector Not Found</h2>
+        <h2 className="notfound-title">Page not found</h2>
         <p className="notfound-desc">
-          The requested coordinate does not exist on the Arc network topology. It may have expired or been relocated.
+          This page does not exist on QMA. It may have been moved or retired.
+          Use the actions below to get back to the live workspace.
         </p>
 
         <div className="notfound-actions">
@@ -184,11 +156,6 @@ export function NotFoundPage({ onNavigate = () => {} }: NotFoundProps) {
             <LayoutDashboard size={16} strokeWidth={2} />
             Live Workspace
           </button>
-        </div>
-
-        <div className="notfound-terminal-box">
-          <span className="term-prefix">$</span>
-          <span>arc-trace: null pointer resolving address on active state machine</span>
         </div>
       </div>
     </div>

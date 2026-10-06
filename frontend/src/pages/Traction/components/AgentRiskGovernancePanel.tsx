@@ -189,12 +189,12 @@ export function AgentRiskGovernancePanel() {
                       <td className="text-[var(--t2)] max-w-[260px]">
                         <div>{inc.details}</div>
                         {inc.admin_note && (
-                          <div className="text-[10px] text-[var(--accent)] mt-0.5">
+                          <div className="text-2xs text-[var(--accent)] mt-0.5">
                             Resolution note: {inc.admin_note}
                           </div>
                         )}
                       </td>
-                      <td className="mono-td text-[var(--green)] text-[11px]">
+                      <td className="mono-td text-[var(--green)] text-xs">
                         {inc.euthyna_hash ? inc.euthyna_hash.slice(0, 12) + "..." : "—"}
                       </td>
                       <td>
@@ -212,7 +212,7 @@ export function AgentRiskGovernancePanel() {
                             Resolve
                           </button>
                         ) : (
-                          <span className="mono-td text-[11px] text-[var(--t3)]">
+                          <span className="mono-td text-xs text-[var(--t3)]">
                             Resolved
                           </span>
                         )}

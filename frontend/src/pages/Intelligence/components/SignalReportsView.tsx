@@ -55,7 +55,7 @@ export function SignalReportsView(props: SignalReportsViewProps) {
     if (refreshTone === "error") {
       return (
         <button type="button" className="xp-live-badge xp-live-error" onClick={onRetryScan}>
-          Scan error — retry
+          Scan error, retry
         </button>
       );
     }
@@ -89,7 +89,7 @@ export function SignalReportsView(props: SignalReportsViewProps) {
       ) : picks.length === 0 ? (
         <div className="xp-empty">
           <span className="xp-empty-title">No signals right now</span>
-          <span className="xp-empty-sub">The scanner is watching live market dislocations — ranked signal reports will appear here.</span>
+          <span className="xp-empty-sub">The scanner is watching live market dislocations. Ranked signal reports will appear here.</span>
           {refreshTone === "error" && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={onRetryScan}>Retry scan</button>
           )}
@@ -124,7 +124,7 @@ export function SignalReportsView(props: SignalReportsViewProps) {
                 className="xp-card"
                 role="button"
                 tabIndex={0}
-                aria-label={`${symbol} signal report${owned ? " (owned)" : ""} — open purchase options`}
+                aria-label={`${symbol} signal report${owned ? " (owned)" : ""}, open purchase options`}
                 onClick={openPaywallForCard}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -206,7 +206,7 @@ export function SignalReportsView(props: SignalReportsViewProps) {
                 </div>
 
                 {!wallet && !owned && (
-                  <p className="xp-card-note">Connect a wallet to buy — USDC on Arc.</p>
+                  <p className="xp-card-note">Connect a wallet to buy with USDC on Arc.</p>
                 )}
               </div>
             );

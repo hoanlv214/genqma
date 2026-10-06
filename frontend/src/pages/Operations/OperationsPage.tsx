@@ -1,3 +1,4 @@
+import { InfoHint } from "@/components/ui/InfoHint";
 import { useCallback, useEffect, useState } from "react";
 import type { QmaRoute } from "@/app/routes";
 import { GlobalHeader } from "@/components/layout/GlobalHeader";
@@ -70,7 +71,7 @@ export function OperationsPage({ onNavigate }: OperationsProps) {
       const anyData = pos !== null || fcst !== null || pol !== null || recs !== null || incs !== null;
       if (!anyData) {
         // Transient backend outage: keep the banner, next poll self-heals.
-        setError("Operations endpoints unreachable — is the backend running?");
+        setError("Operations endpoints unreachable. Retrying automatically; panels keep the last good data.");
       } else {
         setError("");
       }
@@ -143,9 +144,8 @@ export function OperationsPage({ onNavigate }: OperationsProps) {
           <p className="eyebrow">Autonomous Treasury Operations</p>
           <h1 className="operations-title">Operations Console</h1>
           <p className="operations-intro">
-            The agent's CFO loop in one view: policy-bounded liquidity decisions, claim-aware
-            obligations, Morpho yield sweep, and a hash-chained audit ledger that replays every
-            decision with its reason attached.
+            The agent's CFO loop in one view: policy-bounded liquidity decisions and claim-aware obligations.
+            <InfoHint text="Every decision replays with its reason into the hash-chained Euthyna audit ledger below. Yield sweeps follow the policy bounds shown in the CFO Policy Bounds panel." />
           </p>
         </div>
         <div className="chip chip-live">
@@ -274,7 +274,7 @@ export function OperationsPage({ onNavigate }: OperationsProps) {
                 </div>
               </div>
               {records.length === 0 ? (
-                <p className="operations-empty-state">No audit records yet — run a decision to write the first entry.</p>
+                <p className="operations-empty-state">No audit records yet. Run a decision to write the first entry.</p>
               ) : (
                 <div className="operations-table-wrap">
                   <table className="traction-table">

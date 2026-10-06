@@ -277,9 +277,9 @@ export function NotificationDropdown({
       <button
         type="button"
         className={cn(
-          "notification-menu__bell-btn notification-bell-btn w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer relative transition-all duration-200 outline-none select-none",
+          "notification-menu__bell-btn notification-bell-btn w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer relative transition-all duration-200 outline-none select-none",
           hasCriticalIncident
-            ? "notification-menu__bell-btn--critical bg-red-500/15 border border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.4)] text-red-300"
+            ? "notification-menu__bell-btn--critical bg-red-500/15 border border-red-500/50 text-red-300"
             : open
             ? "notification-menu__bell-btn--active bg-surface-2 border border-bdr text-t1"
             : "bg-surface-1 border border-bdr text-t2 hover:bg-surface-2 hover:border-bdr-strong"
@@ -288,15 +288,15 @@ export function NotificationDropdown({
         title="Notifications & System Alerts"
         aria-label="Notifications & System Alerts"
       >
-        <Bell size={18} strokeWidth={2} />
+        <Bell size={16} strokeWidth={2} />
 
         {unreadCount > 0 && (
           <span
             className={cn(
-              "notification-menu__badge absolute -top-1 -right-1 text-on-accent text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 pointer-events-none",
+              "notification-menu__badge absolute -top-1 -right-1 text-on-accent text-2xs font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 pointer-events-none",
               hasCriticalIncident
-                ? "notification-menu__badge--critical bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.9)]"
-                : "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"
+                ? "notification-menu__badge--critical bg-red-500"
+                : "bg-[var(--accent)]"
             )}
           >
             {unreadCount > 9 ? "9+" : unreadCount}
@@ -313,14 +313,14 @@ export function NotificationDropdown({
             <div className="flex items-center gap-2">
               <strong className="notification-menu__title text-[13.5px] text-t1 font-bold">Activity &amp; Alerts</strong>
               {unreadCount > 0 && (
-                <span className="text-[11px] text-t2">({unreadCount} new)</span>
+                <span className="text-xs text-t2">({unreadCount} new)</span>
               )}
             </div>
             {unreadCount > 0 && (
               <button
                 type="button"
                 onClick={markAllRead}
-                className="notification-menu__mark-read bg-transparent border-0 text-sky-400 text-[11px] cursor-pointer p-0 hover:underline hover:text-sky-300"
+                className="notification-menu__mark-read bg-transparent border-0 text-sky-400 text-xs cursor-pointer p-0 hover:underline hover:text-sky-300"
               >
                 Mark all read
               </button>
@@ -375,13 +375,13 @@ export function NotificationDropdown({
                         )}
                       </div>
 
-                      <div className="notification-menu__item-desc text-[11.5px] text-t2 leading-snug mb-1.5">
+                      <div className="notification-menu__item-desc text-xs text-t2 leading-snug mb-1.5">
                         {item.description}
                       </div>
 
                       {/* Euthyna Hash & Session Reference */}
                       {isIncident && item.incidentData && (
-                        <div className="notification-menu__item-meta flex items-center gap-2 text-[10px] text-t3 font-mono mb-2">
+                        <div className="notification-menu__item-meta flex items-center gap-2 text-2xs text-t3 font-mono mb-2">
                           <span>Sess: {shortAddress(item.incidentData.session_id)}</span>
                           {item.incidentData.euthyna_hash && (
                             <span className="text-emerald-500 inline-flex items-center">
@@ -406,7 +406,7 @@ export function NotificationDropdown({
                                 "kill"
                               )
                             }
-                            className="notification-menu__btn-kill bg-red-500/15 border border-red-500/40 text-red-300 text-[11px] font-semibold rounded-md px-2.5 py-1 transition-all duration-150 disabled:cursor-not-allowed hover:bg-red-500/25 cursor-pointer"
+                            className="notification-menu__btn-kill bg-red-500/15 border border-red-500/40 text-red-300 text-xs font-semibold rounded-md px-2.5 py-1 transition-all duration-150 disabled:cursor-not-allowed hover:bg-red-500/25 cursor-pointer"
                           >
                             Emergency Kill
                           </button>
@@ -421,7 +421,7 @@ export function NotificationDropdown({
                                 "resume"
                               )
                             }
-                            className="notification-menu__btn-resume bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[11px] font-semibold rounded-md px-2.5 py-1 transition-all duration-150 disabled:cursor-not-allowed hover:bg-emerald-500/25 cursor-pointer"
+                            className="notification-menu__btn-resume bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-semibold rounded-md px-2.5 py-1 transition-all duration-150 disabled:cursor-not-allowed hover:bg-emerald-500/25 cursor-pointer"
                           >
                             Resume
                           </button>
@@ -433,7 +433,7 @@ export function NotificationDropdown({
                         </div>
                       )}
 
-                      <div className="text-[10px] text-t3 font-mono mt-1">
+                      <div className="text-2xs text-t3 font-mono mt-1">
                         {item.timestamp}
                       </div>
                     </div>

@@ -4,6 +4,7 @@ import { ARC_CHAIN } from "@/config/network";
 import { shortAddress } from "@/services/wallet";
 import { formatDateTime, formatUsdc } from "@/utils/format";
 import { apiUrl } from "@/services/api";
+import { InfoHint } from "@/components/ui/InfoHint";
 
 interface USYCPosition {
   account: string;
@@ -108,11 +109,11 @@ export function AutonomousCfoTreasuryRadar() {
       {/* HEADER ROW */}
       <div className="traction-panel-heading">
         <div>
-          <span className="eyebrow">Vestiarion Protocol Engine · Arc Autonomous CFO</span>
+          <span className="eyebrow">QMA Autonomous CFO · Arc Treasury Engine</span>
           <h2>Autonomous Corporate Treasury &amp; Yield Radar</h2>
           <p className="mt-1 text-sm text-[var(--t2)] max-w-2xl leading-relaxed">
-            Governs platform operating runway, sweeps surplus cash into Hashnote USYC (ERC-4626, ~5.0% APY on Arc),
-            executes Just-In-Time (JIT) bill redemption, and immutably chains state transitions via Euthyna SHA-256.
+            Sweeps surplus cash into the USYC ERC-4626 vault, redeems just in time for payables.
+            <InfoHint text="The CFO evaluates policy bounds (operating reserve, sweep caps, cooldown) before every action, and chains each state transition into the Euthyna SHA-256 audit trail." />
           </p>
         </div>
 
@@ -120,14 +121,20 @@ export function AutonomousCfoTreasuryRadar() {
           {verifyResult?.valid && (
             <span className="chip chip-live">Euthyna Chain Verified</span>
           )}
-          <a
-            href={position?.explorer_url || "https://testnet.arcscan.app/address/0x934e7309d7fca371db946b0643f2136cc0a0fcb2"}
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-secondary btn-sm"
-          >
-            Arcscan Vault
-          </a>
+          {position?.explorer_url ? (
+            <a
+              href={position.explorer_url}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-secondary btn-sm"
+            >
+              Arcscan Vault
+            </a>
+          ) : (
+            <span className="btn btn-secondary btn-sm opacity-60" title="Vault explorer link unavailable">
+              Arcscan Vault
+            </span>
+          )}
         </div>
       </div>
 
@@ -161,14 +168,14 @@ export function AutonomousCfoTreasuryRadar() {
                 {formatUsdc(position?.usdc_equivalent ?? 0)}
               </strong>
               <span className="balance-tile-sub">
-                {position?.current_apy_percent?.toFixed(1) || "5.0"}% APY · {position?.usyc_shares?.toFixed(3) || "0.000"} shares
+                {position?.current_apy_percent?.toFixed(1) || "5.0"}% target APY · {position?.usyc_shares?.toFixed(3) || "0.000"} shares
               </span>
             </div>
 
             {/* Card 3: 30-Day Operational Buffer */}
             <div className="balance-tile">
               <span className="balance-tile-label">30-Day OPEX Buffer</span>
-              <strong className="text-xl text-purple-400 font-mono">
+              <strong className="text-xl text-t1 font-mono">
                 {formatUsdc(forecast?.safety_buffer_usdc ?? 5.0)}
               </strong>
               <span className="balance-tile-sub">Reserved for oracles, RPC, &amp; compute bills</span>
@@ -181,7 +188,7 @@ export function AutonomousCfoTreasuryRadar() {
                 {verifyResult?.total_records ?? auditRecords.length} Blocks
               </strong>
               <span className="balance-tile-sub" title={verifyResult?.latest_hash || ""}>
-                Latest: {verifyResult?.latest_hash ? shortAddress(verifyResult.latest_hash) : "0x7b23...verified"}
+                Latest: {verifyResult?.latest_hash ? shortAddress(verifyResult.latest_hash) : "pending"}
               </span>
             </div>
           </div>
@@ -189,24 +196,24 @@ export function AutonomousCfoTreasuryRadar() {
           {/* 5 AUTONOMOUS DECISIONS CORRIDOR BAR */}
           <div className="cfo-corridor-bar">
             <div className="cfo-corridor-title">
-              5 Autonomous Treasury Decisions Executed on Arc
+              Autonomous Treasury Decision Types
             </div>
             <div className="cfo-corridor-items">
               <div className="cfo-corridor-item">
                 <strong className="text-[var(--accent)]">01. Idle Sweep</strong>
-                <span>Morpho USYC 5% APY</span>
+                <span>USYC vault · 5% target APY</span>
               </div>
               <div className="cfo-corridor-item">
-                <strong className="text-[var(--amber)]">02. JIT Redemption</strong>
+                <strong className="text-[var(--accent)]">02. JIT Redemption</strong>
                 <span>Auto bill liquidation</span>
               </div>
               <div className="cfo-corridor-item">
-                <strong className="text-[var(--green)]">03. Creator Claims</strong>
+                <strong className="text-[var(--accent)]">03. Creator Claims</strong>
                 <span>80% revenue share</span>
               </div>
               <div className="cfo-corridor-item">
-                <strong className="text-purple-400">04. StableFX RFQ</strong>
-                <span>USDC/EURC 5 bps</span>
+                <strong className="text-[var(--accent)]">04. FX Settlement</strong>
+                <span>USDC/EURC desk</span>
               </div>
               <div className="cfo-corridor-item">
                 <strong className="text-[var(--t1)]">05. Euthyna Hash</strong>
@@ -219,7 +226,7 @@ export function AutonomousCfoTreasuryRadar() {
           <div>
             <div className="flex justify-between items-center mb-3 mt-5">
               <span className="subsection-title">Recent Treasury Decisions &amp; Euthyna Audit Trail</span>
-              <span className="text-[11px] font-mono text-[var(--t3)]">
+              <span className="text-xs font-mono text-[var(--t3)]">
                 Continuous SHA-256 Hashing
               </span>
             </div>
@@ -270,7 +277,7 @@ export function AutonomousCfoTreasuryRadar() {
                             <td className="mono-td font-semibold">
                               {formatUsdc(r.amount_usdc)}
                             </td>
-                            <td className="mono-td text-[11px] text-[var(--t2)]">
+                            <td className="mono-td text-xs text-[var(--t2)]">
                               {formatUsdc(r.treasury_liquid_before ?? r.balance_before ?? 0)} &rarr;{" "}
                               {formatUsdc(r.treasury_liquid_after ?? r.balance_after ?? 0)}
                             </td>

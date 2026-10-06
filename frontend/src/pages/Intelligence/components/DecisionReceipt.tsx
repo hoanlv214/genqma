@@ -46,16 +46,16 @@ export function DecisionReceipt({
   const genlayerTx = paymentDetails?.genlayerTxHash || genlayerReceipt?.transaction_hash;
   const arcscanUrl = paymentDetails?.explorerUrl || (arcscanTx ? `https://testnet.arcscan.app/tx/${arcscanTx}` : undefined);
   const genlayerUrl = paymentDetails?.genlayerExplorerUrl || (genlayerTx ? `https://explorer-studio-dev.genlayer.com/transactions/${genlayerTx}` : undefined);
-  const dynamicConfidence = genlayerReceipt?.confidence
+  const dynamicConfidence = genlayerReceipt?.confidence != null
     ? (Number(genlayerReceipt.confidence) / 100).toFixed(2)
-    : '0.98';
+    : null;
 
   const counterparty = invoice?.symbol ? `${dynamicSymbol} Intelligence Protocol` : 'QMA Intelligence Protocol';
   const reference = invoice?.invoice_id
     ? `RPT-${shortAddress(invoice.invoice_id)} · ${dynamicSymbol} Anomaly Report`
     : `RPT-${dynamicSymbol} · Quantitative Signal Brief`;
   const description = 'Full access · institutional quantitative brief + source data pack';
-  const hash = arcscanTx ? shortAddress(arcscanTx) : '8f42...a91c';
+  const hash = arcscanTx ? shortAddress(arcscanTx) : null;
   const previous = invoice?.invoice_id ? shortAddress(invoice.invoice_id) : '91de...0b72';
 
   const checks: InvoiceCheck[] = [
@@ -72,7 +72,7 @@ export function DecisionReceipt({
     {
       label: 'genlayer.sla_verified',
       detail: genlayerReceipt?.verdict
-        ? `SLA verified: ${genlayerReceipt.verdict} (Consensus ${genlayerReceipt.confidence || 98}%)`
+        ? `SLA verified: ${genlayerReceipt.verdict}${genlayerReceipt.confidence != null ? ` (Consensus ${genlayerReceipt.confidence}%)` : ""}`
         : 'SLA contract verified by GenLayer consensus validators',
       passed: true,
       link: genlayerUrl,
@@ -129,7 +129,7 @@ export function DecisionReceipt({
               <div className="qma-stage-reason-row">
                 <span>settlement says</span>
                 <span className="qma-action-pill">PAY</span>
-                <span>confidence {dynamicConfidence}</span>
+                {dynamicConfidence && <span>confidence {dynamicConfidence}</span>}
               </div>
               <p className="qma-stage-quote">
                 “The quantitative report was delivered, checksum verified, and access token minted for buyer workspace.”
@@ -193,7 +193,7 @@ export function DecisionReceipt({
 
           {/* Provenance Row */}
           <div className="qma-invoice-provenance">
-            <span>hash {hash}</span>
+            {hash && <span>hash {hash}</span>}
             <span>prev {previous}</span>
           </div>
         </article>
@@ -207,15 +207,15 @@ export function DecisionReceipt({
 
           <div className="qma-ledger-box-active">
             <span>
-              <strong>#426</strong>
+              <strong>current</strong>
               <span className="qma-ledger-event-tag">report · access_granted</span>
             </span>
-            <span className="qma-ledger-hash-tag">{hash}</span>
+            {hash && <span className="qma-ledger-hash-tag">{hash}</span>}
           </div>
 
           <div className="qma-ledger-box-prev">
             <span>
-              #425 <span className="qma-ledger-event-tag">treasury · hold</span>
+              previous <span className="qma-ledger-event-tag">ledger entry</span>
             </span>
             <span>{previous}</span>
           </div>

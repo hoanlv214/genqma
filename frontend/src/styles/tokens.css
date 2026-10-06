@@ -24,6 +24,7 @@
 /* ----- Fonts ----- */
     --mono: 'JetBrains Mono', 'Fira Code', monospace;
     --sans: 'Inter', sans-serif;
+    --header-inset: max(16px, calc((100% - 1240px) / 2 + 16px)); /* aligns fixed + sticky headers to the 1240px content column */
 
     /* ----- Display serif (editorial headlines, receipt accents) ----- */
     --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;

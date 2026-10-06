@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CreditCard, Eye, LogIn, Search, TrendingUp } from "lucide-react";
+import { CreditCard, Eye, Lock, LogIn, Search, ShieldCheck, TrendingUp, Zap } from "lucide-react";
 import { API_BASE_URL } from "@/services/api";
 import { getPlatformSummary } from "@/services/traction";
 import { LandingHeader } from "@/components/layout/LandingHeader";
@@ -171,7 +171,7 @@ export function HomePage({ onNavigate }: HomeProps) {
                                 </h1>
                                 <p className="landing-hero-desc">
                                     QMA matches live funding and open-interest dislocations against historical regimes,
-                                    then sells the statistical evidence as a per-query report — paid in USDC, settled on {ARC_CHAIN.name} via Circle Gateway.
+                                    then sells the statistical evidence as a per-query report, paid in USDC and settled on {ARC_CHAIN.name} via Circle Gateway.
                                 </p>
                                 <div className="landing-actions">
                                     <button type="button" className="btn-primary landing-primary text-btn" onClick={() => onNavigate("app")}>
@@ -183,8 +183,43 @@ export function HomePage({ onNavigate }: HomeProps) {
                                         See Live Proof
                                     </button>
                                 </div>
+                                <div className="landing-hero-pillars" aria-label="Core Architectural Guarantees">
+                                    <div className="hero-pillar-item">
+                                        <div className="hero-pillar-header">
+                                            <span className="hero-pillar-icon" aria-hidden="true">
+                                                <Zap size={12} strokeWidth={2.5} />
+                                            </span>
+                                            <span>Sub-Cent x402</span>
+                                        </div>
+                                        <p className="hero-pillar-desc">
+                                            0.002–0.005 USDC per query, settled on Arc with USDC gas
+                                        </p>
+                                    </div>
+                                    <div className="hero-pillar-item">
+                                        <div className="hero-pillar-header">
+                                            <span className="hero-pillar-icon" aria-hidden="true">
+                                                <ShieldCheck size={12} strokeWidth={2.5} />
+                                            </span>
+                                            <span>Fail-Closed SLA</span>
+                                        </div>
+                                        <p className="hero-pillar-desc">
+                                            GenLayer consensus verifier gates every report before payment
+                                        </p>
+                                    </div>
+                                    <div className="hero-pillar-item">
+                                        <div className="hero-pillar-header">
+                                            <span className="hero-pillar-icon" aria-hidden="true">
+                                                <Lock size={12} strokeWidth={2.5} />
+                                            </span>
+                                            <span>Euthyna Audit</span>
+                                        </div>
+                                        <p className="hero-pillar-desc">
+                                            Deterministic spend caps &amp; SHA-256 hash-chained state trail
+                                        </p>
+                                    </div>
+                                </div>
                                 <p className="landing-hero-footnote">
-                                    Agents decide to buy, skip, or keep researching — every payment stays inside hard USDC spending caps.
+                                    Zero platform custody · Autonomous CFO sweeps idle cash into USYC ERC-4626 under written policy.
                                 </p>
                             </div>
 
@@ -239,20 +274,20 @@ export function HomePage({ onNavigate }: HomeProps) {
                         <div className="section-eyebrow landing-section-label">Measured, not claimed</div>
                         <div className="landing-measured">
                             <div className="measure-cell">
-                                <span className="measure-value">&lt; 500ms</span>
-                                <span className="measure-label">{ARC_CHAIN.name} finality</span>
+                                <span className="measure-value">0.002 USDC</span>
+                                <span className="measure-label">preview report</span>
                             </div>
                             <div className="measure-cell">
-                                <span className="measure-value">$0.00002</span>
-                                <span className="measure-label">median gas per settlement</span>
+                                <span className="measure-value">0.005 USDC</span>
+                                <span className="measure-label">full report</span>
                             </div>
                             <div className="measure-cell">
-                                <span className="measure-value">$0.002+</span>
-                                <span className="measure-label">per-query pricing</span>
+                                <span className="measure-value">80%</span>
+                                <span className="measure-label">creator revenue share</span>
                             </div>
                             <div className="measure-cell">
-                                <span className="measure-value">100%</span>
-                                <span className="measure-label">hash-bound delivery SLA</span>
+                                <span className="measure-value">Per query</span>
+                                <span className="measure-label">pay as you go, no subscription</span>
                             </div>
                         </div>
                     </div>
@@ -318,7 +353,7 @@ export function HomePage({ onNavigate }: HomeProps) {
                                         <span className="t-flag">--live</span> <span className="t-flag">--executor</span> circle-agent-wallet <span className="t-flag">--wallet</span> 0xYour-Agent-Wallet <span className="t-flag">--no-auto-deposit</span> <span className="t-flag">\</span>
                                         <span className="t-flag">--task</span> <span className="t-str">"buy the best BTC preview"</span> <span className="t-flag">--budget</span> 0.01 <span className="t-flag">--max-price</span> 0.005 <span className="t-flag">--max-purchases</span> 1
 
-                                        <span className="t-out">{'#'}</span> {metrics ? `${metrics.current_paid_count} reports settled for ${Number(metrics.current_revenue_usdc).toFixed(2)} USDC on ${ARC_CHAIN.name}, every verdict hash-linked` : 'connecting to the live ledger...'}</code></pre>
+                                        <span className="t-out">{'#'}</span> {metrics?.current_paid_count != null ? `${metrics.current_paid_count} reports settled for ${Number(metrics.current_revenue_usdc).toFixed(2)} USDC on ${ARC_CHAIN.name}, every verdict hash-linked` : 'connecting to the live ledger...'}</code></pre>
                                 </div>
                             </div>
                             <div className="landing-proof-card animate-on-scroll delay-200">
@@ -443,7 +478,7 @@ export function HomePage({ onNavigate }: HomeProps) {
                                 <a href="/" className="logo-item qma-logo-item" title="QMA" onClick={(e) => e.preventDefault()}>
                                     <QmaLogo size={28} showText={true} />
                                 </a>
-                                <p className="footer-brand-desc">Historical market intelligence &amp; autonomous agent commerce on Arc. Evidence-backed reports from past analog events.</p>
+                                <p className="footer-brand-desc">Historical market intelligence and autonomous agent commerce on Arc.</p>
                                 <div className="footer-socials" aria-label="QMA footer social links">
                                     <a className="social-link" href="http://x.com/hoanlv21" target="_blank" rel="noopener noreferrer" title="X (Twitter)">
                                         <svg viewBox="0 0 24 24" fill="currentColor">
@@ -499,7 +534,7 @@ export function HomePage({ onNavigate }: HomeProps) {
                         </div>
 
                         <div className="landing-footer-bottom">
-                            <span>2026 QMA Network. All rights reserved. Historical analogs only. Not financial advice. Running on {ARC_CHAIN.name}.</span>
+                            <span>2026 QMA Network. Historical analogs only, not financial advice. Running on {ARC_CHAIN.name}.</span>
                             <span className="landing-status-dot">{ARC_CHAIN.name} live</span>
                         </div>
                         <p className="landing-brand-disclaimer">

@@ -811,7 +811,7 @@ export function usePayment({
       const reportTier = normalizeTierForCache(invoiceForReport.tier);
       const cachedReportData = {
         ...reportData,
-        invoice: reportData.invoice || invoiceForReport,
+        invoice: invoiceForReport || reportData.invoice,
         provider_id: reportData.provider_id || providerForReport,
         tier: reportData.tier || reportTier,
         query: reportData.query || normalizedReportQuery,
