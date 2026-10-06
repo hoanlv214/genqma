@@ -429,14 +429,19 @@ class USYCTreasuryService:
             return self._policy
         if not self._is_custom_policy_file():
             st = _get_storage()
-            if st and hasattr(st, "load_treasury_policy"):
+            if st is not None and hasattr(st, "load_treasury_policy"):
+                # The storage backend is the policy source of truth; a read
+                # failure enforces the strict default instead of a stale file.
                 try:
                     data = st.load_treasury_policy()
-                    if data and isinstance(data, dict):
-                        self._policy = CorporateTreasuryPolicy(**data)
-                        return self._policy
                 except Exception as exc:
-                    logger.warning(f"[CFO AGENT POLICY] Could not load policy from storage backend: {exc}")
+                    logger.error(f"[CFO AGENT POLICY] Storage backend read failed: {exc}")
+                    data = None
+                if data and isinstance(data, dict):
+                    self._policy = CorporateTreasuryPolicy(**data)
+                else:
+                    self._policy = CorporateTreasuryPolicy()
+                return self._policy
         if self._policy_file and self._policy_file.exists():
             try:
                 with open(self._policy_file, "r", encoding="utf-8") as f:
@@ -454,13 +459,15 @@ class USYCTreasuryService:
         self.target_apy = new_policy.target_apy_baseline
         if not self._is_custom_policy_file():
             st = _get_storage()
-            if st and hasattr(st, "save_treasury_policy"):
+            if st is not None and hasattr(st, "save_treasury_policy"):
+                # Never mirror the policy to a local file while a storage
+                # backend is configured: the database is the single source.
                 try:
                     st.save_treasury_policy(new_policy.model_dump())
-                    logger.info(f"[CFO AGENT POLICY] Updated corporate treasury policy: {new_policy}")
-                    return self._policy
                 except Exception as exc:
-                    logger.warning(f"Could not persist policy to storage backend: {exc}")
+                    logger.error(f"Could not persist policy to storage backend: {exc}")
+                logger.info(f"[CFO AGENT POLICY] Updated corporate treasury policy: {new_policy}")
+                return self._policy
         if self._policy_file:
             try:
                 self._policy_file.parent.mkdir(parents=True, exist_ok=True)
@@ -569,6 +576,13 @@ class USYCTreasuryService:
 
         policy = self.get_policy()
         now = time.time()
+
+        # 0. Operator emergency halt: checked before any RPC or cooldown logic
+        if policy.treasury_halted:
+            raise ValueError(
+                f"Treasury halted by operator policy: {action} refused. "
+                "Resume via POST /api/v1/treasury/policy with treasury_halted=false."
+            )
 
         # 1. Cooldown guard
         if not bypass_cooldown and self._last_rebalance_at > 0.0 and (now - self._last_rebalance_at) < policy.rebalance_cooldown_seconds:

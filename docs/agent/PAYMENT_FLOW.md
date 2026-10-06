@@ -58,10 +58,14 @@ Import existing `creator_claims.json` with `scripts/migrate_creator_claims.py`
 before removing any legacy host data. History already truncated by older
 versions must be reconciled from payout receipts/backups; this patch cannot
 reconstruct missing records. Missing/unavailable claim storage fails closed.
-Local JSON ledgers use atomic replacement without claim-history truncation.
+With the Postgres backend configured, creator claims persist to Postgres only:
+a failed claim write raises (fail closed) and no local JSON mirror is written.
+JSON-mode runs (tests/offline) write local ledgers with atomic replacement
+without claim-history truncation.
 
 For isolated integration runs, `QMA_DATA_DIR` selects the JSON data directory;
-Supabase remains authoritative when its URL and service-role key are configured.
+the storage backend selected by `QMA_STORAGE_BACKEND`/`DATABASE_URL` is the
+single source of truth and never silently falls back to local JSON files.
 
 `GenQMAShield.py` is a GenLayer verifier. It does not custody Arc USDC or call
 Circle. After a final verdict, the backend creates an immutable operation with a

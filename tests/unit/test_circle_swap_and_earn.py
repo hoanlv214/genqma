@@ -2,8 +2,10 @@
 Verifies institutional atomic swap metadata, slippage bounds, and ERC-4626 standard vault compliance.
 """
 
+import os
 import unittest
 from unittest.mock import MagicMock, patch
+import backend.app.services.stablefx_service as _sfx_module
 from backend.app.services.stablefx_service import (
     get_stablefx_quote,
     settle_stablefx_swap,
@@ -103,3 +105,103 @@ class CircleSwapAndEarnTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StableFxLiveRateTests(unittest.TestCase):
+    """Live EUR/USD rate adapter: Pyth Hermes preference, sanity bounds,
+    staleness rejection, and labeled synthetic fallback."""
+
+    def setUp(self):
+        import time as _time
+        self.sfx = _sfx_module
+        self.now = _time.time()
+        self._reset_cache()
+
+    def _reset_cache(self):
+        self.sfx._FX_RATE_CACHE.update({
+            "rate": None,
+            "source": self.sfx.FX_RATE_SOURCE_SYNTHETIC,
+            "fetched_at": 0.0,
+            "publish_time": 0,
+            "evidence_url": "",
+        })
+
+    def _hermes_response(self, usd_per_eur, publish_time=None):
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.raise_for_status.return_value = None
+        resp.json.return_value = {
+            "parsed": [{
+                "price": {
+                    "price": str(int(usd_per_eur * 1e8)),
+                    "conf": "1000",
+                    "expo": -8,
+                    "publish_time": publish_time or int(self.now),
+                }
+            }]
+        }
+        return resp
+
+    @patch("backend.app.services.stablefx_service.requests.get")
+    @patch.dict(os.environ, {"QMA_STABLEFX_LIVE_RATE": "1"})
+    def test_quote_uses_live_pyth_rate(self, mock_get):
+        self._reset_cache()
+        usd_per_eur = 1.0855
+        mock_get.return_value = self._hermes_response(usd_per_eur)
+
+        quote = get_stablefx_quote("EURC", "USDC", 10.0)
+        self.assertEqual(quote["rate_source"], self.sfx.FX_RATE_SOURCE_LIVE)
+        self.assertIsNotNone(quote["rate_evidence_url"])
+        expected_raw = round(usd_per_eur, 6)
+        expected_effective = round(expected_raw * (1 - self.sfx.INSTITUTIONAL_SPREAD_BPS / 10000.0), 6)
+        self.assertAlmostEqual(quote["effective_rate"], expected_effective, places=6)
+
+        # Inverse direction uses 1/rate
+        inv = get_stablefx_quote("USDC", "EURC", 10.0)
+        self.assertAlmostEqual(inv["effective_rate"], round(round(1.0 / usd_per_eur, 6) * (1 - self.sfx.INSTITUTIONAL_SPREAD_BPS / 10000.0), 6), places=6)
+
+        # TTL cache: second resolution within 60s must not refetch
+        self.assertEqual(mock_get.call_count, 1)
+
+    @patch("backend.app.services.stablefx_service.requests.get")
+    @patch.dict(os.environ, {"QMA_STABLEFX_LIVE_RATE": "1"})
+    def test_quote_falls_back_on_out_of_bounds_rate(self, mock_get):
+        self._reset_cache()
+        mock_get.return_value = self._hermes_response(0.50)  # nonsense EUR/USD
+        quote = get_stablefx_quote("EURC", "USDC", 10.0)
+        self.assertEqual(quote["rate_source"], self.sfx.FX_RATE_SOURCE_SYNTHETIC)
+        self.assertIsNone(quote["rate_evidence_url"])
+        self.assertGreater(quote["to_amount"], 0)
+
+    @patch("backend.app.services.stablefx_service.requests.get")
+    @patch.dict(os.environ, {"QMA_STABLEFX_LIVE_RATE": "1"})
+    def test_quote_falls_back_on_stale_publish_time(self, mock_get):
+        self._reset_cache()
+        stale = self._hermes_response(1.0855, publish_time=int(self.now) - 3600)
+        mock_get.return_value = stale
+        quote = get_stablefx_quote("EURC", "USDC", 10.0)
+        self.assertEqual(quote["rate_source"], self.sfx.FX_RATE_SOURCE_SYNTHETIC)
+
+    @patch("backend.app.services.stablefx_service.requests.get")
+    @patch.dict(os.environ, {"QMA_STABLEFX_LIVE_RATE": "1"})
+    def test_quote_falls_back_when_hermes_unreachable(self, mock_get):
+        self._reset_cache()
+        mock_get.side_effect = RuntimeError("hermes down")
+        quote = get_stablefx_quote("EURC", "USDC", 10.0)
+        self.assertEqual(quote["rate_source"], self.sfx.FX_RATE_SOURCE_SYNTHETIC)
+        self.assertIn("baseline", quote["rate_note"])
+
+    @patch.dict(os.environ, {"QMA_STABLEFX_LIVE_RATE": "0"})
+    def test_kill_switch_skips_live_fetch(self):
+        self._reset_cache()
+        quote = get_stablefx_quote("EURC", "USDC", 10.0)
+        self.assertEqual(quote["rate_source"], self.sfx.FX_RATE_SOURCE_SYNTHETIC)
+
+    def test_supported_pairs_carry_rate_source(self):
+        pairs = get_supported_pairs()
+        for pair in pairs:
+            self.assertIn("rate_source", pair)
+            self.assertIn(pair["rate_source"], {
+                self.sfx.FX_RATE_SOURCE_LIVE,
+                self.sfx.FX_RATE_SOURCE_SYNTHETIC,
+            })

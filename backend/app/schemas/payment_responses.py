@@ -64,6 +64,7 @@ class PaymentInvoiceResponse(ResponseModel):
 class InvoicePaymentStateResponse(ResponseModel):
     invoice_id: str
     status: Optional[str] = None
+    sla_state: Optional[str] = None
     access_status: Optional[str] = None
     amount: Any = None
     amount_usdc: Any = None

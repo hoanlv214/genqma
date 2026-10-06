@@ -41,7 +41,7 @@ BRAND_DESCRIPTION: str = (
     "via x402 USDC micropayments with on-chain SLA and verification proof."
 )
 INTERNAL_QUANT_ENGINE: str = "QMA"  # Internal market-memory & anomaly matching engine
-INTERNAL_TREASURY_MODULE: str = "Vestiarion"  # Internal corporate treasury & liquidity engine
+INTERNAL_TREASURY_MODULE: str = "QMA Treasury Engine"  # Internal corporate treasury & liquidity engine
 
 
 @dataclass(frozen=True)

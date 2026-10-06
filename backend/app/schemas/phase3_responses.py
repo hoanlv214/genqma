@@ -47,6 +47,7 @@ class AgentRecommendationItem(ResponseModel):
     reasons: List[str]
     query: Dict[str, Any]
     live: Dict[str, Any]
+    sla: Optional[Dict[str, Any]] = None
 
 
 class AgentRecommendationsResponse(ResponseModel):

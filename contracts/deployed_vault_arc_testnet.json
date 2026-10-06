@@ -1,16 +1,35 @@
 {
   "contractName": "USYCVaultFixed",
-  "address": "0xb21fa2e89d9b32f6471b668780359050e6a80e16",
   "chain": "Arc Testnet",
   "chainId": 5042002,
-  "deployer": "0xf5987818EBBEe812EB730B6a395d66e664412cf5",
-  "underlyingAsset": "0x3600000000000000000000000000000000000000",
-  "txHash": "0x1e015025e4aef3ba1db2add9172637ad28165dd2b9c043237dee71727d09c645",
-  "arcscanUrl": "https://testnet.arcscan.app/address/0xb21fa2e89d9b32f6471b668780359050e6a80e16",
-  "deployedAt": "2026-09-18T11:07:30.541Z",
-  "tests": {
-    "setDepositCapTx": "0xec84dc6b70d88f159e411d1653947165fe82dfd6d7475f43f46b155d75f1fece",
-    "depositTx": "0xf9cc9ddd3634f76e97b8decc1ccb6272dbba161a1d9a1d1f8e7b83fbdacee96b",
-    "redeemTx": "0xef45d57098f6d5ae0d25391b9fcf76e28f8f338fc812cfc8fc920347daeda845"
-  }
+  "canonicalVault": {
+    "address": "0x934e7309d7fca371db946b0643f2136cc0a0fcb2",
+    "symbol": "yvUSYC",
+    "underlyingAsset": "0x3600000000000000000000000000000000000000",
+    "role": "runtime treasury vault referenced by ARC_USYC_VAULT_ADDRESS (backend config default, config/networks.json, agents/bin/agent_buyer.js default)",
+    "verifiedOnChain": {
+      "date": "2026-10-06",
+      "method": "erc4626 view calls via Arc testnet RPC",
+      "totalAssetsUsdc": 11.11,
+      "operatorShares": 0.0
+    }
+  },
+  "retiredDeployments": [
+    {
+      "address": "0xb21fa2e89d9b32f6471b668780359050e6a80e16",
+      "chain": "Arc Testnet",
+      "chainId": 5042002,
+      "deployer": "0xf5987818EBBEe812EB730B6a395d66e664412cf5",
+      "underlyingAsset": "0x3600000000000000000000000000000000000000",
+      "txHash": "0x1e015025e4aef3ba1db2add9172637ad28165dd2b9c043237dee71727d09c645",
+      "arcscanUrl": "https://testnet.arcscan.app/address/0xb21fa2e89d9b32f6471b668780359050e6a80e16",
+      "deployedAt": "2026-09-18T11:07:30.541Z",
+      "tests": {
+        "setDepositCapTx": "0xec84dc6b70d88f159e411d1653947165fe82dfd6d7475f43f46b155d75f1fece",
+        "depositTx": "0xf9cc9ddd3634f76e97b8decc1ccb6272dbba161a1d9a1d1f8e7b83fbdacee96b",
+        "redeemTx": "0xef45d57098f6d5ae0d25391b9fcf76e28f8f338fc812cfc8fc920347daeda845"
+      },
+      "retiredReason": "empty parallel deployment (totalAssets=0 on-chain, verified 2026-10-06); runtime config never pointed at it"
+    }
+  ]
 }

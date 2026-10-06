@@ -1,5 +1,5 @@
 """
-Hybrid Agent Synthesis Service for QMA Vestiarion.
+Hybrid Agent Synthesis Service for QMA.
 
 Implements the BYO-Key (Bring Your Own Key) architecture:
 - Scenario A (Default): Returns pure quantitative metrics with zero LLM inference cost on server.
@@ -54,7 +54,7 @@ def generate_agent_synthesis(
     }
 
     prompt = (
-        f"You are the {role_title} at QMA Vestiarion, an autonomous quant firm.\n"
+        f"You are the {role_title} at QMA, an autonomous financial intelligence firm.\n"
         f"Analyze the following quantitative metrics for {symbol}:\n"
         f"{json.dumps(compact_metrics, default=str)}\n\n"
         "Provide a concise 2-3 sentence executive briefing for an autonomous trading desk: "

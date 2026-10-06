@@ -108,7 +108,20 @@ class MultiExchangeAggregator(MarketDataAdapter):
             bybit_venue = next((v for v in venues if v.get("exchange") == "BYBIT"), None)
 
             primary_exchange = primary.get("exchange")
-            if primary_exchange == "BYBIT":
+            # Evidence anchor preference: GenLayer validators can only fetch
+            # contract.mexc.com / Polymarket / Pyth hosts (Binance and Bybit
+            # API hosts are allowlisted in the contract but unreachable from
+            # validators, see docs/TECH_DEBT.md #1), so anchor evidence to the
+            # MEXC venue whenever one exists.
+            if primary_exchange == "MEXC":
+                primary["verifiable"] = True
+                primary["verifiable_exchange"] = "MEXC"
+                primary["evidence_url"] = f"https://contract.mexc.com/api/v1/contract/funding_rate/{sym}_USDT"
+            elif mexc_venue:
+                primary["verifiable"] = True
+                primary["verifiable_exchange"] = "MEXC"
+                primary["evidence_url"] = f"https://contract.mexc.com/api/v1/contract/funding_rate/{sym}_USDT"
+            elif primary_exchange == "BYBIT":
                 primary["verifiable"] = True
                 primary["verifiable_exchange"] = "BYBIT"
                 primary["evidence_url"] = f"https://api.bybit.com/v5/market/tickers?category=linear&symbol={sym}USDT"
@@ -116,10 +129,6 @@ class MultiExchangeAggregator(MarketDataAdapter):
                 primary["verifiable"] = True
                 primary["verifiable_exchange"] = "BINANCE"
                 primary["evidence_url"] = f"https://api.binance.com/api/v3/ticker/24hr?symbol={sym}USDT"
-            elif primary_exchange == "MEXC":
-                primary["verifiable"] = True
-                primary["verifiable_exchange"] = "MEXC"
-                primary["evidence_url"] = f"https://contract.mexc.com/api/v1/contract/funding_rate/{sym}_USDT"
             elif bybit_venue:
                 primary["verifiable"] = True
                 primary["verifiable_exchange"] = "BYBIT"
@@ -128,10 +137,6 @@ class MultiExchangeAggregator(MarketDataAdapter):
                 primary["verifiable"] = True
                 primary["verifiable_exchange"] = "BINANCE"
                 primary["evidence_url"] = f"https://api.binance.com/api/v3/ticker/24hr?symbol={sym}USDT"
-            elif mexc_venue:
-                primary["verifiable"] = True
-                primary["verifiable_exchange"] = "MEXC"
-                primary["evidence_url"] = f"https://contract.mexc.com/api/v1/contract/funding_rate/{sym}_USDT"
             else:
                 primary["verifiable"] = False
                 primary["verifiable_exchange"] = None

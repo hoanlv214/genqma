@@ -2,6 +2,11 @@ import os
 import tempfile
 
 os.environ["QMA_STORAGE_BACKEND"] = "json"          # forces Priority 2 in create_storage_backend
+os.environ["QMA_SPEND_GUARD_LEDGER"] = "0"          # unit tests never exercise the durable spend ledger
+os.environ["QMA_STABLEFX_LIVE_RATE"] = "0"          # unit tests never hit the live Hermes FX feed
+os.environ["QMA_EARN_ONCHAIN_METRICS"] = "0"        # unit tests never read vault metrics over RPC
+os.environ["QMA_EARN_SNAPSHOT_SAMPLER"] = "0"       # unit tests never start the background sampler
+os.environ["QMA_SIGNAL_VERIFIABILITY_GATE"] = "0"  # unit tests never run the sale-time evidence gate
 for _k in ("DATABASE_URL", "POSTGRES_URL", "QMA_DATABASE_URL"):
     os.environ.pop(_k, None)                        # cannot fall through to Postgres
 _ISOLATION_DIR = tempfile.mkdtemp(prefix="qma_test_data_")

@@ -23,7 +23,7 @@ HISTORICAL_DB_PATH = os.getenv(
     "QMA_HISTORICAL_DB_PATH",
     default_data_path(
         "QMA_HISTORICAL_DB_PATH",
-        os.path.join(BASE_DIR, "tin_hieu", "json", "mexc", "funding_historical_analysis.csv"),
+        os.path.join(QMA_DIR, "tin_hieu", "json", "mexc", "funding_historical_analysis.csv"),
         os.path.join(QMA_DIR, "data", "sample_funding_historical_analysis.csv"),
     ),
 )
@@ -31,7 +31,7 @@ BACKTEST_OUTCOME_PATH = os.getenv(
     "QMA_BACKTEST_OUTCOME_PATH",
     default_data_path(
         "QMA_BACKTEST_OUTCOME_PATH",
-        os.path.join(BASE_DIR, "tin_hieu", "json", "mexc", "trading_analysis.csv"),
+        os.path.join(QMA_DIR, "tin_hieu", "json", "mexc", "trading_analysis.csv"),
         os.path.join(QMA_DIR, "data", "sample_trading_analysis.csv"),
     ),
 )

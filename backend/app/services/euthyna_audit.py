@@ -36,6 +36,29 @@ logger = logging.getLogger("QMA-Euthyna-Audit")
 
 _EUTHYNA_LOCK = threading.Lock()
 
+# Canonical audit actions. Historical rows were written under rail-specific
+# spellings (Earn Kit used SWEEP_IDLE/JIT_REDEEM, the treasury API uses
+# IDLE_SWEEP/JIT_REDEMPTION); new writes are canonicalized here and reads
+# expand aliases so both generations aggregate under one action.
+ACTION_ALIASES: Dict[str, str] = {
+    "SWEEP_IDLE": "IDLE_SWEEP",
+    "JIT_REDEEM": "JIT_REDEMPTION",
+}
+
+
+def canonical_action(action: Optional[str]) -> str:
+    return ACTION_ALIASES.get(str(action or "").strip(), str(action or "").strip())
+
+
+def _action_filter_candidates(action_filter: str) -> List[str]:
+    """Return the canonical action plus every alias that maps to it."""
+    canonical = canonical_action(action_filter)
+    candidates = {canonical, str(action_filter).strip()}
+    for alias, target in ACTION_ALIASES.items():
+        if target == canonical:
+            candidates.add(alias)
+    return [c for c in candidates if c]
+
 
 def _get_storage():
     try:
@@ -65,18 +88,23 @@ class EuthynaAuditEngine:
             return False
 
     def _load_records(self) -> None:
-        """Load persistent audit records from disk or storage backend."""
+        """Load persistent audit records from the storage backend, or disk only
+        when no backend is configured (standalone scripts and tests)."""
         if not self._is_custom_audit_file():
             st = _get_storage()
-            if st and hasattr(st, "load_euthyna_records"):
+            if st is not None and hasattr(st, "load_euthyna_records"):
                 try:
                     db_recs = st.load_euthyna_records(limit=5000)
-                    if db_recs and isinstance(db_recs, list):
-                        self._records = list(reversed(db_recs))
-                        logger.info(f"[EUTHYNA AUDIT] Loaded {len(self._records)} persistent audit records from storage backend")
-                        return
                 except Exception as exc:
-                    logger.warning(f"[EUTHYNA AUDIT] Could not load records from storage backend: {exc}")
+                    # A database read failure must never silently fall back to a
+                    # stale local file: the database is the audit source of truth.
+                    logger.error(f"[EUTHYNA AUDIT] Storage backend read failed: {exc}")
+                    self._records = []
+                    return
+                self._records = list(reversed(db_recs)) if isinstance(db_recs, list) else []
+                if self._records:
+                    logger.info(f"[EUTHYNA AUDIT] Loaded {len(self._records)} persistent audit records from storage backend")
+                return
 
         if self._audit_file and self._audit_file.exists():
             try:
@@ -116,6 +144,7 @@ class EuthynaAuditEngine:
         genlayer_consensus: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Record an immutable audit entry."""
+        action = canonical_action(action)
         record_id = f"euthyna_{uuid.uuid4().hex[:12]}"
         timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         norm_actor = normalize_address(actor)
@@ -180,16 +209,19 @@ class EuthynaAuditEngine:
                 }
 
                 self._records.append(entry)
-                if not self._is_custom_audit_file():
+                if self._is_custom_audit_file():
+                    self._persist_records()
+                else:
                     st = _get_storage()
-                    if st and hasattr(st, "save_euthyna_record"):
+                    if st is None or not hasattr(st, "save_euthyna_record"):
+                        # No storage backend configured: the local file is the ledger.
+                        self._persist_records()
+                    else:
                         try:
                             st.save_euthyna_record(entry)
                         except Exception as exc:
                             logger.critical(f"[EUTHYNA AUDIT] Failed to save euthyna record to storage backend: {exc}")
                             raise
-                else:
-                    self._persist_records()
 
                 logger.info(f"[EUTHYNA AUDIT] Recorded {action} [{status}] for {actor}: {amount_usdc} USDC -> {clean_tx or 'INTERNAL'}")
                 return entry
@@ -206,6 +238,26 @@ class EuthynaAuditEngine:
             st = _get_storage()
             if st and hasattr(st, "load_euthyna_records"):
                 try:
+                    if action_filter:
+                        # Historical rows may use alias spellings, so query each
+                        # candidate and merge under one ordered result.
+                        merged: List[Dict[str, Any]] = []
+                        seen_ids: set = set()
+                        for candidate in _action_filter_candidates(action_filter):
+                            rows = st.load_euthyna_records(
+                                limit=limit,
+                                action_filter=candidate,
+                                actor_filter=actor_filter,
+                                only_live=only_live,
+                            ) or []
+                            for row in rows:
+                                record_key = row.get("record_id") or id(row)
+                                if record_key in seen_ids:
+                                    continue
+                                seen_ids.add(record_key)
+                                merged.append(row)
+                        merged.sort(key=lambda r: str(r.get("timestamp") or ""), reverse=True)
+                        return merged[:limit]
                     db_records = st.load_euthyna_records(
                         limit=limit,
                         action_filter=action_filter,
@@ -223,7 +275,8 @@ class EuthynaAuditEngine:
             if only_live:
                 results = [r for r in results if r.get("tx_hash")]
             if action_filter:
-                results = [r for r in results if r["action"].lower() == action_filter.lower()]
+                allowed = {c.lower() for c in _action_filter_candidates(action_filter)}
+                results = [r for r in results if str(r.get("action", "")).lower() in allowed]
             if actor_filter:
                 norm_actor = normalize_address(actor_filter)
                 results = [r for r in results if r["actor"].lower() == norm_actor.lower()]

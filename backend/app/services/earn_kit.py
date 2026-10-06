@@ -16,6 +16,7 @@ import json
 import logging
 import math
 import os
+import threading
 import time
 from pathlib import Path
 from threading import Lock
@@ -38,6 +39,12 @@ logger = logging.getLogger("QMA-EarnKit")
 _EARN_LOCK = Lock()
 _EARN_POSITIONS: Dict[str, Dict[str, Any]] = {}
 _VAULT_VERIFICATION: Dict[str, bool] = {}
+
+# On-chain vault metrics (totalAssets / share price), cached briefly so list
+# endpoints do not hammer the RPC. Kill switch: QMA_EARN_ONCHAIN_METRICS=0.
+_METRICS_LOCK = Lock()
+_VAULT_METRICS_CACHE: Dict[str, Dict[str, Any]] = {}
+_METRICS_CACHE_TTL_SECONDS = 60.0
 
 # ABI extensions for ERC-4626 asset() view and events
 _ERC4626_ASSET_ABI = [
@@ -165,6 +172,144 @@ ARC_EARN_OPPORTUNITIES: List[Dict[str, Any]] = [
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_STORAGE_PATH = _REPO_ROOT / "earn_vault_positions.json"
+_DEFAULT_SNAPSHOTS_PATH = _REPO_ROOT / "earn_vault_snapshots.json"
+
+
+def _snapshots_path() -> Path:
+    """QMA_DATA_DIR (test isolation) wins over the repo-root default."""
+    data_dir = os.getenv("QMA_DATA_DIR")
+    if data_dir:
+        return Path(data_dir) / "earn_vault_snapshots.json"
+    return Path(os.getenv("QMA_EARN_SNAPSHOTS_PATH", str(_DEFAULT_SNAPSHOTS_PATH)))
+
+
+def _load_vault_snapshots() -> Dict[str, List[Dict[str, float]]]:
+    try:
+        p = _snapshots_path()
+        if not p.exists():
+            return {}
+        with open(p, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception as exc:
+        logger.debug("Could not load vault snapshots: %s", exc)
+        return {}
+
+
+def _save_vault_snapshots(data: Dict[str, List[Dict[str, float]]]) -> None:
+    try:
+        p = _snapshots_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp_p = p.with_suffix(f".tmp.{os.getpid()}")
+        with open(tmp_p, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        os.replace(tmp_p, p)
+    except Exception as exc:
+        logger.debug("Could not save vault snapshots: %s", exc)
+
+
+_SNAPSHOT_MAX_AGE_SECONDS = 35 * 86400  # keep ~5 weeks of share-price history
+
+
+def record_vault_samples(samples: Dict[str, Dict[str, float]]) -> int:
+    """Append {vault_id: {ts, share_price_usdc, tvl_usdc}} observations and
+    prune samples older than the retention window. Returns samples stored."""
+    if not samples:
+        return 0
+    with _METRICS_LOCK:
+        store = _load_vault_snapshots()
+        now = time.time()
+        for vault_id, sample in samples.items():
+            entries = store.get(vault_id) or []
+            entries.append({
+                "ts": float(sample.get("ts") or now),
+                "share_price_usdc": float(sample.get("share_price_usdc") or 0.0),
+                "tvl_usdc": float(sample.get("tvl_usdc") or 0.0),
+            })
+            store[vault_id] = [e for e in entries if now - float(e["ts"]) <= _SNAPSHOT_MAX_AGE_SECONDS]
+        _save_vault_snapshots(store)
+        return sum(len(v) for v in store.values())
+
+
+def compute_trailing_apy(vault_id: str, min_window_days: float = 1.0) -> Optional[Dict[str, Any]]:
+    """Realized APY from the share-price time series. Requires at least two
+    samples spanning min_window_days; APY = (p1/p0) ** (365/days) - 1."""
+    with _METRICS_LOCK:
+        snaps = list(_load_vault_snapshots().get(vault_id) or [])
+    if len(snaps) < 2:
+        return None
+    snaps.sort(key=lambda s: float(s["ts"]))
+    first, last = snaps[0], snaps[-1]
+    days = (float(last["ts"]) - float(first["ts"])) / 86400.0
+    if days < min_window_days:
+        return None
+    p0 = float(first.get("share_price_usdc") or 0.0)
+    p1 = float(last.get("share_price_usdc") or 0.0)
+    if p0 <= 0.0 or p1 <= 0.0:
+        return None
+    apy = (p1 / p0) ** (365.0 / days) - 1.0
+    return {
+        "apy": round(apy, 6),
+        "window_days": round(days, 2),
+        "samples": len(snaps),
+    }
+
+
+def sample_vault_snapshots(service: Optional["EarnKitService"] = None) -> Dict[str, Any]:
+    """Read live on-chain metrics for every registered vault and store one
+    snapshot per vault. Safe to run repeatedly; returns a summary."""
+    svc = service or earn_kit_service
+    samples: Dict[str, Dict[str, float]] = {}
+    for opp in ARC_EARN_OPPORTUNITIES:
+        if not opp.get("vaultAddress"):
+            continue
+        metrics = svc._read_vault_onchain_metrics(opp, force_refresh=True)
+        if metrics:
+            samples[opp["vault_id"]] = {
+                "ts": time.time(),
+                "share_price_usdc": metrics["share_price_usdc"],
+                "tvl_usdc": metrics["tvl_usdc"],
+            }
+    stored = record_vault_samples(samples) if samples else 0
+    return {"sampled_vaults": len(samples), "stored_samples": stored}
+
+
+_SAMPLER_THREAD: Optional[Any] = None
+_SAMPLER_LOCK = Lock()
+
+
+def start_earn_snapshot_sampler() -> Optional[Any]:
+    """Start the background share-price sampler (idempotent). Kill switch:
+    QMA_EARN_SNAPSHOT_SAMPLER=0; interval via QMA_EARN_SNAPSHOT_INTERVAL_SECONDS."""
+    global _SAMPLER_THREAD
+    with _SAMPLER_LOCK:
+        if _SAMPLER_THREAD is not None and _SAMPLER_THREAD.is_alive():
+            return _SAMPLER_THREAD
+        if os.getenv("QMA_EARN_SNAPSHOT_SAMPLER", "1").strip().lower() in {"0", "false", "off"}:
+            return None
+        try:
+            interval = max(60, int(os.getenv("QMA_EARN_SNAPSHOT_INTERVAL_SECONDS", "3600")))
+        except (TypeError, ValueError):
+            interval = 3600
+
+        def _loop() -> None:
+            while True:
+                try:
+                    summary = sample_vault_snapshots()
+                    if summary.get("sampled_vaults"):
+                        logger.info(
+                            "[EARN KIT] Sampled %s vault(s), %s stored samples",
+                            summary.get("sampled_vaults"),
+                            summary.get("stored_samples"),
+                        )
+                except Exception as exc:
+                    logger.debug("Vault snapshot sampling failed: %s", exc)
+                time.sleep(interval)
+
+        _SAMPLER_THREAD = threading.Thread(target=_loop, name="qma-earn-snapshot-sampler", daemon=True)
+        _SAMPLER_THREAD.start()
+        logger.info("[EARN KIT] Vault snapshot sampler started (interval %ss)", interval)
+        return _SAMPLER_THREAD
 
 
 def _get_storage():
@@ -328,6 +473,71 @@ class EarnKitService:
         except TypeError:
             return fn(opp)
 
+    def _read_vault_onchain_metrics(self, opp: Any, force_refresh: bool = False) -> Optional[Dict[str, Any]]:
+        """Read real TVL (totalAssets) and share price (convertToAssets) from the
+        verified ERC-4626 vault. Returns None when the vault has no address, the
+        RPC is unreachable, or the kill switch is set. Cached briefly per vault."""
+        if os.getenv("QMA_EARN_ONCHAIN_METRICS", "1").strip().lower() in {"0", "false", "off"}:
+            return None
+        vault_id = opp.get("vault_id") if isinstance(opp, dict) else None
+        vault_addr = opp.get("vaultAddress") if isinstance(opp, dict) else None
+        if not vault_id or not vault_addr:
+            return None
+        now = time.time()
+        with _METRICS_LOCK:
+            cached = _VAULT_METRICS_CACHE.get(vault_id)
+        if not force_refresh and cached and (now - cached["fetched_at"]) < _METRICS_CACHE_TTL_SECONDS:
+            return cached.get("metrics")
+        metrics: Optional[Dict[str, Any]] = None
+        try:
+            if self.w3 and self.w3.is_connected():
+                contract = self.w3.eth.contract(
+                    address=Web3.to_checksum_address(vault_addr),
+                    abi=ERC4626_VAULT_ABI,
+                )
+                total_assets_raw = int(contract.functions.totalAssets().call())
+                share_dec = int(contract.functions.decimals().call())
+                one_share = 10 ** share_dec
+                assets_per_share_raw = int(contract.functions.convertToAssets(one_share).call())
+                metrics = {
+                    "tvl_usdc": round(total_assets_raw / 1e6, 6),
+                    "share_price_usdc": round(assets_per_share_raw / float(one_share), 8),
+                }
+        except Exception as exc:
+            logger.debug("Vault metrics read failed for %s: %s", vault_id, exc)
+            metrics = None
+        with _METRICS_LOCK:
+            _VAULT_METRICS_CACHE[vault_id] = {"fetched_at": now, "metrics": metrics}
+        return metrics
+
+    def _enrich_opportunity(self, item: Dict[str, Any]) -> Dict[str, Any]:
+        """Attach live on-chain TVL / share price and trailing APY provenance to
+        an opportunity copy. Registry APY stays labeled as an estimate until a
+        real trailing window exists."""
+        if not isinstance(item, dict):
+            return item
+        item.setdefault("tvl_source", "STATIC_REGISTRY_ESTIMATE")
+        item.setdefault("apy_source", "STATIC_REGISTRY_ESTIMATE")
+        item.setdefault("trailing_apy", None)
+        item.setdefault("apy_window_days", None)
+        item.setdefault("share_price_usdc", None)
+        if item.get("static_apy_estimate") is None and item.get("currentApy") is not None:
+            item["static_apy_estimate"] = item.get("currentApy")
+        metrics = self._read_vault_onchain_metrics(item)
+        if metrics:
+            item["tvl_usdc"] = metrics["tvl_usdc"]
+            item["totalDeposits"] = str(metrics["tvl_usdc"])
+            item["share_price_usdc"] = metrics["share_price_usdc"]
+            item["tvl_source"] = "ONCHAIN_TOTAL_ASSETS"
+        trailing = compute_trailing_apy(item.get("vault_id") or "")
+        if trailing:
+            item["trailing_apy"] = trailing["apy"]
+            item["apy_window_days"] = trailing["window_days"]
+            item["apy_source"] = "TRAILING_SHARE_PRICE"
+            item["currentApy"] = trailing["apy"]
+            item["net_apy"] = trailing["apy"]
+        return item
+
     def verify_vaults(self) -> List[Dict[str, Any]]:
         """Return copies of all opportunities with status set to unavailable for unverified vaults."""
         results = []
@@ -335,7 +545,7 @@ class EarnKitService:
             item = dict(opp)
             if not self._verify_vault_onchain(item):
                 item["status"] = "unavailable"
-            results.append(item)
+            results.append(self._enrich_opportunity(item))
         return results
 
     def get_opportunity(self, query: str) -> Optional[Dict[str, Any]]:
@@ -362,7 +572,7 @@ class EarnKitService:
 
         if not self._verify_vault_onchain(matched):
             matched["status"] = "unavailable"
-        return matched
+        return self._enrich_opportunity(matched)
 
     def explore_vaults(
         self,
@@ -395,7 +605,7 @@ class EarnKitService:
                 continue
             if effective_min_tvl is not None and opp["tvl_usdc"] < effective_min_tvl:
                 continue
-            filtered.append(dict(opp))
+            filtered.append(self._enrich_opportunity(dict(opp)))
 
         # Sort
         if effective_sort == "apy":

@@ -22,6 +22,12 @@ PYTH_FEED_IDS: Dict[str, str] = {
     "SOL": "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
     "USDC/USD": "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
     "USDC": "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
+    # FX.Index.EUR/USD 24/7 ("PYTH PRICE IN USD FOR EUR 24/7"). Verified via
+    # GET /v2/price_feeds?query=EUR/USD on 2026-10-04; chosen over the
+    # market-hours FX.EUR/USD feed because stablecoin settlement runs
+    # around the clock. Mirrored in stablefx_service for FX quoting.
+    "EUR/USD": "c7feb6665b0906fd7db8872e556382c92fcca92dd45bfc7c7dd7dfaf159fa0e9",
+    "EUR": "c7feb6665b0906fd7db8872e556382c92fcca92dd45bfc7c7dd7dfaf159fa0e9",
 }
 
 _HERMES_CACHE: Dict[str, Any] = {}

@@ -379,3 +379,60 @@ def test_unverified_vault_rejected(monkeypatch):
     # deposit() must raise ValueError
     with pytest.raises(ValueError, match="not available/verified on Arc testnet"):
         earn_kit_service.deposit(vault_id, 10.0, test_wallet)
+
+
+def test_vault_onchain_metrics_enrichment(monkeypatch, tmp_path):
+    """totalAssets / convertToAssets reads upgrade TVL and share price, while
+    APY stays registry-labeled until a real trailing window exists."""
+    from backend.app.services import earn_kit as earn_kit_module
+    from unittest.mock import MagicMock
+
+    monkeypatch.setenv("QMA_EARN_ONCHAIN_METRICS", "1")
+    monkeypatch.setenv("QMA_EARN_SNAPSHOTS_PATH", str(tmp_path / "snaps.json"))
+    earn_kit_module._VAULT_METRICS_CACHE.clear()
+
+    fake_contract = MagicMock()
+    fake_contract.functions.totalAssets.return_value.call.return_value = 1_450_000_000_000  # 1.45M USDC (6 dec)
+    fake_contract.functions.decimals.return_value.call.return_value = 6
+    fake_contract.functions.convertToAssets.return_value.call.return_value = 1_000_050  # 1.000050 per share
+    fake_w3 = MagicMock()
+    fake_w3.is_connected.return_value = True
+    fake_w3.eth.contract.return_value = fake_contract
+    monkeypatch.setattr(earn_kit_service, "w3", fake_w3)
+
+    opp = earn_kit_service.get_opportunity("morpho_arc_usdc_core")
+    assert opp["tvl_source"] == "ONCHAIN_TOTAL_ASSETS"
+    assert opp["tvl_usdc"] == pytest.approx(1_450_000.0)
+    assert opp["share_price_usdc"] == pytest.approx(1.00005)
+    assert opp["apy_source"] == "STATIC_REGISTRY_ESTIMATE"
+    assert opp["static_apy_estimate"] == pytest.approx(opp["currentApy"])
+
+    # second read within TTL must hit the cache, not the RPC
+    calls_before = fake_w3.eth.contract.call_count
+    earn_kit_service.get_opportunity("morpho_arc_usdc_core")
+    assert fake_w3.eth.contract.call_count == calls_before
+
+
+def test_trailing_apy_math_and_min_window(monkeypatch, tmp_path):
+    """APY = (p1/p0) ** (365/days) - 1; windows shorter than one day are None."""
+    from backend.app.services import earn_kit as earn_kit_module
+
+    monkeypatch.setenv("QMA_EARN_SNAPSHOTS_PATH", str(tmp_path / "snaps.json"))
+    now = time.time()
+    week = 7 * 86400
+    vault = "morpho_arc_usdc_core"
+
+    earn_kit_module.record_vault_samples({vault: {"ts": now - week, "share_price_usdc": 1.0, "tvl_usdc": 100.0}})
+    earn_kit_module.record_vault_samples({vault: {"ts": now, "share_price_usdc": 1.04, "tvl_usdc": 104.0}})
+
+    result = earn_kit_module.compute_trailing_apy(vault)
+    expected = (1.04) ** (365.0 / 7.0) - 1.0
+    assert result["apy"] == pytest.approx(expected, rel=1e-3)
+    assert result["window_days"] == pytest.approx(7.0, abs=0.05)
+    assert result["samples"] == 2
+
+    # Sub-day window -> not a meaningful APY (fresh vault, two samples 1h apart)
+    hourly_vault = "test_hourly_vault"
+    earn_kit_module.record_vault_samples({hourly_vault: {"ts": now, "share_price_usdc": 1.0, "tvl_usdc": 50.0}})
+    earn_kit_module.record_vault_samples({hourly_vault: {"ts": now + 3600, "share_price_usdc": 1.01, "tvl_usdc": 50.5}})
+    assert earn_kit_module.compute_trailing_apy(hourly_vault, min_window_days=1.0) is None

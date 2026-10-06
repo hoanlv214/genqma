@@ -189,8 +189,18 @@ def provider_ids_by_revenue_wallet(provider_registry, address: str) -> list[str]
 def provider_split_metadata(provider_registry, provider_id: str, fallback_owner: Optional[str] = None) -> dict:
     try:
         provider = provider_registry.require(provider_id)
-        provider_name = provider.provider_name
-        owner_wallet = provider.owner_wallet or fallback_owner
+        if hasattr(provider, "manifest"):
+            manifest = provider.manifest() or {}
+            provider_name = manifest.get("name") or getattr(provider, "provider_name", provider_id)
+        elif hasattr(provider, "metadata"):
+            meta = provider.metadata() or {}
+            provider_name = getattr(provider, "provider_name", meta.get("provider_name", provider_id))
+        else:
+            provider_name = getattr(provider, "provider_name", provider_id)
+        owner_val = getattr(provider, "owner_wallet", None)
+        if callable(owner_val):
+            owner_val = owner_val()
+        owner_wallet = owner_val or fallback_owner
         base_share_bps = int(getattr(provider, "revenue_share_bps", 8000))
         win_rate = float(getattr(provider, "win_rate", 0.82))
         total_signals = int(getattr(provider, "total_signals", 12))

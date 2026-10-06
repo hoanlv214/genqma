@@ -27,6 +27,33 @@ _SLA_CACHE_LOCK = threading.Lock()
 _SLA_VERDICT_CACHE: dict[str, dict[str, Any]] = {}
 _SLA_CACHE_FILE = Path(__file__).resolve().parents[3] / "data" / "genlayer_sla_cache.json"
 
+# Studio Next caps each contract at 20 pending transactions; bursting past that
+# reverts submissions and burns the invoice resubmit budget. Gate concurrent
+# submissions below the cap, and cool down when a queue-depth revert is
+# observed. Capacity errors stay verification-pending: they are capacity, not
+# evidence failures, so they must never read as a rejected report.
+_GENLAYER_MAX_INFLIGHT_SUBMISSIONS = max(1, int(os.getenv("QMA_GENLAYER_MAX_INFLIGHT", "12")))
+_GENLAYER_SUBMIT_QUEUE_TIMEOUT_SEC = max(5, int(os.getenv("QMA_GENLAYER_SUBMIT_QUEUE_TIMEOUT_SEC", "240")))
+_GENLAYER_QUEUE_COOLDOWN_SEC = max(5, int(os.getenv("QMA_GENLAYER_QUEUE_COOLDOWN_SEC", "90")))
+_GENLAYER_SUBMIT_GATE = threading.BoundedSemaphore(_GENLAYER_MAX_INFLIGHT_SUBMISSIONS)
+_GENLAYER_SUBMIT_STATE_LOCK = threading.Lock()
+_GENLAYER_QUEUE_COOLDOWN_UNTIL = 0.0
+
+
+def _genlayer_queue_in_cooldown() -> float:
+    with _GENLAYER_SUBMIT_STATE_LOCK:
+        return max(0.0, _GENLAYER_QUEUE_COOLDOWN_UNTIL - time.time())
+
+
+def _genlayer_trigger_queue_cooldown() -> None:
+    global _GENLAYER_QUEUE_COOLDOWN_UNTIL
+    with _GENLAYER_SUBMIT_STATE_LOCK:
+        _GENLAYER_QUEUE_COOLDOWN_UNTIL = time.time() + _GENLAYER_QUEUE_COOLDOWN_SEC
+    logger.warning(
+        "[GENLAYER] pending-queue depth cap observed; pausing new submissions for %ss",
+        _GENLAYER_QUEUE_COOLDOWN_SEC,
+    )
+
 
 def _load_persisted_sla_cache() -> None:
     if not _SLA_CACHE_FILE.exists():
@@ -461,33 +488,58 @@ def _submit_via_node(payload: dict[str, Any]) -> dict[str, Any]:
     import subprocess
     repo_root = Path(__file__).resolve().parents[3]
     script_path = repo_root / "scripts" / "genlayer_submit.mjs"
-    try:
-        proc = subprocess.run(
-            ["node", str(script_path), "write"],
-            input=json.dumps(payload),
-            text=True,
-            capture_output=True,
-            timeout=30,
-            cwd=str(repo_root),
+
+    cooldown_remaining = _genlayer_queue_in_cooldown()
+    if cooldown_remaining > 0:
+        raise GenLayerVerificationError(
+            f"GenLayer submission queue saturated recently; cooling down for another {int(cooldown_remaining)}s"
         )
-    except subprocess.TimeoutExpired as exc:
-        raise GenLayerVerificationError("GenLayer submission timed out after 30s") from exc
-    except Exception as exc:
-        raise GenLayerVerificationError(f"GenLayer node runner failed: {exc}") from exc
+
+    if not _GENLAYER_SUBMIT_GATE.acquire(timeout=_GENLAYER_SUBMIT_QUEUE_TIMEOUT_SEC):
+        raise GenLayerVerificationError(
+            f"GenLayer submission gate busy for over {_GENLAYER_SUBMIT_QUEUE_TIMEOUT_SEC}s "
+            f"({_GENLAYER_MAX_INFLIGHT_SUBMISSIONS} in-flight); holding as verification-pending"
+        )
+    try:
+        try:
+            proc = subprocess.run(
+                ["node", str(script_path), "write"],
+                input=json.dumps(payload),
+                text=True,
+                capture_output=True,
+                timeout=30,
+                cwd=str(repo_root),
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise GenLayerVerificationError("GenLayer submission timed out after 30s") from exc
+        except Exception as exc:
+            raise GenLayerVerificationError(f"GenLayer node runner failed: {exc}") from exc
+    finally:
+        _GENLAYER_SUBMIT_GATE.release()
 
     stdout_text = proc.stdout.strip()
     json_lines = [l for l in stdout_text.splitlines() if l.strip().startswith("{") and l.strip().endswith("}")]
     if proc.returncode != 0:
         err_msg = proc.stderr.strip() or stdout_text
+        if "queue depth" in err_msg.lower() or "pending queue" in err_msg.lower():
+            _genlayer_trigger_queue_cooldown()
         raise GenLayerVerificationError(f"GenLayer execution error: {err_msg}")
 
     if not json_lines:
         raise GenLayerVerificationError(f"Malformed output from GenLayer runner: {stdout_text}")
 
     try:
-        return json.loads(json_lines[-1])
+        result = json.loads(json_lines[-1])
     except Exception as exc:
         raise GenLayerVerificationError(f"Could not parse GenLayer runner JSON: {exc}") from exc
+
+    result_blob = " ".join([stdout_text, proc.stderr or "", json.dumps(result, default=str)]).lower()
+    if "queue depth" in result_blob or "pending queue" in result_blob:
+        _genlayer_trigger_queue_cooldown()
+        raise GenLayerVerificationError(
+            "GenLayer studio pending-queue depth cap hit; new submissions are cooling down"
+        )
+    return result
 
 
 def verify_report(

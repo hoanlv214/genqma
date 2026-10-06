@@ -196,6 +196,7 @@ class JsonStorage:
         self.vault_positions_path = os.path.join(base_dir, "earn_vault_positions.json")
         self.euthyna_audit_path = os.path.join(base_dir, "euthyna_audit_trail.json")
         self.treasury_policy_path = os.path.join(base_dir, "treasury_policy.json")
+        self.spend_guard_events_path = os.path.join(base_dir, "spend_guard_events.json")
         self._rpc_lock = threading.Lock()
 
     @staticmethod
@@ -635,6 +636,22 @@ class JsonStorage:
 
     def save_treasury_policy(self, policy: dict, policy_id: str = "default") -> None:
         self._save_json(self.treasury_policy_path, policy)
+
+    def load_spend_guard_events(self, since_epoch: float) -> list:
+        records = self._load_json(self.spend_guard_events_path, [])
+        if not isinstance(records, list):
+            return []
+        return [
+            r for r in records
+            if isinstance(r, dict) and float(r.get("ts") or 0) >= float(since_epoch)
+        ]
+
+    def save_spend_guard_event(self, event: dict) -> None:
+        records = self._load_json(self.spend_guard_events_path, [])
+        if not isinstance(records, list):
+            records = []
+        records.append(event)
+        self._save_json(self.spend_guard_events_path, records)
 
     def _parse_ts(self, val) -> int:
         if not val:
@@ -1350,6 +1367,30 @@ class SupabaseStorage:
             self._upsert("qma_treasury_policy", [{"policy_id": policy_id, "policy": policy}], "policy_id")
         except Exception as exc:
             logger.warning(f"Could not save treasury policy to Supabase: {exc}")
+
+    def load_spend_guard_events(self, since_epoch: float) -> list:
+        try:
+            from datetime import datetime, timezone
+            since_iso = datetime.fromtimestamp(float(since_epoch), tz=timezone.utc).isoformat()
+            params = {"created_at": f"gte.{since_iso}", "order": "created_at.asc"}
+            return self._request("GET", "qma_spend_guard_events", params=params) or []
+        except Exception as exc:
+            logger.warning(f"Could not load spend guard events from Supabase: {exc}")
+            return []
+
+    def save_spend_guard_event(self, event: dict) -> None:
+        try:
+            row = {
+                "payer_address": str(event.get("payer_address") or "global_default"),
+                "event_type": str(event.get("event_type") or "SPEND"),
+                "amount_usdc": float(event.get("amount_usdc") or 0.0),
+                "reason": event.get("reason"),
+            }
+            if event.get("event_id"):
+                row["event_id"] = event["event_id"]
+            self._upsert("qma_spend_guard_events", [row], "event_id")
+        except Exception as exc:
+            logger.warning(f"Could not save spend guard event to Supabase: {exc}")
 
 
 class PostgresStorage:
@@ -2115,6 +2156,45 @@ class PostgresStorage:
             logger.warning(f"Could not save treasury policy to Postgres: {exc}")
 
     # ---------------------------------------------------------------------------
+    # Spend Guard Ledger (durable autonomous spending controls)
+    # ---------------------------------------------------------------------------
+    def load_spend_guard_events(self, since_epoch: float) -> list:
+        try:
+            rows = self.execute_query(
+                """
+                SELECT payer_address, event_type, amount_usdc::float AS amount_usdc,
+                       reason, EXTRACT(EPOCH FROM created_at)::float AS ts
+                FROM public.qma_spend_guard_events
+                WHERE created_at >= to_timestamp(%s)
+                ORDER BY event_id ASC;
+                """,
+                (float(since_epoch),),
+                fetch_all=True,
+            ) or []
+            return [dict(r) for r in rows]
+        except Exception as exc:
+            logger.warning(f"Could not load spend guard events from Postgres: {exc}")
+            return []
+
+    def save_spend_guard_event(self, event: dict) -> None:
+        try:
+            self.execute_query(
+                """
+                INSERT INTO public.qma_spend_guard_events
+                    (payer_address, event_type, amount_usdc, reason)
+                VALUES (%s, %s, %s, %s);
+                """,
+                (
+                    str(event.get("payer_address") or "global_default"),
+                    str(event.get("event_type") or "SPEND"),
+                    float(event.get("amount_usdc") or 0.0),
+                    event.get("reason"),
+                ),
+            )
+        except Exception as exc:
+            logger.warning(f"Could not save spend guard event to Postgres: {exc}")
+
+    # ---------------------------------------------------------------------------
     # High-Performance Analytical Views (Read-Only Offload)
     # ---------------------------------------------------------------------------
     def load_traction_daily_view(self, days: int = 14) -> list:
@@ -2181,12 +2261,11 @@ class PostgresStorage:
             return []
 
     def save_creator_claim(self, record: dict) -> None:
-        try:
-            self._upsert("qma_creator_claims", [{
-                "claim_id": record["claim_id"], "claim": record,
-            }], "claim_id")
-        except Exception as exc:
-            logger.warning(f"Could not save creator claim: {exc}")
+        # Claims are money-critical: a failed write must fail closed, never
+        # vanish behind a warning while the caller reports success.
+        self._upsert("qma_creator_claims", [{
+            "claim_id": record["claim_id"], "claim": record,
+        }], "claim_id")
 
     def load_wallet_spending_events(self, address: str) -> list:
         result = []

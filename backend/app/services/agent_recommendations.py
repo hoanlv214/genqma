@@ -109,8 +109,24 @@ def build_agent_recommendations(deps: SimpleNamespace, limit: int = 8) -> dict:
                 provider_name = getattr(provider, "provider_name", getattr(provider, "provider_id", "unknown"))
                 category = getattr(provider, "category", "unknown")
 
+            # Sale-time SLA provenance: only verifiable signals are offered,
+            # and symbols whose epoch attestation is already VALID are marked
+            # preverified (their reports unlock immediately after settlement).
+            pid = getattr(provider, "provider_id", "unknown")
+            from backend.app.main import _signal_verifiability, _gate_enabled
+            from backend.app.services.market_epoch import is_preverified
+
+            if _gate_enabled():
+                check = _signal_verifiability(pid, query_payload)
+                if not check["verifiable"]:
+                    continue
+                evidence_exchange = check.get("exchange") or ""
+            else:
+                evidence_exchange = ""
+            sla_state = "preverified" if is_preverified(pid, str(item.get("symbol") or "")) else "verifiable"
+
             picks.append({
-                "provider_id": getattr(provider, "provider_id", "unknown"),
+                "provider_id": pid,
                 "provider_name": provider_name,
                 "provider_category": category,
                 "symbol": item.get("symbol"),
@@ -122,6 +138,10 @@ def build_agent_recommendations(deps: SimpleNamespace, limit: int = 8) -> dict:
                 "reasons": reasons[:4] or ["fresh live anomaly"],
                 "query": query_payload,
                 "live": item,
+                "sla": {
+                    "state": sla_state,
+                    "evidence_exchange": evidence_exchange,
+                },
             })
 
     picks = sorted(picks, key=lambda item: item["score"], reverse=True)[:limit]

@@ -110,7 +110,7 @@ The Access column must match the operation's `x-qma-access` value in
 | POST | `/api/v1/agent/incidents/{incident_id}/resolve` | `public` | Mark an agent safety incident as resolved with audit reasoning |
 | POST | `/api/v1/agent/jobs` | `paid-access` | Deliver an invoice-backed intelligence job |
 | GET | `/api/v1/agent/jobs/{job_id}` | `paid-access` | Read an owned invoice-backed job |
-| GET | `/api/v1/agent/recommendations` | `public` | Rank purchase candidates for an agent |
+| GET | `/api/v1/agent/recommendations` | `public` | Rank purchase candidates for an agent (unverifiable signals are dropped; each candidate carries `sla: {state: preverified|verifiable, evidence_exchange}`) |
 | GET | `/api/v1/agent/reputation` | `public` | Read QMA ERC-8004 on-chain reputation and verified credentials |
 | POST | `/api/v1/agent/sessions/{session_id}/control` | `public` | Execute administrative intervention (pause, resume, kill) on an agent session |
 | GET | `/api/v1/agent/spending-policy` | `public` | Read Circle agent wallet spending policy caps |
@@ -138,8 +138,8 @@ The Access column must match the operation's `x-qma-access` value in
 | POST | `/api/v1/oauth/revoke` | `wallet-owner` | Revoke an MCP connection |
 | POST | `/api/v1/oauth/token` | `public` | Exchange a single-use authorization code (PKCE) for an MCP access token |
 | POST | `/api/v1/onramp/session` | `public` | Create an Arc Onramp widget session |
-| POST | `/api/v1/payment/invoice` | `public` | Create a provider/query/tier-bound single-payment invoice |
-| GET | `/api/v1/payment/invoices/{invoice_id}/status` | `invoice-owner` | Read payment, GenLayer verdict, and sanitized Arc payout/refund status (secret header-only) |
+| POST | `/api/v1/payment/invoice` | `public` | Create a provider/query/tier-bound single-payment invoice (response includes `sla_state`: preverified | verifying) |
+| GET | `/api/v1/payment/invoices/{invoice_id}/status` | `invoice-owner` | Read payment, GenLayer verdict, SLA state (preverified | verifying | verified | rejected), and sanitized Arc payout/refund status (secret header-only) |
 | POST | `/api/v1/payment/quote` | `public` | Quote a provider-bound report |
 | GET | `/api/v1/payment/settlement/{settlement_id}` | `public` | Inspect public settlement evidence |
 | GET | `/api/v1/genlayer/status` | `public` | Read GenLayer Shield verification health (cached single-node probe): `operational`, `degraded` or `unconfigured` |
@@ -172,16 +172,16 @@ The Access column must match the operation's `x-qma-access` value in
 | POST | `/api/v1/sessions/{session_id}/resume` | `wallet-owner` | Resume a stopped session |
 | POST | `/api/v1/sessions/{session_id}/start` | `wallet-owner` | Queue a session |
 | POST | `/api/v1/sessions/{session_id}/stop` | `wallet-owner` | Stop a session |
-| GET | `/api/v1/stablefx/pairs` | `public` | List supported Circle StableFX pairs on Arc |
-| GET | `/api/v1/stablefx/quote` | `public` | Get institutional StableFX conversion quote |
-| POST | `/api/v1/stablefx/settle` | `public` | Execute institutional Circle StableFX atomic settlement |
+| GET | `/api/v1/stablefx/pairs` | `public` | List supported Circle StableFX pairs on Arc (rates carry a `rate_source` provenance label) |
+| GET | `/api/v1/stablefx/quote` | `public` | Get institutional StableFX conversion quote (live Pyth EUR/USD rate when reachable, labeled `rate_source` + `rate_note`; synthesized baseline fallback) |
+| POST | `/api/v1/stablefx/settle` | `public` | Execute institutional Circle StableFX atomic settlement (payout amount derived from the live-rate quote verified against the buyer tx) |
 | GET | `/api/v1/traction` | `public` | Read the public traction snapshot |
 
 | POST | `/api/v1/treasury/agent/decide` | `public` | Trigger autonomous corporate CFO agent evaluation and policy-bounded execution |
 | GET | `/api/v1/treasury/audit/euthyna` | `public` | Retrieve immutable audit records for regulatory and board examination |
 | POST | `/api/v1/treasury/audit/verify` | `public` | Recompute SHA-256 integrity digests across all audit entries to verify no records were tampered |
-| GET | `/api/v1/treasury/policy` | `public` | Read corporate treasury CFO operating policy and risk parameters |
-| POST | `/api/v1/treasury/policy` | `admin` | Update corporate treasury CFO operating policy and risk limits |
+| GET | `/api/v1/treasury/policy` | `public` | Read corporate treasury CFO operating policy and risk parameters (includes `treasury_halted` emergency-halt flag) |
+| POST | `/api/v1/treasury/policy` | `admin` | Update corporate treasury CFO operating policy and risk limits; set `treasury_halted=true` to refuse all on-chain treasury executions until resumed |
 | GET | `/api/v1/treasury/usyc/forecast` | `public` | Predictive cash-flow forecasting and APY earnings projection for autonomous agents |
 | POST | `/api/v1/treasury/usyc/jit-redeem` | `public` | Prepare and record JIT redemption of USYC into liquid USDC for x402 bills |
 | GET | `/api/v1/treasury/usyc/position` | `public` | Retrieve live on-chain USYC balance, equivalent USDC assets, and APY |

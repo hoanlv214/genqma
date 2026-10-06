@@ -374,6 +374,11 @@ def save_creator_claim_record(storage_backend, creator_claims_path: str, record:
     from backend.app.core.state import cross_process_lock
 
     with cross_process_lock("creator_claim_ledger"):
+        if getattr(storage_backend, "backend_name", None) == "postgres":
+            # PostgreSQL is the claim ledger of record. A failed write raises
+            # (fail closed) instead of leaving a divergent local JSON mirror.
+            storage_backend.save_creator_claim(record)
+            return True
         remote_saved = False
         if hasattr(storage_backend, "save_creator_claim"):
             try:

@@ -206,9 +206,10 @@ class MarketDataAdaptersTests(unittest.TestCase):
         self.assertIn("MEXC", venue_exchanges)
         # Spread: |-0.0030 - (-0.0090)| = 0.0060
         self.assertAlmostEqual(sol_item["funding_spread"], 0.0060, places=4)
-        # Primary exchange (BYBIT) takes precedence for verifiable evidence URL
-        self.assertEqual(sol_item["verifiable_exchange"], "BYBIT")
-        self.assertEqual(sol_item["evidence_url"], "https://api.bybit.com/v5/market/tickers?category=linear&symbol=SOLUSDT")
+        # Evidence anchors to the MEXC venue whenever one exists: GenLayer
+        # validators cannot fetch binance/bybit hosts (docs/TECH_DEBT.md #1).
+        self.assertEqual(sol_item["verifiable_exchange"], "MEXC")
+        self.assertEqual(sol_item["evidence_url"], "https://contract.mexc.com/api/v1/contract/funding_rate/SOL_USDT")
 
 
 if __name__ == "__main__":

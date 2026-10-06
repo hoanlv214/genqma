@@ -125,7 +125,7 @@ def _get_agent_identity() -> dict:
             ],
             "archetype": "Autonomous Business (Zero-Person Company) & Two-Sided Outcome Marketplace",
             "settlement_rail": "Arc L1 Deterministic Finality (USDC native gas)",
-            "treasury_management": "Vestiarion AI CFO with ERC-4626 USYC Yield Sweep",
+            "treasury_management": "QMA AI CFO with ERC-4626 USYC Yield Sweep",
             "sla_verification": "GenLayer Optimistic Consensus Shield",
             "spending_guardrails": "Deterministic Spending Policy Engine (Money with a Mandate)",
             "stablefx_status": "Enabled (EURC/USDC corridor support)",

@@ -12,8 +12,9 @@ import asyncio
 import time
 import logging
 import hashlib
+import requests
 import json
-from typing import Optional
+from typing import Any, Dict, Optional
 from types import SimpleNamespace
 from contextlib import suppress
 
@@ -174,6 +175,12 @@ from backend.app.services.invoice_builder import (
     paid_invoice_event,
     get_invoice_or_402,
 )
+from backend.app.services.market_epoch import (
+    begin_or_get_epoch,
+    get_epoch,
+    mark_epoch_tx,
+    mark_epoch_verdict,
+)
 from backend.app.services.arc_verdict_settlement import (
     ArcVerdictSettlementError,
     apply_arc_settlement_checkpoint,
@@ -322,6 +329,11 @@ async def _qma_lifespan(app):
         decide_interval = 0
     if decide_interval > 0:
         treasury_decide_task = asyncio.create_task(_treasury_decide_loop())
+    try:
+        from backend.app.services.earn_kit import start_earn_snapshot_sampler
+        start_earn_snapshot_sampler()
+    except Exception:
+        pass
     try:
         if manager is not None:
             async with manager.run():
@@ -1090,6 +1102,28 @@ def create_invoice(req: InvoiceRequest):
     req_data.pop("expected_price_usdc", None)
     provider = get_provider_or_404(provider_registry, provider_id)
     req_data = normalize_query_for_provider(provider, req_data)
+
+    # Sale-time verifiability gate: never sell a signal GenLayer could not
+    # verify. Failing here means nothing was charged; settling first would
+    # only produce a locked report and a refund.
+    _ensure_signal_verifiable(provider.provider_id, req_data)
+
+    # Verified market-state epoch: freeze the query (and, via the snapshot
+    # report) the report content once per (provider, symbol) window so every
+    # purchase inside the window shares one query_hash/report_hash and a
+    # single GenLayer attestation pre-verifies them all. The buyer still pays
+    # per query; the shared object is the market snapshot, never entitlement.
+    epoch_snapshot = None
+    try:
+        epoch_snapshot = begin_or_get_epoch(
+            provider.provider_id,
+            str(req_data.get("symbol") or ""),
+            create_snapshot=lambda: _build_epoch_snapshot(provider, dict(req_data), tier),
+        )
+        req_data = dict(epoch_snapshot["query"])
+    except Exception as exc:
+        logger.debug("Market epoch snapshot unavailable for %s: %s", req_data.get("symbol"), exc)
+        epoch_snapshot = None
     
     if hasattr(provider, "score"):
         # V2 Provider Interface
@@ -1207,21 +1241,29 @@ def create_invoice(req: InvoiceRequest):
     invoice["run_source"] = run_source
     invoice["buyer_wallet_address"] = buyer_wallet_address
     
-    # Pre-build provider report and lock report hash immutably for pre-warm and verification
-    try:
-        report = build_provider_report(
-            provider=provider,
-            normalized_query=req_data,
-            invoice_id=invoice["invoice_id"],
-            invoice=invoice,
-            required_tier=tier,
-        )
-        canonical_report = _canonical_report_json(report)
-        report_hash = hashlib.sha256(canonical_report.encode("utf-8")).hexdigest()
-        invoice["_verification_report"] = report
-        invoice["verification_report_hash"] = report_hash
-    except Exception as exc:
-        logger.debug("Immediate build_provider_report on create_invoice skipped: %s", exc)
+    # Pre-build provider report and lock report hash immutably for pre-warm and verification.
+    # Invoices inside a live market epoch reuse the epoch's frozen snapshot
+    # instead of building their own report.
+    if epoch_snapshot is not None:
+        invoice["_verification_report"] = epoch_snapshot["report"]
+        invoice["verification_report_hash"] = epoch_snapshot["report_hash"]
+        invoice["market_epoch_key"] = epoch_snapshot["key"]
+        invoice["sla_state"] = "preverified" if epoch_snapshot.get("state") == "valid" else "verifying"
+    else:
+        try:
+            report = build_provider_report(
+                provider=provider,
+                normalized_query=req_data,
+                invoice_id=invoice["invoice_id"],
+                invoice=invoice,
+                required_tier=tier,
+            )
+            canonical_report = _canonical_report_json(report)
+            report_hash = hashlib.sha256(canonical_report.encode("utf-8")).hexdigest()
+            invoice["_verification_report"] = report
+            invoice["verification_report_hash"] = report_hash
+        except Exception as exc:
+            logger.debug("Immediate build_provider_report on create_invoice skipped: %s", exc)
     evidence_url = _genlayer_evidence_url(invoice)
     target_venue = _genlayer_target_exchange(evidence_url)
     invoice["evidence_url"] = evidence_url
@@ -1268,6 +1310,7 @@ def create_invoice(req: InvoiceRequest):
         "nonce": invoice["nonce"],
         "invoice_secret": invoice["invoice_secret"],
         "query_hash": invoice["query_hash"],
+        "sla_state": invoice.get("sla_state"),
         "payment_requirement": requirement,
         "arc_gateway_url": requirement["resource"],
         "split_legs": invoice.get("split", {}).get("legs", []),
@@ -1866,6 +1909,29 @@ def invoice_report_meta(invoice_id, invoice):
     }
 
 
+def _build_epoch_snapshot(provider, query: dict, tier: str) -> dict:
+    """Freeze one verified market-state snapshot: the normalized query, the
+    report built from it, and their canonical hashes. Every invoice in the
+    epoch reuses these, so one GenLayer attestation pre-verifies them all."""
+    minimal_invoice = {"tier": tier, "query": query}
+    report = build_provider_report(
+        provider=provider,
+        normalized_query=query,
+        invoice_id=f"epoch_{getattr(provider, 'provider_id', 'provider')}_{query.get('symbol', 'X')}",
+        invoice=minimal_invoice,
+        required_tier=tier,
+    )
+    canonical_report = _canonical_report_json(report)
+    return {
+        "query": query,
+        "report": report,
+        "canonical": canonical_report,
+        "query_hash": query_fingerprint(query),
+        "report_hash": hashlib.sha256(canonical_report.encode("utf-8")).hexdigest(),
+        "state": "pending",
+    }
+
+
 def build_provider_report(*, provider, normalized_query, invoice_id, invoice, required_tier):
     """Build the report once so GenLayer verifies the payload later delivered."""
     if hasattr(provider, "deliver"):
@@ -2010,6 +2076,256 @@ def _genlayer_target_exchange(evidence_url: str) -> str:
     return "MEXC"
 
 
+# ---------------------------------------------------------------------------
+# Sale-time verifiability gate
+# ---------------------------------------------------------------------------
+# A report whose evidence cannot actually be fetched and matched by GenLayer
+# validators must never be sold: settling it only guarantees a locked report
+# and a refund. MEXC-anchored providers refuse symbols whose report data is
+# anchored to a venue validators cannot fetch, and whose MEXC evidence
+# endpoint returns no market data. oi_memory evidence is anchored to the
+# per-symbol funding_rate endpoint because contract/ticker returns an empty
+# data payload for some symbols that still carry MEXC funding records.
+# Kill switch: QMA_SIGNAL_VERIFIABILITY_GATE=0.
+_MEXC_ANCHORED_PROVIDERS = {"funding_memory", "oi_memory"}
+_EVIDENCE_CHECK_TTL_SECONDS = 60
+_EVIDENCE_CHECK_CACHE: Dict[str, Any] = {}
+
+
+def _gate_enabled() -> bool:
+    return os.getenv("QMA_SIGNAL_VERIFIABILITY_GATE", "1").strip().lower() not in {"0", "false", "off"}
+
+
+def _mexc_evidence_has_market_data(evidence_url: str) -> tuple:
+    """Fetch the MEXC evidence endpoint once per symbol per minute and confirm
+    it returns an actual market-data payload (not a bare success envelope)."""
+    cached = _EVIDENCE_CHECK_CACHE.get(evidence_url)
+    now = time.time()
+    if cached and cached[0] > now:
+        return cached[1], cached[2]
+    ok, reason = False, "unchecked"
+    try:
+        res = requests.get(evidence_url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        if res.status_code != 200:
+            reason = f"evidence endpoint returned HTTP {res.status_code}"
+        else:
+            payload = res.json()
+            # MEXC contract endpoints wrap market data in {"success", "code",
+            # "data"}; a listed symbol always carries a non-empty data payload.
+            data = payload.get("data") if isinstance(payload, dict) else None
+            if not data or (isinstance(data, (list, dict)) and len(data) == 0):
+                reason = "evidence endpoint returned no market data for this symbol"
+            else:
+                ok, reason = True, "ok"
+    except Exception as exc:
+        reason = f"evidence endpoint unreachable: {exc}"
+    _EVIDENCE_CHECK_CACHE[evidence_url] = (now + _EVIDENCE_CHECK_TTL_SECONDS, ok, reason)
+    return ok, reason
+
+
+def _signal_verifiability(provider_id: str, query: dict) -> Dict[str, Any]:
+    """Boolean form of the sale-time gate, shared by invoice creation and the
+    recommendation builder. Returns {verifiable, reason, evidence_url, exchange}."""
+    symbol = str(query.get("symbol") or "")
+    evidence_url = _genlayer_evidence_url({"provider_id": provider_id, "query": query, "symbol": symbol})
+    target = _genlayer_target_exchange(evidence_url)
+
+    if provider_id in _MEXC_ANCHORED_PROVIDERS and target in {"Binance", "BYBIT"}:
+        return {
+            "verifiable": False,
+            "reason": f"evidence anchored to {target}, which GenLayer validators cannot fetch",
+            "evidence_url": evidence_url,
+            "exchange": target,
+        }
+    if "contract.mexc.com" in evidence_url:
+        ok, reason = _mexc_evidence_has_market_data(evidence_url)
+        return {
+            "verifiable": bool(ok),
+            "reason": reason,
+            "evidence_url": evidence_url,
+            "exchange": target,
+        }
+    return {"verifiable": True, "reason": "ok", "evidence_url": evidence_url, "exchange": target}
+
+
+def _ensure_signal_verifiable(provider_id: str, query: dict) -> None:
+    """Refuse to sell signals that GenLayer could never verify (fail fast at
+    the door instead of settle-then-reject). Raises HTTP 422."""
+    if not _gate_enabled():
+        return
+    symbol = str(query.get("symbol") or "")
+    check = _signal_verifiability(provider_id, query)
+    if not check["verifiable"]:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "signal_not_verifiable",
+                "message": (
+                    f"{symbol} cannot be GenLayer-verified right now: {check['reason']}. "
+                    "Nothing was charged."
+                ),
+                "symbol": symbol,
+                "evidence_url": check["evidence_url"],
+                "reason": check["reason"],
+            },
+        )
+
+
+def _build_epoch_snapshot(provider, query: dict, tier: str) -> dict:
+    """Freeze one verified market-state snapshot: the normalized query, the
+    report built from it, and their canonical hashes. Every invoice in the
+    epoch reuses these, so one GenLayer attestation pre-verifies them all."""
+    minimal_invoice = {"tier": tier, "query": query}
+    report = build_provider_report(
+        provider=provider,
+        normalized_query=query,
+        invoice_id=f"epoch_{getattr(provider, 'provider_id', 'provider')}_{query.get('symbol', 'X')}",
+        invoice=minimal_invoice,
+        required_tier=tier,
+    )
+    canonical_report = _canonical_report_json(report)
+    return {
+        "query": query,
+        "report": report,
+        "canonical": canonical_report,
+        "query_hash": query_fingerprint(query),
+        "report_hash": hashlib.sha256(canonical_report.encode("utf-8")).hexdigest(),
+        "state": "pending",
+    }
+
+
+def build_provider_report(*, provider, normalized_query, invoice_id, invoice, required_tier):
+    """Build the report once so GenLayer verifies the payload later delivered."""
+    if hasattr(provider, "deliver"):
+        context = {
+            "query": invoice.get("query") or normalized_query,
+            "tier": invoice.get("tier", required_tier),
+        }
+        if "_score_cache_key" in invoice:
+            context["_score_cache_key"] = invoice["_score_cache_key"]
+        if "declared_confidence" in invoice:
+            context["declared_confidence"] = invoice["declared_confidence"]
+            
+        payload_data = provider.deliver(context, invoice_id)
+        
+        # Hybrid BYO-Key Intelligence Layer (Scenario A vs B)
+        user_llm_key = (
+            invoice.get("user_llm_key")
+            or invoice.get("llm_api_key")
+            or os.getenv("USER_LLM_API_KEY")
+        )
+        if user_llm_key and payload_data.get("tier") == "full":
+            from backend.app.services.agent_synthesis import generate_agent_synthesis
+            synthesis = generate_agent_synthesis(
+                provider_id=getattr(provider, "provider_id", "unknown"),
+                symbol=payload_data.get("symbol") or payload_data.get("query_symbol") or "TOKEN",
+                metrics=payload_data,
+                api_key=user_llm_key,
+            )
+            if synthesis:
+                payload_data["agent_synthesis"] = synthesis
+                payload_data["synthesis_mode"] = "byo_key_ai_executive_analysis"
+            else:
+                payload_data["synthesis_mode"] = "pure_quantitative_metrics"
+        else:
+            payload_data["synthesis_mode"] = "pure_quantitative_metrics"
+        
+        from backend.app.schemas import ProviderReportResponse
+
+        report_kwargs = {
+            "query_symbol": payload_data.get("query_symbol"),
+            "query": context.get("query"),
+            "query_hash": invoice.get("query_hash"),
+            "tier": payload_data.get("tier", required_tier),
+            "invoice": invoice_report_meta(invoice_id, invoice),
+            "provider_id": getattr(provider, "provider_id", "unknown"),
+            "provider_name": getattr(provider, "provider_name", getattr(provider, "provider_id", "unknown")),
+            "provider_owner_wallet": getattr(provider, "owner_wallet", PAYMENT_WALLET_ADDRESS),
+            "paid_at": invoice.get("paid_at"),
+            "payload": payload_data,
+        }
+        if "upgrade_cta" in payload_data:
+            report_kwargs["upgrade_cta"] = payload_data["upgrade_cta"]
+            
+        report_obj = ProviderReportResponse(**report_kwargs)
+        report = report_obj.model_dump(exclude_unset=True, by_alias=True)
+    else:
+        full_report = provider.full_report(normalized_query)
+        full_report["query"] = invoice.get("query") or canonical_query_payload(normalized_query)
+        full_report["query_hash"] = invoice.get("query_hash")
+        full_report["provider_id"] = provider.provider_id
+        full_report["provider_name"] = provider.provider_name
+        full_report["provider_owner_wallet"] = provider.owner_wallet
+        full_report["invoice"] = invoice_report_meta(invoice_id, invoice)
+        if invoice.get("genlayer"):
+            full_report["genlayer"] = invoice.get("genlayer")
+        if required_tier == "preview":
+            report = build_preview_report(full_report, invoice)
+            report["provider_id"] = provider.provider_id
+            report["provider_name"] = provider.provider_name
+            if invoice.get("genlayer"):
+                report["genlayer"] = invoice.get("genlayer")
+        else:
+            full_report["tier"] = "full"
+            full_report["paid_at"] = invoice.get("paid_at")
+            report = full_report
+    return jsonable_encoder(report)
+
+
+def _canonical_report_json(report):
+    return json.dumps(
+        jsonable_encoder(report),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    )
+
+
+_PUBLIC_VERIFICATION_CLAIMS = (
+    "query_symbol",
+    "is_ood",
+    "ood_p_value",
+    "ood_empirical_nn_distance",
+    "ood_empirical_p99_threshold",
+    "ood_empirical_percentile",
+    "matched_k",
+    "average_similarity",
+    "regime_cluster",
+    "regime_description",
+    "regime_support",
+    "weighted_win_rate",
+    "ci_win_rate_95",
+    "weighted_avg_profit",
+    "ci_avg_profit_95",
+    "percentiles",
+    "effective_sample_size",
+    "bootstrap_rounds",
+    "distance_summary",
+    "query_features",
+    "data_quality",
+    "validation_warnings",
+    "risk_flags",
+    "funding_context",
+    "rough_win_rate",
+    "win_rate_band",
+    "analysis_focus",
+    "turnover_context",
+    "provider_diagnostics",
+    "declared_confidence",
+    "arbitrage_bias",
+    "recommended_strategy",
+    "divergence_spread_pct",
+    "polymarket_probability",
+    "implied_derivative_prob",
+    "cctp_bridge_required",
+    "anomaly",
+    "regime",
+    "predicted_bias",
+    "bias",
+)
+
+
 def _report_verification_manifest(report, invoice, target_venue: str = "MEXC"):
     """Expose only auditable claims; keep paid analog rows out of public calldata."""
     report_data = report if isinstance(report, dict) else {}
@@ -2046,17 +2362,23 @@ def _report_verification_manifest(report, invoice, target_venue: str = "MEXC"):
 
 
 def _genlayer_evidence_url(invoice):
+    """Resolve the authoritative evidence URL for a GenLayer submission.
+
+    Validators can only fetch contract.mexc.com / Polymarket / Pyth hosts;
+    Binance and Bybit API hosts are allowlisted in the contract but
+    unreachable from validators (WEBPAGE_LOAD_FAILED -> INVALID verdict, see
+    docs/TECH_DEBT.md #1). Exchange-venue evidence is therefore rewritten onto
+    the fetchable MEXC contract endpoints instead of passing through.
+    """
     provider_id = invoice.get("provider_id", "funding_memory")
     q_url = (invoice.get("query") or {}).get("evidence_url") or invoice.get("evidence_url")
-    allowed_prefixes = (
+    fetchable_prefixes = (
         "https://contract.mexc.com/",
         "https://clob.polymarket.com/",
         "https://gamma-api.polymarket.com/",
         "https://hermes.pyth.network/",
-        "https://api.binance.com/",
-        "https://api.bybit.com/",
     )
-    if q_url and any(q_url.startswith(prefix) for prefix in allowed_prefixes):
+    if q_url and any(q_url.startswith(prefix) for prefix in fetchable_prefixes):
         return q_url
 
     raw_symbol = str(invoice.get("symbol") or (invoice.get("query") or {}).get("symbol") or "").strip()
@@ -2066,16 +2388,8 @@ def _genlayer_evidence_url(invoice):
     elif clean_symbol.endswith("USDT") and not clean_symbol.endswith("_USDT"):
         clean_symbol = f"{clean_symbol[:-4]}_USDT"
 
-    exchange = str((invoice.get("query") or {}).get("exchange") or invoice.get("exchange") or "").upper()
-    if exchange == "BYBIT":
-        bybit_sym = clean_symbol.replace("_USDT", "USDT")
-        return f"https://api.bybit.com/v5/market/tickers?category=linear&symbol={bybit_sym}"
-    if exchange == "BINANCE":
-        binance_sym = clean_symbol.replace("_USDT", "USDT")
-        return f"https://api.binance.com/api/v3/ticker/24hr?symbol={binance_sym}"
-
     if provider_id == "oi_memory":
-        return f"https://contract.mexc.com/api/v1/contract/ticker?symbol={clean_symbol}"
+        return f"https://contract.mexc.com/api/v1/contract/funding_rate/{clean_symbol}"
     if provider_id == "polymarket_divergence":
         return "https://gamma-api.polymarket.com/events?limit=5&active=true"
     if provider_id == "pyth_stress_band":
@@ -2103,6 +2417,10 @@ def prewarm_genlayer_sla_for_invoice(invoice: dict) -> Optional[dict]:
         normalized_query = normalize_query_for_provider(provider, invoice.get("query") or {})
 
         report = invoice.get("_verification_report")
+        if report is None and invoice.get("market_epoch_key"):
+            epoch_snapshot = get_epoch(str(invoice["market_epoch_key"]))
+            if epoch_snapshot is not None:
+                report = epoch_snapshot["report"]
         if report is None:
             report = build_provider_report(
                 provider=provider,
@@ -2134,21 +2452,30 @@ def prewarm_genlayer_sla_for_invoice(invoice: dict) -> Optional[dict]:
         verification_manifest = _canonical_report_json(manifest_dict)
         manifest_claims = manifest_dict.get("claims", {})
 
-        receipt = genlayer_arbiter.verify_report(
-            invoice_id=invoice.get("invoice_id", f"prewarm_{int(time.time())}"),
-            buyer=invoice.get("buyer_wallet_address") or invoice.get("payer_address") or "",
-            provider=invoice.get("owner_wallet") or "",
-            symbol=symbol,
-            expected_anomaly=(
-                f"Verify {symbol} market anomaly against live {target_venue} evidence: "
-                f"strategy={manifest_claims.get('recommended_strategy') or manifest_claims.get('bias') or manifest_claims.get('anomaly') or 'funding_arbitrage'}, "
-                f"declared_confidence={manifest_claims.get('declared_confidence', 0.6)}"
-            ),
-            query_hash=query_hash,
-            report_hash=report_hash,
-            verification_manifest=verification_manifest,
-            evidence_url=evidence_url,
-        )
+        try:
+            receipt = genlayer_arbiter.verify_report(
+                invoice_id=invoice.get("invoice_id", f"prewarm_{int(time.time())}"),
+                buyer=invoice.get("buyer_wallet_address") or invoice.get("payer_address") or "",
+                provider=invoice.get("owner_wallet") or "",
+                symbol=symbol,
+                expected_anomaly=(
+                    f"Verify {symbol} market anomaly against live {target_venue} evidence: "
+                    f"strategy={manifest_claims.get('recommended_strategy') or manifest_claims.get('bias') or manifest_claims.get('anomaly') or 'funding_arbitrage'}, "
+                    f"declared_confidence={manifest_claims.get('declared_confidence', 0.6)}"
+                ),
+                query_hash=query_hash,
+                report_hash=report_hash,
+                verification_manifest=verification_manifest,
+                evidence_url=evidence_url,
+                transaction_hash=(get_epoch(str(invoice.get("market_epoch_key") or "")).get("tx_hash") if invoice.get("market_epoch_key") else None),
+            )
+        except genlayer_arbiter.GenLayerVerificationError as exc:
+            # Persist the epoch tx so waiters (other prewarms, reconcile, the
+            # buyer's own verify) poll this submission instead of resubmitting
+            # duplicates while consensus is still pending on-chain.
+            if invoice.get("market_epoch_key"):
+                mark_epoch_tx(str(invoice["market_epoch_key"]), exc.transaction_hash)
+            raise
         return receipt
     except Exception as exc:
         logger.debug("Opportunistic GenLayer pre-warm for %s ended or skipped: %s", invoice.get("symbol"), exc)
@@ -2156,8 +2483,13 @@ def prewarm_genlayer_sla_for_invoice(invoice: dict) -> Optional[dict]:
 
 
 def _trigger_genlayer_prewarm_in_background(invoice: dict) -> None:
-    """Launch opportunistic GenLayer pre-warm in a background daemon thread."""
-    if not invoice or invoice.get("synthetic"):
+    """Launch opportunistic GenLayer pre-warm in a background daemon thread.
+
+    Runs for every invoice, synthetic included: swarm purchases settle real
+    x402 money and get the same pre-verified access path. Failed pre-warms
+    leave the epoch tx recorded so reconcile keeps polling it.
+    """
+    if not invoice:
         return
     import threading
 
@@ -2186,11 +2518,12 @@ def verify_invoice_report_with_genlayer(invoice_id, invoice):
         return _verify_invoice_report_with_genlayer_locked(invoice_id, invoice)
 
 
-def _sync_single_payment_event(invoice: dict) -> None:
+def _sync_single_payment_event(invoice: dict, reload_state: bool = True) -> None:
     settlement_id = invoice.get("settlement_id")
     if not settlement_id or invoice_split_mode(invoice) == "x402_direct_split":
         return
-    reload_persistent_state(include_reports=False)
+    if reload_state:
+        reload_persistent_state(include_reports=False)
     if not any(event.get("settlement_id") == settlement_id for event in state.payment_events):
         new_event = {
             "invoice_id": invoice.get("invoice_id"),
@@ -2283,11 +2616,29 @@ def settle_genlayer_verdict_on_arc(invoice_id: str, invoice: dict) -> dict | Non
 
 def reconcile_arc_verdict_settlements_once(max_invoices: int = 20) -> int:
     """Advance persisted verdict operations that no buyer is actively polling."""
-    pending_verifications = [
+    settled_but_unsynced = [
         invoice for invoice in list(state.invoices_db.values())
         if invoice.get("status") == "verification_pending"
         and invoice.get("settlement_id")
-    ][:max_invoices]
+    ]
+    if settled_but_unsynced:
+        try:
+            # One authoritative reload for the whole batch; the per-invoice
+            # syncs below run with reload_state=False to keep a deep backlog
+            # from re-reading the entire ledger once per invoice.
+            reload_persistent_state(include_reports=False)
+        except Exception:
+            logger.exception("State reload before payment event sync failed")
+    for invoice in settled_but_unsynced:
+        try:
+            # Payment facts first: every settled invoice reaches the payment
+            # ledger this cycle, no matter how long its verdict takes or how
+            # deep the verification backlog is. Idempotent by settlement_id.
+            _sync_single_payment_event(invoice, reload_state=False)
+        except Exception:
+            logger.exception("Payment event sync failed for invoice %s", invoice.get("invoice_id"))
+
+    pending_verifications = settled_but_unsynced[:max_invoices]
     for invoice in pending_verifications:
         try:
             inv_id = str(invoice.get("invoice_id") or "")
@@ -2367,7 +2718,20 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
     provider = get_provider_or_404(provider_registry, provider_id)
     normalized_query = normalize_query_for_provider(provider, invoice.get("query") or {})
     invoice["paid_at"] = invoice.get("paid_at") or time.time()
+    epoch_snapshot = get_epoch(str(invoice.get("market_epoch_key") or "")) if invoice.get("market_epoch_key") else None
     report = invoice.get("_verification_report")
+    if epoch_snapshot is not None:
+        # The whole epoch shares one frozen snapshot and one report hash, so
+        # every invoice in it rides the same GenLayer attestation.
+        report = epoch_snapshot["report"]
+    elif report is None and isinstance(invoice.get("verification_report_canonical"), str):
+        # The verification report is frozen at first submission: live market
+        # data drifts between reconcile cycles, and rebuilding here would
+        # change the report hash and trip the tamper check below.
+        try:
+            report = json.loads(invoice["verification_report_canonical"])
+        except Exception:
+            report = None
     if report is None:
         report = build_provider_report(
             provider=provider,
@@ -2436,11 +2800,13 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
 
     invoice["_verification_report"] = report
     invoice["verification_report_hash"] = report_hash
+    invoice["verification_report_canonical"] = canonical_report
     invoice["status"] = "verification_pending"
     _save_invoice(invoice)
 
     gl_state = invoice.get("genlayer") if isinstance(invoice.get("genlayer"), dict) else {}
-    pending_tx = gl_state.get("transaction_hash")
+    epoch_tx = epoch_snapshot.get("tx_hash") if epoch_snapshot else None
+    pending_tx = gl_state.get("transaction_hash") or epoch_tx
     # A submitted GenLayer tx that produced no order is only retried for a
     # bounded window; past it the hash is stale and the next verify submits a
     # fresh on-chain verification instead of waiting forever.
@@ -2500,9 +2866,17 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
                 next_genlayer["superseded_transactions"] = list(gl_state.get("superseded_transactions") or []) + [exc.transaction_hash]
         else:
             next_genlayer.setdefault("pending_since", time.time())
+        if epoch_snapshot is not None:
+            # Keep the epoch's shared tx alive so every waiter in this window
+            # polls the same submission instead of resubmitting duplicates.
+            mark_epoch_tx(epoch_snapshot["key"], next_genlayer.get("transaction_hash"))
         invoice["status"] = "verification_pending"
         invoice["genlayer"] = next_genlayer
         _save_invoice(invoice)
+        # The payment itself is settled and final: record the payment event
+        # now instead of waiting for the verdict. Traction reflects real money
+        # movement; report ACCESS still stays gated on the VALID verdict.
+        _sync_single_payment_event(invoice)
         raise HTTPException(
             status_code=503,
             detail={
@@ -2518,6 +2892,9 @@ def _verify_invoice_report_with_genlayer_locked(invoice_id, invoice):
         **{k: gl_state[k] for k in ("superseded_transactions", "resubmit_count", "pending_since") if k in gl_state},
         **receipt,
     }
+    if epoch_snapshot is not None:
+        mark_epoch_verdict(epoch_snapshot["key"], str(receipt.get("verdict") or ""))
+    invoice["sla_state"] = "verified" if str(receipt.get("verdict") or "").upper() == "VALID" else "rejected"
     receipt_report_hash = receipt.get("report_hash") if isinstance(receipt, dict) else None
     if (receipt_report_hash is not None and str(receipt_report_hash) != str(report_hash)) or (
         receipt.get("verdict") != "INVALID" and receipt_report_hash is None

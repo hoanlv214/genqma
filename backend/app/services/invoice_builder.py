@@ -254,6 +254,7 @@ def invoice_payment_state_response(
     return {
         "invoice_id": invoice_id,
         "status": invoice.get("status"),
+        "sla_state": invoice.get("sla_state"),
         "access_status": access_status,
         "amount": invoice.get("amount"),
         "amount_usdc": invoice.get("amount"),

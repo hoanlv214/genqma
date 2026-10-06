@@ -554,3 +554,77 @@ def test_euthyna_live_settled_vs_simulated_status(tmp_path):
     assert trail_live[0]["status"] == "LIVE_SETTLED"
 
 
+
+
+def test_usyc_treasury_halt_blocks_rails(monkeypatch):
+    """treasury_halted policy refuses every execution before any RPC call."""
+    service = USYCTreasuryService()
+    monkeypatch.setattr(service, "get_liquid_usdc_balance", lambda addr: 1000.0)
+    service.set_policy(CorporateTreasuryPolicy(treasury_halted=True))
+    try:
+        with pytest.raises(ValueError, match="Treasury halted by operator policy"):
+            service._enforce_safety_rails("USYC_DEPOSIT", amount_usdc=1.0, bypass_cooldown=True)
+        with pytest.raises(ValueError, match="Treasury halted by operator policy"):
+            service._enforce_safety_rails("USYC_REDEEM", amount_usdc=0.005, bypass_cooldown=True)
+    finally:
+        service.set_policy(CorporateTreasuryPolicy(treasury_halted=False))
+
+
+def test_usyc_treasury_halt_blocks_execute_deposit():
+    """execute_deposit must refuse while halted, before touching Web3 or keys."""
+    service = USYCTreasuryService()
+    service.set_policy(CorporateTreasuryPolicy(treasury_halted=True))
+    try:
+        with pytest.raises(ValueError, match="Treasury halted by operator policy"):
+            service.execute_deposit(amount_usdc=1.0, private_key=None)
+    finally:
+        service.set_policy(CorporateTreasuryPolicy(treasury_halted=False))
+
+
+def test_usyc_treasury_halt_default_off():
+    """Existing policies without the field keep executing (default False)."""
+    service = USYCTreasuryService()
+    policy = service.get_policy()
+    assert policy.treasury_halted is False
+
+
+def test_euthyna_action_alias_canonicalization(tmp_path):
+    """Rail-specific action spellings collapse onto canonical actions on write,
+    and reads with the canonical filter still surface legacy alias rows."""
+    from backend.app.services.euthyna_audit import EuthynaAuditEngine
+
+    audit = EuthynaAuditEngine(audit_file=tmp_path / "alias_audit.json")
+    entry = audit.record_action(
+        action="SWEEP_IDLE",
+        actor="0x23e7c029a287a83d80b2e084e008211658dda11d",
+        amount_usdc=2.0,
+        balance_before=10.0,
+        balance_after=8.0,
+        usyc_shares=2.0,
+        policy_rule="RULE_TEST",
+        reasoning="alias canonicalization",
+    )
+    assert entry["action"] == "IDLE_SWEEP"
+
+    legacy = dict(entry)
+    legacy["record_id"] = "euthyna_legacy_alias"
+    legacy["action"] = "IDLE_SWEEP"  # stored under canonical spelling
+    audit._records.append(legacy)
+
+    by_canonical = audit.get_audit_trail(action_filter="IDLE_SWEEP", limit=10)
+    assert len(by_canonical) >= 1
+    assert all(r["action"] == "IDLE_SWEEP" for r in by_canonical)
+
+    jit = audit.record_action(
+        action="JIT_REDEEM",
+        actor="0x23e7c029a287a83d80b2e084e008211658dda11d",
+        amount_usdc=0.005,
+        balance_before=8.0,
+        balance_after=8.005,
+        usyc_shares=1.995,
+        policy_rule="RULE_TEST",
+        reasoning="jit alias",
+    )
+    assert jit["action"] == "JIT_REDEMPTION"
+    jit_rows = audit.get_audit_trail(action_filter="JIT_REDEMPTION", limit=10)
+    assert any(r["record_id"] == jit["record_id"] for r in jit_rows)
