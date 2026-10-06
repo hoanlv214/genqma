@@ -1310,6 +1310,7 @@ def create_invoice(req: InvoiceRequest):
         "nonce": invoice["nonce"],
         "invoice_secret": invoice["invoice_secret"],
         "query_hash": invoice["query_hash"],
+        "query": invoice.get("query"),
         "sla_state": invoice.get("sla_state"),
         "payment_requirement": requirement,
         "arc_gateway_url": requirement["resource"],

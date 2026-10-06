@@ -56,6 +56,7 @@ class PaymentInvoiceResponse(ResponseModel):
     nonce: str
     invoice_secret: str
     query_hash: str
+    query: Optional[Dict[str, Any]] = None
     payment_requirement: Dict[str, Any]
     arc_gateway_url: str
     split_legs: List[Dict[str, Any]]

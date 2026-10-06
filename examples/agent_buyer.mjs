@@ -620,7 +620,7 @@ async function fetchReport(invoice, verifyData, pick) {
       "Content-Type": "application/json",
       "X-QMA-Access-Token": verifyData.access_token,
     },
-    body: JSON.stringify(pick.query),
+    body: JSON.stringify(invoice.query || pick.query),
   });
 }
 
