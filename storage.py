@@ -2215,10 +2215,40 @@ class PostgresStorage:
                 "SELECT * FROM public.v_platform_metrics_summary;",
                 fetch_one=True
             )
-            return dict(row) if row else {}
+            summary = dict(row) if row else {}
         except Exception as exc:
             logger.warning(f"Could not query v_platform_metrics_summary: {exc}")
-            return {}
+            summary = {}
+        # Provenance must reflect the buyer_type actually recorded on each
+        # payment event; reporting the whole volume as one type is a false
+        # claim about where the money came from.
+        try:
+            rows = self.execute_query(
+                """
+                SELECT COALESCE(NULLIF(event->>'buyer_type', ''), 'human') AS buyer_type,
+                       COUNT(*)::int AS reports,
+                       COALESCE(SUM(amount_usdc), 0)::float AS volume_usdc
+                FROM public.qma_payment_events
+                WHERE COALESCE(NULLIF(event->>'buyer_type', ''), 'human') <> 'dry_run'
+                GROUP BY 1;
+                """,
+                fetch_all=True
+            ) or []
+            counts = {
+                str(r["buyer_type"]).lower(): {
+                    "reports": int(r["reports"]),
+                    "volume_usdc": float(r["volume_usdc"]),
+                }
+                for r in rows
+            }
+            summary["buyer_type_counts"] = {
+                "human": counts.get("human", {"reports": 0, "volume_usdc": 0.0}),
+                "agent": counts.get("agent", {"reports": 0, "volume_usdc": 0.0}),
+                **{k: v for k, v in counts.items() if k not in ("human", "agent")},
+            }
+        except Exception as exc:
+            logger.warning(f"Could not aggregate buyer_type provenance: {exc}")
+        return summary
 
     def load_payer_leaderboard_view(self, limit: int = 50) -> list:
         try:

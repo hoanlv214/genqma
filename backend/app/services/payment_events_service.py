@@ -522,6 +522,16 @@ def build_traction_snapshot_from_views(
             for r in (provider_rows or [])
         ]
 
+        buyer_counts = (summary_row or {}).get("buyer_type_counts") or {}
+        known_types = ("human", "agent")
+        provenance = {}
+        for buyer_type in list(known_types) + sorted(k for k in buyer_counts if k not in known_types):
+            counts = buyer_counts.get(buyer_type) or {}
+            provenance[buyer_type] = {
+                "reports": int(counts.get("reports") or 0),
+                "volume_usdc": round(float(counts.get("volume_usdc") or 0.0), 6),
+            }
+
         return {
             "summary": {
                 "current_paid_reports": tot_paid,
@@ -534,10 +544,7 @@ def build_traction_snapshot_from_views(
                 "average_paid_report_usdc": avg_paid,
                 "average_settled_report_usdc": avg_settled,
             },
-            "provenance": {
-                "human": {"reports": tot_paid, "volume_usdc": round(tot_vol, 6)},
-                "agent": {"reports": 0, "volume_usdc": 0.0},
-            },
+            "provenance": provenance,
             "daily_paid": daily_paid,
             "daily_settled": daily_settled,
             "providers": providers,
