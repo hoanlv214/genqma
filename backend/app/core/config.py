@@ -29,16 +29,20 @@ DATA_DIR = Path(os.getenv("QMA_DATA_DIR") or ROOT_DIR)
 
 # ---------------------------------------------------------------------------
 # Brand & Project Identity (Single Source of Truth)
-# The public brand name is pending final selection. When decided, update here.
+# Decision 2026-10-07: the public brand stays "QMA", repositioned as
+# Intelligence, Decisions, Receipts. Code identifiers (QMA_* env prefix,
+# qma_* tables, the qma CLI, GenQMAShield) are intentionally unchanged.
 # ---------------------------------------------------------------------------
-BRAND_NAME: str = os.getenv("APP_BRAND_NAME", "Financial Intelligence Marketplace")
+BRAND_NAME: str = os.getenv("APP_BRAND_NAME", "QMA Intelligence Marketplace")
 BRAND_CODENAME: str = "GenQMA"
-BRAND_TITLE: str = os.getenv("APP_BRAND_TITLE", "GenQMA Intelligence & Payments API")
-BRAND_TAGLINE: str = "Two-Sided Marketplace for Financial Intelligence & Agent Commerce"
+BRAND_TITLE: str = os.getenv("APP_BRAND_TITLE", "QMA Intelligence & Payments API")
+BRAND_TAGLINE: str = "Intelligence, decisions, receipts: per-query market memory for autonomous agents on Arc"
 BRAND_DESCRIPTION: str = (
-    "A two-sided marketplace for financial intelligence where quant creators and data providers "
-    "monetize signals, and autonomous AI agents or traders purchase verified reports per query "
-    "via x402 USDC micropayments with on-chain SLA and verification proof."
+    "QMA sells intelligence: historical analog evidence for live market dislocations, "
+    "purchased per query in sub-cent USDC. It powers decisions: autonomous agents and a "
+    "policy-bounded treasury CFO acting inside deterministic spending caps. And it issues "
+    "receipts: every query, GenLayer SLA verdict and payout lands on a SHA-256 hash-chained "
+    "audit trail with on-chain settlement proof."
 )
 INTERNAL_QUANT_ENGINE: str = "QMA"  # Internal market-memory & anomaly matching engine
 INTERNAL_TREASURY_MODULE: str = "QMA Treasury Engine"  # Internal corporate treasury & liquidity engine

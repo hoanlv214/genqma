@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CreditCard, Eye, Lock, LogIn, Search, ShieldCheck, TrendingUp, Zap } from "lucide-react";
+import { Brain, Bot, CreditCard, Eye, LogIn, ReceiptText, Search, TrendingUp } from "lucide-react";
 import { API_BASE_URL } from "@/services/api";
 import { getPlatformSummary } from "@/services/traction";
 import { LandingHeader } from "@/components/layout/LandingHeader";
@@ -164,7 +164,7 @@ export function HomePage({ onNavigate }: HomeProps) {
                     <div className="landing-container">
                         <div className="landing-hero-grid">
                             <div className="landing-hero-copy">
-                                <div className="landing-kicker">Quantitative Market Memory for Autonomous Agents</div>
+                                <div className="landing-kicker">Intelligence · Decisions · Receipts</div>
                                 <h1 className="landing-hero-title">
                                     Before your agent acts on a signal,{" "}
                                     <span className="serif-line">show it what happened last time.</span>
@@ -183,38 +183,38 @@ export function HomePage({ onNavigate }: HomeProps) {
                                         See Live Proof
                                     </button>
                                 </div>
-                                <div className="landing-hero-pillars" aria-label="Core Architectural Guarantees">
+                                <div className="landing-hero-pillars" aria-label="Intelligence, decisions and receipts">
                                     <div className="hero-pillar-item">
                                         <div className="hero-pillar-header">
                                             <span className="hero-pillar-icon" aria-hidden="true">
-                                                <Zap size={12} strokeWidth={2.5} />
+                                                <Brain size={12} strokeWidth={2.5} />
                                             </span>
-                                            <span>Sub-Cent x402</span>
+                                            <span>Intelligence</span>
                                         </div>
                                         <p className="hero-pillar-desc">
-                                            0.002–0.005 USDC per query, settled on Arc with USDC gas
+                                            Historical analog evidence for live dislocations, sold per query in sub-cent USDC via x402
                                         </p>
                                     </div>
                                     <div className="hero-pillar-item">
                                         <div className="hero-pillar-header">
                                             <span className="hero-pillar-icon" aria-hidden="true">
-                                                <ShieldCheck size={12} strokeWidth={2.5} />
+                                                <Bot size={12} strokeWidth={2.5} />
                                             </span>
-                                            <span>Fail-Closed SLA</span>
+                                            <span>Decisions</span>
                                         </div>
                                         <p className="hero-pillar-desc">
-                                            GenLayer consensus verifier gates every report before payment
+                                            Autonomous agents and a treasury CFO act inside deterministic spending caps
                                         </p>
                                     </div>
                                     <div className="hero-pillar-item">
                                         <div className="hero-pillar-header">
                                             <span className="hero-pillar-icon" aria-hidden="true">
-                                                <Lock size={12} strokeWidth={2.5} />
+                                                <ReceiptText size={12} strokeWidth={2.5} />
                                             </span>
-                                            <span>Euthyna Audit</span>
+                                            <span>Receipts</span>
                                         </div>
                                         <p className="hero-pillar-desc">
-                                            Deterministic spend caps &amp; SHA-256 hash-chained state trail
+                                            Fail-closed GenLayer SLA and a SHA-256 hash-chained Euthyna trail, verifiable on Arc
                                         </p>
                                     </div>
                                 </div>

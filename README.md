@@ -1,7 +1,11 @@
-# QMA: Financial Intelligence Marketplace (Codename: GenQMA)
+# QMA — Intelligence, Decisions, Receipts
+
+> QMA (Quantitative Market Analogs) sells per-query market memory to autonomous agents:
+> sub-cent USDC intelligence, policy-bounded decisions, and hash-chained receipts on Arc.
+> Repo codename: genqma.
 
 [![live: genqma.vercel.app](https://img.shields.io/badge/live-genqma.vercel.app-1aa251)](https://genqma.vercel.app)
-[![Arc RFB: 4/4 Frontiers Aligned](https://img.shields.io/badge/Arc_RFB-4%2F4_Frontiers_Aligned-00D26A)](docs/arc/ARC_BUILDER_ALIGNMENT_AUDIT.md)
+[![brand: Intelligence · Decisions · Receipts](https://img.shields.io/badge/QMA-Intelligence_%C2%B7_Decisions_%C2%B7_Receipts-6366F1)](https://genqma.vercel.app)
 [![marketplace: Two-Sided Intelligence](https://img.shields.io/badge/marketplace-Two--Sided_Intelligence-2563EB)](docs/business/POSITIONING_STRATEGY.md)
 [![API docs: onrender](https://img.shields.io/badge/API-qma--api.onrender.com-6E56CF)](https://qma-api.onrender.com/docs)
 [![settles on Arc testnet](https://img.shields.io/badge/settles_on-Arc_testnet-1f1f1f)](https://testnet.arcscan.app)
