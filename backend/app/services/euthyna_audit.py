@@ -13,6 +13,7 @@ made by the autonomous AI CFO:
 
 from __future__ import annotations
 
+import os
 import hashlib
 import json
 import logging
@@ -62,6 +63,12 @@ def _action_filter_candidates(action_filter: str) -> List[str]:
 
 def _get_storage():
     try:
+        from backend.app.core import state
+        if getattr(state, "storage_backend", None) is not None:
+            return state.storage_backend
+    except Exception:
+        pass
+    try:
         from backend.app.main import storage_backend
         return storage_backend
     except Exception:
@@ -106,6 +113,12 @@ class EuthynaAuditEngine:
                     logger.info(f"[EUTHYNA AUDIT] Loaded {len(self._records)} persistent audit records from storage backend")
                 return
 
+        if os.getenv("QMA_STORAGE_BACKEND", "").lower().strip() == "postgres":
+            # PostgreSQL mode must never load from stale local json files
+            logger.info("[EUTHYNA AUDIT] PostgreSQL configured; ignoring local json disk fallback.")
+            self._records = []
+            return
+
         if self._audit_file and self._audit_file.exists():
             try:
                 with open(self._audit_file, "r", encoding="utf-8") as f:
@@ -118,6 +131,10 @@ class EuthynaAuditEngine:
 
     def _persist_records(self) -> None:
         """Atomically persist audit records to disk."""
+        if os.getenv("QMA_STORAGE_BACKEND", "").lower().strip() == "postgres":
+            # Zero silent disk writes when self-hosted PostgreSQL is active
+            logger.debug("[EUTHYNA AUDIT] Skipping disk JSON persist because QMA_STORAGE_BACKEND=postgres is active.")
+            return
         if not self._audit_file:
             return
         try:
@@ -128,6 +145,51 @@ class EuthynaAuditEngine:
             tmp_file.replace(self._audit_file)
         except Exception as exc:
             logger.error(f"[EUTHYNA AUDIT] Failed to persist audit trail to {self._audit_file}: {exc}")
+
+    def preview_action(
+        self,
+        action: str,
+        actor: str,
+        amount_usdc: float,
+        balance_before: float,
+        balance_after: float,
+        usyc_shares: float,
+        policy_rule: str,
+        reasoning: str,
+        provider_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Build an audit-shaped entry for a simulation without persisting it.
+
+        Dry-runs have no financial effect, so they are never appended to the
+        hash-chained trail; only authorized executions are recorded.
+        """
+        action = canonical_action(action)
+        record_id = f"preview_{uuid.uuid4().hex[:12]}"
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        norm_actor = normalize_address(actor)
+        payload = (
+            f"UNRECORDED_PREVIEW|{record_id}|{timestamp}|{action}|{norm_actor}|{round(amount_usdc, 6)}|"
+            f"{round(balance_before, 6)}|{round(balance_after, 6)}|{round(usyc_shares, 6)}|"
+        )
+        return {
+            "record_id": record_id,
+            "previous_hash": "UNRECORDED_PREVIEW",
+            "timestamp": timestamp,
+            "action": action,
+            "actor": norm_actor,
+            "amount_usdc": round(amount_usdc, 6),
+            "treasury_liquid_before": round(balance_before, 6),
+            "treasury_liquid_after": round(balance_after, 6),
+            "usyc_vault_shares": round(usyc_shares, 6),
+            "tx_hash": None,
+            "arcscan_url": None,
+            "policy_rule_applied": policy_rule,
+            "cfo_reasoning": reasoning,
+            "provider_id": provider_id,
+            "genlayer_consensus": None,
+            "integrity_hash": hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+            "status": "DRY_RUN_SIMULATED",
+        }
 
     def record_action(
         self,
@@ -214,6 +276,8 @@ class EuthynaAuditEngine:
                 else:
                     st = _get_storage()
                     if st is None or not hasattr(st, "save_euthyna_record"):
+                        if os.getenv("QMA_STORAGE_BACKEND", "").lower().strip() == "postgres":
+                            raise RuntimeError("[EUTHYNA AUDIT] Storage backend is uninitialized but QMA_STORAGE_BACKEND=postgres is required!")
                         # No storage backend configured: the local file is the ledger.
                         self._persist_records()
                     else:

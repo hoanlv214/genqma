@@ -369,8 +369,9 @@ async function runWorkerLoop() {
               return 0;
             }
 
-            async function ensureAgentGatewayBalance(requiredBudget: number) {
+            async function ensureAgentGatewayBalance(requiredBudget: number, signal?: AbortSignal) {
               if (!agentWalletAddress || !agentWalletId) return;
+              if (signal?.aborted) return;
 
               let gwBalance = 0;
               try {
@@ -382,7 +383,7 @@ async function runWorkerLoop() {
                 console.error("[Worker] Error checking Gateway balance:", e);
               }
 
-              if (gwBalance >= requiredBudget) return;
+              if (gwBalance >= requiredBudget || signal?.aborted) return;
 
               let onChainUsdc = 0;
               try {
@@ -401,10 +402,14 @@ async function runWorkerLoop() {
                 console.error("[Worker] Error checking on-chain balance:", e);
               }
 
+              if (signal?.aborted) return;
+
               const requiredTopUp = Math.max(requiredBudget - gwBalance, 0);
               if (onChainUsdc < requiredTopUp) {
                 throw new Error(`Insufficient funds. Agent Wallet has ${onChainUsdc} USDC on-chain, but needs ${requiredTopUp} USDC more to satisfy Gateway budget.`);
               }
+
+              if (signal?.aborted) return;
 
               console.log(`[Worker] Automatically depositing ${requiredTopUp.toFixed(6)} USDC from Agent Wallet into Gateway...`);
               const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -481,7 +486,7 @@ async function runWorkerLoop() {
             const currentSpent = Number(runtimeState.spentUsdc || 0);
             const remainingBudget = Math.max(0, Number(session.budget_usdc || 0) - currentSpent);
             if (remainingBudget > 0) {
-              await ensureAgentGatewayBalance(remainingBudget);
+              await ensureAgentGatewayBalance(remainingBudget, abortController.signal);
             }
 
             const initialState = session.runtime_state ? { ...session.runtime_state } : undefined;

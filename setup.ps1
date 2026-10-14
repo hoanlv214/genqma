@@ -1,12 +1,12 @@
 # ==============================================================================
-# GenQMA 1-Click Environment Auditor & Setup Script (Windows PowerShell)
+# QMA 1-Click Environment Auditor & Setup Script (Windows PowerShell)
 # Automatically scans, installs prerequisites, sets up dependencies & configures .env
 # ==============================================================================
 
 $ErrorActionPreference = "Continue"
 
 Write-Host "`n==============================================================================" -ForegroundColor Cyan
-Write-Host "                GenQMA 1-Click System Audit & Environment Setup               " -ForegroundColor Cyan
+Write-Host "                QMA 1-Click System Audit & Environment Setup               " -ForegroundColor Cyan
 Write-Host "==============================================================================" -ForegroundColor Cyan
 
 # ------------------------------------------------------------------------------

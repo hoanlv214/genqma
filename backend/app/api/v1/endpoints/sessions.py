@@ -513,6 +513,14 @@ def create_sessions_router(deps) -> APIRouter:
         storage = get_storage(deps)
         owner_wallet_lower = require_wallet_owner(req.owner_wallet, qma_wallet_token)
 
+        from backend.app.core.config import is_treasury_halted
+
+        if is_treasury_halted():
+            raise HTTPException(
+                status_code=503,
+                detail="Treasury is halted (treasury_halted=true) — session withdrawals refused",
+            )
+
         with owner_ops_lock(owner_wallet_lower):
             # 1. Retrieve all user sessions to check their active state.
             #    The owner lock held here also covers start/resume, closing the
@@ -619,9 +627,7 @@ def create_sessions_router(deps) -> APIRouter:
     ):
         """Returns the Circle Agent Wallet address and its on-chain and Gateway USDC balances."""
         storage = get_storage(deps)
-        owner_wallet_lower = deps.normalize_address(owner_wallet)
-        if qma_wallet_token:
-            deps.verify_wallet_profile_token(owner_wallet_lower, qma_wallet_token)
+        owner_wallet_lower = require_wallet_owner(owner_wallet, qma_wallet_token)
         
         # 1. Search existing sessions to retrieve the Agent Wallet details
         params = {

@@ -5,7 +5,7 @@
 
 ## Decision
 
-GenQMA uses two separate trust domains:
+QMA uses two separate trust domains:
 
 - **Arc/Circle x402** receives the buyer's single USDC payment.
 - **GenLayer** verifies the exact report draft bound to the invoice and query hashes.
@@ -32,7 +32,7 @@ as complete.
 ## Outstanding settlement executor
 
 To complete creator/platform distribution and buyer chargeback on the current USDC
-rail, GenQMA needs an idempotent Arc settlement executor that consumes finalized,
+rail, QMA needs an idempotent Arc settlement executor that consumes finalized,
 hash-bound GenLayer verdicts:
 
 - `VALID`: transfer the configured creator/platform allocation from treasury or escrow.

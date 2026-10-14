@@ -37,7 +37,7 @@ No need to open Supabase SQL Editor.
 bun x supabase orgs list
 
 # Create production database project in Singapore (ap-southeast-1):
-bun x supabase projects create genqma-prod \
+bun x supabase projects create qma-prod \
   --org-id <YOUR_ORG_ID> \
   --db-password "<STRONG_PASSWORD>" \
   --region ap-southeast-1
@@ -78,7 +78,7 @@ bun run deploy:vercel
 bun run deploy:vercel:env
 
 # Or using Vercel Personal Access Token:
-python scripts/vercel_sync.py --token <VERCEL_TOKEN> --project genqma --sync-env
+python scripts/vercel_sync.py --token <VERCEL_TOKEN> --project qma --sync-env
 ```
 
 The script automatically syncs:
@@ -154,7 +154,7 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          python scripts/vercel_sync.py --token $VERCEL_TOKEN --project genqma --all
+          python scripts/vercel_sync.py --token $VERCEL_TOKEN --project qma --all
 ```
 
 ---

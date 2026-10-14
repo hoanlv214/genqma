@@ -78,7 +78,7 @@ creator, and treasury wallets separate during testing.
 4. Wallet switches/adds Arc Testnet and asks you to sign `TransferWithAuthorization`.
 5. The Arc Gateway sidecar settles the signed authorization through Circle Gateway.
 6. QMA verifies the returned settlement UUID through Circle's transfer API.
-7. GenQMA generates the report once, hashes the exact payload, and submits that
+7. QMA generates the report once, hashes the exact payload, and submits that
    hash and a public claim manifest to `GenQMAShield`; paid analog rows are not
    placed in public transaction calldata.
 8. The report unlocks only after a finalized GenLayer `VALID` verdict. Pending,

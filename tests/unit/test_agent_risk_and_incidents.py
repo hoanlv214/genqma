@@ -120,9 +120,11 @@ def test_sla_invalid_triggers_auto_pause(monkeypatch, isolated_session_storage):
     assert "euthyna_hash" in incidents[0]
 
 
-def test_api_session_control_and_incidents(isolated_session_storage):
+def test_api_session_control_and_incidents(isolated_session_storage, monkeypatch):
 
     client = TestClient(app)
+    monkeypatch.setattr("backend.app.services.security.ADMIN_TOKEN", "test-admin-secret")
+    admin_headers = {"x-qma-admin-token": "test-admin-secret"}
 
     # 1. Create a dummy session directly in storage
     session_id = "33333333-3333-3333-3333-333333333333"
@@ -155,10 +157,18 @@ def test_api_session_control_and_incidents(isolated_session_storage):
     assert len(data) >= 1
     assert data[0]["incident_id"] == inc["incident_id"]
 
+    # 4a. Unauthenticated control is rejected
+    resp = client.post(
+        f"/api/v1/agent/sessions/{session_id}/control",
+        json={"action": "pause", "reason": "Anonymous pause"}
+    )
+    assert resp.status_code == 403, resp.text
+
     # 4. POST /api/v1/agent/sessions/{session_id}/control (pause)
     resp = client.post(
         f"/api/v1/agent/sessions/{session_id}/control",
-        json={"action": "pause", "reason": "Test emergency pause"}
+        json={"action": "pause", "reason": "Test emergency pause"},
+        headers=admin_headers,
     )
     assert resp.status_code == 200, resp.text
     assert resp.json()["status"] == "paused"
@@ -166,14 +176,16 @@ def test_api_session_control_and_incidents(isolated_session_storage):
     # 5. POST /api/v1/agent/sessions/{session_id}/control (duplicate pause -> 400)
     resp = client.post(
         f"/api/v1/agent/sessions/{session_id}/control",
-        json={"action": "pause", "reason": "Duplicate pause"}
+        json={"action": "pause", "reason": "Duplicate pause"},
+        headers=admin_headers,
     )
     assert resp.status_code == 400, resp.text
 
     # 6. POST /api/v1/agent/sessions/{session_id}/control (resume)
     resp = client.post(
         f"/api/v1/agent/sessions/{session_id}/control",
-        json={"action": "resume", "reason": "Cleared test issue"}
+        json={"action": "resume", "reason": "Cleared test issue"},
+        headers=admin_headers,
     )
     assert resp.status_code == 200, resp.text
     assert resp.json()["status"] == "running"
@@ -181,15 +193,24 @@ def test_api_session_control_and_incidents(isolated_session_storage):
     # 7. POST /api/v1/agent/sessions/{session_id}/control (kill)
     resp = client.post(
         f"/api/v1/agent/sessions/{session_id}/control",
-        json={"action": "kill", "reason": "Manual emergency kill"}
+        json={"action": "kill", "reason": "Manual emergency kill"},
+        headers=admin_headers,
     )
     assert resp.status_code == 200, resp.text
     assert resp.json()["status"] == "stopped"
 
+    # 8a. Unauthenticated resolve is rejected
+    resp = client.post(
+        f"/api/v1/agent/incidents/{inc['incident_id']}/resolve",
+        json={"resolution": "RESOLVED", "admin_note": "Anonymous"}
+    )
+    assert resp.status_code in (401, 403), resp.text
+
     # 8. POST /api/v1/agent/incidents/{incident_id}/resolve
     resp = client.post(
         f"/api/v1/agent/incidents/{inc['incident_id']}/resolve",
-        json={"resolution": "RESOLVED", "admin_note": "Admin reviewed and cleared"}
+        json={"resolution": "RESOLVED", "admin_note": "Admin reviewed and cleared"},
+        headers=admin_headers,
     )
     assert resp.status_code == 200, resp.text
     assert resp.json()["status"] == "RESOLVED"

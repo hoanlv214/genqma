@@ -1,8 +1,8 @@
-const DEFAULT_REMOTE_API = "https://qma-api.onrender.com";
-
+// In development, Vite dev-server proxies /api to localhost:8000.
+// In production on Vercel, vercel.json rewrites /api to the upstream backend.
+// Defaulting to relative path ("") hides the real backend/ngrok origin from browser network inspection.
 export const API_BASE_URL = String(
-  import.meta.env.VITE_QMA_API_BASE_URL ||
-    (["localhost", "127.0.0.1", "0.0.0.0"].includes(window.location.hostname) ? "" : DEFAULT_REMOTE_API),
+  import.meta.env.VITE_QMA_API_BASE_URL || "",
 ).replace(/\/$/, "");
 
 export const QMA_ENV = String(import.meta.env.VITE_QMA_ENV || "");

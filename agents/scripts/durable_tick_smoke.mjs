@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { QmaAgent } from "../dist/index.js";
 import { normalizeSessionPolicy, parseDurationSeconds } from "../dist/session/policy.js";
-import { createSessionState } from "../dist/session/state.js";
+import { createSessionState, reconcileBudgetWithPolicy } from "../dist/session/state.js";
 
 // Test 1: Task duration string parsing
 assert.equal(parseDurationSeconds("run 7 days"), 7 * 86400);
@@ -63,3 +63,50 @@ const abortedTickResult = await agent.runTick({
 assert.equal(abortedTickResult.finished, true);
 assert.equal(abortedTickResult.state.status, "paused");
 console.log("AbortSignal tick cancellation smoke PASS");
+
+// Test 4: Persisted remainingBudgetUsdc must not override the owner's current budget
+const staleSnapshot = {
+  ...partialRuntimeState,
+  status: "running",
+  initialBudgetUsdc: 10,
+  spentUsdc: 1,
+  remainingBudgetUsdc: 9,
+};
+
+// Owner lowered budget 10 -> 2: remaining must be 1, not the stale 9.
+const lowered = new AbortController();
+lowered.abort();
+const loweredTick = await agent.runTick({
+  task: policy.task,
+  sessionBudgetUsdc: 2,
+  maxPricePerReportUsdc: 1,
+  executionMode: "dry_run",
+  initialState: { ...staleSnapshot },
+}, lowered.signal);
+assert.equal(loweredTick.state.initialBudgetUsdc, 2);
+assert.equal(loweredTick.state.spentUsdc, 1);
+assert.equal(loweredTick.state.remainingBudgetUsdc, 1);
+
+// Owner raised budget after exhaustion: remaining must reopen instead of stopping.
+const raised = new AbortController();
+raised.abort();
+const raisedTick = await agent.runTick({
+  task: policy.task,
+  sessionBudgetUsdc: 5,
+  maxPricePerReportUsdc: 1,
+  executionMode: "dry_run",
+  initialState: { ...staleSnapshot, spentUsdc: 2, remainingBudgetUsdc: 0 },
+}, raised.signal);
+assert.equal(raisedTick.state.remainingBudgetUsdc, 3);
+assert.notEqual(raisedTick.state.stopReason, "budget_exhausted");
+
+// Overspent snapshot vs lowered budget clamps to zero; malformed spend resets safely.
+const clampPolicy = normalizeSessionPolicy({ task: "Buy BTC report", sessionBudgetUsdc: 1, maxPricePerReportUsdc: 1 });
+const clampState = Object.assign(createSessionState(clampPolicy), { spentUsdc: 3, remainingBudgetUsdc: 7 });
+reconcileBudgetWithPolicy(clampState, clampPolicy);
+assert.equal(clampState.remainingBudgetUsdc, 0);
+const malformedState = Object.assign(createSessionState(clampPolicy), { spentUsdc: "NaN", remainingBudgetUsdc: 99 });
+reconcileBudgetWithPolicy(malformedState, clampPolicy);
+assert.equal(malformedState.spentUsdc, 0);
+assert.equal(malformedState.remainingBudgetUsdc, 1);
+console.log("Stale budget reconciliation smoke PASS");

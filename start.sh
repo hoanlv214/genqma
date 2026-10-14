@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# GenQMA 1-Click Startup Script (Linux / macOS / Bash)
+# QMA 1-Click Startup Script (Linux / macOS / Bash)
 # Concurrently launches Backend API (:8000), Arc Gateway (:3000), and Frontend (:5173)
 # ==============================================================================
 set -e
@@ -12,7 +12,7 @@ GRAY='\033[0;37m'
 NC='\033[0m'
 
 echo -e "\n${CYAN}==============================================================================${NC}"
-echo -e "${CYAN}                GenQMA 1-Click Service Orchestrator                           ${NC}"
+echo -e "${CYAN}                QMA 1-Click Service Orchestrator                           ${NC}"
 echo -e "${CYAN}==============================================================================${NC}"
 
 # 1. Environment Verification

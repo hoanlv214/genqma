@@ -14,7 +14,7 @@ def _address_text(address) -> str:
 
 
 class Contract(gl.contract.Contract):
-    """On-chain verifier for the exact GenQMA report selected by an invoice.
+    """On-chain verifier for the exact QMA report selected by an invoice.
 
     This contract deliberately does not claim to custody or transfer Arc USDC.
     Arc settlement is a separate payment rail; this contract only records the
@@ -34,7 +34,7 @@ class Contract(gl.contract.Contract):
 
     def _require_admin(self) -> None:
         if _address_text(gl.message.sender_address).lower() != _address_text(self.admin).lower():
-            raise gl.vm.UserError("Only the GenQMA verifier relayer may submit reports")
+            raise gl.vm.UserError("Only the QMA verifier relayer may submit reports")
 
     def _load_order(self, invoice_id: str) -> dict:
         raw = self.orders.get(invoice_id, "")
@@ -146,7 +146,7 @@ class Contract(gl.contract.Contract):
                 })
 
             prompt = f"""You are an impartial quantitative-report verifier on GenLayer.
-Evaluate whether the supplied GenQMA report excerpt is supported by the live
+Evaluate whether the supplied QMA report excerpt is supported by the live
 market evidence and satisfies the invoice SLA.
 
 INVOICE

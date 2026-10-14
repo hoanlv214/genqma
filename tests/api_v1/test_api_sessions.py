@@ -541,3 +541,26 @@ def test_delete_allowed_when_another_session_keeps_wallet_binding(client):
     client.gateway_balances["prepaid"] = "3.0"
     deleted = client.delete(f"/api/v1/sessions/{first_id}", headers=wallet_token())
     assert deleted.status_code == 200
+
+
+def test_get_owner_agent_wallet_authentication_enforced(client):
+    create_session(client)
+    # 1. Calling without token header must return 403 Forbidden
+    unauthenticated = client.get(f"/api/v1/sessions/owner/{OWNER}/wallet")
+    assert unauthenticated.status_code == 403
+
+    # 2. Calling with token for a different wallet must return 403 Forbidden
+    other_token = {"X-QMA-Wallet-Token": f"token:{OTHER_OWNER.lower()}"}
+    mismatched = client.get(f"/api/v1/sessions/owner/{OWNER}/wallet", headers=other_token)
+    assert mismatched.status_code == 403
+
+    # 3. Calling with valid token returns 200 with Agent Wallet data
+    client.gateway_balances["eoa"] = "5.0"
+    client.gateway_balances["prepaid"] = "1.5"
+    authorized = client.get(f"/api/v1/sessions/owner/{OWNER}/wallet", headers=wallet_token())
+    assert authorized.status_code == 200
+    data = authorized.json()
+    assert data["wallet"]["address"] == "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    assert data["wallet"]["wallet_id"] == "agent-wallet-id"
+    assert data["wallet"]["balance_usdc"] == 5.0
+    assert data["wallet"]["gateway_balance_usdc"] == 1.5

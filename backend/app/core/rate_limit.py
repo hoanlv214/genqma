@@ -38,6 +38,17 @@ def rate_limit_for_path(path: str) -> tuple[str, int]:
         return "public_market", int(os.getenv("QMA_RATE_LIMIT_PUBLIC_MARKET_PER_MIN", "120"))
     if path.startswith("/api/v1/creators/apply"):
         return "creator_apply", int(os.getenv("QMA_RATE_LIMIT_CREATOR_APPLY_PER_MIN", "6"))
+    if path.startswith("/api/v1/treasury/agent/decide") or path.startswith("/api/v1/treasury/agent/"):
+        return "treasury_agent", int(os.getenv("QMA_RATE_LIMIT_TREASURY_AGENT_PER_MIN", "15"))
+    if path.startswith("/api/v1/treasury/audit/verify"):
+        return "treasury_audit", int(os.getenv("QMA_RATE_LIMIT_AUDIT_VERIFY_PER_MIN", "12"))
+    if path.startswith("/api/v1/treasury/spend-intent"):
+        return "treasury_spend", int(os.getenv("QMA_RATE_LIMIT_SPEND_INTENT_PER_MIN", "20"))
+    if path.startswith("/api/v1/swap/quote"):
+        return "swap_quote", int(os.getenv("QMA_RATE_LIMIT_SWAP_QUOTE_PER_MIN", "60"))
+    if path == "/api/v1/sessions" or path.startswith("/api/v1/sessions"):
+        return "sessions", int(os.getenv("QMA_RATE_LIMIT_SESSIONS_PER_MIN", "30"))
     if path.startswith("/api/v1/"):
         return "api_default", int(os.getenv("QMA_RATE_LIMIT_API_DEFAULT_PER_MIN", "240"))
     return "html", 0
+

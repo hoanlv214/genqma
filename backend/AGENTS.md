@@ -6,7 +6,6 @@ These instructions apply to every file under `backend/`.
 
 The active modular backend is under `backend/app/`.
 Root `main.py` is a deployment-compatible shim/wrapper and must not be treated as an independent source of business logic unless current imports prove otherwise.
-Root `main_ref.py` is a read-only legacy reference snapshot and must not be edited or imported into active code.
 
 ## Read First
 
@@ -59,7 +58,6 @@ Do not:
 - mutate persistence state directly from endpoints
 - bypass schemas for public request/response contracts
 - duplicate payment or report logic across endpoint modules
-- import from `main_ref.py`
 
 ## Public API Compatibility
 
@@ -214,7 +212,6 @@ Never print secrets, private keys, wallet credentials, complete tokens, or `.env
 Unless explicitly requested, do not:
 
 - edit root legacy frontend files
-- edit `main_ref.py`
 - change Render startup commands
 - delete or bypass root `main.py`
 - rewrite public API contracts

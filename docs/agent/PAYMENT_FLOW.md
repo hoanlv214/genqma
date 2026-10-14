@@ -1,4 +1,4 @@
-# GenQMA Payment and Verification Flow
+# QMA Payment and Verification Flow
 
 This is the source of truth for new report purchases on `main`.
 
@@ -21,7 +21,7 @@ reconciliation; they must never be treated as proof of funds received.
    x402 USDC settlement to the treasury address.
 3. The backend verifies the Circle settlement ID, recipient, payer, amount, and
    accepted Gateway status. The invoice becomes `settlement_verified`.
-4. The provider report is generated once. GenQMA canonicalizes it and stores its
+4. The provider report is generated once. QMA canonicalizes it and stores its
    SHA-256 hash with the invoice while keeping the report inaccessible. A public
    claim manifest excludes the paid analog rows.
 5. The backend relayer calls `GenQMAShield.submit_and_verify`. The contract binds
@@ -108,3 +108,26 @@ QMA_GATEWAY_DELEGATE_ADDRESS=<registered-eoa-delegate-address>
 Deploy the current contract with `npm run deploy:genlayer`, then set the returned
 address in backend and frontend deployment environments. Never reuse an address
 whose deployed ABI predates `submit_and_verify`.
+
+## Buyer-side funding conversion (pre-signing)
+
+All onchain settlement within the QMA invoice lifecycle remains strictly USDC via
+Circle Gateway. To preserve strict invariant isolation (zero payment state-machine
+or settlement verification mutations), any currency conversion or asset liquidation
+must occur **before** the buyer signs the payment authorization:
+
+1. **JIT Conversion Plan**: A buyer holding non-USDC assets (such as EURC, USYC,
+   or WETH) calls `POST /api/v1/swap/fund-gateway-plan` with their wallet address
+   and asset amount.
+2. **Deterministic Route**: The headless Swap Router discovers the best venue
+   (Uniswap V2, Xylo, Lunex, or USYC ERC-4626 NAV redemption) and constructs an
+   atomic sequence of non-custodial transactions:
+   - Step 1: Approve spender for input token.
+   - Step 2: Swap / redeem for Arc native USDC with `min_out` slippage protection.
+   - Step 3: Deposit resulting USDC into Circle Gateway wallet balance.
+3. **Payment Execution**: With USDC confirmed in their Gateway balance, the buyer
+   signs the standard `TransferWithAuthorization` or x402 payment authorization.
+4. **Invariant Guarantee**: The core payment lifecycle (`payment_state_machine.py`,
+   `settlement_validation.py`, `creator_claims.py`) remains completely decoupled
+   from DEX slippage, venue routing, and liquidity availability.
+

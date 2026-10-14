@@ -16,6 +16,10 @@
     "contracts/QMARevenueRouter.sol": {
       "hash": "fa065f1090121fd99bd0e9950485e97b2241775630b2e6c0851552c369d166c4",
       "pulledAt": "2026-09-16T14:23:52.166Z"
+    },
+    "docs/arc-dex-aggregator-feasibility.md": {
+      "hash": "30c57a5e8c19459a8830126d698c071f28a3aa2792d34b05e3af6f37fecc8b1d",
+      "pulledAt": "2026-10-07T08:23:17.165Z"
     }
   }
 }

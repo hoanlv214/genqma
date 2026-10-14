@@ -45,10 +45,10 @@ export const appKit = createAppKit({
   networks: [arcTestnetChain],
   defaultNetwork: arcTestnetChain,
   metadata: {
-    name: "GenQMA",
+    name: "QMA",
     description: "Financial Intelligence Marketplace & Agent Commerce on Arc",
-    url: typeof window !== "undefined" ? window.location.origin : "https://genqma.vercel.app",
-    icons: ["https://genqma.vercel.app/arc-logo.png"],
+    url: typeof window !== "undefined" ? window.location.origin : "https://qma.vercel.app",
+    icons: ["https://qma.vercel.app/arc-logo.png"],
   },
   projectId,
   features: {

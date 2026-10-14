@@ -5,7 +5,7 @@
 **Date:** September 2026  
 **Core Technical Target:** Arc Layer 1 (`eip155:5042` / `eip155:5042002`)  
 **Consensus & Verification Rail:** GenLayer Intelligent Contracts (`studio-next`, Chain ID: `61997`)  
-**Canonical Repository:** `https://github.com/hoanlv214/genqma`  
+**Canonical Repository:** `https://github.com/hoanlv214/qma`  
 **License:** MIT  
 
 ---

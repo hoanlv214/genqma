@@ -187,6 +187,7 @@ def test_treasury_api_endpoints():
 
 
 def test_treasury_api_endpoints_execute_onchain(monkeypatch):
+    monkeypatch.setattr("backend.app.services.security.ADMIN_TOKEN", "test-admin-secret")
     monkeypatch.setattr(
         "backend.app.services.usyc_treasury.usyc_treasury_service.get_liquid_usdc_balance",
         lambda addr: 100.0,
@@ -201,6 +202,7 @@ def test_treasury_api_endpoints_execute_onchain(monkeypatch):
     )
     r = client.post(
         "/api/v1/treasury/usyc/sweep",
+        headers={"x-qma-admin-token": "test-admin-secret"},
         json={"amount_usdc": 1.0, "execute_onchain": True},
     )
     assert r.status_code == 200
@@ -362,7 +364,8 @@ def test_treasury_policy_and_decision_api(monkeypatch, tmp_path):
         assert "financial_metrics" in d
         assert "policy_applied" in d
         assert "rationale" in d
-        assert d["audit_record_id"] is not None
+        # Public simulation is stateless: nothing is written to the audit trail
+        assert d["audit_record_id"] is None
 
         # 5. Verify audit integrity passes with linked CFO decision
         r4 = client.post("/api/v1/treasury/audit/verify")
@@ -628,3 +631,63 @@ def test_euthyna_action_alias_canonicalization(tmp_path):
     assert jit["action"] == "JIT_REDEMPTION"
     jit_rows = audit.get_audit_trail(action_filter="JIT_REDEMPTION", limit=10)
     assert any(r["record_id"] == jit["record_id"] for r in jit_rows)
+
+
+def test_treasury_execution_requires_admin_token(monkeypatch):
+    """Verify on-chain execution requests require valid x-qma-admin-token, while dry-runs remain public."""
+    from fastapi.testclient import TestClient
+    from backend.app.main import app
+
+    client = TestClient(app)
+    monkeypatch.setattr("backend.app.services.security.ADMIN_TOKEN", "test-admin-secret")
+
+    # 1. Decide endpoint: execute_if_authorized=True without token -> 403
+    r_decide_unauth = client.post(
+        "/api/v1/treasury/agent/decide",
+        json={"upcoming_obligations_usdc": 1.0, "execute_if_authorized": True},
+    )
+    assert r_decide_unauth.status_code == 403
+
+    # 2. Decide endpoint: execute_if_authorized=True with invalid token -> 403
+    r_decide_bad = client.post(
+        "/api/v1/treasury/agent/decide",
+        headers={"x-qma-admin-token": "wrong-token"},
+        json={"upcoming_obligations_usdc": 1.0, "execute_if_authorized": True},
+    )
+    assert r_decide_bad.status_code == 403
+
+    # 3. Decide endpoint: execute_if_authorized=False without token -> 200 (public simulation)
+    r_decide_sim = client.post(
+        "/api/v1/treasury/agent/decide",
+        json={"upcoming_obligations_usdc": 1.0, "execute_if_authorized": False},
+    )
+    assert r_decide_sim.status_code == 200
+    assert r_decide_sim.json()["audit_record_id"] is None
+
+    # 3b. Sweep dry-run returns an unpersisted preview record
+    from backend.app.services.euthyna_audit import euthyna_audit_engine
+    before = len(euthyna_audit_engine.get_audit_trail(limit=5000))
+    r_sweep_sim = client.post(
+        "/api/v1/treasury/usyc/sweep",
+        json={"amount_usdc": 1.0, "execute_onchain": False},
+    )
+    assert r_sweep_sim.status_code == 200, r_sweep_sim.text
+    preview = r_sweep_sim.json()["audit_record"]
+    assert preview["status"] == "DRY_RUN_SIMULATED"
+    assert preview["record_id"].startswith("preview_")
+    assert preview["previous_hash"] == "UNRECORDED_PREVIEW"
+    assert len(euthyna_audit_engine.get_audit_trail(limit=5000)) == before
+
+    # 4. Sweep endpoint: execute_onchain=True without token -> 403
+    r_sweep_unauth = client.post(
+        "/api/v1/treasury/usyc/sweep",
+        json={"amount_usdc": 10.0, "execute_onchain": True},
+    )
+    assert r_sweep_unauth.status_code == 403
+
+    # 5. JIT Redeem endpoint: execute_onchain=True without token -> 403
+    r_jit_unauth = client.post(
+        "/api/v1/treasury/usyc/jit-redeem",
+        json={"amount_usdc_needed": 5.0, "execute_onchain": True},
+    )
+    assert r_jit_unauth.status_code == 403

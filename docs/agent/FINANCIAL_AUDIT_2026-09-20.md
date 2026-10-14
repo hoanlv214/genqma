@@ -2,7 +2,7 @@
 
 Scope: active `main` backend, invoice/report access, creator accounting, agent
 jobs, spending evaluation and the frontend withdrawal caller. Changes are local;
-no deployment was performed. `main.py`, `main_ref.py` and `arc_gateway/` were not
+no deployment was performed. `main.py` and `arc_gateway/` were not
 modified.
 
 ## Findings addressed

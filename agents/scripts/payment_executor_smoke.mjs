@@ -11,16 +11,16 @@ const invoice = {
       role: "creator",
       resource: "http://gateway.test/creator",
       pay_to: "0x1111111111111111111111111111111111111111",
-      amount_raw: "800",
-      amount_usdc: 0.0008,
+      amount_raw: "1600",
+      amount_usdc: 0.0016,
     },
     {
       leg_id: "platform",
       role: "platform",
       resource: "http://gateway.test/platform",
       pay_to: "0x2222222222222222222222222222222222222222",
-      amount_raw: "200",
-      amount_usdc: 0.0002,
+      amount_raw: "400",
+      amount_usdc: 0.0004,
     },
   ],
 };
@@ -37,7 +37,7 @@ const executor = createCircleAgentWalletExecutor({
         leg_id: leg,
         settlement_id: `settle_${leg}`,
         pay_to: leg === "creator" ? invoice.split_legs[0].pay_to : invoice.split_legs[1].pay_to,
-        amount_raw: leg === "creator" ? "800" : "200",
+        amount_raw: leg === "creator" ? "1600" : "400",
         payer: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         gateway_status: "received",
         sidecar_receipt: `receipt_${leg}_with_more_than_20_chars`,
@@ -63,7 +63,7 @@ globalThis.fetch = async (url, options) => {
   return new Response(JSON.stringify({
     leg_id: leg,
     settlement_id: `signed_${leg}`,
-    amount_raw: leg === "creator" ? "800" : "200",
+    amount_raw: leg === "creator" ? "1600" : "400",
     sidecar_receipt: `signed_receipt_${leg}_with_more_than_20_chars`,
   }), { status: 200, headers: { "content-type": "application/json" } });
 };

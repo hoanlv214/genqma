@@ -107,12 +107,12 @@ The Access column must match the operation's `x-qma-access` value in
 | GET | `/api/v1/agent/delegate-status` | `public` | Read Circle Gateway Unified Balance delegation status |
 | GET | `/api/v1/agent/identity` | `public` | Read QMA ERC-8004 on-chain agent identity and capabilities |
 | GET | `/api/v1/agent/incidents` | `public` | List recorded agent safety incidents and circuit breaker events |
-| POST | `/api/v1/agent/incidents/{incident_id}/resolve` | `public` | Mark an agent safety incident as resolved with audit reasoning |
+| POST | `/api/v1/agent/incidents/{incident_id}/resolve` | `admin` | Mark an agent safety incident as resolved with audit reasoning (admin token required; open P1 incidents gate lifting the treasury halt) |
 | POST | `/api/v1/agent/jobs` | `paid-access` | Deliver an invoice-backed intelligence job |
 | GET | `/api/v1/agent/jobs/{job_id}` | `paid-access` | Read an owned invoice-backed job |
 | GET | `/api/v1/agent/recommendations` | `public` | Rank purchase candidates for an agent (unverifiable signals are dropped; each candidate carries `sla: {state: preverified|verifiable, evidence_exchange}`) |
 | GET | `/api/v1/agent/reputation` | `public` | Read QMA ERC-8004 on-chain reputation and verified credentials |
-| POST | `/api/v1/agent/sessions/{session_id}/control` | `public` | Execute administrative intervention (pause, resume, kill) on an agent session |
+| POST | `/api/v1/agent/sessions/{session_id}/control` | `protected` | Pause, resume, or kill an agent session; requires the session owner's `X-QMA-Wallet-Token` or `x-qma-admin-token` (audit actor is the verified credential) |
 | GET | `/api/v1/agent/spending-policy` | `public` | Read Circle agent wallet spending policy caps |
 | GET | `/api/v1/agent/spending-policy/command` | `public` | Generate Circle CLI wallet limit command with OTP instructions |
 | POST | `/api/v1/agent/spending-policy/evaluate` | `public` | Evaluate proposed purchase against agent spending policy |
@@ -174,18 +174,23 @@ The Access column must match the operation's `x-qma-access` value in
 | POST | `/api/v1/sessions/{session_id}/stop` | `wallet-owner` | Stop a session |
 | GET | `/api/v1/stablefx/pairs` | `public` | List supported Circle StableFX pairs on Arc (rates carry a `rate_source` provenance label) |
 | GET | `/api/v1/stablefx/quote` | `public` | Get institutional StableFX conversion quote (live Pyth EUR/USD rate when reachable, labeled `rate_source` + `rate_note`; synthesized baseline fallback) |
-| POST | `/api/v1/stablefx/settle` | `public` | Execute institutional Circle StableFX atomic settlement (payout amount derived from the live-rate quote verified against the buyer tx) |
+| POST | `/api/v1/stablefx/settle` | `public` | Execute institutional Circle StableFX atomic settlement; the deposit tx must contain a Transfer of the quoted source token from `recipient_address` to the desk for at least `amount`, and each deposit tx settles at most once |
+| GET | `/api/v1/swap/pairs` | `public` | List swap-router tokens (USDC/EURC/USYC/WETH) and aggregated Arc testnet venues |
+| GET | `/api/v1/swap/quote` | `public` | Quote a swap across all venues (Uniswap V2, Xylo, Lunex, USYC NAV redemption, StableFX desk) with best route, slippage-protected min_out, oracle-anchor divergence flag, and a TTL-bound quote_id |
+| POST | `/api/v1/swap/execute` | `admin` | Execute (or dry-run) a stored router quote via the relayer EOA with spend-guard caps, treasury-halt enforcement, min_out floor, and Euthyna audit |
+| GET | `/api/v1/swap/spread` | `public` | Measure venue-vs-oracle spread for a pair (telemetry only, not a profit claim) |
+| POST | `/api/v1/swap/fund-gateway-plan` | `public` | Build a non-custodial unsigned calldata plan (approve, swap with min_out, Circle Gateway deposit) for buyers funding Gateway USDC from EURC/USYC |
 | GET | `/api/v1/traction` | `public` | Read the public traction snapshot |
 
-| POST | `/api/v1/treasury/agent/decide` | `public` | Trigger autonomous corporate CFO agent evaluation and policy-bounded execution |
+| POST | `/api/v1/treasury/agent/decide` | `public-optional-auth` | CFO agent evaluation; public simulation is stateless (no audit record), admin-token execution is recorded in the Euthyna trail |
 | GET | `/api/v1/treasury/audit/euthyna` | `public` | Retrieve immutable audit records for regulatory and board examination |
 | POST | `/api/v1/treasury/audit/verify` | `public` | Recompute SHA-256 integrity digests across all audit entries to verify no records were tampered |
 | GET | `/api/v1/treasury/policy` | `public` | Read corporate treasury CFO operating policy and risk parameters (includes `treasury_halted` emergency-halt flag) |
 | POST | `/api/v1/treasury/policy` | `admin` | Update corporate treasury CFO operating policy and risk limits; set `treasury_halted=true` to refuse all on-chain treasury executions until resumed |
 | GET | `/api/v1/treasury/usyc/forecast` | `public` | Predictive cash-flow forecasting and APY earnings projection for autonomous agents |
-| POST | `/api/v1/treasury/usyc/jit-redeem` | `public` | Prepare and record JIT redemption of USYC into liquid USDC for x402 bills |
+| POST | `/api/v1/treasury/usyc/jit-redeem` | `public-optional-auth` | Prepare JIT redemption of USYC into liquid USDC; dry-run returns an unpersisted preview record, admin-token execution is recorded |
 | GET | `/api/v1/treasury/usyc/position` | `public` | Retrieve live on-chain USYC balance, equivalent USDC assets, and APY |
-| POST | `/api/v1/treasury/usyc/sweep` | `public` | Prepare and record an autonomous corporate treasury idle sweep into USYC yielding vault |
+| POST | `/api/v1/treasury/usyc/sweep` | `public-optional-auth` | Prepare an idle sweep into the USYC vault; dry-run returns an unpersisted preview record, admin-token execution is recorded |
 | GET | `/api/v1/wallets/{address}` | `public` | Deprecated wallet summary alias |
 | GET | `/api/v1/wallets/{address}/nonce` | `public` | Issue a single-use nonce for wallet profile session signing |
 | GET | `/api/v1/wallets/{address}/payments` | `public-optional-auth` | Read redacted or private payment history |

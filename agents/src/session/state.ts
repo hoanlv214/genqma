@@ -91,6 +91,20 @@ export function createSessionState(policy: SessionPolicy, sessionId = `agent_ses
   };
 }
 
+/**
+ * Re-derive budget fields from the authoritative policy after restoring a
+ * persisted snapshot. The owner may change `budget_usdc` between ticks; the
+ * persisted `remainingBudgetUsdc` would otherwise let the agent overspend a
+ * lowered budget (or stop early on a raised one). `spentUsdc` is the only
+ * budget figure carried forward.
+ */
+export function reconcileBudgetWithPolicy(state: SessionState, policy: SessionPolicy): void {
+  const spent = Number(state.spentUsdc);
+  state.spentUsdc = Number.isFinite(spent) && spent > 0 ? Number(spent.toFixed(6)) : 0;
+  state.initialBudgetUsdc = policy.sessionBudgetUsdc;
+  state.remainingBudgetUsdc = Number(Math.max(0, policy.sessionBudgetUsdc - state.spentUsdc).toFixed(6));
+}
+
 export function startSession(state: SessionState): void {
   state.status = "running";
   state.startedAt = state.startedAt || nowIso();

@@ -45,8 +45,13 @@ def _fetch_arc_onchain_settlement(tx_hash: str) -> dict:
     to_addr = normalize_address(tx.get("to"))
     value = int(tx.get("value") or 0)
     data = tx.get("input") or tx.get("data") or ""
-    if hasattr(data, "hex"):
-        data = data.hex()
+    if isinstance(data, (bytes, bytearray)):
+        data = "0x" + data.hex()
+    elif hasattr(data, "hex") and callable(getattr(data, "hex")):
+        try:
+            data = getattr(data, "hex")()
+        except Exception:
+            pass
     data = str(data)
 
     amount_raw = 0

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Activity, ArrowUpDown, Check, CircleDollarSign, Clock, Wifi, X } from "lucide-react";
+import { Activity, ArrowUpDown, Check, CircleDollarSign, Clock, Layers, RefreshCw, ShieldCheck, Wifi, X } from "lucide-react";
 import type { QmaRoute } from "@/app/routes";
 import { GlobalHeader } from "@/components/layout/GlobalHeader";
 import { WalletAppKitModal } from "@/components/modals/WalletAppKitModal";
@@ -17,12 +17,21 @@ import {
   type StableFxQuote,
   type BridgeProgressEvent,
 } from "@/services/circleAppKit";
+import {
+  getSwapPairs,
+  getSwapQuote,
+  getSwapSpread,
+  getFundGatewayPlan,
+  type SwapQuoteResponse,
+  type SwapSpreadResponse,
+  type FundGatewayPlanResponse,
+} from "@/services/swap";
 import "./SwapPage.css";
 import { ARC_CHAIN, IS_TESTNET } from "@/config/network";
 import { apiUrl } from "@/services/api";
 import type { SwapProps } from "./Swap.types";
 
-type TreasurySubTab = "cctp_transfer" | "stablefx";
+type TreasurySubTab = "cctp_transfer" | "stablefx" | "router";
 
 // SVG Logos for Chains matching exact Circle brand specs
 function BaseLogo({ size = 18 }: { size?: number }) {
@@ -457,6 +466,79 @@ export function SwapPage({ onNavigate }: SwapProps) {
   const destBalance = chainBalances[destinationChain] ?? (destinationChain === "arc" ? usdcBalance : "0.00");
   const isTransferInsufficient = parseFloat(transferAmount || "0") > parseFloat(originBalance || "0");
 
+  // Execution Router State
+  const [routerFromToken, setRouterFromToken] = useState<string>("USDC");
+  const [routerToToken, setRouterToToken] = useState<string>("EURC");
+  const [routerAmount, setRouterAmount] = useState<string>("10.0");
+  const [routerSlippage, setRouterSlippage] = useState<number>(50);
+  const [routerQuote, setRouterQuote] = useState<SwapQuoteResponse | null>(null);
+  const [routerQuoteLoading, setRouterQuoteLoading] = useState<boolean>(false);
+  const [routerSpread, setRouterSpread] = useState<SwapSpreadResponse | null>(null);
+  const [routerFundPlan, setRouterFundPlan] = useState<FundGatewayPlanResponse | null>(null);
+  const [routerFundLoading, setRouterFundLoading] = useState<boolean>(false);
+  const [routerError, setRouterError] = useState<string>("");
+
+  const fetchRouterQuote = useCallback(async () => {
+    const amt = parseFloat(routerAmount);
+    if (!amt || amt <= 0 || routerFromToken === routerToToken) {
+      setRouterQuote(null);
+      return;
+    }
+    setRouterQuoteLoading(true);
+    setRouterError("");
+    try {
+      const [quoteRes, spreadRes] = await Promise.all([
+        getSwapQuote(routerFromToken, routerToToken, amt, routerSlippage).catch((e: any) => {
+          setRouterError(e?.message || "Quote unavailable");
+          return null;
+        }),
+        getSwapSpread(routerFromToken, routerToToken, amt).catch(() => null),
+      ]);
+      setRouterQuote(quoteRes);
+      setRouterSpread(spreadRes);
+    } catch (err: any) {
+      setRouterError(err?.message || "Failed to load router quote.");
+    } finally {
+      setRouterQuoteLoading(false);
+    }
+  }, [routerFromToken, routerToToken, routerAmount, routerSlippage]);
+
+  useEffect(() => {
+    if (activeTab === "router") {
+      const timer = setTimeout(() => {
+        fetchRouterQuote();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, fetchRouterQuote]);
+
+  const handleFlipRouterTokens = () => {
+    const prevFrom = routerFromToken;
+    setRouterFromToken(routerToToken);
+    setRouterToToken(prevFrom);
+    setRouterFundPlan(null);
+  };
+
+  const handleGenerateGatewayPlan = async () => {
+    const amt = parseFloat(routerAmount);
+    if (!amt || amt <= 0) return;
+    setRouterFundLoading(true);
+    setRouterError("");
+    try {
+      const plan = await getFundGatewayPlan({
+        from_token: routerFromToken,
+        amount: amt,
+        wallet_address: wallet || "0x0000000000000000000000000000000000000000",
+        slippage_bps: routerSlippage,
+      });
+      setRouterFundPlan(plan);
+    } catch (err: any) {
+      setRouterError(err?.message || "Failed to generate gateway plan");
+    } finally {
+      setRouterFundLoading(false);
+    }
+  };
+
   return (
     <div className="swap-body">
       {/* Global Header */}
@@ -512,6 +594,16 @@ export function SwapPage({ onNavigate }: SwapProps) {
                 >
                   <CircleDollarSign size={15} strokeWidth={2} />
                   <span>Arc StableFX (EURC ↔ USDC)</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === "router"}
+                  className={`swap-tab-btn ${activeTab === "router" ? "active" : ""}`}
+                  onClick={() => setActiveTab("router")}
+                >
+                  <Layers size={15} strokeWidth={2} />
+                  <span>Execution Router (Multi-Venue)</span>
                 </button>
               </div>
 
@@ -982,7 +1074,7 @@ export function SwapPage({ onNavigate }: SwapProps) {
                     </div>
                   </div>
                 </>
-              ) : (
+              ) : activeTab === "stablefx" ? (
                 /* ARC STABLEFX RFQ DESK */
                 <div className="swap-card">
                   <div className="swap-card-header">
@@ -1234,6 +1326,280 @@ export function SwapPage({ onNavigate }: SwapProps) {
                       </div>
                     </div>
                   )}
+                </div>
+              ) : (
+                /* HEADLESS EXECUTION ROUTER (MULTI-VENUE) */
+                <div className="swap-card">
+                  <div className="swap-card-header">
+                    <div className="swap-card-header-left">
+                      <div className="swap-card-icon-wrap">
+                        <Layers size={22} />
+                      </div>
+                      <div>
+                        <h2 className="swap-card-title">Execution Router</h2>
+                        <p className="swap-card-subtitle">
+                          Headless DEX Aggregation &amp; RWA Routing across Arc Testnet liquidity venues.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="chip chip-live">Best-of-5 Venues</span>
+                  </div>
+
+                  <div className="swap-transfer-box">
+                    {/* From Token Section */}
+                    <div className="swap-field-group">
+                      <div className="swap-field-meta">
+                        <span>You Pay</span>
+                        <span className="swap-balance-row">
+                          {routerFromToken === "USDC" ? `${usdcBalance} USDC` : routerFromToken === "EURC" ? `${eurcBalance} EURC` : "Arc Native"}
+                        </span>
+                      </div>
+                      <div className="swap-field-interactive">
+                        <input
+                          type="number"
+                          step="any"
+                          className="swap-amount-input tabular-nums"
+                          placeholder="0.00"
+                          value={routerAmount}
+                          onChange={(e) => {
+                            setRouterAmount(e.target.value);
+                            setRouterFundPlan(null);
+                          }}
+                        />
+                        <select
+                          className="chain-dropdown-btn"
+                          style={{ minWidth: "110px", fontWeight: 700 }}
+                          value={routerFromToken}
+                          onChange={(e) => {
+                            setRouterFromToken(e.target.value);
+                            setRouterFundPlan(null);
+                          }}
+                        >
+                          <option value="USDC">USDC</option>
+                          <option value="EURC">EURC</option>
+                          <option value="USYC">USYC (Vault)</option>
+                          <option value="WETH">WETH</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Quick Flip Button */}
+                    <div className="swap-direction-row">
+                      <button
+                        type="button"
+                        className="swap-flip-btn"
+                        onClick={handleFlipRouterTokens}
+                        title="Swap Direction"
+                      >
+                        <ArrowUpDown size={15} />
+                      </button>
+                    </div>
+
+                    {/* To Token Section */}
+                    <div className="swap-field-group">
+                      <div className="swap-field-meta">
+                        <span>You Receive</span>
+                        <span className="swap-balance-row">
+                          {routerToToken === "USDC" ? `${usdcBalance} USDC` : routerToToken === "EURC" ? `${eurcBalance} EURC` : "Arc Native"}
+                        </span>
+                      </div>
+                      <div className="swap-field-interactive">
+                        <div className="swap-amount-input tabular-nums" style={{ display: "flex", alignItems: "center", color: routerQuote?.best ? "var(--t1)" : "var(--t3)" }}>
+                          {routerQuoteLoading ? "Fetching best route..." : routerQuote?.best ? routerQuote.best.amount_out.toFixed(6) : "—"}
+                        </div>
+                        <select
+                          className="chain-dropdown-btn"
+                          style={{ minWidth: "110px", fontWeight: 700 }}
+                          value={routerToToken}
+                          onChange={(e) => {
+                            setRouterToToken(e.target.value);
+                            setRouterFundPlan(null);
+                          }}
+                        >
+                          <option value="USDC">USDC</option>
+                          <option value="EURC">EURC</option>
+                          <option value="USYC">USYC (Vault)</option>
+                          <option value="WETH">WETH</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Slippage & Controls */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "var(--space-3)", flexWrap: "wrap", gap: "var(--space-2)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "var(--text-xs)", color: "var(--t2)" }}>
+                        <span>Slippage Tolerance:</span>
+                        {[10, 50, 100].map((bps) => (
+                          <button
+                            key={bps}
+                            type="button"
+                            className={`chip ${routerSlippage === bps ? "chip-live" : "chip-neutral"}`}
+                            style={{ cursor: "pointer", padding: "2px 8px" }}
+                            onClick={() => setRouterSlippage(bps)}
+                          >
+                            {(bps / 100).toFixed(1)}%
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={fetchRouterQuote}
+                        disabled={routerQuoteLoading}
+                        style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "var(--text-xs)" }}
+                      >
+                        <RefreshCw size={12} className={routerQuoteLoading ? "spin" : ""} />
+                        <span>Refresh Quotes</span>
+                      </button>
+                    </div>
+
+                    {/* Best Route Card */}
+                    {routerQuote?.best && (
+                      <div className="router-best-card">
+                        <div className="router-best-header">
+                          <span className="router-best-title">
+                            <ShieldCheck size={16} />
+                            Best Route: {routerQuote.best.venue}
+                          </span>
+                          <span className="chip chip-live">Optimal Price</span>
+                        </div>
+                        <div className="router-best-output">
+                          <span className="router-best-amount">{routerQuote.best.amount_out.toFixed(6)}</span>
+                          <span className="router-best-symbol">{routerToToken}</span>
+                        </div>
+                        <div className="router-meta-row">
+                          <span>Min Guaranteed Output: <strong>{(routerQuote.best.min_out_raw / (10 ** (routerToToken === "WETH" ? 18 : 6))).toFixed(6)} {routerToToken}</strong></span>
+                          <span>•</span>
+                          <span>Est. Gas: <strong>{routerQuote.best.gas_units_estimate.toLocaleString()} units</strong></span>
+                          {routerQuote.best.anchor_divergence_bps !== null && (
+                            <>
+                              <span>•</span>
+                              <span>
+                                Divergence vs Oracle:{" "}
+                                <strong className={routerQuote.best.anchor_divergence_bps >= 0 ? "router-divergence-pos" : "router-divergence-neg"}>
+                                  {routerQuote.best.anchor_divergence_bps >= 0 ? "+" : ""}{routerQuote.best.anchor_divergence_bps} bps
+                                </strong>
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {routerQuote.best.venue_id === "usyc_nav" && (
+                          <div style={{ fontSize: "11px", color: "var(--accent)", background: "rgba(59, 130, 246, 0.08)", padding: "4px 8px", borderRadius: "4px" }}>
+                            RWA-Aware Execution: Redeeming directly against ERC-4626 vault at exact NAV price, avoiding secondary AMM slippage.
+                          </div>
+                        )}
+                        {routerQuote.best.anchor_exceeded && (
+                          <div style={{ fontSize: "11px", color: "var(--red)", background: "rgba(239, 68, 68, 0.08)", padding: "4px 8px", borderRadius: "4px" }}>
+                            Caution: Quote diverges significantly from Pyth/NAV anchor ({routerQuote.best.anchor_divergence_bps} bps).
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Venue Comparison Table */}
+                    {routerQuote?.quotes && routerQuote.quotes.length > 0 && (
+                      <div className="router-table-wrap">
+                        <table className="router-venues-table">
+                          <thead>
+                            <tr>
+                              <th>Venue</th>
+                              <th>Quoted Output</th>
+                              <th>Diff vs Anchor</th>
+                              <th>Est. Gas</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {routerQuote.quotes.map((q) => {
+                              const isBest = routerQuote.best?.venue_id === q.venue_id;
+                              return (
+                                <tr key={q.venue_id} className={isBest ? "best-row" : ""}>
+                                  <td>
+                                    <span className="router-venue-name">{q.venue}</span>
+                                    {isBest && <span className="chip chip-live" style={{ marginLeft: "6px", padding: "1px 5px", fontSize: "10px" }}>Best</span>}
+                                  </td>
+                                  <td>
+                                    {q.available && q.amount_out !== null ? (
+                                      <span className="router-venue-out">{q.amount_out.toFixed(6)} {routerToToken}</span>
+                                    ) : (
+                                      <span style={{ color: "var(--t3)" }}>—</span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {q.anchor_divergence_bps !== null ? (
+                                      <span className={q.anchor_divergence_bps >= 0 ? "router-divergence-pos" : "router-divergence-neg"}>
+                                        {q.anchor_divergence_bps >= 0 ? "+" : ""}{q.anchor_divergence_bps} bps
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: "var(--t3)" }}>—</span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <span className="tabular-nums" style={{ color: "var(--t3)" }}>
+                                      {q.gas_units_estimate ? `${q.gas_units_estimate.toLocaleString()}` : "—"}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {q.available ? (
+                                      <span className="chip chip-live" style={{ padding: "2px 6px" }}>Active</span>
+                                    ) : (
+                                      <span className="chip chip-neutral" style={{ padding: "2px 6px" }} title={q.note}>No Liquidity</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* JIT Gateway Funding Section */}
+                    {routerToToken === "USDC" && (
+                      <div className="router-plan-box">
+                        <div className="router-plan-title">
+                          <span>Just-In-Time Gateway USDC Funding</span>
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            onClick={handleGenerateGatewayPlan}
+                            disabled={routerFundLoading || !routerQuote?.best}
+                          >
+                            {routerFundLoading ? "Generating..." : "Generate Funding Steps →"}
+                          </button>
+                        </div>
+                        <p style={{ fontSize: "var(--text-xs)", color: "var(--t2)", margin: "0 0 var(--space-3)" }}>
+                          Convert {routerFromToken} into Circle Gateway USDC before payment signing. Completely non-custodial and payment-safe.
+                        </p>
+
+                        {routerFundPlan && routerFundPlan.steps && (
+                          <div className="router-steps-list">
+                            {routerFundPlan.steps.map((st) => (
+                              <div key={st.step} className="router-step-item">
+                                <div className="router-step-num">{st.step}</div>
+                                <div style={{ flex: 1 }}>
+                                  <div className="router-step-desc">{st.action}</div>
+                                  <div className="router-step-meta">
+                                    Target: {shortAddress(st.to_address)} | Gas: {st.gas_units_estimate.toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Feedback / Error */}
+                    {routerError && (
+                      <div className="swap-feedback-banner error" role="alert" style={{ marginTop: "var(--space-4)" }}>
+                        <div className="feedback-icon"><X size={16} /></div>
+                        <div className="feedback-content">
+                          <div className="feedback-title">Router Notice</div>
+                          <p className="feedback-desc">{routerError}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

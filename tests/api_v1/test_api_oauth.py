@@ -412,7 +412,7 @@ def test_dynamic_url_resolution_on_render_or_forwarded_headers():
     assert meta["issuer"] == "https://qma-api.onrender.com"
     assert meta["token_endpoint"] == "https://qma-api.onrender.com/api/v1/oauth/token"
     assert meta["registration_endpoint"] == "https://qma-api.onrender.com/api/v1/oauth/register"
-    assert meta["authorization_endpoint"] == "https://genqma.vercel.app/connect"
+    assert meta["authorization_endpoint"] == "https://qma.vercel.app/connect"
 
     resource_meta = test_client.get("/.well-known/oauth-protected-resource/mcp", headers=headers).json()
     assert resource_meta["resource"] == "https://qma-api.onrender.com/mcp"

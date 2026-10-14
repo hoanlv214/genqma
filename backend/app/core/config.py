@@ -2,7 +2,11 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+import json
+import logging
 import os
+import time
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -34,7 +38,7 @@ DATA_DIR = Path(os.getenv("QMA_DATA_DIR") or ROOT_DIR)
 # qma_* tables, the qma CLI, GenQMAShield) are intentionally unchanged.
 # ---------------------------------------------------------------------------
 BRAND_NAME: str = os.getenv("APP_BRAND_NAME", "QMA Intelligence Marketplace")
-BRAND_CODENAME: str = "GenQMA"
+BRAND_CODENAME: str = "QMA"
 BRAND_TITLE: str = os.getenv("APP_BRAND_TITLE", "QMA Intelligence & Payments API")
 BRAND_TAGLINE: str = "Intelligence, decisions, receipts: per-query market memory for autonomous agents on Arc"
 BRAND_DESCRIPTION: str = (
@@ -157,6 +161,215 @@ STABLEFX_EURC_USD_RATE: float = float(os.getenv("QMA_STABLEFX_EURC_USD_RATE", "1
 STABLEFX_SPREAD_BPS: int = int(os.getenv("QMA_STABLEFX_SPREAD_BPS", "5"))
 STABLEFX_QUOTE_TTL_SECONDS: int = int(os.getenv("QMA_STABLEFX_QUOTE_TTL_SECONDS", "60"))
 
+# ---------------------------------------------------------------------------
+# Emergency Circuit Breaker & Operations Pause
+# ---------------------------------------------------------------------------
+# When set to 1, true, or yes, all on-chain treasury sweeps, redeems, swaps, and withdrawals are halted immediately.
+# Accepts QMA_TREASURY_HALTED or QMA_TREASURY_HALT. Default: False.
+_raw_halt = os.getenv("QMA_TREASURY_HALTED", os.getenv("QMA_TREASURY_HALT", "false")).strip().lower()
+QMA_TREASURY_HALTED: bool = _raw_halt in ("1", "true", "yes", "on")
+QMA_TREASURY_HALT: bool = QMA_TREASURY_HALTED  # Canonical backward-compatible alias
+EMERGENCY_HALT_FLAG_FILE: Path = Path(os.getenv("QMA_DATA_DIR", "data")) / "EMERGENCY_HALT"
+EMERGENCY_HALT_FLAG_NAME = "EMERGENCY_HALT"
+
+
+def _runtime_flag_store() -> Optional[Any]:
+    """Storage backend that persists shared runtime flags (PostgreSQL), if active."""
+    try:
+        from backend.app.core import state
+        st = getattr(state, "storage_backend", None)
+    except Exception:
+        st = None
+    if st is not None and hasattr(st, "get_runtime_flag") and hasattr(st, "set_runtime_flag"):
+        return st
+    return None
+
+
+def emergency_halt_flag_active() -> bool:
+    """True if the runtime emergency-halt flag is set. Raises on read failure."""
+    store = _runtime_flag_store()
+    if store is not None:
+        return store.get_runtime_flag(EMERGENCY_HALT_FLAG_NAME) is not None
+    return EMERGENCY_HALT_FLAG_FILE.exists()
+
+
+def _write_emergency_halt_flag(payload: Dict[str, Any]) -> None:
+    store = _runtime_flag_store()
+    if store is not None:
+        store.set_runtime_flag(EMERGENCY_HALT_FLAG_NAME, payload)
+        return
+    EMERGENCY_HALT_FLAG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(EMERGENCY_HALT_FLAG_FILE, "w", encoding="utf-8") as f:
+        json.dump(payload, f)
+
+
+def _clear_emergency_halt_flag() -> None:
+    store = _runtime_flag_store()
+    if store is not None:
+        store.clear_runtime_flag(EMERGENCY_HALT_FLAG_NAME)
+        return
+    if EMERGENCY_HALT_FLAG_FILE.exists():
+        EMERGENCY_HALT_FLAG_FILE.unlink(missing_ok=True)
+
+
+def set_emergency_halt(
+    halted: bool,
+    reason: str = "",
+    operator: str = "system",
+    acknowledge_active_incidents: bool = False,
+) -> Dict[str, Any]:
+    """Dynamically set or clear emergency halt across all workers via runtime flag file, storage policy, and Euthyna audit."""
+    if not halted and not acknowledge_active_incidents:
+        try:
+            from backend.app.services.incident_engine import get_incidents
+            from backend.app.schemas.incidents import IncidentSeverity, IncidentStatus
+            open_p1 = get_incidents(severity=IncidentSeverity.P1_CRITICAL.value, status=IncidentStatus.OPEN.value)
+            if open_p1:
+                raise ValueError(
+                    f"Controlled Recovery Refusal: Cannot lift emergency halt while {len(open_p1)} open P1 critical "
+                    f"safety incidents exist (e.g. {open_p1[0].get('incident_id')}: {open_p1[0].get('rule')}). "
+                    "Resolve incidents or provide acknowledge_active_incidents=True with operator sign-off."
+                )
+        except ValueError:
+            raise
+        except Exception as exc:
+            logging.getLogger("qma.emergency_halt").warning("Incident check skipped during emergency halt check: %s", exc)
+
+    flag_payload = {
+        "halted": halted,
+        "reason": reason,
+        "operator": operator,
+        "timestamp": time.time(),
+    }
+
+    try:
+        if halted:
+            _write_emergency_halt_flag(flag_payload)
+        else:
+            _clear_emergency_halt_flag()
+    except Exception as exc:
+        logging.getLogger("qma.emergency_halt").error("Failed to update EMERGENCY_HALT runtime flag: %s", exc)
+
+    try:
+        from backend.app.services.euthyna_audit import euthyna_audit_engine
+        euthyna_audit_engine.record_action(
+            action="EMERGENCY_HALT_TRIGGERED" if halted else "EMERGENCY_HALT_LIFTED",
+            actor=operator or "admin",
+            amount_usdc=0.0,
+            balance_before=0.0,
+            balance_after=0.0,
+            usyc_shares=0.0,
+            policy_rule="EMERGENCY_HALT_CONTROL",
+            reasoning=f"Emergency halt {'activated' if halted else 'lifted'} by {operator}: {reason}",
+        )
+    except Exception as exc:
+        logging.getLogger("qma.emergency_halt").warning("Euthyna audit recording for emergency halt skipped: %s", exc)
+
+    try:
+        from backend.app.services.usyc_treasury import usyc_treasury_service
+        current_policy = usyc_treasury_service.get_policy(reload=True)
+        if current_policy.treasury_halted != halted:
+            updated = current_policy.model_copy(update={"treasury_halted": halted})
+            usyc_treasury_service.set_policy(updated)
+    except Exception as exc:
+        logging.getLogger("qma.emergency_halt").warning("Failed to sync emergency halt to treasury policy: %s", exc)
+
+    return flag_payload
+
+
+def is_treasury_halted() -> bool:
+    """Dynamic runtime evaluation of emergency halt across all money-moving operations.
+
+    Evaluation precedence (fail-closed):
+    1. Runtime flag: qma_runtime_flags.EMERGENCY_HALT in PostgreSQL (shared by every
+       instance), or data/EMERGENCY_HALT under the json test backend.
+    2. Environment variable: QMA_TREASURY_HALTED or QMA_TREASURY_HALT.
+    3. Dynamic operator policy: CorporateTreasuryPolicy.treasury_halted (fresh reload from storage).
+    4. Fails closed (returns True) if policy source fails or is corrupted.
+    """
+    # 1. Immediate runtime flag check
+    try:
+        if emergency_halt_flag_active():
+            return True
+    except Exception:
+        return True  # Fail-closed on flag read error
+
+    # 2. Process environment check
+    env_halt = os.getenv("QMA_TREASURY_HALTED", os.getenv("QMA_TREASURY_HALT", "")).strip().lower()
+    if env_halt in ("1", "true", "yes", "on"):
+        return True
+
+    # 3. Dynamic policy store check (fresh reload)
+    try:
+        from backend.app.services.usyc_treasury import usyc_treasury_service
+
+        policy = usyc_treasury_service.get_policy(reload=True)
+        return bool(getattr(policy, "treasury_halted", False))
+    except Exception as exc:
+        logging.getLogger("qma.emergency_halt").error(
+            "Emergency halt policy read failed; failing closed for financial safety: %s", exc
+        )
+        return True
+
+
+def enforce_single_instance_topology_guard() -> None:
+    """Deployment Guardrail: Enforces single-container, single-worker execution.
+
+    QMA concurrency primitives (cross_process_lock / fcntl.flock, SpendLimitGuard reservations,
+    and swap execution logs) currently rely on single-container, single-process filesystem state.
+    Multi-container or multi-worker deployment (even if REDIS_URL is present) is strictly forbidden
+    because distributed locking (Redlock) and a shared distributed reservation store
+    are not yet integrated end-to-end.
+    """
+    multi_instance = os.getenv("QMA_MULTI_INSTANCE", "0").strip().lower() in ("1", "true", "yes")
+    render_instances = int(os.getenv("RENDER_INSTANCE_COUNT", os.getenv("INSTANCE_COUNT", "1")))
+    if multi_instance or render_instances > 1:
+        raise RuntimeError(
+            "DEPLOYMENT TOPOLOGY ERROR: QMA requires single-container deployment (instance_count=1). "
+            f"Detected configuration: instances={render_instances}, multi_instance={multi_instance}. "
+            "Local OS advisory locks (fcntl.flock), in-memory spend reservations, and local file ledgers "
+            "do not span separate container filesystems. Multi-container deployment is strictly forbidden "
+            "until distributed locking (Redlock) and centralized reservation storage are implemented."
+        )
+
+    web_concurrency = int(os.getenv("WEB_CONCURRENCY", "1"))
+    uvicorn_workers = int(os.getenv("UVICORN_WORKERS", os.getenv("WORKERS", "1")))
+    if web_concurrency > 1 or uvicorn_workers > 1:
+        raise RuntimeError(
+            "DEPLOYMENT TOPOLOGY ERROR: QMA requires single-worker execution (workers=1). "
+            f"Detected configuration: WEB_CONCURRENCY={web_concurrency}, UVICORN_WORKERS={uvicorn_workers}. "
+            "In-memory SpendLimitGuard reservations and local state machines diverge across multiple worker "
+            "processes. Enforce --workers 1 or WEB_CONCURRENCY=1 until a centralized reservation store is deployed."
+        )
+
+# ---------------------------------------------------------------------------
+
+
+
+# Swap Router (headless DEX aggregation on Arc; addresses per
+# docs/arc-dex-aggregator-feasibility.md — all TESTNET contracts)
+# ---------------------------------------------------------------------------
+SWAP_ROUTER_KILL_SWITCH: bool = os.getenv("QMA_SWAP_ROUTER", "1").strip().lower() not in {"0", "false", "off"}
+# Execution is dry-run (unsigned calldata only) unless BOTH flags are set.
+SWAP_EXECUTION_MODE: str = os.getenv("QMA_SWAP_EXECUTION_MODE", "dry_run").strip().lower()
+SWAP_EXECUTION_LIVE_CONFIRM: bool = os.getenv("QMA_SWAP_EXECUTION_LIVE", "0").strip().lower() in {"1", "true", "yes"}
+SWAP_QUOTE_TTL_SECONDS: int = int(os.getenv("QMA_SWAP_QUOTE_TTL_SECONDS", "60"))
+SWAP_SLIPPAGE_BPS: int = int(os.getenv("QMA_SWAP_SLIPPAGE_BPS", "50"))
+SWAP_MAX_ANCHOR_DIVERSION_BPS: int = int(os.getenv("QMA_SWAP_MAX_ANCHOR_DIVERSION_BPS", "300"))
+SWAP_QUOTE_TIMEOUT_SECONDS: float = float(os.getenv("QMA_SWAP_QUOTE_TIMEOUT_SECONDS", "4.0"))
+SWAP_FEE_BPS: int = int(os.getenv("QMA_SWAP_FEE_BPS", "5"))
+SWAP_FEE_MIN_USDC: float = float(os.getenv("QMA_SWAP_FEE_MIN_USDC", "0.001"))
+SWAP_MAX_SINGLE_USDC: float = float(os.getenv("QMA_SWAP_MAX_SINGLE_USDC", "1000.0"))
+SWAP_UNISWAP_V2_ROUTER: str = os.getenv("QMA_SWAP_UNISWAP_V2_ROUTER", "0xe27d5d256b370604f1ff060fb489c6a8e3f8a6d9")
+SWAP_UNISWAP_V2_FACTORY: str = os.getenv("QMA_SWAP_UNISWAP_V2_FACTORY", "0x7483847d46db2920dd64efa676cf72dcf765814f")
+SWAP_WETH9_ADDRESS: str = os.getenv("QMA_SWAP_WETH9_ADDRESS", "0x6be2c68117ca58086bd6a14e525835584d7f721e")
+SWAP_XYLO_STABLE_POOL: str = os.getenv("QMA_SWAP_XYLO_STABLE_POOL", "0x3DF3966F5138143dce7a9cFDdC2c0310ce083BB1")
+SWAP_LUNEX_SWAP_POOL: str = os.getenv("QMA_SWAP_LUNEX_SWAP_POOL", "0x181DA777C301Bc37B078DEf57569685678e59eD0")
+# Arc gotcha: eth_estimateGas is unreliable — every write needs explicit gas.
+SWAP_EXECUTE_GAS_LIMIT: int = int(os.getenv("QMA_SWAP_EXECUTE_GAS_LIMIT", "400000"))
+SWAP_SPREAD_SAMPLER_ENABLED: bool = os.getenv("QMA_SWAP_SPREAD_SAMPLER", "1").strip().lower() not in {"0", "false", "off"}
+SWAP_SPREAD_SAMPLER_INTERVAL_SECONDS: int = int(os.getenv("QMA_SWAP_SPREAD_SAMPLER_INTERVAL_SECONDS", "300"))
+
 PAYMENT_AMOUNT_USDC = float(os.getenv("QMA_PAYMENT_AMOUNT_USDC", os.getenv("QMA_PRICE_FULL_USDC", "0.005")))
 PAYMENT_RESOURCE_TYPE = os.getenv("QMA_PAYMENT_RESOURCE_TYPE", "qma_signal_report")
 _raw_pay_net = os.getenv("QMA_PAYMENT_NETWORK")
@@ -266,7 +479,7 @@ MCP_TOKEN_TTL_SECONDS = int(os.getenv("QMA_MCP_TOKEN_TTL_SECONDS", str(30 * 24 *
 MCP_MAX_BUDGET_USDC = float(os.getenv("QMA_MCP_MAX_BUDGET_USDC", "50"))
 MCP_MAX_PRICE_USDC = float(os.getenv("QMA_MCP_MAX_PRICE_USDC", "5"))
 AGENT_MAX_DECISION_BUDGET_USDC = float(os.getenv("QMA_AGENT_MAX_DECISION_BUDGET_USDC", "1.0"))
-MCP_CONNECT_BASE_URL = os.getenv("QMA_MCP_CONNECT_BASE_URL") or ("https://genqma.vercel.app" if os.getenv("RENDER_EXTERNAL_URL") else "http://localhost:5173")
+MCP_CONNECT_BASE_URL = os.getenv("QMA_MCP_CONNECT_BASE_URL") or ("https://qma.vercel.app" if os.getenv("RENDER_EXTERNAL_URL") else "http://localhost:5173")
 MCP_API_BASE_URL = os.getenv("QMA_MCP_API_BASE_URL") or os.getenv("RENDER_EXTERNAL_URL") or "http://127.0.0.1:8000"
 
 # ---------------------------------------------------------------------------
@@ -276,10 +489,12 @@ ADMIN_TOKEN = os.getenv("QMA_ADMIN_TOKEN", "")
 ADMIN_WALLET_ADDRESS = os.getenv("QMA_ADMIN_WALLET", PAYMENT_WALLET_ADDRESS)
 
 # ---------------------------------------------------------------------------
-# Rate limiting
+# Rate limiting & Origin Shield
 # ---------------------------------------------------------------------------
 RATE_LIMIT_ENABLED = os.getenv("QMA_RATE_LIMIT_ENABLED", "true").lower() not in ("false", "0", "no")
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("QMA_RATE_LIMIT_WINDOW_SECONDS", "60"))
+ORIGIN_SHIELD_SECRET = os.getenv("QMA_ORIGIN_SHIELD_SECRET", "").strip()
+
 
 # ---------------------------------------------------------------------------
 # Settlement verification

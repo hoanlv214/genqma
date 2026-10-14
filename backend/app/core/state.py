@@ -10,7 +10,7 @@ import time
 import threading
 import logging
 from collections import defaultdict, deque
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import HTTPException
 
@@ -25,6 +25,7 @@ paid_reports: dict = {}
 creator_applications: Dict[str, dict] = {}
 provider_runtime_controls: Dict[str, dict] = {}
 creator_claims_db: list = []
+storage_backend: Optional[Any] = None
 
 # ---------------------------------------------------------------------------
 # Rate-limit bucket (IP-keyed deque)
@@ -84,11 +85,12 @@ class cross_process_lock:
     (for multi-worker deployment safety on Linux/containers).
     """
 
-    def __init__(self, key: str, timeout_seconds: float = 15.0):
+    def __init__(self, key: str, timeout_seconds: float = 15.0, detail: Optional[str] = None):
         self._key = key
         safe_key = "".join(c if c.isalnum() or c in "-_:." else "_" for c in key)
         self._path = os.path.join(_LOCK_DIR, f"{safe_key}.lock")
         self._timeout = timeout_seconds
+        self._detail = detail or "Concurrent operation in progress for this resource. Retry shortly."
         self._fh = None
         self._thread_lock = _get_in_process_lock(key)
         self._thread_locked = False
@@ -99,7 +101,7 @@ class cross_process_lock:
         if not acquired:
             raise HTTPException(
                 status_code=409,
-                detail="Another settlement verification for this invoice is already in progress. Retry shortly.",
+                detail=self._detail,
             )
         self._thread_locked = True
 
@@ -121,7 +123,7 @@ class cross_process_lock:
                         self._fh = None
                         raise HTTPException(
                             status_code=409,
-                            detail="Another settlement verification for this invoice is already in progress. Retry shortly.",
+                            detail=self._detail,
                         )
                     time.sleep(0.05)
         except Exception:

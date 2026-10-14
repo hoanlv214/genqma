@@ -1,35 +1,37 @@
 @echo off
-title GenQMA - Complete Local Server Suite
+title QMA - Complete Local Server Suite
 echo ======================================================================
-echo          GenQMA - 1-Click All-in-One Local Server (24/7)
+echo          QMA - 1-Click All-in-One Local Server (24/7)
 echo ======================================================================
 echo.
 echo Starting all local services:
-echo   [1/4] FastAPI Backend   - http://localhost:8000
+echo   [1/4] FastAPI Backend   - http://localhost:8000 (Self-Hosted PostgreSQL)
 echo   [2/4] Arc Gateway       - http://localhost:3000
 echo   [3/4] Agent Worker      - Autonomous Session Background Engine
-echo   [4/4] Cloudflare Tunnel - Exposing to Internet via HTTPS
+echo   [4/4] Ngrok Tunnel      - Exposing http://localhost:8000 via HTTPS
 echo ======================================================================
 echo.
 
 cd /d "%~dp0"
 
-:: Ensure explicit local environment defaults
+:: Ensure explicit local environment defaults - strictly Self-Hosted PostgreSQL
+set QMA_STORAGE_BACKEND=postgres
+set QMA_RATE_LIMIT_INVOICE_PER_MIN=60
 set QMA_API_URL=http://localhost:8000
 set QMA_ARC_GATEWAY_URL=http://localhost:3000
 set QMA_ARC_GATEWAY_INTERNAL_SECRET=123a
 
-:: 1. Launch FastAPI Backend
-echo [1/4] Starting FastAPI Backend on port 8000...
-start "GenQMA [1/4] FastAPI Backend" cmd /k ".venv\Scripts\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+:: 1. Launch FastAPI Backend (with PostgreSQL Pre-flight Enforcement)
+echo [1/4] Starting FastAPI Backend on port 8000 (PostgreSQL Mode)...
+start "QMA [1/4] FastAPI Backend (PostgreSQL)" cmd /k ".venv\Scripts\python.exe scripts\run_backend_local.py"
 
 :: 2. Launch Arc Gateway
 echo [2/4] Starting Arc Gateway on port 3000...
-start "GenQMA [2/4] Arc Gateway" cmd /k "cd arc_gateway && npm start"
+start "QMA [2/4] Arc Gateway" cmd /k "cd arc_gateway && npm start"
 
 :: 3. Launch Agent Worker
 echo [3/4] Starting Agent Worker...
-start "GenQMA [3/4] Agent Worker" cmd /k "set QMA_API_URL=http://localhost:8000&& set QMA_ARC_GATEWAY_URL=http://localhost:3000&& set QMA_ARC_GATEWAY_INTERNAL_SECRET=123a&& cd agents && npm run start:worker"
+start "QMA [3/4] Agent Worker" cmd /k "set QMA_API_URL=http://localhost:8000&& set QMA_ARC_GATEWAY_URL=http://localhost:3000&& set QMA_ARC_GATEWAY_INTERNAL_SECRET=123a&& cd agents && npm run start:worker"
 
 :: Wait 3 seconds for local ports to open
 timeout /t 3 /nobreak >nul

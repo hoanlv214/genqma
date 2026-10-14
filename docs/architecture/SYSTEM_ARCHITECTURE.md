@@ -1,4 +1,4 @@
-# GenQMA System Architecture — Source Zoning, Domain Types, and Flow Diagrams
+# QMA System Architecture — Source Zoning, Domain Types, and Flow Diagrams
 
 Status: living document. Keep synchronized with code per CRCIP
 (`CONTROLLED_REFACTORING_PROTOCOL.md`). Payment-flow behavior is specified by
@@ -42,9 +42,6 @@ review (see root `AGENTS.md`).
 | Frontend | `frontend/src/` | Pages: `Home` (landing), `Intelligence` (signal cards + `DecisionReceipt`), `Traction` (provenance ledger + CFO radar), `Swap` (CCTP / StableFX), `Marketplace`, `ApiDocs`, `Connect`, `Profile`. |
 | CLI | `agents/bin/qma.js` | Canonical agent CLI (`qma agent run`). |
 | Ops / scripts | `scripts/`, `supabase/`, `exports/`, `tests/` | Migrations, repair tools, backups, tests. |
-
-Reference snapshot `main_ref.py` (root) is legacy-only: never run, import,
-modify, or delete.
 
 ### Zone boundary rules
 

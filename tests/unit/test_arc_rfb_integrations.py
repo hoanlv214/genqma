@@ -20,6 +20,30 @@ def client():
     return TestClient(app)
 
 
+RECIPIENT = "0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4"
+
+
+@pytest.fixture(autouse=True)
+def _isolated_stablefx_replay_store(tmp_path, monkeypatch):
+    import backend.app.services.stablefx_service as sfx
+    monkeypatch.setattr(sfx, "_consumed_path", lambda: tmp_path / "consumed.json")
+
+
+def _eurc_deposit_receipt(amount: float) -> dict:
+    import backend.app.services.stablefx_service as sfx
+    pad = lambda a: "0x" + "0" * 24 + a.lower()[2:]
+    return {"status": 1, "logs": [{
+        "address": sfx.ARC_EURC_CONTRACT,
+        "topics": ["0x" + sfx.ERC20_TRANSFER_TOPIC, pad(RECIPIENT), pad(sfx.DEFAULT_RELAYER_ADDRESS)],
+        "data": hex(int(round(amount * 1e6))),
+    }]}
+
+
+def _fresh_tx() -> str:
+    import uuid
+    return "0x" + uuid.uuid4().hex + uuid.uuid4().hex
+
+
 class TestArcRFBAlignmentMetadata:
     def test_agent_identity_includes_arc_rfb_frontiers(self):
         identity = _get_agent_identity()
@@ -88,7 +112,7 @@ class TestCircleStableFXService:
         mock_web3_cls.return_value = mock_w3
         mock_web3_cls.to_checksum_address = lambda x: x
         mock_w3.is_connected.return_value = True
-        mock_w3.eth.get_transaction_receipt.return_value = {"status": 1}
+        mock_w3.eth.get_transaction_receipt.return_value = _eurc_deposit_receipt(5.0)
         mock_w3.eth.get_transaction_count.return_value = 1
         mock_w3.eth.gas_price = 1000000000
         mock_contract = MagicMock()
@@ -109,7 +133,7 @@ class TestCircleStableFXService:
         from backend.app.services.stablefx_service import settle_stablefx_swap
         res = settle_stablefx_swap(
             quote_id="sfx_quote_test123",
-            user_tx_hash="0x2e3ddaa710fd5ac2366d95c6228c2908fe96af50b8fe8bb9650e6f2eb72825ba",
+            user_tx_hash=_fresh_tx(),
             recipient_address="0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4",
             from_currency="EURC",
             to_currency="USDC",
@@ -175,7 +199,7 @@ class TestApiEndpoints:
         mock_web3_cls.return_value = mock_w3
         mock_web3_cls.to_checksum_address = lambda x: x
         mock_w3.is_connected.return_value = True
-        mock_w3.eth.get_transaction_receipt.return_value = {"status": 1}
+        mock_w3.eth.get_transaction_receipt.return_value = _eurc_deposit_receipt(10.0)
         mock_w3.eth.get_transaction_count.return_value = 1
         mock_w3.eth.gas_price = 1000000000
         mock_contract = MagicMock()
@@ -197,7 +221,7 @@ class TestApiEndpoints:
             "/api/v1/stablefx/settle",
             json={
                 "quote_id": "sfx_quote_unit_test",
-                "user_tx_hash": "0x2e3ddaa710fd5ac2366d95c6228c2908fe96af50b8fe8bb9650e6f2eb72825ba",
+                "user_tx_hash": _fresh_tx(),
                 "recipient_address": "0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4",
                 "from_currency": "EURC",
                 "to_currency": "USDC",

@@ -35,7 +35,7 @@ assert.equal(report.stop_reason, "max_purchases_reached");
 assert.equal(report.purchase_count, 1);
 assert.equal(report.candidates_evaluated, 4);
 assert.equal(report.spent_usdc, 0.002);
-assert.equal(report.remaining_budget_usdc, 0.009);
+assert.equal(report.remaining_budget_usdc, 0.008);
 console.log("bounded session smoke PASS");
 
 const fallbackPolicy = normalizeSessionPolicy({

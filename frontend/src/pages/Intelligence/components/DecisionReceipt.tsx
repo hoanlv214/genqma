@@ -42,9 +42,13 @@ export function DecisionReceipt({
   // Dynamic values from live purchased invoice
   const dynamicSymbol = String(invoice?.symbol || 'QMA').replace('-', '_').toUpperCase();
   const dynamicAmount = invoice?.amount ? Number(invoice.amount).toFixed(3) : '0.050';
-  const arcscanTx = paymentDetails?.txHash || invoice?.transaction_hash;
   const genlayerTx = paymentDetails?.genlayerTxHash || genlayerReceipt?.transaction_hash;
-  const arcscanUrl = paymentDetails?.explorerUrl || (arcscanTx ? `https://testnet.arcscan.app/tx/${arcscanTx}` : undefined);
+  const rawArcTx = paymentDetails?.txHash || invoice?.transaction_hash;
+  const arcscanTx = rawArcTx && rawArcTx !== genlayerTx ? rawArcTx : undefined;
+  const settlementId = paymentDetails?.settlementId || invoice?.settlement_id;
+  const arcscanUrl = (paymentDetails?.explorerUrl && paymentDetails.explorerUrl !== paymentDetails.genlayerExplorerUrl && !paymentDetails.explorerUrl.includes('genlayer.com'))
+    ? paymentDetails.explorerUrl
+    : (arcscanTx ? `https://testnet.arcscan.app/tx/${arcscanTx}` : undefined);
   const genlayerUrl = paymentDetails?.genlayerExplorerUrl || (genlayerTx ? `https://explorer-studio-dev.genlayer.com/transactions/${genlayerTx}` : undefined);
   const dynamicConfidence = genlayerReceipt?.confidence != null
     ? (Number(genlayerReceipt.confidence) / 100).toFixed(2)
@@ -55,7 +59,7 @@ export function DecisionReceipt({
     ? `RPT-${shortAddress(invoice.invoice_id)} · ${dynamicSymbol} Anomaly Report`
     : `RPT-${dynamicSymbol} · Quantitative Signal Brief`;
   const description = 'Full access · institutional quantitative brief + source data pack';
-  const hash = arcscanTx ? shortAddress(arcscanTx) : null;
+  const hash = arcscanTx ? shortAddress(arcscanTx) : (settlementId ? shortAddress(settlementId) : null);
   const previous = invoice?.invoice_id ? shortAddress(invoice.invoice_id) : '91de...0b72';
 
   const checks: InvoiceCheck[] = [
@@ -175,7 +179,7 @@ export function DecisionReceipt({
               <div>
                 <span className="qma-sign-stamp">PAID</span>
                 <p className="qma-sign-settlement">Settled on {ARC_CHAIN.name} via x402</p>
-                {arcscanUrl && arcscanTx && (
+                {arcscanUrl && arcscanTx ? (
                   <p className="qma-arcscan-receipt-row">
                     <a
                       href={arcscanUrl}
@@ -186,7 +190,13 @@ export function DecisionReceipt({
                       Arcscan Receipt: {shortAddress(arcscanTx)} ↗
                     </a>
                   </p>
-                )}
+                ) : settlementId ? (
+                  <p className="qma-arcscan-receipt-row">
+                    <span className="qma-sign-settlement-id" style={{ color: 'var(--qma-ink-3, #68736e)' }}>
+                      Settlement: {shortAddress(settlementId)}
+                    </span>
+                  </p>
+                ) : null}
               </div>
             </Stage>
           </div>

@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-This audit report details the security properties, financial invariants, cryptographic integrity mechanisms, and threat model of **GenQMA / QMA Vestiarion** — an autonomous quantitative intelligence firm and treasury management system operating on the Arc blockchain with native USDC gas settlement.
+This audit report details the security properties, financial invariants, cryptographic integrity mechanisms, and threat model of **QMA / QMA Vestiarion** — an autonomous quantitative intelligence firm and treasury management system operating on the Arc blockchain with native USDC gas settlement.
 
 The system combines:
 1. **Pay-per-query Market Memory & Alpha Feeds** monetized via Circle Gateway x402 nanopayments.
@@ -153,4 +153,4 @@ To solve the oracle problem where traditional EVM contracts cannot evaluate anal
 
 ## 9. Conclusion
 
-The GenQMA codebase satisfies all security, cryptographic, and financial requirements for enterprise-grade autonomous treasury management. The deployment on Arc Testnet has been confirmed live with on-chain transaction proofs, and the system is fully prepared for Arc Mainnet submission.
+The QMA codebase satisfies all security, cryptographic, and financial requirements for enterprise-grade autonomous treasury management. The deployment on Arc Testnet has been confirmed live with on-chain transaction proofs, and the system is fully prepared for Arc Mainnet submission.

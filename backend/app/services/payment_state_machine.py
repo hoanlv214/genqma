@@ -48,7 +48,7 @@ def refresh_split_invoice_status(invoice: dict) -> str:
         invoice["status"] = "verification_rejected"
         return "verification_rejected"
     if invoice.get("status") in ("disputed", "refunded"):
-        return invoice.get("status")
+        return str(invoice.get("status") or "")
     if invoice_split_mode(invoice) != "x402_direct_split":
         return invoice.get("status", "pending")
     legs = invoice_required_split_legs(invoice)
@@ -104,7 +104,7 @@ def refresh_split_invoice_status(invoice: dict) -> str:
         invoice["status"] = "expired"
     else:
         invoice["status"] = "pending"
-    return invoice["status"]
+    return str(invoice.get("status") or "pending")
 
 
 def gateway_status_value(value: Optional[str]) -> str:

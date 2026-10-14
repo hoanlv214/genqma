@@ -9,6 +9,8 @@ import {
   SwapPage,
   ConnectPage,
   NotFoundPage,
+  PrivacyPage,
+  TermsPage,
 } from "@/pages";
 import { routeFromPath, pathForRoute, type QmaRoute } from "@/app/routes";
 import { AgentWalletProvider } from "@/state/agentWalletStore";
@@ -44,7 +46,8 @@ export function AppRoutes() {
       "traction-body",
       "operations-body",
       "notfound-body",
-      "swap-body"
+      "swap-body",
+      "legal-body"
     );
 
     if (route === "landing") {
@@ -61,6 +64,8 @@ export function AppRoutes() {
       document.body.classList.add("operations-body");
     } else if (route === "swap") {
       document.body.classList.add("swap-body");
+    } else if (route === "privacy" || route === "terms") {
+      document.body.classList.add("legal-body");
     } else if (route === "not_found") {
       document.body.classList.add("notfound-body");
     }
@@ -79,6 +84,8 @@ export function AppRoutes() {
       {route === "traction" && <TractionPage onNavigate={navigate} />}
       {route === "operations" && <OperationsPage onNavigate={navigate} />}
       {route === "swap" && <SwapPage onNavigate={navigate} />}
+      {route === "privacy" && <PrivacyPage onNavigate={navigate} />}
+      {route === "terms" && <TermsPage onNavigate={navigate} />}
       {route === "not_found" && <NotFoundPage onNavigate={navigate} />}
       {route === "docs" && (
         <Suspense fallback={null}>

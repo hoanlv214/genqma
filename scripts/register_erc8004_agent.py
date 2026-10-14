@@ -84,7 +84,7 @@ def cmd_register(args):
         pk = f"0x{pk}"
 
     account = w3.eth.account.from_key(pk)
-    uri = args.uri or "https://genqma.vercel.app/.well-known/agent.json"
+    uri = args.uri or "https://qma.vercel.app/.well-known/agent.json"
     registry_addr = Web3.to_checksum_address(ERC8004_IDENTITY_REGISTRY)
     contract = w3.eth.contract(address=registry_addr, abi=IDENTITY_ABI)
 
@@ -135,7 +135,7 @@ def main():
     subparsers.add_parser("status", help="Check on-chain status of QMA agent")
 
     reg_p = subparsers.add_parser("register", help="Register a new agent identity on Arc Testnet")
-    reg_p.add_argument("--uri", default="https://genqma.vercel.app/.well-known/agent.json", help="Agent Metadata URI")
+    reg_p.add_argument("--uri", default="https://qma.vercel.app/.well-known/agent.json", help="Agent Metadata URI")
 
     fb_p = subparsers.add_parser("feedback", help="Record reputation feedback")
     fb_p.add_argument("--agent-id", type=int, default=None, help="Agent Token ID")

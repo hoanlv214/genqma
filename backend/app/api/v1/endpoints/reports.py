@@ -26,7 +26,7 @@ def create_reports_router(deps: SimpleNamespace) -> APIRouter:
         challenge_body, challenge_headers = build_402_challenge_payload(
             url=f"/api/v1/providers/{provider_id}/preview",
             amount_decimal="0.002000",
-            description=f"GenQMA {provider_id} Preview Report",
+            description=f"QMA {provider_id} Preview Report",
         )
         raise HTTPException(
             status_code=402,
@@ -44,7 +44,7 @@ def create_reports_router(deps: SimpleNamespace) -> APIRouter:
         challenge_body, challenge_headers = build_402_challenge_payload(
             url="/api/v1/preview",
             amount_decimal="0.002000",
-            description="GenQMA Funding Memory Preview Report",
+            description="QMA Funding Memory Preview Report",
         )
         raise HTTPException(
             status_code=402,

@@ -394,7 +394,15 @@ export function PaywallPanel(props: PaywallPanelProps) {
                     {paymentDetails.txHash && paymentDetails.txHash !== (paymentDetails.genlayerTxHash || genlayerReceipt?.transaction_hash) ? (
                       <div className="paywall-detail-row">
                         <span className="paywall-detail-label">Arcscan Tx</span>
-                        <a className="paywall-detail-value tx-link" href={paymentDetails.explorerUrl || `https://testnet.arcscan.app/tx/${paymentDetails.txHash}`} target="_blank" rel="noreferrer">
+                        <a
+                          className="paywall-detail-value tx-link"
+                          href={paymentDetails.explorerUrl && paymentDetails.explorerUrl !== paymentDetails.genlayerExplorerUrl && !paymentDetails.explorerUrl.includes('genlayer.com')
+                            ? paymentDetails.explorerUrl
+                            : `https://testnet.arcscan.app/tx/${paymentDetails.txHash}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           {shortAddress(paymentDetails.txHash)}
                         </a>
                       </div>
@@ -426,8 +434,8 @@ export function PaywallPanel(props: PaywallPanelProps) {
                 <span>
                   {paySubmitting || paymentStepStatus.genlayer?.status === "active" ? (
                     <Loader label="GenLayer Verification..." compact variant="spinner" size="xs" className="button-loader" />
-                  ) : paymentStepStatus.settlement?.status === "completed" && paymentStepStatus.genlayer?.label === "Retry available" ? (
-                    "Retry GenLayer Verification"
+                  ) : paymentStepStatus.settlement?.status === "completed" ? (
+                    "Unlock Report (Verify GenLayer SLA)"
                   ) : paymentStepStatus.settlement?.status === "active" ? (
                     "Sign Settlement"
                   ) : (

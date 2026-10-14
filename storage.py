@@ -1435,11 +1435,8 @@ class PostgresStorage:
         if table:
             rows = self.execute_query(f'SELECT * FROM public."{table}";', fetch_all=True) or []
             return list(rows)
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return fallback
+        # PostgreSQL mode never reads local JSON state.
+        raise RuntimeError(f"PostgresStorage has no table mapping for legacy JSON path '{path}'.")
 
     def _save_json(self, path: str, data):
         table = (
@@ -1452,11 +1449,9 @@ class PostgresStorage:
             conflict = "id" if table in ("agent_sessions", "agent_session_events") else "address"
             self._upsert(table, data, conflict)
             return
-        try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
-        except Exception:
-            pass
+        # PostgreSQL mode never writes local JSON state; fail loudly instead of
+        # silently diverging into a file only this instance can see.
+        raise RuntimeError(f"PostgresStorage has no table mapping for legacy JSON path '{path}'.")
 
     def get_connection(self):
         return self.pool.getconn()
@@ -2193,6 +2188,258 @@ class PostgresStorage:
             )
         except Exception as exc:
             logger.warning(f"Could not save spend guard event to Postgres: {exc}")
+
+    # ---------------------------------------------------------------------------
+    # Shared runtime state (formerly process-local JSON files)
+    # ---------------------------------------------------------------------------
+    def _execute_write_returning(self, query: str, params: tuple = ()):
+        """Run a write statement, commit, and return the first row (or None)."""
+        conn = self.get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, params)
+                row = cur.fetchone() if cur.description else None
+            conn.commit()
+            return row
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
+        finally:
+            self.put_connection(conn)
+
+    @staticmethod
+    def _json_param(value):
+        return PgJson(value, dumps=lambda obj: json.dumps(obj, default=str))
+
+    # -- Agent session control (single-row compare-and-set) --------------------
+    def load_session(self, session_id: str) -> Optional[dict]:
+        row = self.execute_query(
+            "SELECT * FROM public.agent_sessions WHERE id = %s;",
+            (str(session_id),),
+            fetch_one=True,
+        )
+        return dict(row) if row else None
+
+    def transition_session_status(
+        self,
+        session_id: str,
+        *,
+        expected_status: str,
+        next_status: str,
+        runtime_state: dict,
+    ) -> bool:
+        """Atomically move one session from expected_status to next_status.
+
+        Returns False when the row changed concurrently (status no longer matches),
+        so a stale read can never overwrite a worker's newer state.
+        """
+        row = self._execute_write_returning(
+            """
+            UPDATE public.agent_sessions
+               SET status = %s,
+                   runtime_state = %s,
+                   updated_at = NOW(),
+                   state_version = COALESCE(state_version, 0) + 1
+             WHERE id = %s AND status = %s
+         RETURNING id;
+            """,
+            (next_status, self._json_param(runtime_state or {}), str(session_id), expected_status),
+        )
+        return row is not None
+
+    # -- Swap execution store ----------------------------------------------------
+    def load_swap_execution(self, execution_key: str) -> Optional[dict]:
+        row = self.execute_query(
+            "SELECT record FROM public.swap_executions WHERE execution_key = %s;",
+            (str(execution_key),),
+            fetch_one=True,
+        )
+        record = row.get("record") if row else None
+        return dict(record) if isinstance(record, dict) else None
+
+    def list_swap_executions(self, limit: int = 50) -> list:
+        rows = self.execute_query(
+            """
+            SELECT record FROM public.swap_executions
+             WHERE execution_key NOT LIKE 'idemp:%%'
+             ORDER BY updated_at DESC
+             LIMIT %s;
+            """,
+            (int(limit),),
+            fetch_all=True,
+        ) or []
+        return [dict(r["record"]) for r in rows if isinstance(r.get("record"), dict)]
+
+    def save_swap_execution(self, record: dict) -> None:
+        quote_id = str(record.get("quote_id") or "").strip()
+        if not quote_id:
+            return
+        keys = [quote_id]
+        idemp = record.get("idempotency_key")
+        if idemp and idemp != quote_id:
+            keys.append(f"idemp:{idemp}")
+        conn = self.get_connection()
+        try:
+            with conn.cursor() as cur:
+                for key in keys:
+                    cur.execute(
+                        """
+                        INSERT INTO public.swap_executions (execution_key, quote_id, record)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (execution_key) DO UPDATE
+                           SET record = EXCLUDED.record,
+                               quote_id = EXCLUDED.quote_id,
+                               updated_at = NOW();
+                        """,
+                        (key, quote_id, self._json_param(dict(record))),
+                    )
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
+        finally:
+            self.put_connection(conn)
+
+    # -- StableFX deposit replay guard -------------------------------------------
+    def reserve_stablefx_deposit(
+        self,
+        deposit_tx_hash: str,
+        *,
+        quote_id: Optional[str] = None,
+        recipient_address: Optional[str] = None,
+    ) -> bool:
+        """Atomically reserve a deposit hash. False means it was already consumed."""
+        row = self._execute_write_returning(
+            """
+            INSERT INTO public.stablefx_consumed_deposits (deposit_tx_hash, quote_id, recipient_address)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (deposit_tx_hash) DO NOTHING
+            RETURNING deposit_tx_hash;
+            """,
+            (str(deposit_tx_hash), quote_id, recipient_address),
+        )
+        return row is not None
+
+    def mark_stablefx_deposit_broadcast(self, deposit_tx_hash: str, payout_tx_hash: Optional[str] = None) -> None:
+        self._execute_write_returning(
+            """
+            UPDATE public.stablefx_consumed_deposits
+               SET status = 'broadcast',
+                   payout_tx_hash = COALESCE(%s, payout_tx_hash),
+                   updated_at = NOW()
+             WHERE deposit_tx_hash = %s;
+            """,
+            (payout_tx_hash, str(deposit_tx_hash)),
+        )
+
+    def release_stablefx_deposit(self, deposit_tx_hash: str) -> None:
+        """Drop a reservation only if no payout was ever broadcast for it."""
+        self._execute_write_returning(
+            "DELETE FROM public.stablefx_consumed_deposits WHERE deposit_tx_hash = %s AND status = 'reserved';",
+            (str(deposit_tx_hash),),
+        )
+
+    def is_stablefx_deposit_consumed(self, deposit_tx_hash: str) -> bool:
+        row = self.execute_query(
+            "SELECT 1 AS hit FROM public.stablefx_consumed_deposits WHERE deposit_tx_hash = %s;",
+            (str(deposit_tx_hash),),
+            fetch_one=True,
+        )
+        return row is not None
+
+    # -- Earn vault share-price snapshots ----------------------------------------
+    def record_vault_snapshots(self, samples: dict, max_age_seconds: float) -> int:
+        now = time.time()
+        conn = self.get_connection()
+        try:
+            with conn.cursor() as cur:
+                for vault_id, sample in (samples or {}).items():
+                    cur.execute(
+                        """
+                        INSERT INTO public.earn_vault_snapshots (vault_id, ts, share_price_usdc, tvl_usdc)
+                        VALUES (%s, %s, %s, %s);
+                        """,
+                        (
+                            str(vault_id),
+                            float(sample.get("ts") or now),
+                            float(sample.get("share_price_usdc") or 0.0),
+                            float(sample.get("tvl_usdc") or 0.0),
+                        ),
+                    )
+                cur.execute("DELETE FROM public.earn_vault_snapshots WHERE ts < %s;", (now - float(max_age_seconds),))
+                cur.execute("SELECT COUNT(*) FROM public.earn_vault_snapshots;")
+                total = int(cur.fetchone()[0])
+            conn.commit()
+            return total
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
+        finally:
+            self.put_connection(conn)
+
+    def load_vault_snapshots(self, vault_id: Optional[str] = None) -> dict:
+        if vault_id:
+            rows = self.execute_query(
+                """
+                SELECT vault_id, ts, share_price_usdc::float AS share_price_usdc, tvl_usdc::float AS tvl_usdc
+                  FROM public.earn_vault_snapshots WHERE vault_id = %s ORDER BY ts ASC;
+                """,
+                (str(vault_id),),
+                fetch_all=True,
+            ) or []
+        else:
+            rows = self.execute_query(
+                """
+                SELECT vault_id, ts, share_price_usdc::float AS share_price_usdc, tvl_usdc::float AS tvl_usdc
+                  FROM public.earn_vault_snapshots ORDER BY ts ASC;
+                """,
+                fetch_all=True,
+            ) or []
+        out: dict = {}
+        for r in rows:
+            out.setdefault(r["vault_id"], []).append({
+                "ts": float(r["ts"]),
+                "share_price_usdc": float(r["share_price_usdc"] or 0.0),
+                "tvl_usdc": float(r["tvl_usdc"] or 0.0),
+            })
+        return out
+
+    # -- Runtime flags (shared by every instance) --------------------------------
+    def get_runtime_flag(self, flag_name: str) -> Optional[dict]:
+        row = self.execute_query(
+            "SELECT payload FROM public.qma_runtime_flags WHERE flag_name = %s;",
+            (str(flag_name),),
+            fetch_one=True,
+        )
+        if not row:
+            return None
+        payload = row.get("payload")
+        return dict(payload) if isinstance(payload, dict) else {}
+
+    def set_runtime_flag(self, flag_name: str, payload: dict) -> None:
+        self._execute_write_returning(
+            """
+            INSERT INTO public.qma_runtime_flags (flag_name, payload)
+            VALUES (%s, %s)
+            ON CONFLICT (flag_name) DO UPDATE SET payload = EXCLUDED.payload, updated_at = NOW();
+            """,
+            (str(flag_name), self._json_param(payload or {})),
+        )
+
+    def clear_runtime_flag(self, flag_name: str) -> None:
+        self._execute_write_returning(
+            "DELETE FROM public.qma_runtime_flags WHERE flag_name = %s;",
+            (str(flag_name),),
+        )
 
     # ---------------------------------------------------------------------------
     # High-Performance Analytical Views (Read-Only Offload)

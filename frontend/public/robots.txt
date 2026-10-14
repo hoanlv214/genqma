@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /connect
 
-Sitemap: https://genqma.vercel.app/sitemap.xml
+Sitemap: https://qma.vercel.app/sitemap.xml

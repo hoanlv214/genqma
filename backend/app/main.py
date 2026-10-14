@@ -80,9 +80,11 @@ from backend.app.core.config import (
     # Admin
     ADMIN_TOKEN,
     ADMIN_WALLET_ADDRESS,
-    # Rate limiting
+    # Rate limiting & Origin Shield
     RATE_LIMIT_ENABLED,
     RATE_LIMIT_WINDOW_SECONDS,
+    ORIGIN_SHIELD_SECRET,
+
     # Settlement verification
     REQUIRE_COMPLETED_SETTLEMENT,
     # Gateway deposit / batch
@@ -181,6 +183,7 @@ from backend.app.services.market_epoch import (
     mark_epoch_tx,
     mark_epoch_verdict,
 )
+from backend.app.services import genlayer_arbiter
 from backend.app.services.arc_verdict_settlement import (
     ArcVerdictSettlementError,
     apply_arc_settlement_checkpoint,
@@ -241,6 +244,7 @@ from backend.app.api.v1.endpoints.sessions import create_sessions_router
 from backend.app.api.v1.endpoints.wallets import create_wallets_router
 from backend.app.api.v1.endpoints.treasury import create_treasury_router
 from backend.app.api.v1.endpoints.stablefx import create_stablefx_router
+from backend.app.api.v1.endpoints.swap import create_swap_router
 from backend.app.api.v1.endpoints.onramp import create_onramp_router
 from backend.app.api.v1.endpoints.incidents import create_incidents_router
 
@@ -318,6 +322,9 @@ _mcp_session_manager_holder: dict = {}
 
 
 async def _qma_lifespan(app):
+    from backend.app.core.config import enforce_single_instance_topology_guard
+
+    enforce_single_instance_topology_guard()
     manager = _mcp_session_manager_holder.get("manager")
     reconcile_task = None
     treasury_decide_task = None
@@ -332,6 +339,11 @@ async def _qma_lifespan(app):
     try:
         from backend.app.services.earn_kit import start_earn_snapshot_sampler
         start_earn_snapshot_sampler()
+    except Exception:
+        pass
+    try:
+        from backend.app.services.swap_router import start_swap_spread_sampler
+        start_swap_spread_sampler()
     except Exception:
         pass
     try:
@@ -353,10 +365,10 @@ async def _qma_lifespan(app):
 
 app = FastAPI(
     lifespan=_qma_lifespan,
-    title="GenQMA Intelligence & Payments API",
+    title="QMA Intelligence & Payments API",
     description=(
-        "# GenQMA Intelligence & Payments API\n\n"
-        "GenQMA is a provider marketplace for quantitative market intelligence. "
+        "# QMA Intelligence & Payments API\n\n"
+        "QMA is a provider marketplace for quantitative market intelligence. "
         "Clients discover live signals, select a provider-bound report, create a "
         "query-bound invoice, verify Circle Gateway x402 settlement, and retrieve "
         "the resulting preview or full report.\n\n"
@@ -442,7 +454,7 @@ async def qma_http_exception_handler(request: Request, exc: HTTPException):
         challenge_body, challenge_headers = build_402_challenge_payload(
             url=str(request.url.path),
             amount_decimal="0.005000",
-            description="GenQMA Quantitative Intelligence Report",
+            description="QMA Quantitative Intelligence Report",
         )
         for k, v in challenge_headers.items():
             headers.setdefault(k, v)
@@ -492,7 +504,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         challenge_body, challenge_headers = build_402_challenge_payload(
             url=path,
             amount_decimal=amount_dec,
-            description=f"GenQMA Paid Service ({path})",
+            description=f"QMA Paid Service ({path})",
         )
         return JSONResponse(
             status_code=402,
@@ -651,9 +663,9 @@ def qma_openapi():
     schema["openapi"] = "3.1.0"
     info = schema.setdefault("info", {})
     info["contact"] = {
-        "name": "GenQMA Agent Support",
-        "email": "agent-support@genqma.com",
-        "url": "https://genqma.vercel.app",
+        "name": "QMA Agent Support",
+        "email": "agent-support@qma.com",
+        "url": "https://qma.vercel.app",
     }
     info["x-guidance"] = AGENT_GUIDANCE
     info["x-capabilities"] = [
@@ -666,8 +678,8 @@ def qma_openapi():
     ]
     info["x-payment-rails"] = ["x402", "mpp"]
     schema["externalDocs"] = {
-        "description": "GenQMA Documentation and Agent Integration Guide",
-        "url": "https://genqma.vercel.app/docs",
+        "description": "QMA Documentation and Agent Integration Guide",
+        "url": "https://qma.vercel.app/docs",
     }
 
     components = schema.setdefault("components", {})
@@ -708,6 +720,9 @@ def qma_openapi():
         "/api/v1/providers/{provider_id}": "x-qma-admin-token",
         "/api/v1/providers/{provider_id}/stats": "x-qma-admin-token",
         "/api/v1/creators/applications": "x-qma-admin-token",
+        "/api/v1/treasury/agent/decide": "x-qma-admin-token",
+        "/api/v1/treasury/usyc/sweep": "x-qma-admin-token",
+        "/api/v1/treasury/usyc/jit-redeem": "x-qma-admin-token",
     }
     for path in optional_security:
         for operation in schema.get("paths", {}).get(path, {}).values():
@@ -818,12 +833,14 @@ storage_backend = create_storage_backend(
     creators_path=str(settings.creator_applications_path),
     provider_controls_path=str(settings.provider_controls_path),
 )
+state.storage_backend = storage_backend
 
 from backend.app.core.provider_registry import ProviderRegistryV2
 from backend.app.services.plugins.funding_provider import FundingProviderV2
 from backend.app.services.plugins.oi_provider import OpenInterestMemoryProviderV2
 from backend.app.services.plugins.polymarket_provider import PolymarketDivergenceProviderV2
 from backend.app.services.plugins.pyth_provider import PythStressBandProviderV2
+from backend.app.services.plugins.swap_provider import SwapRouteAnalysisProviderV2
 from backend.app.services.providers_meta import provider_metadata
 
 provider_registry = ProviderRegistryV2()
@@ -831,6 +848,7 @@ provider_registry.register(FundingProviderV2(owner_wallet=os.getenv("QMA_FUNDING
 provider_registry.register(OpenInterestMemoryProviderV2(owner_wallet=os.getenv("QMA_OI_MEMORY_OWNER_WALLET", "0x2222222222222222222222222222222222222222")))
 provider_registry.register(PolymarketDivergenceProviderV2(owner_wallet=os.getenv("QMA_POLYMARKET_OWNER_WALLET", "0x3333333333333333333333333333333333333333")))
 provider_registry.register(PythStressBandProviderV2(owner_wallet=os.getenv("QMA_PYTH_OWNER_WALLET", "0x4444444444444444444444444444444444444444")))
+provider_registry.register(SwapRouteAnalysisProviderV2(owner_wallet=os.getenv("QMA_SWAP_ANALYSIS_OWNER_WALLET", PAYMENT_WALLET_ADDRESS)))
 CREATOR_CLAIMS_PATH = str(settings.creator_claims_path)
 
 
@@ -899,6 +917,8 @@ def _load_paid_invoices_for_wallet(address):
 def _save_invoice(invoice):
     try:
         repo.save_invoice(storage_backend, invoice)
+        if isinstance(invoice, dict) and invoice.get("invoice_id"):
+            state.invoices_db[invoice["invoice_id"]] = invoice
     except Exception as exc:
         # Do not leave a failed write cached as an authoritative paid invoice.
         state.invoices_db.pop(invoice.get("invoice_id"), None)
@@ -954,7 +974,28 @@ def reload_persistent_state(include_reports=True, include_invoices=False):
 # ---------------------------------------------------------------------------
 @app.middleware("http")
 async def qma_rate_limit_middleware(request: Request, call_next):
-    if not RATE_LIMIT_ENABLED or request.method == "OPTIONS":
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
+    # Origin Shielding: Protect origin tunnel (e.g. ngrok) from direct bypass
+    client_ip = client_ip_from_request(request)
+    is_loopback = client_ip in ("127.0.0.1", "::1", "localhost", "testclient")
+    is_health = request.url.path in ("/api/v1/health", "/health", "/healthz", "/metrics")
+
+    if ORIGIN_SHIELD_SECRET and not is_loopback and not is_health:
+        shield_hdr = request.headers.get("x-qma-origin-secret", "").strip()
+        if not shield_hdr or shield_hdr != ORIGIN_SHIELD_SECRET:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "error": "origin_shield_blocked",
+                    "message": "Direct access to origin tunnel forbidden. Requests must pass through authorized proxy.",
+                    "status_code": 403,
+                    "detail": "origin_shield_blocked",
+                },
+            )
+
+    if not RATE_LIMIT_ENABLED:
         return await call_next(request)
 
     # Internal workers and admin callers bypass public client rate limits
@@ -964,14 +1005,14 @@ async def qma_rate_limit_middleware(request: Request, call_next):
     admin_tok = request.headers.get("x-qma-admin-token")
     if admin_tok and ADMIN_TOKEN and admin_tok == ADMIN_TOKEN:
         return await call_next(request)
-    if request.headers.get("x-benchmark-test") == "1" and client_ip_from_request(request) in ("127.0.0.1", "::1", "localhost", "testclient"):
+    if request.headers.get("x-benchmark-test") == "1" and is_loopback:
         return await call_next(request)
 
     scope, limit = rate_limit_for_path(request.url.path)
     if limit <= 0:
         return await call_next(request)
     now = time.time()
-    key = f"{scope}:{client_ip_from_request(request)}"
+    key = f"{scope}:{client_ip}"
     bucket = state.rate_limit_buckets[key]
     while bucket and now - bucket[0] > RATE_LIMIT_WINDOW_SECONDS:
         bucket.popleft()
@@ -992,7 +1033,15 @@ async def qma_rate_limit_middleware(request: Request, call_next):
             headers={"Retry-After": str(retry_after)},
         )
     bucket.append(now)
+
+    # Periodic cleanup to prevent unbound memory growth from high IP cardinality
+    if len(state.rate_limit_buckets) > 1000:
+        stale_keys = [k for k, b in state.rate_limit_buckets.items() if not b or (now - b[-1] > RATE_LIMIT_WINDOW_SECONDS)]
+        for k in stale_keys:
+            del state.rate_limit_buckets[k]
+
     return await call_next(request)
+
 
 
 # ---------------------------------------------------------------------------
@@ -1273,7 +1322,6 @@ def create_invoice(req: InvoiceRequest):
             invoice["query"]["evidence_url"] = evidence_url
         if not invoice["query"].get("exchange"):
             invoice["query"]["exchange"] = invoice["exchange"]
-    
     state.invoices_db[invoice["invoice_id"]] = invoice
     _save_invoice(invoice)
     try:
@@ -1693,6 +1741,14 @@ def submit_withdraw(payload):
     import json as _json
     import requests
     from fastapi import HTTPException
+    from backend.app.core.config import is_treasury_halted
+
+    if is_treasury_halted():
+        raise HTTPException(
+            status_code=503,
+            detail="Treasury is halted (treasury_halted=true) — creator withdrawals refused",
+        )
+
     burn_intent = payload.get("burnIntent")
     signature = payload.get("signature")
     if not burn_intent or not signature:
@@ -1766,7 +1822,7 @@ def authorize_paid_invoice(*, query, invoice_id, token, required_tier, provider_
         challenge_body, challenge_headers = build_402_challenge_payload(
             url=f"/api/v1/providers/{provider_id}/{'preview' if required_tier == 'preview' else 'full-report'}",
             amount_decimal=amount_dec,
-            description=f"GenQMA {provider_id.replace('_', ' ').title()} {required_tier.title()} Report",
+            description=f"QMA {provider_id.replace('_', ' ').title()} {required_tier.title()} Report",
         )
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -2172,168 +2228,14 @@ def _ensure_signal_verifiable(provider_id: str, query: dict) -> None:
         )
 
 
-def _build_epoch_snapshot(provider, query: dict, tier: str) -> dict:
-    """Freeze one verified market-state snapshot: the normalized query, the
-    report built from it, and their canonical hashes. Every invoice in the
-    epoch reuses these, so one GenLayer attestation pre-verifies them all."""
-    minimal_invoice = {"tier": tier, "query": query}
-    report = build_provider_report(
-        provider=provider,
-        normalized_query=query,
-        invoice_id=f"epoch_{getattr(provider, 'provider_id', 'provider')}_{query.get('symbol', 'X')}",
-        invoice=minimal_invoice,
-        required_tier=tier,
-    )
-    canonical_report = _canonical_report_json(report)
-    return {
-        "query": query,
-        "report": report,
-        "canonical": canonical_report,
-        "query_hash": query_fingerprint(query),
-        "report_hash": hashlib.sha256(canonical_report.encode("utf-8")).hexdigest(),
-        "state": "pending",
-    }
-
-
-def build_provider_report(*, provider, normalized_query, invoice_id, invoice, required_tier):
-    """Build the report once so GenLayer verifies the payload later delivered."""
-    if hasattr(provider, "deliver"):
-        context = {
-            "query": invoice.get("query") or normalized_query,
-            "tier": invoice.get("tier", required_tier),
-        }
-        if "_score_cache_key" in invoice:
-            context["_score_cache_key"] = invoice["_score_cache_key"]
-        if "declared_confidence" in invoice:
-            context["declared_confidence"] = invoice["declared_confidence"]
-            
-        payload_data = provider.deliver(context, invoice_id)
-        
-        # Hybrid BYO-Key Intelligence Layer (Scenario A vs B)
-        user_llm_key = (
-            invoice.get("user_llm_key")
-            or invoice.get("llm_api_key")
-            or os.getenv("USER_LLM_API_KEY")
-        )
-        if user_llm_key and payload_data.get("tier") == "full":
-            from backend.app.services.agent_synthesis import generate_agent_synthesis
-            synthesis = generate_agent_synthesis(
-                provider_id=getattr(provider, "provider_id", "unknown"),
-                symbol=payload_data.get("symbol") or payload_data.get("query_symbol") or "TOKEN",
-                metrics=payload_data,
-                api_key=user_llm_key,
-            )
-            if synthesis:
-                payload_data["agent_synthesis"] = synthesis
-                payload_data["synthesis_mode"] = "byo_key_ai_executive_analysis"
-            else:
-                payload_data["synthesis_mode"] = "pure_quantitative_metrics"
-        else:
-            payload_data["synthesis_mode"] = "pure_quantitative_metrics"
-        
-        from backend.app.schemas import ProviderReportResponse
-
-        report_kwargs = {
-            "query_symbol": payload_data.get("query_symbol"),
-            "query": context.get("query"),
-            "query_hash": invoice.get("query_hash"),
-            "tier": payload_data.get("tier", required_tier),
-            "invoice": invoice_report_meta(invoice_id, invoice),
-            "provider_id": getattr(provider, "provider_id", "unknown"),
-            "provider_name": getattr(provider, "provider_name", getattr(provider, "provider_id", "unknown")),
-            "provider_owner_wallet": getattr(provider, "owner_wallet", PAYMENT_WALLET_ADDRESS),
-            "paid_at": invoice.get("paid_at"),
-            "payload": payload_data,
-        }
-        if "upgrade_cta" in payload_data:
-            report_kwargs["upgrade_cta"] = payload_data["upgrade_cta"]
-            
-        report_obj = ProviderReportResponse(**report_kwargs)
-        report = report_obj.model_dump(exclude_unset=True, by_alias=True)
-    else:
-        full_report = provider.full_report(normalized_query)
-        full_report["query"] = invoice.get("query") or canonical_query_payload(normalized_query)
-        full_report["query_hash"] = invoice.get("query_hash")
-        full_report["provider_id"] = provider.provider_id
-        full_report["provider_name"] = provider.provider_name
-        full_report["provider_owner_wallet"] = provider.owner_wallet
-        full_report["invoice"] = invoice_report_meta(invoice_id, invoice)
-        if invoice.get("genlayer"):
-            full_report["genlayer"] = invoice.get("genlayer")
-        if required_tier == "preview":
-            report = build_preview_report(full_report, invoice)
-            report["provider_id"] = provider.provider_id
-            report["provider_name"] = provider.provider_name
-            if invoice.get("genlayer"):
-                report["genlayer"] = invoice.get("genlayer")
-        else:
-            full_report["tier"] = "full"
-            full_report["paid_at"] = invoice.get("paid_at")
-            report = full_report
-    return jsonable_encoder(report)
-
-
-def _canonical_report_json(report):
-    return json.dumps(
-        jsonable_encoder(report),
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        allow_nan=False,
-    )
-
-
-_PUBLIC_VERIFICATION_CLAIMS = (
-    "query_symbol",
-    "is_ood",
-    "ood_p_value",
-    "ood_empirical_nn_distance",
-    "ood_empirical_p99_threshold",
-    "ood_empirical_percentile",
-    "matched_k",
-    "average_similarity",
-    "regime_cluster",
-    "regime_description",
-    "regime_support",
-    "weighted_win_rate",
-    "ci_win_rate_95",
-    "weighted_avg_profit",
-    "ci_avg_profit_95",
-    "percentiles",
-    "effective_sample_size",
-    "bootstrap_rounds",
-    "distance_summary",
-    "query_features",
-    "data_quality",
-    "validation_warnings",
-    "risk_flags",
-    "funding_context",
-    "rough_win_rate",
-    "win_rate_band",
-    "analysis_focus",
-    "turnover_context",
-    "provider_diagnostics",
-    "declared_confidence",
-    "arbitrage_bias",
-    "recommended_strategy",
-    "divergence_spread_pct",
-    "polymarket_probability",
-    "implied_derivative_prob",
-    "cctp_bridge_required",
-    "anomaly",
-    "regime",
-    "predicted_bias",
-    "bias",
-)
-
-
 def _report_verification_manifest(report, invoice, target_venue: str = "MEXC"):
     """Expose only auditable claims; keep paid analog rows out of public calldata."""
     report_data = report if isinstance(report, dict) else {}
     payload = report_data.get("payload")
-    source = payload if isinstance(payload, dict) else report_data
-    inner = source.get("payload") if isinstance(source.get("payload"), dict) else {}
-    claims = {}
+    source: dict[str, Any] = payload if isinstance(payload, dict) else report_data
+    inner_raw = source.get("payload")
+    inner: dict[str, Any] = inner_raw if isinstance(inner_raw, dict) else {}
+    claims: dict[str, Any] = {}
     for key in _PUBLIC_VERIFICATION_CLAIMS:
         if key in inner:
             claims[key] = inner[key]
@@ -3291,6 +3193,7 @@ app.include_router(create_oauth_router(SimpleNamespace(
 
 app.include_router(create_treasury_router())
 app.include_router(create_stablefx_router())
+app.include_router(create_swap_router())
 app.include_router(create_onramp_router())
 app.include_router(create_incidents_router())
 

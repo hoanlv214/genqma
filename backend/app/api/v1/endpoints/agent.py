@@ -172,10 +172,10 @@ def _get_circle_service_card() -> dict:
             {"method": "GET", "path": "/api/v1/stablefx/quote", "description": "Institutional Stablecoin FX Quote (USDC/EURC)"},
         ],
         "provider": {
-            "name": "GenQMA Labs",
-            "url": "https://genqma.vercel.app",
-            "support_url": "https://genqma.vercel.app/docs",
-            "documentation_url": "https://genqma.vercel.app/docs",
+            "name": "QMA Labs",
+            "url": "https://qma.vercel.app",
+            "support_url": "https://qma.vercel.app/docs",
+            "documentation_url": "https://qma.vercel.app/docs",
             "health_check_url": "https://qma-api.onrender.com/healthz",
         },
         "example_prompts": [

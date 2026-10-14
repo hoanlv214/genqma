@@ -1,10 +1,10 @@
 # ==============================================================================
-# GenQMA 1-Click Startup Script (Windows PowerShell)
+# QMA 1-Click Startup Script (Windows PowerShell)
 # Concurrently launches Backend API (:8000), Arc Gateway (:3000), and Frontend (:5173)
 # ==============================================================================
 
 Write-Host "`n==============================================================================" -ForegroundColor Cyan
-Write-Host "                GenQMA 1-Click Service Orchestrator                           " -ForegroundColor Cyan
+Write-Host "                QMA 1-Click Service Orchestrator                           " -ForegroundColor Cyan
 Write-Host "==============================================================================" -ForegroundColor Cyan
 
 # 1. Environment Verification

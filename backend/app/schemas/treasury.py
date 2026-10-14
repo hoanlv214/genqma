@@ -79,17 +79,17 @@ class EuthynaIntegrityResponse(BaseModel):
 
 
 class CorporateTreasuryPolicy(BaseModel):
-    min_operating_reserve_usdc: float = Field(10.0, ge=0.0, description="Minimum liquid USDC reserve to preserve on Arc")
-    target_safety_buffer_ratio: float = Field(1.5, ge=1.0, description="Target ratio of liquid assets to upcoming obligations")
-    min_sweep_threshold_usdc: float = Field(2.0, ge=0.0, description="Minimum surplus cash required before executing sweep")
-    max_sweep_per_epoch_usdc: float = Field(50.0, gt=0.0, description="Maximum USDC allowed to sweep in a single decision epoch")
-    max_jit_redeem_per_epoch_usdc: float = Field(50.0, gt=0.0, description="Maximum USDC allowed to redeem in a single decision epoch")
-    rebalance_cooldown_seconds: int = Field(300, ge=0, description="Minimum seconds between rebalancing actions")
-    autonomous_execution_enabled: bool = Field(False, description="Whether the CFO agent is authorized to broadcast transactions autonomously")
-    target_apy_baseline: float = Field(0.05, ge=0.0, le=1.0, description="Target baseline annualized yield")
-    yield_rail: str = Field("EARN_KIT_MORPHO", description="Target yield rail: EARN_KIT_MORPHO (Arc Morpho Lending Vault) or USYC (Institutional USYC Treasury)")
-    target_earn_vault: str = Field("morpho_arc_usdc_core", description="Default Earn Kit vault ID on Arc")
-    treasury_halted: bool = Field(False, description="Operator emergency halt: when true, every on-chain treasury execution (sweep, JIT redeem) is refused until the policy is updated with treasury_halted=false")
+    min_operating_reserve_usdc: float = Field(default=10.0, ge=0.0, description="Minimum liquid USDC reserve to preserve on Arc")
+    target_safety_buffer_ratio: float = Field(default=1.5, ge=1.0, description="Target ratio of liquid assets to upcoming obligations")
+    min_sweep_threshold_usdc: float = Field(default=2.0, ge=0.0, description="Minimum surplus cash required before executing sweep")
+    max_sweep_per_epoch_usdc: float = Field(default=50.0, gt=0.0, description="Maximum USDC allowed to sweep in a single decision epoch")
+    max_jit_redeem_per_epoch_usdc: float = Field(default=50.0, gt=0.0, description="Maximum USDC allowed to redeem in a single decision epoch")
+    rebalance_cooldown_seconds: int = Field(default=300, ge=0, description="Minimum seconds between rebalancing actions")
+    autonomous_execution_enabled: bool = Field(default=False, description="Whether the CFO agent is authorized to broadcast transactions autonomously")
+    target_apy_baseline: float = Field(default=0.05, ge=0.0, le=1.0, description="Target baseline annualized yield")
+    yield_rail: str = Field(default="EARN_KIT_MORPHO", description="Target yield rail: EARN_KIT_MORPHO (Arc Morpho Lending Vault) or USYC (Institutional USYC Treasury)")
+    target_earn_vault: str = Field(default="morpho_arc_usdc_core", description="Default Earn Kit vault ID on Arc")
+    treasury_halted: bool = Field(default=False, description="Operator emergency halt: when true, every on-chain treasury execution (sweep, JIT redeem) is refused until the policy is updated with treasury_halted=false")
 
 
 class CFODecisionResult(BaseModel):

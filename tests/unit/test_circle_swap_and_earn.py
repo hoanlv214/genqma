@@ -33,13 +33,23 @@ class CircleSwapAndEarnTests(unittest.TestCase):
         self.assertEqual(quote["swap_engine"], "Circle Swap Kit (Atomic AMM)")
         self.assertEqual(quote["guaranteed_duration_seconds"], 60)
 
+    @patch("backend.app.services.stablefx_service._consumed_path")
     @patch("backend.app.services.stablefx_service.Web3")
-    def test_stablefx_settle_includes_swap_engine(self, mock_web3_cls):
+    def test_stablefx_settle_includes_swap_engine(self, mock_web3_cls, mock_consumed_path):
+        import tempfile, uuid, pathlib
+        mock_consumed_path.return_value = pathlib.Path(tempfile.mkdtemp()) / "consumed.json"
+        user_tx = "0x" + uuid.uuid4().hex + uuid.uuid4().hex
+        recipient = "0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4"
+        pad = lambda a: "0x" + "0" * 24 + a.lower()[2:]
         mock_w3 = MagicMock()
         mock_web3_cls.return_value = mock_w3
         mock_web3_cls.to_checksum_address = lambda x: x
         mock_w3.is_connected.return_value = True
-        mock_w3.eth.get_transaction_receipt.return_value = {"status": 1}
+        mock_w3.eth.get_transaction_receipt.return_value = {"status": 1, "logs": [{
+            "address": _sfx_module.ARC_USDC_CONTRACT,
+            "topics": ["0x" + _sfx_module.ERC20_TRANSFER_TOPIC, pad(recipient), pad(_sfx_module.DEFAULT_RELAYER_ADDRESS)],
+            "data": hex(25_000_000),
+        }]}
         mock_w3.eth.get_transaction_count.return_value = 1
         mock_w3.eth.gas_price = 1000000000
         mock_contract = MagicMock()
@@ -59,8 +69,8 @@ class CircleSwapAndEarnTests(unittest.TestCase):
 
         res = settle_stablefx_swap(
             quote_id="sfx_quote_swapkit_test",
-            user_tx_hash="0x2e3ddaa710fd5ac2366d95c6228c2908fe96af50b8fe8bb9650e6f2eb72825ba",
-            recipient_address="0x2c03cd73ad36230a3c5be43d51d72fdca32f53d4",
+            user_tx_hash=user_tx,
+            recipient_address=recipient,
             from_currency="USDC",
             to_currency="EURC",
             amount=25.0,

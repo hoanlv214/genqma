@@ -224,14 +224,18 @@ export function OperationsPage({ onNavigate }: OperationsProps) {
             {/* Decision engine */}
             <section className="operations-panel operations-panel-wide" aria-label="Decision engine">
               <div className="operations-panel-head">
-                <h2>Decision Engine</h2>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <h2>Decision Engine</h2>
+                  <span className="chip chip-pending">Dry-run simulation</span>
+                </div>
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
                   onClick={onRunDecision}
                   disabled={decisionBusy}
+                  title="Run read-only CFO simulation (evaluates policy and runway without moving funds)"
                 >
-                  {decisionBusy ? "Evaluating..." : "Run CFO decision"}
+                  {decisionBusy ? "Evaluating..." : "Simulate CFO decision"}
                 </button>
               </div>
               {decisionError ? <p className="operations-error-text" role="alert">{decisionError}</p> : null}
@@ -251,9 +255,8 @@ export function OperationsPage({ onNavigate }: OperationsProps) {
                 </div>
               ) : (
                 <p className="operations-empty-state">
-                  Run an evaluation to see the agent weigh liquidity, obligations, and yield against
-                  its policy bounds — the result is written to the audit ledger below with its
-                  reasoning attached.
+                  Run a read-only simulation to observe how the autonomous CFO weighs liquidity, obligations, and yield against
+                  its policy bounds. On-chain execution is strictly protected by platform administrator tokens and autonomous worker loops.
                 </p>
               )}
             </section>

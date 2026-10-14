@@ -1,4 +1,4 @@
-"""Canonical string-typed value sets for GenQMA.
+"""Canonical string-typed value sets for QMA.
 
 Every member value is FROZEN to a literal already live in production storage
 or wire format — adopting these enums must never change a serialized byte.
@@ -90,6 +90,7 @@ class EuthynaAction(str, Enum):
     BUYER_REFUND = "buyer_refund"                # arc_verdict_settlement op name
     VENDOR_PAYOUT = "VENDOR_PAYOUT"              # backend/app/main.py:2231
     STABLEFX_SWAP = "STABLEFX_SWAP"
+    SWAP_ROUTE_EXECUTE = "SWAP_ROUTE_EXECUTE"
     RECONCILIATION_AUDIT = "RECONCILIATION_AUDIT"
     INCIDENT_RESOLVED = "INCIDENT_RESOLVED"
 

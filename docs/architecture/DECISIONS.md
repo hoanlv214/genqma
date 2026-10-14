@@ -17,7 +17,7 @@ Reversibility:
 
 Why:
 Two direct payment legs required two buyer signatures and could expose a report
-before its actual payload was verified. New GenQMA invoices now settle once to the
+before its actual payload was verified. New QMA invoices now settle once to the
 platform treasury and bind the generated report to a finalized GenLayer verdict.
 
 Impact:

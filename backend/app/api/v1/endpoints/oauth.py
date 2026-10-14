@@ -133,7 +133,7 @@ def create_oauth_router(deps: SimpleNamespace) -> APIRouter:
             return connect_base
         resolved_api = _resolve_api_base(request)
         if "onrender.com" in resolved_api or (resolved_api and not _is_localhost(resolved_api) and "testserver" not in resolved_api):
-            return "https://genqma.vercel.app"
+            return "https://qma.vercel.app"
         return connect_base or "http://localhost:5173"
 
     def require_wallet_owner(owner_wallet: str, token: Optional[str]) -> str:

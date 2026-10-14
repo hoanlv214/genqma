@@ -3,7 +3,7 @@
 - **Author**: QMA Core Engineering
 - **Date**: 2026-09-26
 - **Status**: Approved for Implementation
-- **Target Repository**: hoanlv214/genqma (`main` branch)
+- **Target Repository**: hoanlv214/qma (`main` branch)
 
 ---
 

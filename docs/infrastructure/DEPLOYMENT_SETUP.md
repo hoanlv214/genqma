@@ -4,8 +4,6 @@ This repository currently contains two deployable frontend realities:
 
 - `main`: the live legacy HTML application (`index.html`, `app.html`,
   `user.html`, `marketplace.html`, `docs.html`, and `public/*`).
-- `frontend/vite-react-rebuild`: the replacement Vite + React application in
-  `frontend/src/`, backed by the modular FastAPI application in `backend/app/`.
 
 Keep them isolated during validation. Do not repoint the live Vercel/Render
 projects until the rebuild preview has passed its smoke tests.

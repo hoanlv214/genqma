@@ -1,7 +1,7 @@
 fastapi==0.124.4
 scalar-fastapi==1.8.2
 uvicorn[standard]==0.38.0
-requests==2.32.5
+requests>=2.33.0
 pydantic==2.12.5
 numpy==2.3.5
 pandas==2.3.3
@@ -10,5 +10,6 @@ scikit-learn==1.8.0
 eth-account==0.13.7
 genlayer-py==0.18.0
 mcp>=1.10,<2
-starlette>=0.40,<1
+starlette==0.50.0
 psycopg2-binary>=2.9
+

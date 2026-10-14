@@ -14,9 +14,33 @@ export const DECISION_SYSTEM_PROMPT = [
   "If no eligible candidate satisfies the request, return action=skip; if the request is ambiguous, return action=clarify.",
 ].join(" ");
 
+function sanitizeString(input: string, maxLen = 140): string {
+  if (!input) return "";
+  const cleaned = input.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]|\x1b\[[0-9;]*[a-zA-Z]/g, "").trim();
+  const isAttack = /(?:ignore|disregard|forget)\s+(?:previous|all|prior)\s+(?:instructions?|directives?|prompts?|rules?)|new\s+(?:directive|instruction|task|system\s+prompt)\s*:|system\s*prompt\s*:\s*you\s+are/i.test(cleaned);
+  if (isAttack) {
+    return "[sanitized]";
+  }
+  return cleaned.slice(0, maxLen);
+}
+
+function sanitizeReasons(reasons: unknown): unknown {
+  if (!reasons) return undefined;
+  if (Array.isArray(reasons)) {
+    return reasons
+      .filter((r): r is string => typeof r === "string")
+      .map((r) => sanitizeString(r))
+      .filter((r) => r.length > 0 && r !== "[sanitized]");
+  }
+  if (typeof reasons === "string") {
+    return sanitizeString(reasons);
+  }
+  return undefined;
+}
+
 export function buildDecisionPrompt(context: DecisionContext): string {
   return JSON.stringify({
-    task: context.prompt,
+    task: sanitizeString(context.prompt, 2000),
     budget_usdc: context.budgetUsdc,
     max_price_usdc: context.maxPriceUsdc,
     candidates: context.candidates.map((candidate) => ({
@@ -24,7 +48,7 @@ export function buildDecisionPrompt(context: DecisionContext): string {
       symbol: candidate.symbol,
       score: candidate.score,
       suggested_tier: candidate.suggestedTier,
-      reasons: candidate.reasons,
+      reasons: sanitizeReasons(candidate.reasons),
     })),
     entitlements: context.entitlements.map((entry) => ({ symbol: entry.symbol, tier: entry.tier, provider_id: entry.providerId })),
   });

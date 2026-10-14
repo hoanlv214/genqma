@@ -395,17 +395,17 @@ def build_provider_stats(
     tier_counts = {"preview": 0, "full": 0, "legacy": 0}
     buyer_type_counts = {"human": 0, "agent": 0}
     top_symbols = {}
+    seen_reports: set[str] = set()
     for event in events:
         tier = payment_event_tier(event)
-        report_key = event.get("invoice_id") or payment_event_key(event)
-        if report_key not in tier_counts.setdefault("_seen", set()):
-            tier_counts["_seen"].add(report_key)
+        report_key = str(event.get("invoice_id") or payment_event_key(event) or "")
+        if report_key and report_key not in seen_reports:
+            seen_reports.add(report_key)
             tier_counts[tier] = tier_counts.get(tier, 0) + 1
             buyer_type = event.get("buyer_type", "human")
             buyer_type_counts[buyer_type] = buyer_type_counts.get(buyer_type, 0) + 1
         if event.get("symbol"):
             top_symbols[event["symbol"]] = top_symbols.get(event["symbol"], 0) + 1
-    tier_counts.pop("_seen", None)
     provider_name = provider.manifest().get("name") if hasattr(provider, "manifest") else getattr(provider, "provider_name", provider_id)
     return {
         "provider_id": provider_id,

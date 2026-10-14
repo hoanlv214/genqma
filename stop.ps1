@@ -1,5 +1,5 @@
 # ==============================================================================
-# GenQMA 1-Click Stop Script (Windows PowerShell)
+# QMA 1-Click Stop Script (Windows PowerShell)
 # Stops all processes listening on QMA dev ports (8000, 3000, 5173)
 # ==============================================================================
 

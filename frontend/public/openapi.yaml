@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: GenQMA Intelligence & Payments API
-  description: '# GenQMA Intelligence & Payments API
+  title: QMA Intelligence & Payments API
+  description: '# QMA Intelligence & Payments API
 
 
-    GenQMA is a provider marketplace for quantitative market intelligence. Clients
+    QMA is a provider marketplace for quantitative market intelligence. Clients
     discover live signals, select a provider-bound report, create a query-bound invoice,
     verify Circle Gateway x402 settlement, and retrieve the resulting preview or full
     report.
@@ -59,10 +59,10 @@ info:
     and a finalized VALID verdict for the exact GenLayer-bound report hash.'
   version: 1.0.0
   contact:
-    name: GenQMA Agent Support
-    email: agent-support@genqma.com
-    url: https://genqma.vercel.app
-  x-guidance: 'GenQMA is an AI agent marketplace for real-time quantitative market
+    name: QMA Agent Support
+    email: agent-support@qma.com
+    url: https://qma.vercel.app
+  x-guidance: 'QMA is an AI agent marketplace for real-time quantitative market
     intelligence, anomaly detection, funding rate arbitrage signals, and prediction
     market analytics with on-chain GenLayer SLA settlement verification.
 
@@ -12013,5 +12013,5 @@ tags:
   description: Deprecated aliases retained for existing clients. New integrations
     should use provider-specific report routes.
 externalDocs:
-  description: GenQMA Documentation and Agent Integration Guide
-  url: https://genqma.vercel.app/docs
+  description: QMA Documentation and Agent Integration Guide
+  url: https://qma.vercel.app/docs

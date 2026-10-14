@@ -73,10 +73,10 @@
     }
   ],
   "provider": {
-    "name": "GenQMA Labs",
-    "url": "https://genqma.vercel.app",
-    "support_url": "https://genqma.vercel.app/docs",
-    "documentation_url": "https://genqma.vercel.app/docs",
+    "name": "QMA Labs",
+    "url": "https://qma.vercel.app",
+    "support_url": "https://qma.vercel.app/docs",
+    "documentation_url": "https://qma.vercel.app/docs",
     "health_check_url": "https://qma-api.onrender.com/healthz"
   },
   "example_prompts": [

@@ -26,12 +26,24 @@ def usdc_to_raw(amount_usdc: float) -> int:
     return int(round(float(amount_usdc) * 1_000_000))
 
 
-def raw_usdc_str(raw_amount: int | str) -> str:
-    return str(int(raw_amount))
+def raw_usdc_str(raw_amount: Optional[int | str]) -> str:
+    if raw_amount is None or raw_amount == "":
+        return "0"
+    try:
+        return str(int(raw_amount))
+    except (TypeError, ValueError):
+        return "0"
 
 
-def raw_usdc_to_decimal_string(raw_amount: int | str) -> str:
-    return f"{int(raw_amount) / 1_000_000:.6f}".rstrip("0").rstrip(".")
+def raw_usdc_to_decimal_string(raw_amount: Optional[int | str]) -> str:
+    if raw_amount is None or raw_amount == "":
+        return "0"
+    try:
+        val = int(raw_amount)
+    except (TypeError, ValueError):
+        return "0"
+    res = f"{val / 1_000_000:.6f}".rstrip("0").rstrip(".")
+    return res if res else "0"
 
 
 def raw_usdc_to_float(raw_amount: Optional[int | str]) -> Optional[float]:

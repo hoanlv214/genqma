@@ -509,6 +509,8 @@ export function HomePage({ onNavigate }: HomeProps) {
                                 <button type="button" className="footer-link-btn" onClick={() => onNavigate("marketplace")}>Creator Marketplace</button>
                                 <a href={`${API_BASE_URL}/api/v1/providers`} target="_blank" rel="noopener noreferrer">Provider API</a>
                                 <a href="/docs" target="_blank" rel="noopener noreferrer">API Docs</a>
+                                <button type="button" className="footer-link-btn" onClick={() => onNavigate("terms")}>Terms of Service</button>
+                                <button type="button" className="footer-link-btn" onClick={() => onNavigate("privacy")}>Privacy Policy</button>
                                 <a href="https://testnet.arcscan.app/" target="_blank" rel="noopener noreferrer">Arcscan Explorer</a>
                             </div>
                             <div className="landing-footer-col">
@@ -534,7 +536,12 @@ export function HomePage({ onNavigate }: HomeProps) {
                         </div>
 
                         <div className="landing-footer-bottom">
-                            <span>2026 QMA Network. Historical analogs only, not financial advice. Running on {ARC_CHAIN.name}.</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                                <span>2026 QMA Network. Historical analogs only, not financial advice. Running on {ARC_CHAIN.name}.</span>
+                                <button type="button" className="footer-link-btn" onClick={() => onNavigate("terms")} style={{ fontSize: "inherit", textDecoration: "underline" }}>Terms of Service</button>
+                                <span style={{ opacity: 0.4 }}>•</span>
+                                <button type="button" className="footer-link-btn" onClick={() => onNavigate("privacy")} style={{ fontSize: "inherit", textDecoration: "underline" }}>Privacy Policy</button>
+                            </div>
                             <span className="landing-status-dot">{ARC_CHAIN.name} live</span>
                         </div>
                         <p className="landing-brand-disclaimer">

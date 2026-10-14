@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# GenQMA 1-Click Environment Auditor & Setup Script (Linux / macOS / Bash)
+# QMA 1-Click Environment Auditor & Setup Script (Linux / macOS / Bash)
 # Automatically scans, installs prerequisites, sets up dependencies & configures .env
 # ==============================================================================
 set -e
@@ -13,7 +13,7 @@ GRAY='\033[0;37m'
 NC='\033[0m' # No Color
 
 echo -e "\n${CYAN}==============================================================================${NC}"
-echo -e "${CYAN}                GenQMA 1-Click System Audit & Environment Setup               ${NC}"
+echo -e "${CYAN}                QMA 1-Click System Audit & Environment Setup               ${NC}"
 echo -e "${CYAN}==============================================================================${NC}"
 
 # ------------------------------------------------------------------------------

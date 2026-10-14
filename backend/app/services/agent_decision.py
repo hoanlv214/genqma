@@ -11,7 +11,7 @@ import re
 import time
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 import requests
@@ -20,6 +20,8 @@ from backend.app.core.config import AGENT_MAX_DECISION_BUDGET_USDC
 from backend.app.services.agent_security import (
     sanitize_financial_prompt,
     FinancialPromptInjectionError,
+    CONTROL_CHAR_REGEX,
+    detect_financial_prompt_injection,
 )
 from backend.app.services.spend_guard import get_spend_limit_guard
 
@@ -421,6 +423,29 @@ def _normalize_model_plan(value: object) -> dict:
     }
 
 
+def _sanitize_reasons(raw_reasons: Any) -> Any:
+    if raw_reasons is None:
+        return None
+    if isinstance(raw_reasons, list):
+        sanitized = []
+        for item in raw_reasons:
+            if not isinstance(item, str):
+                continue
+            is_attack, _ = detect_financial_prompt_injection(item)
+            if is_attack:
+                continue
+            cleaned = CONTROL_CHAR_REGEX.sub("", item).strip()[:140]
+            if cleaned:
+                sanitized.append(cleaned)
+        return sanitized
+    if isinstance(raw_reasons, str):
+        is_attack, _ = detect_financial_prompt_injection(raw_reasons)
+        if is_attack:
+            return "[sanitized]"
+        return CONTROL_CHAR_REGEX.sub("", raw_reasons).strip()[:140]
+    return raw_reasons
+
+
 def _llm_decision(
     prompt: str,
     budget: float,
@@ -442,6 +467,8 @@ def _llm_decision(
             api_key = os.getenv("GROQ_API_KEY", "").strip()
         elif provider == "openrouter":
             api_key = os.getenv("OPENROUTER_API_KEY", os.getenv("OPENROUTER_API", "")).strip()
+        elif provider == "anthropic":
+            api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
 
     if provider != "ollama" and not api_key:
         logger.warning("No API key configured for LLM provider: %s", provider)
@@ -458,6 +485,8 @@ def _llm_decision(
             base_url = "https://api.groq.com/openai/v1"
         elif provider == "openrouter":
             base_url = "https://openrouter.ai/api/v1"
+        elif provider == "anthropic":
+            base_url = "https://api.anthropic.com/v1"
         elif provider == "ollama":
             base_url = "http://localhost:11434/v1"
         else:
@@ -474,6 +503,8 @@ def _llm_decision(
             model = "llama-3.3-70b-specdec"
         elif provider == "openrouter":
             model = "google/gemini-2.5-flash"
+        elif provider == "anthropic":
+            model = "claude-3-5-sonnet-20241022"
         elif provider == "ollama":
             model = "qwen2.5:7b"
         else:
@@ -493,7 +524,7 @@ def _llm_decision(
                 "price_usdc": item.get("agent_price"),
                 "eligible": not bool(item.get("agent_rejection")),
                 "ineligible_reason_code": (item.get("agent_rejection") or {}).get("reason_code"),
-                "reasons": item.get("reasons"),
+                "reasons": _sanitize_reasons(item.get("reasons")),
             }
             for item in candidates
         ],
@@ -513,6 +544,49 @@ def _llm_decision(
         },
         "required": sorted(PLAN_KEYS),
     }
+
+    if provider == "anthropic":
+        url = f"{base_url.rstrip('/')}/messages"
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        }
+        anthropic_system = (
+            "You are the QMA purchase planner. Return only valid JSON matching this schema:\n"
+            "{\n"
+            '  "action": "purchase" | "skip" | "clarify",\n'
+            '  "candidate_id": string | null,\n'
+            '  "requested_tier": "preview" | "full" | "auto",\n'
+            '  "budget_usdc": number,\n'
+            '  "max_price_usdc": number,\n'
+            '  "reason": string (max 240 chars),\n'
+            '  "rejected_candidate_ids": [string]\n'
+            "}\n"
+            "Never return provider metadata, prices, scores, queries, entitlements, or invoice/payment data. "
+            "If objective is highest_score, choose the eligible candidate with the highest score. "
+            "Respond strictly in raw JSON without any markdown formatting or commentary."
+        )
+        anthropic_payload = {
+            "model": model,
+            "max_tokens": 1024,
+            "system": anthropic_system,
+            "messages": [
+                {"role": "user", "content": json.dumps(context, separators=(",", ":"))}
+            ],
+        }
+        try:
+            response = requests.post(url, headers=headers, json=anthropic_payload, timeout=20)
+            response.raise_for_status()
+            blocks = response.json().get("content", [])
+            raw_text = "".join([b.get("text", "") for b in blocks if b.get("type") == "text"]).strip()
+            if raw_text.startswith("```"):
+                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+                raw_text = re.sub(r"\s*```$", "", raw_text)
+            return _normalize_model_plan(json.loads(raw_text)) if raw_text else None
+        except Exception as exc:
+            logger.warning("Anthropic Claude plan unavailable or invalid; using deterministic fallback: %s", exc)
+            return None
 
     url = f"{base_url.rstrip('/')}/chat/completions"
     headers = {"Content-Type": "application/json"}
@@ -591,7 +665,57 @@ def _validate_llm_plan(deps: SimpleNamespace, plan: dict, candidates: list, enti
     return _decision_payload(deps, selected, candidates, entitlements, budget, max_price, objective, source, plan["reason"], plan["requested_tier"], action="purchase")
 
 
-def _fallback_decision(deps: SimpleNamespace, candidates: list, entitlements: list, budget: float, max_price: float, objective: str, requested_tier: Optional[str]) -> dict:
+_NEGATIVE_INTENT_PATTERN = re.compile(
+    r"\b(?:don'?t(?:\s+buy|\s+purchase|\s+trade)?|do\s+not(?:\s+buy|\s+purchase|\s+trade)?|never\s+buy|stop|cancel|abort|forget|halt)\b",
+    re.IGNORECASE,
+)
+_CONVERSATIONAL_INQUIRY_PATTERN = re.compile(
+    r"^(?:hello|hi|hey|ping|status|who\s+are\s+you|how\s+are\s+you|what\s+can\s+you\s+do)\b",
+    re.IGNORECASE,
+)
+
+
+def _fallback_decision(
+    deps: SimpleNamespace,
+    candidates: list,
+    entitlements: list,
+    budget: float,
+    max_price: float,
+    objective: str,
+    requested_tier: Optional[str],
+    prompt: Optional[str] = None,
+) -> dict:
+    if prompt:
+        lowered = prompt.lower().strip()
+        if _NEGATIVE_INTENT_PATTERN.search(lowered):
+            return _decision_payload(
+                deps,
+                None,
+                candidates,
+                entitlements,
+                budget,
+                max_price,
+                objective,
+                "deterministic_policy",
+                reason="Negative purchase intent detected in prompt; purchase aborted.",
+                requested_tier=requested_tier,
+                action="skip",
+            )
+        if _CONVERSATIONAL_INQUIRY_PATTERN.search(lowered):
+            return _decision_payload(
+                deps,
+                None,
+                candidates,
+                entitlements,
+                budget,
+                max_price,
+                objective,
+                "deterministic_policy",
+                reason="Informational or conversational query; no purchase needed.",
+                requested_tier=requested_tier,
+                action="skip",
+            )
+
     eligible = [item for item in candidates if not item.get("agent_rejection")]
     if objective == "highest_score":
         eligible.sort(key=lambda item: (bool(item.get("agent_upgrade_from_preview")), _number(item.get("score"))), reverse=True)
@@ -815,5 +939,5 @@ def make_agent_decision(
         if validated is not None:
             return _guard_check(validated)
         logger.warning("Rejected invalid LLM plan; using deterministic fallback.")
-    fallback_res = _fallback_decision(deps, candidates, entitlements, budget, max_price, objective, tier_filter)
+    fallback_res = _fallback_decision(deps, candidates, entitlements, budget, max_price, objective, tier_filter, prompt=clean_prompt)
     return _guard_check(fallback_res)

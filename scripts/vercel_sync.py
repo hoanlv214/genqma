@@ -6,10 +6,10 @@ Usage:
   python scripts/vercel_sync.py --dry-run
 
   # Sync env vars to Vercel via API token
-  python scripts/vercel_sync.py --token <VERCEL_TOKEN> --project genqma --sync-env
+  python scripts/vercel_sync.py --token <VERCEL_TOKEN> --project qma --sync-env
 
   # Sync env vars and deploy production frontend
-  python scripts/vercel_sync.py --token <VERCEL_TOKEN> --project genqma --all
+  python scripts/vercel_sync.py --token <VERCEL_TOKEN> --project qma --all
 
   # Using Vercel CLI (when already logged in via 'bun x vercel login')
   python scripts/vercel_sync.py --cli --sync-env --deploy
@@ -176,7 +176,7 @@ def sync_via_vercel_api(frontend_env: Dict[str, str], token: str, project_id: st
 def main():
     parser = argparse.ArgumentParser(description="Automate Vercel environment variables and deployment for QMA Frontend")
     parser.add_argument("--token", default=os.getenv("VERCEL_TOKEN", ""), help="Vercel Access Token")
-    parser.add_argument("--project", default=os.getenv("VERCEL_PROJECT_ID", "genqma"), help="Vercel Project Name or ID (default: genqma)")
+    parser.add_argument("--project", default=os.getenv("VERCEL_PROJECT_ID", "qma"), help="Vercel Project Name or ID (default: qma)")
     parser.add_argument("--team-id", default=os.getenv("VERCEL_TEAM_ID", ""), help="Optional Vercel Team ID")
     parser.add_argument("--env-file", default=".env", help="Path to local .env file (default: .env)")
     parser.add_argument("--cli", action="store_true", help="Use Vercel CLI (bun x vercel) instead of REST API")
@@ -200,7 +200,7 @@ def main():
         print("\n" + "=" * 70)
         print("Usage:")
         print("  # With Vercel Token (Recommended for CI/CD):")
-        print("  python scripts/vercel_sync.py --token <TOKEN> --project genqma --all")
+        print("  python scripts/vercel_sync.py --token <TOKEN> --project qma --all")
         print("\n  # With Vercel CLI (When logged in with 'bun x vercel login'):")
         print("  python scripts/vercel_sync.py --cli --all")
         print("=" * 70)

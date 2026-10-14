@@ -1,4 +1,4 @@
-"""Comprehensive End-to-End Test Suite for GenQMA: Autonomous Agents + Earn Kit + GenLayer SLA
+"""Comprehensive End-to-End Test Suite for QMA: Autonomous Agents + Earn Kit + GenLayer SLA
 ================================================================================================
 Executes live on Arc Testnet (Chain ID 5042002) using test wallets from .qma-test-wallets.json:
 - Flow 1: Network & Wallet Health Pre-flight

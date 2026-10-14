@@ -29,7 +29,7 @@ def create_chat_router(deps: SimpleNamespace) -> APIRouter:
         challenge_body, challenge_headers = build_402_challenge_payload(
             url="/api/v1/chat",
             amount_decimal="0.005000",
-            description="GenQMA AI Report Chat",
+            description="QMA AI Report Chat",
         )
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -52,7 +52,7 @@ def create_chat_router(deps: SimpleNamespace) -> APIRouter:
             challenge_body, challenge_headers = build_402_challenge_payload(
                 url="/api/v1/chat",
                 amount_decimal="0.005000",
-                description="GenQMA AI Report Chat",
+                description="QMA AI Report Chat",
             )
             raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,

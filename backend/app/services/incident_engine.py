@@ -57,10 +57,19 @@ def _save_sessions_list(sessions: List[Dict[str, Any]], path: Optional[Path], st
 
 def _get_storage():
     try:
+        from backend.app.core import state
+        if getattr(state, "storage_backend", None) is not None:
+            return state.storage_backend
+    except Exception:
+        pass
+    try:
         from backend.app.main import storage_backend
         return storage_backend
     except Exception:
         return None
+
+
+_LOCAL_INCIDENTS_CACHE: List[Dict[str, Any]] = []
 
 
 def _load_incidents(storage: Optional[Any] = None) -> List[Dict[str, Any]]:
@@ -74,10 +83,13 @@ def _load_incidents(storage: Optional[Any] = None) -> List[Dict[str, Any]]:
         except Exception as exc:
             logger.critical(f"Failed to load incidents from storage backend: {exc}")
             raise
-    return []
+    global _LOCAL_INCIDENTS_CACHE
+    return list(_LOCAL_INCIDENTS_CACHE)
 
 
 def _save_incidents(records: List[Dict[str, Any]], storage: Optional[Any] = None) -> None:
+    global _LOCAL_INCIDENTS_CACHE
+    _LOCAL_INCIDENTS_CACHE = list(records)
     st = storage or _get_storage()
     if st and hasattr(st, "save_incident"):
         try:
@@ -227,6 +239,27 @@ def resolve_incident(
     return target
 
 
+def _find_session(session_id: str, storage: Optional[Any] = None) -> Optional[Dict[str, Any]]:
+    st = storage or _get_storage()
+    if st is not None and hasattr(st, "load_session"):
+        return st.load_session(str(session_id))
+    sessions, _ = _load_sessions_list(storage)
+    for s in sessions:
+        if str(s.get("id")) == str(session_id):
+            return s
+    return None
+
+
+def get_session_owner_wallet(session_id: str, storage: Optional[Any] = None) -> Optional[str]:
+    """Return the owner wallet bound to a session, raising ValueError if the session is unknown."""
+    s = _find_session(session_id, storage)
+    if s is None:
+        raise ValueError(f"Session {session_id} not found in storage.")
+    runtime_state = s.get("runtime_state") if isinstance(s.get("runtime_state"), dict) else {}
+    owner = str(runtime_state.get("owner_wallet") or s.get("owner_wallet") or "").strip()
+    return owner or None
+
+
 def execute_session_control(
     *,
     session_id: str,
@@ -241,19 +274,27 @@ def execute_session_control(
     - resume: paused -> running
     - kill: running/paused -> stopped
     """
-    sessions, path = _load_sessions_list(storage)
+    st = storage or _get_storage()
+    row_level = st is not None and hasattr(st, "load_session") and hasattr(st, "transition_session_status")
+    sessions: List[Dict[str, Any]] = []
+    path: Optional[Path] = None
     target_session = None
     target_idx = -1
-    for i, s in enumerate(sessions):
-        if str(s.get("id")) == str(session_id):
-            target_session = s
-            target_idx = i
-            break
+    if row_level:
+        target_session = st.load_session(str(session_id))
+    else:
+        sessions, path = _load_sessions_list(storage)
+        for i, s in enumerate(sessions):
+            if str(s.get("id")) == str(session_id):
+                target_session = s
+                target_idx = i
+                break
 
     if not target_session:
         raise ValueError(f"Session {session_id} not found in storage.")
 
-    curr_status = str(target_session.get("status") or "running").lower()
+    raw_status = str(target_session.get("status") or "running")
+    curr_status = raw_status.lower()
 
     if action == "pause":
         if curr_status == "paused":
@@ -287,8 +328,20 @@ def execute_session_control(
     target_session["runtime_state"] = runtime_state
 
     # Save to storage
-    sessions[target_idx] = target_session
-    _save_sessions_list(sessions, path, storage)
+    if row_level:
+        applied = st.transition_session_status(
+            str(session_id),
+            expected_status=raw_status,
+            next_status=next_status,
+            runtime_state=runtime_state,
+        )
+        if not applied:
+            raise ValueError(
+                f"Session {session_id} changed state concurrently; reload and retry the '{action}' action."
+            )
+    else:
+        sessions[target_idx] = target_session
+        _save_sessions_list(sessions, path, storage)
 
     # Record Euthyna audit action
     actor_addr = admin_wallet or "0x0000000000000000000000000000000000000000"

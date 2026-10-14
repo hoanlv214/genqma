@@ -632,21 +632,7 @@ def save_incident(storage_backend, incident: dict) -> None:
         logger.warning(f"Could not save incident: {exc}")
 
 
-def load_earn_vault_positions(storage_backend) -> dict:
-    try:
-        if hasattr(storage_backend, "load_earn_vault_positions"):
-            return storage_backend.load_earn_vault_positions()
-    except Exception as exc:
-        logger.warning(f"Could not load earn vault positions: {exc}")
-    return {}
 
-
-def save_earn_vault_positions(storage_backend, positions: dict) -> None:
-    try:
-        if hasattr(storage_backend, "save_earn_vault_positions"):
-            storage_backend.save_earn_vault_positions(positions)
-    except Exception as exc:
-        logger.warning(f"Could not save earn vault positions: {exc}")
 
 
 

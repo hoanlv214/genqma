@@ -4,6 +4,7 @@ import type { QmaRoute } from "../../app/routes";
 import { shortAddress } from "../../services/wallet";
 import { formatDateTime } from "../../utils/format";
 import { apiUrl } from "../../services/api";
+import { requireWalletProfileHeaders } from "../../services/walletProfileSession";
 import { cn } from "../../utils/cn";
 import "./GlobalHeader.css";
 
@@ -222,13 +223,16 @@ export function NotificationDropdown({
     setControllingId(incidentId);
 
     try {
+      if (!walletAddress) {
+        throw new Error("Connect the session owner's wallet to control this session.");
+      }
+      const authHeaders = await requireWalletProfileHeaders(walletAddress);
       const res = await fetch(apiUrl(`/api/v1/agent/sessions/${encodeURIComponent(sessionId)}/control`), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           action,
           reason: `Operator executed '${action}' via notification alert`,
-          admin_wallet: walletAddress || undefined,
         }),
       });
 

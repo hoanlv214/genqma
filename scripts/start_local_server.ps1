@@ -1,9 +1,9 @@
-# GenQMA Local Server Launcher with Cloudflare Tunnel
-$Host.UI.RawUI.WindowTitle = "GenQMA Local Server + Cloudflare Tunnel"
+# QMA Local Server Launcher with Cloudflare Tunnel
+$Host.UI.RawUI.WindowTitle = "QMA Local Server + Cloudflare Tunnel"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 
 Write-Host "======================================================================" -ForegroundColor Cyan
-Write-Host "         GenQMA - Local Server with Cloudflare Tunnel (24/7)          " -ForegroundColor Cyan
+Write-Host "         QMA - Local Server with Cloudflare Tunnel (24/7)          " -ForegroundColor Cyan
 Write-Host "======================================================================" -ForegroundColor Cyan
 Write-Host ""
 

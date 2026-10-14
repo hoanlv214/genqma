@@ -302,11 +302,23 @@ def test_record_hold_flag(monkeypatch):
     assert d_hold_false["audit_record_id"] is None
     assert len(euthyna_audit_engine._records) == initial_count  # NO new record produced!
 
-    # Calling with record_hold=True (default behavior)
+    # Simulation (not admin-authorized) never records, even with record_hold=True
+    d_sim = service.evaluate_cfo_decision(
+        current_liquid_usdc=11.0,
+        current_usyc_assets=50.0,
+        upcoming_bills_usdc=5.0,
+        record_hold=True,
+    )
+    assert d_sim["decision"] == "HOLD_AND_EARN"
+    assert d_sim["audit_record_id"] is None
+    assert len(euthyna_audit_engine._records) == initial_count
+
+    # Authorized run with record_hold=True records the HOLD tick
     d_hold_true = service.evaluate_cfo_decision(
         current_liquid_usdc=11.0,
         current_usyc_assets=50.0,
         upcoming_bills_usdc=5.0,
+        execute_if_authorized=True,
         record_hold=True,
     )
     assert d_hold_true["decision"] == "HOLD_AND_EARN"
@@ -359,3 +371,86 @@ def test_parse_and_clamp_cfo_proposal_direct():
     assert parse_and_clamp_cfo_proposal('not json', policy) is None
     assert parse_and_clamp_cfo_proposal('', policy) is None
     assert parse_and_clamp_cfo_proposal(None, policy) is None
+
+
+def test_llm_proposal_solvency_and_liquidity_invariants(monkeypatch):
+    """Verify that solvency and liquidity invariants strictly override LLM proposals (SEC-CRIT-02)."""
+    monkeypatch.setenv("QMA_CFO_LLM_ENABLED", "1")
+    monkeypatch.setenv("QMA_CFO_LLM_API_KEY", "test-cfo-key")
+    monkeypatch.setattr(usyc_treasury, "get_creator_claims_store", lambda: [])
+    monkeypatch.setattr(usyc_treasury, "get_creator_claims_db", lambda: [])
+
+    service = USYCTreasuryService()
+    service.set_policy(CorporateTreasuryPolicy(
+        min_operating_reserve_usdc=10.0,
+        target_safety_buffer_ratio=1.5,
+        min_sweep_threshold_usdc=2.0,
+        max_sweep_per_epoch_usdc=50.0,
+        max_jit_redeem_per_epoch_usdc=50.0,
+        rebalance_cooldown_seconds=0,
+    ))
+
+    # Case 1: Insolvent treasury (total_assets 8.0 < bills 10.0)
+    # LLM hallucinates and proposes SWEEP_IDLE 5.0
+    mock_resp_sweep = MagicMock()
+    mock_resp_sweep.status_code = 200
+    mock_resp_sweep.json.return_value = {
+        "choices": [{"message": {"content": json.dumps({
+            "action": "SWEEP_IDLE",
+            "amount_usdc": 5.0,
+            "reasoning": "Hallucinated sweep during insolvency",
+        })}}]
+    }
+    monkeypatch.setattr(requests, "post", lambda *args, **kwargs: mock_resp_sweep)
+
+    res_insolvent = service.evaluate_cfo_decision(
+        current_liquid_usdc=4.0,
+        current_usyc_assets=4.0,
+        upcoming_bills_usdc=10.0,
+    )
+    # Solvency invariant must override model proposal and force INSOLVENCY_ALERT
+    assert res_insolvent["decision"] == "INSOLVENCY_ALERT"
+    assert res_insolvent["amount_usdc"] == 0.0
+    assert "Solvency breach detected" in res_insolvent["rationale"]
+
+    # Case 2: Operating deficit (liquid 5.0 < bills 10.0, but total_assets 25.0 > bills 10.0)
+    # LLM hallucinates SWEEP_IDLE 4.0
+    res_deficit = service.evaluate_cfo_decision(
+        current_liquid_usdc=5.0,
+        current_usyc_assets=20.0,
+        upcoming_bills_usdc=10.0,
+    )
+    # Operating deficit invariant must reject SWEEP_IDLE and force JIT_REDEEM of deficit
+    assert res_deficit["decision"] == "JIT_REDEEM"
+    assert res_deficit["amount_usdc"] == 5.0  # bills (10) - liquid (5) = 5.0
+
+    # Case 3: Available surplus is 5.0 (liquid 20.0, reserve 15.0), LLM proposes SWEEP_IDLE 40.0
+    # Proposed sweep must be clamped strictly to available surplus (5.0), not policy max (50.0)
+    mock_resp_large_sweep = MagicMock()
+    mock_resp_large_sweep.status_code = 200
+    mock_resp_large_sweep.json.return_value = {
+        "choices": [{"message": {"content": json.dumps({
+            "action": "SWEEP_IDLE",
+            "amount_usdc": 40.0,
+            "reasoning": "Sweep beyond surplus",
+        })}}]
+    }
+    monkeypatch.setattr(requests, "post", lambda *args, **kwargs: mock_resp_large_sweep)
+
+    res_clamped_surplus = service.evaluate_cfo_decision(
+        current_liquid_usdc=20.0,
+        current_usyc_assets=10.0,
+        upcoming_bills_usdc=10.0,  # reserve = max(10, 10 * 1.5) = 15.0. Surplus = 20 - 15 = 5.0
+    )
+    assert res_clamped_surplus["decision"] == "SWEEP_IDLE"
+    assert res_clamped_surplus["amount_usdc"] == 5.0  # Clamped to surplus, preserving required reserve!
+
+    # Case 4: Surplus is below min_sweep_threshold (liquid 16.0, reserve 15.0 -> surplus 1.0 < threshold 2.0)
+    # LLM proposes SWEEP_IDLE 1.0 -> must convert to HOLD_AND_EARN to protect operating reserve
+    res_sub_threshold = service.evaluate_cfo_decision(
+        current_liquid_usdc=16.0,
+        current_usyc_assets=10.0,
+        upcoming_bills_usdc=10.0,
+    )
+    assert res_sub_threshold["decision"] == "HOLD_AND_EARN"
+    assert res_sub_threshold["amount_usdc"] == 0.0

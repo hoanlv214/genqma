@@ -6,7 +6,7 @@ services:
     region: singapore
     branch: main
     buildCommand: pip install -r requirements.txt && (cd frontend && npm install --omit=dev)
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1
     envVars:
       - key: QMA_HISTORICAL_DB_PATH
         value: data/sample_funding_historical_analysis.csv
@@ -55,7 +55,7 @@ services:
       - key: QMA_MCP_API_BASE_URL
         value: https://qma-api.onrender.com
       - key: QMA_MCP_CONNECT_BASE_URL
-        value: https://genqma.vercel.app
+        value: https://qma.vercel.app
       - key: QMA_SETTLEMENT_RAIL
         value: circle_gateway_x402
       - key: QMA_DEFAULT_SETTLEMENT_MODE

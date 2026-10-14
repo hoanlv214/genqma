@@ -65,7 +65,7 @@ flowchart TD
 
 ### 3.1. Single-Payment Verification & Anti-Double-Spend (`settlement_validation.py`)
 
-New GenQMA invoices require one Arc Testnet USDC payment to the invoice's treasury
+New QMA invoices require one Arc Testnet USDC payment to the invoice's treasury
 address. During `POST /api/v1/payment/verify`, the backend validates the exact
 recipient, atomic amount, accepted gateway status, sidecar receipt, payer consistency,
 and authoritative Circle settlement data before the report enters GenLayer

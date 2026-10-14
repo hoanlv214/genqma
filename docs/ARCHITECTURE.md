@@ -9,7 +9,7 @@
 
 ## 1. Executive Overview & Architectural North Star
 
-**QMA** (or **GenQMA**) is an autonomous quantitative intelligence and treasury management platform operating natively on the **Arc blockchain** (Chain ID `5042002` / `5042`) with USDC native gas settlement, augmented by decentralized intelligent contract consensus on **GenLayer** (Chain ID `61997`).
+**QMA** (or **QMA**) is an autonomous quantitative intelligence and treasury management platform operating natively on the **Arc blockchain** (Chain ID `5042002` / `5042`) with USDC native gas settlement, augmented by decentralized intelligent contract consensus on **GenLayer** (Chain ID `61997`).
 
 The platform provides a dual-interface architecture:
 1. **Autonomous Machine-to-Machine Commerce**: AI agents running the canonical CLI (`@hoanlv214/qma-cli` / `$ qma agent run`) autonomously evaluate, acquire, and settle intelligence assets using programmable Circle agent wallets via HTTP 402 / x402 protocols.
@@ -22,7 +22,6 @@ The platform provides a dual-interface architecture:
 ### 2.1 The Baseline State & Architectural Evolution
 
 Prior to the Controlled Refactoring & Codebase Intelligence Protocol (CRCIP), the codebase exhibited classic monolithic growth patterns:
-- **God-File Monolith (`main_ref.py`)**: A legacy 2,600+ line God-File contained competing implementations of routes, storage access, payment flows, and data scrapers. It is permanently retained as an unimported, read-only reference snapshot for regression testing.
 - **Render Compatibility Shim (`main.py`)**: The repository root maintains `main.py` as a backward-compatible shim importing the FastAPI `app` from `backend.app.main:app`. This preserves Render deployment compatibility (`render.yaml`) without mutating external cloud start commands (**DEBT-01**).
 - **Storage Dual-Write Evolution**: The platform historically operated on JSON flat-file storage (`paid_reports.json`, `payment_ledger.json`, `agent_sessions.json`). CRCIP successfully established `backend/app/repositories/storage.py` and Supabase PostgreSQL persistence as the primary storage layer, retaining the root `storage.py` wrapper for backward compatibility (**DEBT-02**).
 
@@ -48,7 +47,7 @@ During CRCIP execution, the following major code duplications and architectural 
 ### 3.1 Monorepo Top-Level Topology
 
 ```text
-genqma/
+qma/
 ├── backend/app/                 # Authoritative Python/FastAPI Backend Service
 │   ├── api/v1/endpoints/        # Public API Endpoints (APIRouter modules: agent, payments, reports, etc.)
 │   ├── core/                    # System Configuration, Security Schemes, Constants, Registry
@@ -183,9 +182,9 @@ The platform registers 3 primary quantitative intelligence plugins in `backend/a
 
 | Provider ID | Plugin Class & Source | Data Sourcing Protocol | Primary Signal & Output Payload | Execution Mode |
 |---|---|---|---|---|
-| **`funding_memory`** | `FundingProviderV2`<br>([`funding_provider.py`](file:///c:/Users/Admin/Downloads/code/genqma/backend/app/services/plugins/funding_provider.py)) | MEXC Contract API (`/contract/funding_rate`) + historical analog clusters | Disparity between perp funding and spot trends; liquidation squeeze risk; historical win-rate analogs. | **Continuous Live Scanning** (`scan_live_anomalies` feeds the real-time sidebar & ticker). |
-| **`polymarket_divergence`** | `PolymarketDivergenceProviderV2`<br>([`polymarket_provider.py`](file:///c:/Users/Admin/Downloads/code/genqma/backend/app/services/plugins/polymarket_provider.py)) | Polymarket Gamma API (`gamma-api.polymarket.com/events`) + MEXC Funding Rate | Event probability vs perpetual futures implied odds; **Basis Arbitrage** signals; Kelly capital sizing; **Circle CCTP** route parameters (Polygon $\leftrightarrow$ Arc). | **On-Demand Intelligence Oracle** (Triggered via `POST /full-report` or `/preview`). |
-| **`pyth_stress_band`** | `PythStressBandProviderV2`<br>([`pyth_provider.py`](file:///c:/Users/Admin/Downloads/code/genqma/backend/app/services/plugins/pyth_provider.py)) | Pyth Network Hermes Protocol (`hermes.pyth.network/v2/updates/price/latest`) | Sub-second confidence interval spread ($\pm \sigma$); tail-risk regime classification (`CALM` $\rightarrow$ `CRITICAL_VOLATILITY`); cryptographic **EIP-712 Execution Intent** for automated DEX hedging on Arc. | **On-Demand Intelligence Oracle** (Triggered via `POST /full-report` or `/preview`). |
+| **`funding_memory`** | `FundingProviderV2`<br>([`funding_provider.py`](file:///c:/Users/Admin/Downloads/code/qma/backend/app/services/plugins/funding_provider.py)) | MEXC Contract API (`/contract/funding_rate`) + historical analog clusters | Disparity between perp funding and spot trends; liquidation squeeze risk; historical win-rate analogs. | **Continuous Live Scanning** (`scan_live_anomalies` feeds the real-time sidebar & ticker). |
+| **`polymarket_divergence`** | `PolymarketDivergenceProviderV2`<br>([`polymarket_provider.py`](file:///c:/Users/Admin/Downloads/code/qma/backend/app/services/plugins/polymarket_provider.py)) | Polymarket Gamma API (`gamma-api.polymarket.com/events`) + MEXC Funding Rate | Event probability vs perpetual futures implied odds; **Basis Arbitrage** signals; Kelly capital sizing; **Circle CCTP** route parameters (Polygon $\leftrightarrow$ Arc). | **On-Demand Intelligence Oracle** (Triggered via `POST /full-report` or `/preview`). |
+| **`pyth_stress_band`** | `PythStressBandProviderV2`<br>([`pyth_provider.py`](file:///c:/Users/Admin/Downloads/code/qma/backend/app/services/plugins/pyth_provider.py)) | Pyth Network Hermes Protocol (`hermes.pyth.network/v2/updates/price/latest`) | Sub-second confidence interval spread ($\pm \sigma$); tail-risk regime classification (`CALM` $\rightarrow$ `CRITICAL_VOLATILITY`); cryptographic **EIP-712 Execution Intent** for automated DEX hedging on Arc. | **On-Demand Intelligence Oracle** (Triggered via `POST /full-report` or `/preview`). |
 
 > [!NOTE]
 > **Why Polymarket & Pyth are not on the Live Ticker:**
@@ -245,7 +244,7 @@ sequenceDiagram
 
 ### 4.2 FL-02: 4-Tier Decision Engine Cascade (Fast Parser $\rightarrow$ Laya $\rightarrow$ Cloud LLM $\rightarrow$ Greedy)
 
-Implemented in [`backend/app/services/agent_decision.py`](file:///c:/Users/Admin/Downloads/code/genqma/backend/app/services/agent_decision.py), the `make_agent_decision(...)` pipeline routes agent prompts with extreme latency and cost efficiency:
+Implemented in [`backend/app/services/agent_decision.py`](file:///c:/Users/Admin/Downloads/code/qma/backend/app/services/agent_decision.py), the `make_agent_decision(...)` pipeline routes agent prompts with extreme latency and cost efficiency:
 
 ```mermaid
 sequenceDiagram

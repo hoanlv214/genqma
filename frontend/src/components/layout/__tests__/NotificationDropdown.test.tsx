@@ -1,7 +1,12 @@
 import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test";
 import React from "react";
 import { render, act, cleanup, fireEvent, screen } from "@testing-library/react";
-import { NotificationDropdown } from "../NotificationDropdown";
+
+mock.module("../../../services/walletProfileSession", () => ({
+  requireWalletProfileHeaders: async () => ({ "X-QMA-Wallet-Token": "owner-wallet-token" }),
+}));
+
+const { NotificationDropdown } = await import("../NotificationDropdown");
 
 describe("NotificationDropdown Incident Governance Suite", () => {
   const origFetch = globalThis.fetch;
@@ -14,6 +19,7 @@ describe("NotificationDropdown Incident Governance Suite", () => {
   it("renders P1 incident alert and dispatches emergency control actions", async () => {
     const mockSessionId = "66666666-6666-6666-6666-666666666666";
     let dispatchedControl: any = null;
+    let dispatchedHeaders: Record<string, string> = {};
 
     globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
       const urlStr = url.toString();
@@ -37,6 +43,7 @@ describe("NotificationDropdown Incident Governance Suite", () => {
       }
       if (urlStr.includes(`/api/v1/agent/sessions/${mockSessionId}/control`)) {
         dispatchedControl = JSON.parse((init?.body as string) || "{}");
+        dispatchedHeaders = (init?.headers as Record<string, string>) || {};
         return {
           ok: true,
           json: async () => ({
@@ -83,5 +90,7 @@ describe("NotificationDropdown Incident Governance Suite", () => {
 
     expect(dispatchedControl).not.toBeNull();
     expect(dispatchedControl.action).toBe("kill");
+    expect(dispatchedControl.admin_wallet).toBeUndefined();
+    expect(dispatchedHeaders["X-QMA-Wallet-Token"]).toBe("owner-wallet-token");
   });
 });

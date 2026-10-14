@@ -1,6 +1,6 @@
 # Circle Agent Services Marketplace Listing Package
 
-This document is the official submission and verification package for registering **GenQMA** on the [Circle Agent Services Marketplace](https://agents.circle.com/services) via the intake submission form ("Talk to us").
+This document is the official submission and verification package for registering **QMA** on the [Circle Agent Services Marketplace](https://agents.circle.com/services) via the intake submission form ("Talk to us").
 
 ---
 
@@ -10,15 +10,15 @@ This document is the official submission and verification package for registerin
 |---|---|
 | **Service Name** | QMA - Quantitative Market Anomaly & Intelligence |
 | **Service ID** | `qma-market-intelligence` |
-| **Provider Name** | GenQMA Labs |
+| **Provider Name** | QMA Labs |
 | **Category** | `crypto market data / quantitative intelligence` |
 | **Payment Rail** | Circle Gateway Nanopayments (`x402`, scheme: `exact`) |
 | **Settlement Currency** | `USDC` (Native Gas on Arc) |
 | **Public API Base URL** | `https://qma-api.onrender.com` |
-| **Application UI** | `https://genqma.vercel.app` |
-| **API Documentation** | `https://genqma.vercel.app/docs` (Interactive Scalar OpenAPI) |
+| **Application UI** | `https://qma.vercel.app` |
+| **API Documentation** | `https://qma.vercel.app/docs` (Interactive Scalar OpenAPI) |
 | **Health Check URL** | `https://qma-api.onrender.com/healthz` |
-| **Support / Contact** | `https://genqma.vercel.app/docs` |
+| **Support / Contact** | `https://qma.vercel.app/docs` |
 | **Intake URL** | [https://agents.circle.com/services](https://agents.circle.com/services) |
 
 ---
@@ -29,7 +29,7 @@ This document is the official submission and verification package for registerin
 > Real-time quantitative market intelligence, cross-exchange funding rate arbitrage signals, and prediction market divergence with sub-second Circle USDC micropayments on Arc and on-chain GenLayer SLA settlement verification.
 
 **Detailed Description:**
-GenQMA enables autonomous trading agents, algorithmic treasuries, and risk engines to query institutional-grade quantitative intelligence on demand. By leveraging Circle Gateway Nanopayments (x402), external agents can purchase single-query intelligence reports ($0.002 - $0.005 USDC) with sub-second finality without managing API keys, subscriptions, or credit card accounts.
+QMA enables autonomous trading agents, algorithmic treasuries, and risk engines to query institutional-grade quantitative intelligence on demand. By leveraging Circle Gateway Nanopayments (x402), external agents can purchase single-query intelligence reports ($0.002 - $0.005 USDC) with sub-second finality without managing API keys, subscriptions, or credit card accounts.
 
 Every delivered signal report is anchored to on-chain SLA verification contracts on Arc (Circle's USDC-as-gas blockchain) and verified via GenLayer Intelligent Contract consensus.
 
@@ -37,7 +37,7 @@ Every delivered signal report is anchored to on-chain SLA verification contracts
 
 ## 3. Discovery Descriptors
 
-GenQMA exposes machine-readable descriptors for automated agent crawling:
+QMA exposes machine-readable descriptors for automated agent crawling:
 
 - **Circle Marketplace Service Card:**  
   `GET /.well-known/circle-service.json` & `GET /api/v1/marketplace/service-card`  
@@ -77,7 +77,7 @@ GenQMA exposes machine-readable descriptors for automated agent crawling:
 
 ## 5. Example Agent Prompts (Circle CLI & LLMs)
 
-When external agents search the Circle Marketplace, the following prompts automatically match GenQMA:
+When external agents search the Circle Marketplace, the following prompts automatically match QMA:
 
 1. *"Find funding rate arbitrage opportunities and market anomalies for BTC and ETH."*
 2. *"Inspect quantitative analogs and historical win-rate diagnostics for MBOX."*

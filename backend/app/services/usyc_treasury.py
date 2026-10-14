@@ -190,6 +190,12 @@ def _rpc_eth_call(to_address: str, data: str) -> Optional[str]:
 
 def _get_storage():
     try:
+        from backend.app.core import state
+        if getattr(state, "storage_backend", None) is not None:
+            return state.storage_backend
+    except Exception:
+        pass
+    try:
         from backend.app.main import storage_backend
         return storage_backend
     except Exception:
@@ -207,7 +213,10 @@ def get_creator_claims_store() -> list:
     st = _get_storage()
     if st and hasattr(st, "load_creator_claims"):
         try:
-            return st.load_creator_claims()
+            loader = getattr(st, "load_creator_claims")
+            if callable(loader):
+                res = loader()
+                return list(res) if isinstance(res, list) else []
         except Exception:
             pass
     return []
@@ -356,7 +365,7 @@ def _request_cfo_llm_proposal(
         "Content-Type": "application/json",
     }
     prompt_msg = (
-        "You are an autonomous corporate CFO treasury agent for GenQMA. "
+        "You are an autonomous corporate CFO treasury agent for QMA. "
         "Analyze the provided treasury metrics and propose an action. "
         "You must respond with STRICT JSON ONLY matching this schema:\n"
         '{"action": "SWEEP_IDLE" | "JIT_REDEEM" | "HOLD_AND_EARN" | "INSOLVENCY_ALERT", '
@@ -423,9 +432,9 @@ class USYCTreasuryService:
         except Exception:
             return False
 
-    def get_policy(self) -> CorporateTreasuryPolicy:
+    def get_policy(self, reload: bool = False) -> CorporateTreasuryPolicy:
         """Retrieve active Corporate Treasury Policy, loading from database or disk."""
-        if self._policy is not None:
+        if not reload and self._policy is not None:
             return self._policy
         if not self._is_custom_policy_file():
             st = _get_storage()
@@ -453,30 +462,53 @@ class USYCTreasuryService:
         self._policy = CorporateTreasuryPolicy()
         return self._policy
 
-    def set_policy(self, new_policy: CorporateTreasuryPolicy) -> CorporateTreasuryPolicy:
+    def set_policy(
+        self,
+        new_policy: CorporateTreasuryPolicy,
+        acknowledge_active_incidents: bool = False,
+    ) -> CorporateTreasuryPolicy:
         """Update and persist Corporate Treasury Policy."""
+        # Synchronize disk flag file if halt state changed BEFORE updating in-memory or persisted state
+        if not getattr(self, "_syncing_halt", False):
+            self._syncing_halt = True
+            try:
+                from backend.app.core.config import set_emergency_halt, emergency_halt_flag_active
+                flag_exists = emergency_halt_flag_active()
+                if new_policy.treasury_halted and not flag_exists:
+                    set_emergency_halt(True, reason="Policy updated: treasury_halted=True", operator="admin", acknowledge_active_incidents=True)
+                elif not new_policy.treasury_halted and flag_exists:
+                    set_emergency_halt(
+                        False,
+                        reason="Policy updated: treasury_halted=False",
+                        operator="admin",
+                        acknowledge_active_incidents=acknowledge_active_incidents,
+                    )
+            except Exception as exc:
+                logger.error(f"Could not sync emergency halt flag from set_policy: {exc}")
+                raise
+            finally:
+                self._syncing_halt = False
+
         self._policy = new_policy
         self.target_apy = new_policy.target_apy_baseline
         if not self._is_custom_policy_file():
             st = _get_storage()
             if st is not None and hasattr(st, "save_treasury_policy"):
-                # Never mirror the policy to a local file while a storage
-                # backend is configured: the database is the single source.
                 try:
                     st.save_treasury_policy(new_policy.model_dump())
                 except Exception as exc:
                     logger.error(f"Could not persist policy to storage backend: {exc}")
-                logger.info(f"[CFO AGENT POLICY] Updated corporate treasury policy: {new_policy}")
-                return self._policy
-        if self._policy_file:
+        elif self._policy_file:
             try:
                 self._policy_file.parent.mkdir(parents=True, exist_ok=True)
                 with open(self._policy_file, "w", encoding="utf-8") as f:
                     json.dump(new_policy.model_dump(), f, indent=2)
             except Exception as exc:
                 logger.warning(f"Could not persist policy to {self._policy_file}: {exc}")
+
         logger.info(f"[CFO AGENT POLICY] Updated corporate treasury policy: {new_policy}")
         return self._policy
+
 
     def set_vault_address(self, address: str) -> None:
         """Update deployed vault contract address."""
@@ -578,11 +610,18 @@ class USYCTreasuryService:
         now = time.time()
 
         # 0. Operator emergency halt: checked before any RPC or cooldown logic
-        if policy.treasury_halted:
+        from backend.app.core.config import is_treasury_halted
+        if is_treasury_halted():
+            if getattr(policy, "treasury_halted", False):
+                raise ValueError(
+                    f"Treasury halted by operator policy: {action} refused. "
+                    "Resume via POST /api/v1/treasury/policy with treasury_halted=false."
+                )
             raise ValueError(
-                f"Treasury halted by operator policy: {action} refused. "
-                "Resume via POST /api/v1/treasury/policy with treasury_halted=false."
+                f"Treasury halted by emergency stop: {action} refused. "
+                "Resume via POST /api/v1/treasury/policy with treasury_halted=false or clear QMA_TREASURY_HALTED."
             )
+
 
         # 1. Cooldown guard
         if not bypass_cooldown and self._last_rebalance_at > 0.0 and (now - self._last_rebalance_at) < policy.rebalance_cooldown_seconds:
@@ -989,6 +1028,9 @@ class USYCTreasuryService:
         
         Evaluates liquidity runways, policy constraints, and yield optimization
         to produce an intentional financial decision rather than simple heuristics.
+
+        Only admin-authorized runs (execute_if_authorized=True) are recorded in
+        the Euthyna trail; simulations have no financial effect and are not logged.
         """
         target_account = normalize_address(
             account or PLATFORM_TREASURY_ADDRESS or PAYMENT_WALLET_ADDRESS
@@ -1070,49 +1112,87 @@ class USYCTreasuryService:
         tx_hash = None
         audit_record_id = None
 
-        if model_proposal is not None:
+        # Solvency & Liquidity Invariants (Enforced over both model and heuristic tiers)
+        if total_assets < bills:
+            decision = CFODecisionAction.INSOLVENCY_ALERT.value
+            amount_usdc = 0.0
+            action_recommended = "ALERT: Insolvent treasury, top-up required"
+            rationale = (
+                f"Solvency breach detected: Total treasury reserves ({total_assets:.4f} USDC) are insufficient "
+                f"to satisfy projected obligations ({bills:.4f} USDC). Immediate capital replenishment required."
+            )
+            execution_status = "ALERT_EMITTED"
+            if model_proposal is not None and model_proposal.get("action") == CFODecisionAction.INSOLVENCY_ALERT.value:
+                decision_source = DecisionSource.MODEL.value
+                if model_proposal.get("reasoning"):
+                    rationale = model_proposal["reasoning"]
+            else:
+                decision_source = DecisionSource.HEURISTIC.value
+        elif liquid < bills:
+            net_needed = bills - liquid
+            decision = CFODecisionAction.JIT_REDEEM.value
+            decision_source = (
+                DecisionSource.MODEL.value
+                if (model_proposal and model_proposal.get("action") == CFODecisionAction.JIT_REDEEM.value)
+                else DecisionSource.HEURISTIC.value
+            )
+            proposed_jit = (
+                model_proposal.get("amount_usdc", 0.0)
+                if (model_proposal and model_proposal.get("action") == CFODecisionAction.JIT_REDEEM.value)
+                else net_needed
+            )
+            amount_usdc = round(min(proposed_jit or net_needed, policy.max_jit_redeem_per_epoch_usdc), 4)
+            action_recommended = f"REDEEM_JIT: Redeem {amount_usdc:.4f} USDC from {yield_rail}"
+            rationale = (
+                model_proposal.get("reasoning")
+                if (model_proposal and model_proposal.get("action") == CFODecisionAction.JIT_REDEEM.value and model_proposal.get("reasoning"))
+                else (
+                    f"Operating liquidity ({liquid:.4f} USDC) is below immediate obligations ({bills:.4f} USDC). "
+                    f"Autonomous CFO initiates Just-In-Time redemption of {amount_usdc:.4f} USDC from {yield_rail} to satisfy liabilities "
+                    f"without liquidating excess yield-bearing principal."
+                )
+            )
+            execution_status = "PREPARED"
+        elif model_proposal is not None:
             decision = model_proposal["action"]
-            amount_usdc = model_proposal["amount_usdc"]
-            rationale = model_proposal["reasoning"]
             decision_source = DecisionSource.MODEL.value
-            if decision == CFODecisionAction.INSOLVENCY_ALERT.value:
+            rationale = model_proposal["reasoning"]
+            if decision == CFODecisionAction.SWEEP_IDLE.value:
+                surplus = max(0.0, liquid - required_reserve)
+                if surplus < policy.min_sweep_threshold_usdc:
+                    decision = CFODecisionAction.HOLD_AND_EARN.value
+                    amount_usdc = 0.0
+                    action_recommended = "HOLD_AND_EARN"
+                    execution_status = "NO_ACTION_REQUIRED"
+                    rationale = f"Surplus liquidity ({surplus:.4f} USDC) is below sweep threshold ({policy.min_sweep_threshold_usdc:.4f} USDC); preserving operating reserve buffer."
+                else:
+                    proposed_amt = model_proposal["amount_usdc"]
+                    clamped_sweep = round(min(proposed_amt if proposed_amt > 0 else surplus, surplus, policy.max_sweep_per_epoch_usdc), 4)
+                    if clamped_sweep < policy.min_sweep_threshold_usdc:
+                        clamped_sweep = round(min(surplus, policy.max_sweep_per_epoch_usdc), 4)
+                    amount_usdc = clamped_sweep
+                    action_recommended = f"SWEEP_IDLE: Deposit {amount_usdc:.4f} USDC into {yield_rail} for {round(self.target_apy * 100, 1)}% APY"
+                    execution_status = "PREPARED"
+            elif decision == CFODecisionAction.JIT_REDEEM.value:
+                if usyc_assets <= 0:
+                    decision = CFODecisionAction.HOLD_AND_EARN.value
+                    amount_usdc = 0.0
+                    action_recommended = "HOLD_AND_EARN"
+                    execution_status = "NO_ACTION_REQUIRED"
+                else:
+                    amount_usdc = round(min(model_proposal["amount_usdc"], policy.max_jit_redeem_per_epoch_usdc, usyc_assets), 4)
+                    action_recommended = f"REDEEM_JIT: Redeem {amount_usdc:.4f} USDC from {yield_rail}"
+                    execution_status = "PREPARED"
+            elif decision == CFODecisionAction.INSOLVENCY_ALERT.value:
                 action_recommended = "ALERT: Insolvent treasury, top-up required"
                 execution_status = "ALERT_EMITTED"
-            elif decision == CFODecisionAction.SWEEP_IDLE.value:
-                action_recommended = f"SWEEP_IDLE: Deposit {amount_usdc:.4f} USDC into {yield_rail} for {round(self.target_apy * 100, 1)}% APY"
-                execution_status = "PREPARED"
-            elif decision == CFODecisionAction.JIT_REDEEM.value:
-                action_recommended = f"REDEEM_JIT: Redeem {amount_usdc:.4f} USDC from {yield_rail}"
-                execution_status = "PREPARED"
             else:
                 action_recommended = "HOLD_AND_EARN"
                 execution_status = "NO_ACTION_REQUIRED"
         else:
             # Deterministic heuristic ladder
-            # 1. Solvency constraint check
-            if total_assets < bills:
-                decision = CFODecisionAction.INSOLVENCY_ALERT.value
-                amount_usdc = 0.0
-                action_recommended = "ALERT: Insolvent treasury, top-up required"
-                rationale = (
-                    f"Solvency breach detected: Total treasury reserves ({total_assets:.4f} USDC) are insufficient "
-                    f"to satisfy projected obligations ({bills:.4f} USDC). Immediate capital replenishment required."
-                )
-                execution_status = "ALERT_EMITTED"
-            # 2. Immediate operational deficit constraint
-            elif liquid < bills:
-                net_needed = bills - liquid
-                amount_usdc = round(min(net_needed, policy.max_jit_redeem_per_epoch_usdc), 4)
-                decision = CFODecisionAction.JIT_REDEEM.value
-                action_recommended = f"REDEEM_JIT: Redeem {amount_usdc:.4f} USDC from {yield_rail}"
-                rationale = (
-                    f"Operating liquidity ({liquid:.4f} USDC) is below immediate obligations ({bills:.4f} USDC). "
-                    f"Autonomous CFO initiates Just-In-Time redemption of {amount_usdc:.4f} USDC from {yield_rail} to satisfy liabilities "
-                    f"without liquidating excess yield-bearing principal."
-                )
-                execution_status = "PREPARED"
             # 3. Surplus idle cash sweep constraint
-            elif liquid > (required_reserve + policy.min_sweep_threshold_usdc):
+            if liquid > (required_reserve + policy.min_sweep_threshold_usdc):
                 surplus = liquid - required_reserve
                 amount_usdc = round(min(surplus, policy.max_sweep_per_epoch_usdc), 4)
                 decision = CFODecisionAction.SWEEP_IDLE.value
@@ -1132,6 +1212,7 @@ class USYCTreasuryService:
                     f"operating requirements ({required_reserve:.4f} USDC), and {usyc_assets:.4f} USDC actively compounds yield in {yield_rail}."
                 )
                 execution_status = "NO_ACTION_REQUIRED"
+
 
         # 4. Policy Cooldown & Autonomous Execution Dispatch
         now = time.time()
@@ -1178,8 +1259,8 @@ class USYCTreasuryService:
             else:
                 execution_status = "PREPARED_INTENT"
 
-        # 5. Continuous Athenian Euthyna audit trail
-        if record_hold or decision != CFODecisionAction.HOLD_AND_EARN.value:
+        # 5. Continuous Athenian Euthyna audit trail (authorized runs only)
+        if execute_if_authorized and (record_hold or decision != CFODecisionAction.HOLD_AND_EARN.value):
             try:
                 from backend.app.services.euthyna_audit import euthyna_audit_engine
                 source_prefix = "MODEL" if decision_source == DecisionSource.MODEL.value else "HEURISTIC"

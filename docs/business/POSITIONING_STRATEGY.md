@@ -121,8 +121,8 @@ To ensure the engineering team can rebrand the platform instantly upon executive
 1. **Backend Anchor:** `backend/app/core/config.py`
    ```python
    BRAND_NAME = os.getenv("APP_BRAND_NAME", "Financial Intelligence Marketplace")
-   BRAND_CODENAME = "GenQMA"
-   BRAND_TITLE = os.getenv("APP_BRAND_TITLE", "GenQMA Intelligence & Payments API")
+   BRAND_CODENAME = "QMA"
+   BRAND_TITLE = os.getenv("APP_BRAND_TITLE", "QMA Intelligence & Payments API")
    BRAND_TAGLINE = "Two-Sided Marketplace for Financial Intelligence & Agent Commerce"
    INTERNAL_QUANT_ENGINE = "QMA"
    INTERNAL_TREASURY_MODULE = "Vestiarion"
@@ -132,7 +132,7 @@ To ensure the engineering team can rebrand the platform instantly upon executive
    ```typescript
    export const BRAND_CONFIG = {
      brandName: import.meta.env.VITE_APP_BRAND_NAME || "Financial Intelligence Marketplace",
-     codename: "GenQMA",
+     codename: "QMA",
      tagline: "Two-Sided Marketplace for Financial Intelligence & Agent Commerce",
      internalQuantEngine: "QMA",
      internalTreasuryModule: "Vestiarion",

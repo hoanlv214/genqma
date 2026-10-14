@@ -93,21 +93,26 @@ def build_agent_recommendations(deps: SimpleNamespace, limit: int = 8) -> dict:
                 reasons.append("deep drawdown context")
             suggested_tier = "full" if score >= 65 else "preview"
             
-            if hasattr(provider, "score"):
-                # V2 Support
-                score_result = provider.score({"query": query_payload, "tier": suggested_tier})
-                amount_usdc = score_result["amount_usdc"]
-                complexity = score_result.get("complexity_score", 0)
-                manifest = provider.manifest()
-                provider_name = manifest.get("name", provider.provider_id)
-                category = manifest.get("category", "unknown")
-            else:
-                # V1 Support
-                quote = provider.quote_price(query_payload, suggested_tier)
-                amount_usdc = quote["amount_usdc"]
-                complexity = quote["complexity_score"]
-                provider_name = getattr(provider, "provider_name", getattr(provider, "provider_id", "unknown"))
-                category = getattr(provider, "category", "unknown")
+            try:
+                if hasattr(provider, "score"):
+                    # V2 Support
+                    score_result = provider.score({"query": query_payload, "tier": suggested_tier})
+                    amount_usdc = score_result["amount_usdc"]
+                    complexity = score_result.get("complexity_score", 0)
+                    manifest = provider.manifest()
+                    provider_name = manifest.get("name", provider.provider_id)
+                    category = manifest.get("category", "unknown")
+                else:
+                    # V1 Support
+                    quote = provider.quote_price(query_payload, suggested_tier)
+                    amount_usdc = quote["amount_usdc"]
+                    complexity = quote["complexity_score"]
+                    provider_name = getattr(provider, "provider_name", getattr(provider, "provider_id", "unknown"))
+                    category = getattr(provider, "category", "unknown")
+            except Exception as exc:
+                if hasattr(deps, "logger") and deps.logger:
+                    deps.logger.debug("Provider %s failed scoring for recommendation candidate: %s", getattr(provider, "provider_id", "unknown"), exc)
+                continue
 
             # Sale-time SLA provenance: only verifiable signals are offered,
             # and symbols whose epoch attestation is already VALID are marked

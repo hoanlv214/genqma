@@ -22,7 +22,7 @@ set "WALLET_COUNT=%~3"
 if "%WALLET_COUNT%"=="" set "WALLET_COUNT=20"
 
 set "WALLETS_FILE=C:\Users\Admin\Downloads\code\buy\qma\.qma-test-wallets.json"
-set "REPO_DIR=C:\Users\Admin\Downloads\code\genqma"
+set "REPO_DIR=C:\Users\Admin\Downloads\code\qma"
 
 if not exist "%WALLETS_FILE%" (
     echo [ERROR] Wallets file not found: %WALLETS_FILE%

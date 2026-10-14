@@ -1,4 +1,4 @@
-"""Fail-closed GenLayer client for GenQMA report verification.
+"""Fail-closed GenLayer client for QMA report verification.
 
 This service never manufactures orders, transaction hashes, verdicts, or web
 evidence. A successful result must come from finalized contract state.
@@ -17,7 +17,7 @@ import threading
 import time
 from pathlib import Path
 
-logger = logging.getLogger("GenQMA-GenLayer")
+logger = logging.getLogger("QMA-GenLayer")
 
 STUDIO_NEXT_CHAIN_ID = 61997
 STUDIO_NEXT_EXPLORER_URL = "https://explorer-studio-dev.genlayer.com"
@@ -76,8 +76,10 @@ def _save_persisted_sla_cache() -> None:
         _SLA_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
         now = time.time()
         active = {k: v for k, v in _SLA_VERDICT_CACHE.items() if v.get("expires_at", 0) > now}
-        with open(_SLA_CACHE_FILE, "w", encoding="utf-8") as f:
+        tmp_file = _SLA_CACHE_FILE.with_suffix(".tmp")
+        with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(active, f, indent=2)
+        tmp_file.replace(_SLA_CACHE_FILE)
     except Exception as exc:
         logger.warning("Could not persist GenLayer SLA cache: %s", exc)
 

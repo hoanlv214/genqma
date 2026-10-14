@@ -211,10 +211,33 @@ def _save_vault_snapshots(data: Dict[str, List[Dict[str, float]]]) -> None:
 _SNAPSHOT_MAX_AGE_SECONDS = 35 * 86400  # keep ~5 weeks of share-price history
 
 
+def _postgres_mode() -> bool:
+    """True when PostgreSQL is the configured store (local JSON must not be used)."""
+    backend = os.getenv("QMA_STORAGE_BACKEND", "").lower().strip()
+    if backend == "json":
+        return False
+    if backend == "postgres":
+        return True
+    return bool(os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or os.getenv("QMA_DATABASE_URL"))
+
+
+def _snapshot_db() -> Optional[Any]:
+    st = _get_storage()
+    if st is not None and hasattr(st, "record_vault_snapshots") and hasattr(st, "load_vault_snapshots"):
+        return st
+    return None
+
+
 def record_vault_samples(samples: Dict[str, Dict[str, float]]) -> int:
     """Append {vault_id: {ts, share_price_usdc, tvl_usdc}} observations and
     prune samples older than the retention window. Returns samples stored."""
     if not samples:
+        return 0
+    db = _snapshot_db()
+    if db is not None:
+        return int(db.record_vault_snapshots(samples, _SNAPSHOT_MAX_AGE_SECONDS))
+    if _postgres_mode():
+        logger.warning("[EARN KIT] Storage backend unavailable; skipping vault snapshot write (no local JSON in PostgreSQL mode).")
         return 0
     with _METRICS_LOCK:
         store = _load_vault_snapshots()
@@ -234,8 +257,18 @@ def record_vault_samples(samples: Dict[str, Dict[str, float]]) -> int:
 def compute_trailing_apy(vault_id: str, min_window_days: float = 1.0) -> Optional[Dict[str, Any]]:
     """Realized APY from the share-price time series. Requires at least two
     samples spanning min_window_days; APY = (p1/p0) ** (365/days) - 1."""
-    with _METRICS_LOCK:
-        snaps = list(_load_vault_snapshots().get(vault_id) or [])
+    db = _snapshot_db()
+    if db is not None:
+        try:
+            snaps = list(db.load_vault_snapshots(vault_id).get(vault_id) or [])
+        except Exception as exc:
+            logger.debug("Could not load vault snapshots from storage: %s", exc)
+            snaps = []
+    elif _postgres_mode():
+        snaps = []
+    else:
+        with _METRICS_LOCK:
+            snaps = list(_load_vault_snapshots().get(vault_id) or [])
     if len(snaps) < 2:
         return None
     snaps.sort(key=lambda s: float(s["ts"]))
@@ -314,6 +347,12 @@ def start_earn_snapshot_sampler() -> Optional[Any]:
 
 def _get_storage():
     try:
+        from backend.app.core import state
+        if getattr(state, "storage_backend", None) is not None:
+            return state.storage_backend
+    except Exception:
+        pass
+    try:
         from backend.app.main import storage_backend
         return storage_backend
     except Exception:
@@ -331,10 +370,15 @@ def _load_positions(storage: Optional[Any] = None) -> None:
             records = st.load_earn_vault_positions()
             if records and isinstance(records, dict):
                 _EARN_POSITIONS.update(records)
-                return
+            return
         except Exception as exc:
             logger.warning(f"Failed to load earn positions from storage backend: {exc}")
+            if _postgres_mode():
+                return
 
+    if _postgres_mode():
+        # PostgreSQL is the position ledger; never seed from a stale local file.
+        return
     p = _get_storage_path()
     if not p.exists():
         return
@@ -347,6 +391,16 @@ def _load_positions(storage: Optional[Any] = None) -> None:
         logger.warning(f"Could not load earn positions: {exc}")
 
 
+def _refresh_positions_from_db(storage: Optional[Any] = None) -> None:
+    """Re-read positions from PostgreSQL before mutating them, so a stale
+    in-process copy never overwrites another instance's update."""
+    st = storage or _get_storage()
+    if st is not None and getattr(st, "backend_name", None) == "postgres" and hasattr(st, "load_earn_vault_positions"):
+        records = st.load_earn_vault_positions()
+        if isinstance(records, dict):
+            _EARN_POSITIONS.update(records)
+
+
 def _save_positions(storage: Optional[Any] = None) -> None:
     st = storage or _get_storage()
     if st and hasattr(st, "save_earn_vault_positions"):
@@ -355,6 +409,8 @@ def _save_positions(storage: Optional[Any] = None) -> None:
             return
         except Exception as exc:
             logger.warning(f"Failed to save earn positions to storage backend: {exc}")
+            if _postgres_mode():
+                raise
     elif st and hasattr(st, "save_earn_vault_position"):
         try:
             for pos in _EARN_POSITIONS.values():
@@ -363,7 +419,11 @@ def _save_positions(storage: Optional[Any] = None) -> None:
             return
         except Exception as exc:
             logger.warning(f"Failed to save earn position to storage backend: {exc}")
+            if _postgres_mode():
+                raise
 
+    if _postgres_mode():
+        raise RuntimeError("Earn positions cannot be persisted: PostgreSQL storage backend is unavailable.")
     p = _get_storage_path()
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -725,6 +785,10 @@ class EarnKitService:
         storage: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Execute or record a deposit into an Arc Earn Kit vault."""
+        from backend.app.core.config import is_treasury_halted
+        if is_treasury_halted():
+            raise RuntimeError("Treasury is halted (treasury_halted=true) — earn kit operations refused")
+
         try:
             amt_float = float(amount_usdc)
         except (ValueError, TypeError):
@@ -831,6 +895,7 @@ class EarnKitService:
         # Update position state
         pos_key = f"{dep_addr}:{opp['vault_id']}"
         with _EARN_LOCK:
+            _refresh_positions_from_db(storage or getattr(self, "storage", None))
             current = _EARN_POSITIONS.get(
                 pos_key,
                 {
@@ -908,6 +973,10 @@ class EarnKitService:
         storage: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """Execute a JIT redemption or withdrawal from an Arc Earn Kit vault."""
+        from backend.app.core.config import is_treasury_halted
+        if is_treasury_halted():
+            raise RuntimeError("Treasury is halted (treasury_halted=true) — earn kit operations refused")
+
         try:
             amt_float = float(amount_usdc)
         except (ValueError, TypeError):
@@ -936,6 +1005,7 @@ class EarnKitService:
         pos_key = f"{owner_addr}:{opp['vault_id']}"
 
         with _EARN_LOCK:
+            _refresh_positions_from_db(storage or getattr(self, "storage", None))
             current = _EARN_POSITIONS.get(pos_key)
             avail = float(current.get("shares", 0.0)) if current else 0.0
             if not current or avail < amt_float:
@@ -990,6 +1060,7 @@ class EarnKitService:
 
         now = time.time()
         with _EARN_LOCK:
+            _refresh_positions_from_db(storage or getattr(self, "storage", None))
             current = _EARN_POSITIONS.get(pos_key)
             balance_before = float(current.get("principal_usdc", 0.0))
             if is_onchain and vault_contract and c_owner:

@@ -67,7 +67,7 @@ def _build_all_gateway_networks() -> list[dict]:
 
 ALL_GATEWAY_NETWORKS = _build_all_gateway_networks()
 
-AGENT_GUIDANCE = """GenQMA is an AI agent marketplace for real-time quantitative market intelligence, anomaly detection, funding rate arbitrage signals, and prediction market analytics with on-chain GenLayer SLA settlement verification.
+AGENT_GUIDANCE = """QMA is an AI agent marketplace for real-time quantitative market intelligence, anomaly detection, funding rate arbitrage signals, and prediction market analytics with on-chain GenLayer SLA settlement verification.
 
 ### How and When to Call
 - Call when autonomous trading agents or risk engines require verified market anomalies (e.g. extreme CEX funding rate disparities, sudden open-interest shifts, or Polymarket/Pyth divergences) before executing on-chain trades.

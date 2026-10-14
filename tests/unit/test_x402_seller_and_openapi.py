@@ -17,8 +17,8 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
     def test_openapi_document_310_and_metadata(self):
         self.assertEqual(self.schema["openapi"], "3.1.0")
         info = self.schema["info"]
-        self.assertEqual(info["title"], "GenQMA Intelligence & Payments API")
-        self.assertEqual(info["contact"]["email"], "agent-support@genqma.com")
+        self.assertEqual(info["title"], "QMA Intelligence & Payments API")
+        self.assertEqual(info["contact"]["email"], "agent-support@qma.com")
         self.assertTrue(info["contact"]["name"])
 
         # Guidance must be informative and under 1000 tokens (~4000 characters)
@@ -30,7 +30,7 @@ class X402SellerAndOpenApiTests(unittest.TestCase):
         self.assertIn("When to Call", guidance)
 
         # Docs link
-        self.assertEqual(self.schema["externalDocs"]["url"], "https://genqma.vercel.app/docs")
+        self.assertEqual(self.schema["externalDocs"]["url"], "https://qma.vercel.app/docs")
 
     def test_paid_operations_have_x_payment_info(self):
         paths = self.schema["paths"]

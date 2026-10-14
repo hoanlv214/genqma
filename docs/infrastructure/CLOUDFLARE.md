@@ -26,12 +26,6 @@ gateway.qma.yourdomain.com
 
 Keep the raw Render/Vercel URLs available for debugging, but use the Cloudflare domains in production demos.
 
-For the rebuild preview, point the records to the rebuild services instead:
-the Vercel project built from `frontend/vite-react-rebuild`,
-`qma-api-rebuild.onrender.com`, and `qma-arc-gateway-rebuild.onrender.com`.
-Do not mix a rebuild frontend with the legacy API/gateway without explicitly
-checking the public contract and environment variables.
-
 ## DNS setup
 
 1. Add your domain to Cloudflare.
@@ -39,7 +33,7 @@ checking the public contract and environment variables.
 3. Add records:
 
 ```text
-CNAME qma      -> genqma.vercel.app              Proxied
+CNAME qma      -> qma.vercel.app              Proxied
 CNAME api      -> qma-api.onrender.com              Proxied
 CNAME gateway  -> qma-arc-gateway.onrender.com      Proxied
 ```

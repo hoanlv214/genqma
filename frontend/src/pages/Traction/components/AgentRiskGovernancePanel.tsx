@@ -67,6 +67,8 @@ export function AgentRiskGovernancePanel() {
         setResolveNote("");
         setSelectedIncident(null);
         fetchIncidents();
+      } else if (res.status === 403 || res.status === 503) {
+        setError("Incident resolution is restricted to platform operators (admin token required).");
       }
     } catch {
       // Ignore

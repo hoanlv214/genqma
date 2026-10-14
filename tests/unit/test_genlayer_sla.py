@@ -376,5 +376,38 @@ def test_verify_invoice_report_fails_closed_on_report_hash_mismatch(monkeypatch)
     assert invoice["genlayer"]["error"] == "genlayer_receipt_report_hash_mismatch"
 
 
+def test_atomic_sla_cache_persistence(tmp_path, monkeypatch):
+    """Verify SLA cache is persisted atomically and leaves no corrupt files on disk."""
+    fake_cache_file = tmp_path / "test_sla_cache.json"
+    monkeypatch.setattr(genlayer_arbiter, "_SLA_CACHE_FILE", fake_cache_file)
+
+    genlayer_arbiter.clear_sla_cache()
+    try:
+        # Cache a valid entry
+        genlayer_arbiter.cache_sla_verdict(
+            symbol="BTC_USDT",
+            query_hash="q123",
+            report_hash="r123",
+            receipt={"verdict": "VALID", "status": "VERIFIED"},
+            ttl_seconds=3600,
+        )
+
+        # File must exist and contain valid JSON
+        assert fake_cache_file.exists()
+        with open(fake_cache_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        assert "BTC_USDT:q123:r123" in data
+        assert "BTC_USDT:q123" in data
+
+        # Temporary file should have been cleaned up/replaced
+        tmp_file = fake_cache_file.with_suffix(".tmp")
+        assert not tmp_file.exists()
+    finally:
+        genlayer_arbiter.clear_sla_cache()
+        if fake_cache_file.exists():
+            fake_cache_file.unlink()
+
+
+
 
 

@@ -8,6 +8,7 @@ import {
   recordFailure,
   recordObservation,
   recordPurchase,
+  reconcileBudgetWithPolicy,
   sessionReport,
   startSession,
   type PurchaseResult,
@@ -230,6 +231,7 @@ export async function runAutonomousSession(policy: SessionPolicy, deps: SessionD
     state.symbolCooldowns = state.symbolCooldowns || {};
     state.failedCandidateAttempts = state.failedCandidateAttempts || {};
     state.failedCandidateCooldowns = state.failedCandidateCooldowns || {};
+    reconcileBudgetWithPolicy(state, policy);
   }
   const isResume = !!initialState;
 

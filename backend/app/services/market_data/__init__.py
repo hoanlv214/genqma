@@ -1,4 +1,4 @@
-"""Market data services and multi-exchange adapters for GenQMA."""
+"""Market data services and multi-exchange adapters for QMA."""
 
 import os
 from typing import List, Optional

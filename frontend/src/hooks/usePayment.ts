@@ -167,10 +167,10 @@ export function usePayment({
         setPaymentDetails((prev) => ({
           ...prev,
           settlementId: invoiceData.settlement_id || prev.settlementId,
-          txHash: glTxHash || invoiceData.transaction_hash || prev.txHash,
-          explorerUrl: glExplorerUrl || invoiceData.explorer_url || prev.explorerUrl,
-          genlayerTxHash: glTxHash || "",
-          genlayerExplorerUrl: glExplorerUrl,
+          txHash: invoiceData.transaction_hash || prev.txHash,
+          explorerUrl: invoiceData.explorer_url || prev.explorerUrl,
+          genlayerTxHash: glTxHash || prev.genlayerTxHash || "",
+          genlayerExplorerUrl: glExplorerUrl || prev.genlayerExplorerUrl || "",
         }));
         sessionStorage.setItem(`qma_accessToken_${invoiceData.invoice_id}`, invoiceData.access_token);
         setPaymentStepStatus((prev) => ({
@@ -241,10 +241,10 @@ export function usePayment({
         setPaymentDetails((prev) => ({
           ...prev,
           settlementId: invoiceData.settlement_id,
-          txHash: glTxHash || invoiceData.transaction_hash || prev.txHash,
-          explorerUrl: glExplorerUrl || invoiceData.explorer_url || prev.explorerUrl,
-          genlayerTxHash: glTxHash || "",
-          genlayerExplorerUrl: glExplorerUrl,
+          txHash: invoiceData.transaction_hash || prev.txHash,
+          explorerUrl: invoiceData.explorer_url || prev.explorerUrl,
+          genlayerTxHash: glTxHash || prev.genlayerTxHash || "",
+          genlayerExplorerUrl: glExplorerUrl || prev.genlayerExplorerUrl || "",
         }));
         setPaymentStepStatus((prev) => ({
           ...prev,
@@ -560,15 +560,29 @@ export function usePayment({
       setPayStatusText("Settlement confirmed. Verifying the bound report with the GenLayer Intelligent Contract...");
       showToast("Settlement confirmed. Verifying the bound report with the GenLayer Intelligent Contract...", "info");
 
-      let verifyData: any = await verifyPayment(currentInvoice.invoice_id, {
-        invoice_secret: currentInvoice.invoice_secret,
-        payer_address: wallet,
-        ...(settlementId ? { settlement_id: settlementId, amount_usdc: paidAmountUsdc } : {}),
-        ...(splitSettlements.length ? { split_settlements: splitSettlements } : {}),
-      });
+      let verifyData: any = null;
+      try {
+        verifyData = await verifyPayment(currentInvoice.invoice_id, {
+          invoice_secret: currentInvoice.invoice_secret,
+          payer_address: wallet,
+          ...(settlementId ? { settlement_id: settlementId, amount_usdc: paidAmountUsdc } : {}),
+          ...(splitSettlements.length ? { split_settlements: splitSettlements } : {}),
+        });
+      } catch (firstErr: any) {
+        if (firstErr instanceof ApiError && firstErr.status === 503) {
+          verifyData = {
+            status: "verification_pending",
+            genlayer: { status: "VERIFICATION_PENDING", verdict: "PENDING" },
+          };
+        } else {
+          throw firstErr;
+        }
+      }
 
-      let glReceipt = verifyData.genlayer;
-      setGenlayerReceipt(glReceipt);
+      let glReceipt = verifyData?.genlayer;
+      if (glReceipt) {
+        setGenlayerReceipt(glReceipt);
+      }
 
       // Rejection blocks access. Refund is a separate Arc payout state and
       // must never be inferred from the GenLayer verdict alone.
@@ -607,9 +621,10 @@ export function usePayment({
         setPayStatusText("Settlement confirmed. GenLayer multi-validator consensus is finalizing on-chain...");
         showToast("GenLayer consensus in progress. Awaiting validator finalization...", "info");
 
-        const maxPollAttempts = 15;
+        const maxPollAttempts = 24;
         for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          setPayStatusText(`Settlement confirmed on Arc. Awaiting GenLayer validator consensus (attempt ${attempt}/${maxPollAttempts})...`);
+          await new Promise((resolve) => setTimeout(resolve, 2500));
           try {
             const pollData: any = await verifyPayment(currentInvoice.invoice_id, {
               invoice_secret: currentInvoice.invoice_secret,
@@ -674,7 +689,7 @@ export function usePayment({
           setPaymentStepStatus((prev) => ({
             ...prev,
             settlement: { status: "completed", label: "Settled" },
-            genlayer: { status: "waiting", label: "In Progress" },
+            genlayer: { status: "waiting", label: "Retry available" },
             report: { status: "waiting", label: "Locked" },
           }));
           setPayStatusText("");
@@ -721,10 +736,10 @@ export function usePayment({
         settlementId: verifyData.settlement_id || settlementId || splitSettlements.map((item: any) => item.settlement_id).join(", "),
         sellerAvailable: verifyData.seller_gateway_available_usdc != null ? `${Number(verifyData.seller_gateway_available_usdc).toFixed(6)} USDC` : prev.sellerAvailable,
         sellerPending: verifyData.seller_gateway_pending_batch_usdc != null ? `${Number(verifyData.seller_gateway_pending_batch_usdc).toFixed(6)} USDC` : prev.sellerPending,
-        txHash: glTxHash || verifyData.transaction_hash || prev.txHash,
-        explorerUrl: glExplorerUrl || verifyData.explorer_url || prev.explorerUrl,
-        genlayerTxHash: glTxHash || "",
-        genlayerExplorerUrl: glExplorerUrl,
+        txHash: verifyData.transaction_hash || prev.txHash,
+        explorerUrl: verifyData.explorer_url || prev.explorerUrl,
+        genlayerTxHash: glTxHash || prev.genlayerTxHash || "",
+        genlayerExplorerUrl: glExplorerUrl || prev.genlayerExplorerUrl || "",
       }));
       setPayStatusText(
         glTxHash

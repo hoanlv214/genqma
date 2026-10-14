@@ -66,10 +66,15 @@ def get_usyc_position(
     "/api/v1/treasury/usyc/sweep",
     response_model=USYCSweepResponse,
     summary="Autonomous sweep of idle USDC cash into USYC",
-    description="Prepare and record an autonomous corporate treasury idle sweep into USYC yielding vault.",
+    description="Prepare an autonomous corporate treasury idle sweep into the USYC yielding vault. Without execute_onchain the response carries an unpersisted DRY_RUN_SIMULATED preview record; on-chain execution requires the platform administrator token and is recorded in the Euthyna trail.",
 )
-def sweep_idle_cash(req: SweepRequest) -> USYCSweepResponse:
+def sweep_idle_cash(
+    req: SweepRequest,
+    x_qma_admin_token: Optional[str] = Security(qma_admin_token_header),
+) -> USYCSweepResponse:
     """Prepare and record an autonomous corporate treasury idle sweep."""
+    if req.execute_onchain:
+        require_admin_token(x_qma_admin_token)
     depositor = req.depositor or PLATFORM_TREASURY_ADDRESS
     intent = usyc_treasury_service.prepare_deposit_intent(req.amount_usdc, depositor)
 
@@ -100,7 +105,7 @@ def sweep_idle_cash(req: SweepRequest) -> USYCSweepResponse:
         liquid_after = liquid_before
         new_shares = pos.get("usyc_shares", 0.0)
 
-    audit_entry = euthyna_audit_engine.record_action(
+    audit_kwargs = dict(
         action="IDLE_SWEEP",
         actor=depositor,
         amount_usdc=req.amount_usdc,
@@ -109,8 +114,11 @@ def sweep_idle_cash(req: SweepRequest) -> USYCSweepResponse:
         usyc_shares=new_shares,
         policy_rule="RULE_CFO_MAXIMIZE_YIELD_ABOVE_THRESHOLD",
         reasoning=req.cfo_reasoning or f"Swept {req.amount_usdc} USDC idle liquidity into USYC vault at 5% APY.",
-        tx_hash=tx_hash,
     )
+    if req.execute_onchain:
+        audit_entry = euthyna_audit_engine.record_action(**audit_kwargs, tx_hash=tx_hash)
+    else:
+        audit_entry = euthyna_audit_engine.preview_action(**audit_kwargs)
 
     return USYCSweepResponse(
         status=status,
@@ -125,10 +133,15 @@ def sweep_idle_cash(req: SweepRequest) -> USYCSweepResponse:
     "/api/v1/treasury/usyc/jit-redeem",
     response_model=USYCJITRedeemResponse,
     summary="Just-In-Time USYC redemption for bill payment",
-    description="Prepare and record JIT redemption of USYC into liquid USDC for x402 bills.",
+    description="Prepare JIT redemption of USYC into liquid USDC for x402 bills. Without execute_onchain the response carries an unpersisted DRY_RUN_SIMULATED preview record; on-chain execution requires the platform administrator token and is recorded in the Euthyna trail.",
 )
-def jit_redeem_usyc(req: JITRedeemRequest) -> USYCJITRedeemResponse:
+def jit_redeem_usyc(
+    req: JITRedeemRequest,
+    x_qma_admin_token: Optional[str] = Security(qma_admin_token_header),
+) -> USYCJITRedeemResponse:
     """Prepare and record JIT redemption of USYC into liquid USDC for x402 bills."""
+    if req.execute_onchain:
+        require_admin_token(x_qma_admin_token)
     receiver = req.receiver or PLATFORM_TREASURY_ADDRESS
     owner = req.owner or PLATFORM_TREASURY_ADDRESS
     intent = usyc_treasury_service.prepare_jit_redemption(req.amount_usdc_needed, receiver, owner)
@@ -162,7 +175,7 @@ def jit_redeem_usyc(req: JITRedeemRequest) -> USYCJITRedeemResponse:
         liquid_after = liquid_before
         remaining_shares = current_shares
 
-    audit_entry = euthyna_audit_engine.record_action(
+    audit_kwargs = dict(
         action="JIT_REDEMPTION",
         actor=owner,
         amount_usdc=req.amount_usdc_needed,
@@ -171,8 +184,11 @@ def jit_redeem_usyc(req: JITRedeemRequest) -> USYCJITRedeemResponse:
         usyc_shares=remaining_shares,
         policy_rule="RULE_CFO_JIT_LIQUIDITY_BUFFER",
         reasoning=req.cfo_reasoning or f"JIT redemption of {req.amount_usdc_needed} USDC to satisfy x402 invoice.",
-        tx_hash=tx_hash,
     )
+    if req.execute_onchain:
+        audit_entry = euthyna_audit_engine.record_action(**audit_kwargs, tx_hash=tx_hash)
+    else:
+        audit_entry = euthyna_audit_engine.preview_action(**audit_kwargs)
 
     return USYCJITRedeemResponse(
         status=status,
@@ -254,21 +270,31 @@ def get_treasury_policy() -> CorporateTreasuryPolicy:
 )
 def update_treasury_policy(
     policy: CorporateTreasuryPolicy,
+    acknowledge_active_incidents: bool = False,
     x_qma_admin_token: Optional[str] = Security(qma_admin_token_header),
 ) -> CorporateTreasuryPolicy:
     """Update administrative risk limits and autonomous CFO operating parameters."""
     require_admin_token(x_qma_admin_token)
-    return usyc_treasury_service.set_policy(policy)
+    try:
+        return usyc_treasury_service.set_policy(policy, acknowledge_active_incidents=acknowledge_active_incidents)
+    except ValueError as val_err:
+        raise HTTPException(status_code=409, detail=str(val_err))
+
 
 
 @router.post(
     "/api/v1/treasury/agent/decide",
     response_model=CFODecisionResult,
     summary="Autonomous corporate CFO agent evaluation and execution",
-    description="Trigger comprehensive autonomous multi-factor CFO evaluation against active administrative policy bounds, liquidity runways, solvency constraints, and yield optimization targets.",
+    description="Trigger comprehensive autonomous multi-factor CFO evaluation against active administrative policy bounds, liquidity runways, solvency constraints, and yield optimization targets. Without execute_if_authorized this is a stateless simulation (no audit record, audit_record_id is null); on-chain execution requires the platform administrator token and is recorded in the Euthyna trail.",
 )
-def trigger_cfo_decision(req: CFODecisionRequest) -> CFODecisionResult:
+def trigger_cfo_decision(
+    req: CFODecisionRequest,
+    x_qma_admin_token: Optional[str] = Security(qma_admin_token_header),
+) -> CFODecisionResult:
     """Trigger comprehensive autonomous multi-factor CFO evaluation against active administrative policy bounds."""
+    if req.execute_if_authorized:
+        require_admin_token(x_qma_admin_token)
     target_account = req.account or PLATFORM_TREASURY_ADDRESS
     result = usyc_treasury_service.evaluate_cfo_decision(
         account=target_account,

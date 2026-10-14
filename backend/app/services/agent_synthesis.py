@@ -63,9 +63,10 @@ def generate_agent_synthesis(
 
     try:
         if llm_provider == "gemini":
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
+            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+            headers = {"x-goog-api-key": key, "Content-Type": "application/json"}
             payload = {"contents": [{"parts": [{"text": prompt}]}]}
-            res = requests.post(url, json=payload, timeout=4.0)
+            res = requests.post(url, headers=headers, json=payload, timeout=4.0)
             if res.status_code == 200:
                 data = res.json()
                 text = data["candidates"][0]["content"]["parts"][0]["text"].strip()

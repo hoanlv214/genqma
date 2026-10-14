@@ -2,10 +2,10 @@
 
 > QMA (Quantitative Market Analogs) sells per-query market memory to autonomous agents:
 > sub-cent USDC intelligence, policy-bounded decisions, and hash-chained receipts on Arc.
-> Repo codename: genqma.
+> Repo codename: qma.
 
-[![live: genqma.vercel.app](https://img.shields.io/badge/live-genqma.vercel.app-1aa251)](https://genqma.vercel.app)
-[![brand: Intelligence · Decisions · Receipts](https://img.shields.io/badge/QMA-Intelligence_%C2%B7_Decisions_%C2%B7_Receipts-6366F1)](https://genqma.vercel.app)
+[![live: qma.vercel.app](https://img.shields.io/badge/live-qma.vercel.app-1aa251)](https://qma.vercel.app)
+[![brand: Intelligence · Decisions · Receipts](https://img.shields.io/badge/QMA-Intelligence_%C2%B7_Decisions_%C2%B7_Receipts-6366F1)](https://qma.vercel.app)
 [![marketplace: Two-Sided Intelligence](https://img.shields.io/badge/marketplace-Two--Sided_Intelligence-2563EB)](docs/business/POSITIONING_STRATEGY.md)
 [![API docs: onrender](https://img.shields.io/badge/API-qma--api.onrender.com-6E56CF)](https://qma-api.onrender.com/docs)
 [![settles on Arc testnet](https://img.shields.io/badge/settles_on-Arc_testnet-1f1f1f)](https://testnet.arcscan.app)
@@ -17,7 +17,7 @@
 
 **A zero-person autonomous business and two-sided outcome marketplace for financial intelligence on Arc: quant creators monetize signals, autonomous AI agents purchase verified reports per query via Circle x402/Gateway USDC micropayments, and an autonomous CFO governs the platform treasury under written policy.**
 
-🔗 Live Marketplace: **[genqma.vercel.app](https://genqma.vercel.app)** — interactive Signal Explorer & Treasury Radar  
+🔗 Live Marketplace: **[qma.vercel.app](https://qma.vercel.app)** — interactive Signal Explorer & Treasury Radar  
 &nbsp;·&nbsp; 📄 **[Technical Whitepaper](docs/whitepaper/QMA_WHITEPAPER.md)** — authoritative technical whitepaper (Arc L1, x402, GenLayer Shield)  
 &nbsp;·&nbsp; ⚡ Backend: **[qma-api.onrender.com](https://qma-api.onrender.com)** — live API & OpenAPI docs at `/docs`  
 &nbsp;·&nbsp; 🏛️ **[Arc RFB Alignment Audit](docs/arc/ARC_BUILDER_ALIGNMENT_AUDIT.md)** — strategic mapping against Circle Arc's Request for Builders  
@@ -192,8 +192,8 @@ qma agent run --task "funding anomaly watchlist" --budget 0.05 --max-purchases 5
 
 ```bash
 # 1. Clone & install dependencies
-git clone https://github.com/hoanlv214/genqma.git
-cd genqma
+git clone https://github.com/hoanlv214/qma.git
+cd qma
 npm install
 pip install -r requirements.txt
 
@@ -216,7 +216,7 @@ python -m pytest tests/ -q
 ## Repository Structure
 
 ```text
-genqma/
+qma/
 ├── agents/                  # Autonomous agent runners and decision engines
 │   ├── bin/qma.js           # Canonical CLI: bounded autonomous report buyer
 │   └── bin/agent_buyer.js   # Payment executor: --treasury, --sweep, --redeem, --live

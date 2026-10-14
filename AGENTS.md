@@ -5,7 +5,6 @@
 The repo has 2 branches representing different targets:
 
 - **`main`** — **live** and the **active deployment branch** for the autonomous agent wallet and user features. The backend runs on Render pointing to the root `main.py` shim.
-- **`frontend/vite-react-rebuild`** — parallel rebuild development branch.
 
 Before modifying files, confirm the current branch (`git branch --show-current`) and apply guidelines accordingly. User-funded Agent Wallet and withdrawal features are deployed directly on `main`.
 
@@ -21,8 +20,6 @@ Before modifying files, confirm the current branch (`git branch --show-current`)
 - Or altering any route path / response schema in `backend/app/`,
 
 → Always verify `render.yaml` and confirm with the user beforehand.
-
-`main_ref.py` is a legacy reference snapshot — **do not run, do not import, do not modify, do not delete**. It serves strictly for comparison during rebuilds.
 
 ## Needs Verification
 
@@ -49,7 +46,7 @@ sg scan -r .ast-grep/rules/python-fastapi-app-route.yml
 QMA-specific reminders:
 
 - New public API routes should be registered in endpoint modules under `backend/app/api/v1/endpoints/` via `APIRouter`, not directly with `@app.get` or `@app.post`.
-- Default ast-grep scripts scan live code only (`backend main.py tests`) to avoid noisy reference hits. Scan `main_ref.py` explicitly when comparing parity with the old god file.
+- Default ast-grep scripts scan live code only (`backend main.py tests`) to avoid noisy reference hits.
 - Payment logic is sensitive. Before changing invoice status, settlement verification, split legs, or access tokens, scan for `save_invoice`, `save_payment_ledger`, and payment-required exceptions.
 - Keep public API paths and response keys stable during the migration.
 

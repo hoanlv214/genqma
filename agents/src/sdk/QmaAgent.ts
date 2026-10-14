@@ -400,7 +400,7 @@ export class QmaAgent extends EventEmitter {
 
   async runTick(options: QmaAgentRunOptions, signal?: AbortSignal): Promise<import("../session/loop.js").TickResult> {
     const { runSessionTick } = await import("../session/loop.js");
-    const { createSessionState } = await import("../session/state.js");
+    const { createSessionState, reconcileBudgetWithPolicy } = await import("../session/state.js");
     const policy = normalizeSessionPolicy(options);
     const deps = this.buildDeps(options);
     const state = createSessionState(policy);
@@ -414,6 +414,7 @@ export class QmaAgent extends EventEmitter {
       state.symbolCooldowns = state.symbolCooldowns || {};
       state.failedCandidateAttempts = state.failedCandidateAttempts || {};
       state.failedCandidateCooldowns = state.failedCandidateCooldowns || {};
+      reconcileBudgetWithPolicy(state, policy);
     }
     this._state = state;
     return runSessionTick(policy, deps, state, signal);

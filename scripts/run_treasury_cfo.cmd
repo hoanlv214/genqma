@@ -16,7 +16,7 @@ if "%API_BASE%"=="" set "API_BASE=http://localhost:8000"
 set "INTERVAL=%~2"
 if "%INTERVAL%"=="" set "INTERVAL=1800"
 
-set "REPO_DIR=C:\Users\Admin\Downloads\code\genqma"
+set "REPO_DIR=C:\Users\Admin\Downloads\code\qma"
 cd /d "%REPO_DIR%"
 set "QMA_API_URL=%API_BASE%"
 set "QMA_TREASURY_LOOP_INTERVAL_SECONDS=%INTERVAL%"

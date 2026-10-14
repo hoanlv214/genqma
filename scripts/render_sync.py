@@ -59,7 +59,7 @@ def build_service_env_configs(env: Dict[str, str]) -> Dict[str, Dict[str, str]]:
 
     api_public_url = "https://qma-api.onrender.com"
     arc_gateway_public_url = "https://qma-arc-gateway.onrender.com"
-    frontend_url = "https://genqma.vercel.app"
+    frontend_url = "https://qma.vercel.app"
 
     # 1. qma-api (FastAPI Python backend)
     api_vars = {
